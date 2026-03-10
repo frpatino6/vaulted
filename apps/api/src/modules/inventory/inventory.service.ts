@@ -1,0 +1,308 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import * as QRCode from 'qrcode';
+import { CreateItemDto, ItemStatus } from './dto/create-item.dto';
+import { LoanItemDto } from './dto/loan-item.dto';
+import { MoveItemDto } from './dto/move-item.dto';
+import { UpdateItemDto } from './dto/update-item.dto';
+import { Item, ItemDocument } from './schemas/item.schema';
+import { ItemHistory, ItemHistoryDocument } from './schemas/item-history.schema';
+
+interface InventoryFilters {
+  propertyId?: string;
+  roomId?: string;
+  category?: string;
+  status?: string;
+}
+
+interface InventorySearchFilters {
+  query?: string;
+  category?: string;
+  propertyId?: string;
+  status?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface InventorySearchResponse {
+  items: Item[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+@Injectable()
+export class InventoryService {
+  constructor(
+    @InjectModel(Item.name)
+    private readonly itemModel: Model<ItemDocument>,
+    @InjectModel(ItemHistory.name)
+    private readonly itemHistoryModel: Model<ItemHistoryDocument>,
+  ) {}
+
+  async create(tenantId: string, userId: string, dto: CreateItemDto): Promise<Item> {
+    const item = await this.itemModel.create({
+      tenantId,
+      propertyId: dto.propertyId,
+      roomId: dto.roomId,
+      name: dto.name,
+      category: dto.category,
+      subcategory: dto.subcategory,
+      attributes: dto.attributes,
+      valuation: dto.valuation,
+      status: dto.status ?? ItemStatus.ACTIVE,
+      photos: dto.photos ?? [],
+      documents: dto.documents ?? [],
+      tags: dto.tags ?? [],
+      serialNumber: dto.serialNumber,
+      createdBy: userId,
+    });
+
+    const qrCode = await QRCode.toDataURL(`vaulted://items/${String(item._id)}`);
+    item.qrCode = qrCode;
+    await item.save();
+
+    return item;
+  }
+
+  async findAll(tenantId: string, filters: InventoryFilters): Promise<Item[]> {
+    const query: Record<string, unknown> = { tenantId };
+
+    if (filters.propertyId) {
+      query.propertyId = filters.propertyId;
+    }
+
+    if (filters.roomId) {
+      query.roomId = filters.roomId;
+    }
+
+    if (filters.category) {
+      query.category = filters.category;
+    }
+
+    if (filters.status) {
+      query.status = filters.status;
+    }
+
+    return this.itemModel.find(query).sort({ createdAt: -1 }).exec();
+  }
+
+  async findById(tenantId: string, itemId: string): Promise<Item> {
+    return this.findOwnedItemOrThrow(tenantId, itemId);
+  }
+
+  async update(tenantId: string, itemId: string, dto: UpdateItemDto): Promise<Item> {
+    await this.findOwnedItemOrThrow(tenantId, itemId);
+
+    const item = await this.itemModel
+      .findOneAndUpdate(
+        { _id: itemId, tenantId },
+        {
+          $set: {
+            ...(dto.propertyId !== undefined ? { propertyId: dto.propertyId } : {}),
+            ...(dto.roomId !== undefined ? { roomId: dto.roomId } : {}),
+            ...(dto.name !== undefined ? { name: dto.name } : {}),
+            ...(dto.category !== undefined ? { category: dto.category } : {}),
+            ...(dto.subcategory !== undefined ? { subcategory: dto.subcategory } : {}),
+            ...(dto.attributes !== undefined ? { attributes: dto.attributes } : {}),
+            ...(dto.valuation !== undefined ? { valuation: dto.valuation } : {}),
+            ...(dto.status !== undefined ? { status: dto.status } : {}),
+            ...(dto.photos !== undefined ? { photos: dto.photos } : {}),
+            ...(dto.documents !== undefined ? { documents: dto.documents } : {}),
+            ...(dto.tags !== undefined ? { tags: dto.tags } : {}),
+            ...(dto.serialNumber !== undefined ? { serialNumber: dto.serialNumber } : {}),
+          },
+        },
+        { new: true, runValidators: true },
+      )
+      .exec();
+
+    if (!item) {
+      throw new NotFoundException('Item not found');
+    }
+
+    return item;
+  }
+
+  async delete(tenantId: string, itemId: string): Promise<Item> {
+    await this.findOwnedItemOrThrow(tenantId, itemId);
+
+    const item = await this.itemModel
+      .findOneAndUpdate(
+        { _id: itemId, tenantId },
+        { $set: { status: ItemStatus.DISPOSED } },
+        { new: true, runValidators: true },
+      )
+      .exec();
+
+    if (!item) {
+      throw new NotFoundException('Item not found');
+    }
+
+    await this.itemHistoryModel.create({
+      itemId,
+      tenantId,
+      action: 'status_changed',
+      performedBy: 'system',
+      notes: 'Soft deleted by setting status to disposed',
+    });
+
+    return item;
+  }
+
+  async move(
+    tenantId: string,
+    itemId: string,
+    userId: string,
+    dto: MoveItemDto,
+  ): Promise<Item> {
+    const item = await this.findOwnedItemOrThrow(tenantId, itemId);
+
+    const updatedItem = await this.itemModel
+      .findOneAndUpdate(
+        { _id: itemId, tenantId },
+        {
+          $set: {
+            propertyId: dto.toPropertyId,
+            roomId: dto.toRoomId,
+          },
+        },
+        { new: true, runValidators: true },
+      )
+      .exec();
+
+    if (!updatedItem) {
+      throw new NotFoundException('Item not found');
+    }
+
+    await this.itemHistoryModel.create({
+      itemId,
+      tenantId,
+      action: 'moved',
+      fromPropertyId: item.propertyId,
+      toPropertyId: dto.toPropertyId,
+      fromRoomId: item.roomId,
+      toRoomId: dto.toRoomId,
+      performedBy: userId,
+      notes: dto.notes,
+    });
+
+    return updatedItem;
+  }
+
+  async loan(
+    tenantId: string,
+    itemId: string,
+    userId: string,
+    dto: LoanItemDto,
+  ): Promise<Item> {
+    const item = await this.findOwnedItemOrThrow(tenantId, itemId);
+    const nextAttributes = {
+      ...(item.attributes ?? {}),
+      loan: {
+        borrowerName: dto.borrowerName,
+        borrowerContact: dto.borrowerContact,
+        expectedReturnDate: dto.expectedReturnDate,
+        notes: dto.notes,
+      },
+    };
+
+    const updatedItem = await this.itemModel
+      .findOneAndUpdate(
+        { _id: itemId, tenantId },
+        {
+          $set: {
+            status: ItemStatus.LOANED,
+            attributes: nextAttributes,
+          },
+        },
+        { new: true, runValidators: true },
+      )
+      .exec();
+
+    if (!updatedItem) {
+      throw new NotFoundException('Item not found');
+    }
+
+    await this.itemHistoryModel.create({
+      itemId,
+      tenantId,
+      action: 'loaned',
+      fromPropertyId: item.propertyId,
+      fromRoomId: item.roomId,
+      performedBy: userId,
+      notes: dto.notes,
+    });
+
+    return updatedItem;
+  }
+
+  async getHistory(tenantId: string, itemId: string): Promise<ItemHistory[]> {
+    await this.findOwnedItemOrThrow(tenantId, itemId);
+    return this.itemHistoryModel
+      .find({ tenantId, itemId })
+      .sort({ timestamp: -1 })
+      .exec();
+  }
+
+  async search(
+    tenantId: string,
+    filters: InventorySearchFilters,
+  ): Promise<InventorySearchResponse> {
+    const page = Math.max(filters.page ?? 1, 1);
+    const limit = Math.min(Math.max(filters.limit ?? 20, 1), 100);
+    const skip = (page - 1) * limit;
+
+    const query: Record<string, unknown> = { tenantId };
+
+    if (filters.query) {
+      query.$text = { $search: filters.query };
+    }
+
+    if (filters.category) {
+      query.category = filters.category;
+    }
+
+    if (filters.propertyId) {
+      query.propertyId = filters.propertyId;
+    }
+
+    if (filters.status) {
+      query.status = filters.status;
+    }
+
+    const itemQuery = this.itemModel.find(query);
+
+    if (filters.query) {
+      itemQuery.sort({ score: { $meta: 'textScore' }, createdAt: -1 });
+    } else {
+      itemQuery.sort({ createdAt: -1 });
+    }
+
+    const [items, total] = await Promise.all([
+      itemQuery.skip(skip).limit(limit).exec(),
+      this.itemModel.countDocuments(query).exec(),
+    ]);
+
+    return {
+      items,
+      total,
+      page,
+      limit,
+    };
+  }
+
+  private async findOwnedItemOrThrow(
+    tenantId: string,
+    itemId: string,
+  ): Promise<ItemDocument> {
+    const item = await this.itemModel.findOne({ _id: itemId, tenantId }).exec();
+
+    if (!item) {
+      throw new NotFoundException('Item not found');
+    }
+
+    return item;
+  }
+}

@@ -1,0 +1,137 @@
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Post,
+  Put,
+} from '@nestjs/common';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { JwtPayload } from '../auth/strategies/jwt.strategy';
+import { Role } from '../../common/enums/role.enum';
+import { AuditService } from '../audit/audit.service';
+import { AddFloorDto } from './dto/add-floor.dto';
+import { AddRoomDto } from './dto/add-room.dto';
+import { CreatePropertyDto } from './dto/create-property.dto';
+import { UpdatePropertyDto } from './dto/update-property.dto';
+import { PropertiesService } from './properties.service';
+import { PropertyDocument } from './schemas/property.schema';
+
+@Controller('properties')
+export class PropertiesController {
+  constructor(
+    private readonly propertiesService: PropertiesService,
+    private readonly auditService: AuditService,
+  ) {}
+
+  @Roles(Role.OWNER, Role.MANAGER)
+  @Post()
+  async create(@CurrentUser() user: JwtPayload, @Body() dto: CreatePropertyDto) {
+    // tenantId always from JWT — never from request body or headers
+    const property = await this.propertiesService.create(user.tenantId, dto);
+
+    await this.auditService.log({
+      tenantId: user.tenantId,
+      userId: user.sub,
+      action: 'property.create',
+      entityType: 'property',
+      entityId: String((property as unknown as PropertyDocument)._id),
+    });
+
+    return property;
+  }
+
+  @Get()
+  findAll(@CurrentUser() user: JwtPayload) {
+    return this.propertiesService.findAll(user.tenantId);
+  }
+
+  @Get(':id')
+  findById(@CurrentUser() user: JwtPayload, @Param('id') propertyId: string) {
+    return this.propertiesService.findById(user.tenantId, propertyId);
+  }
+
+  @Roles(Role.OWNER, Role.MANAGER)
+  @Put(':id')
+  async update(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') propertyId: string,
+    @Body() dto: UpdatePropertyDto,
+  ) {
+    const property = await this.propertiesService.update(user.tenantId, propertyId, dto);
+
+    await this.auditService.log({
+      tenantId: user.tenantId,
+      userId: user.sub,
+      action: 'property.update',
+      entityType: 'property',
+      entityId: propertyId,
+    });
+
+    return property;
+  }
+
+  @Roles(Role.OWNER)
+  @Delete(':id')
+  @HttpCode(HttpStatus.OK)
+  async delete(@CurrentUser() user: JwtPayload, @Param('id') propertyId: string) {
+    await this.propertiesService.delete(user.tenantId, propertyId);
+
+    await this.auditService.log({
+      tenantId: user.tenantId,
+      userId: user.sub,
+      action: 'property.delete',
+      entityType: 'property',
+      entityId: propertyId,
+    });
+
+    return { deleted: true };
+  }
+
+  @Roles(Role.OWNER, Role.MANAGER)
+  @Post(':id/floors')
+  async addFloor(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') propertyId: string,
+    @Body() dto: AddFloorDto,
+  ) {
+    const property = await this.propertiesService.addFloor(user.tenantId, propertyId, dto);
+
+    await this.auditService.log({
+      tenantId: user.tenantId,
+      userId: user.sub,
+      action: 'property.add_floor',
+      entityType: 'property',
+      entityId: propertyId,
+      metadata: { floorName: dto.name },
+    });
+
+    return property;
+  }
+
+  @Roles(Role.OWNER, Role.MANAGER)
+  @Post(':id/floors/:floorId/rooms')
+  async addRoom(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') propertyId: string,
+    @Param('floorId') floorId: string,
+    @Body() dto: AddRoomDto,
+  ) {
+    const property = await this.propertiesService.addRoom(user.tenantId, propertyId, floorId, dto);
+
+    await this.auditService.log({
+      tenantId: user.tenantId,
+      userId: user.sub,
+      action: 'property.add_room',
+      entityType: 'property',
+      entityId: propertyId,
+      metadata: { floorId, roomName: dto.name },
+    });
+
+    return property;
+  }
+}
