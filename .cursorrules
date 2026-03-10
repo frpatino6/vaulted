@@ -1,0 +1,238 @@
+# Vaulted — Cursor Rules
+
+## What is Vaulted?
+Premium home inventory management app for ultra-high-net-worth families in the USA.
+Multi-property, multi-user SaaS with strict security requirements.
+
+---
+
+## Current Task: Flutter Mobile App
+
+The NestJS backend is complete (Phases 0-6). Now building the Flutter mobile app.
+Rule: **never modify backend files** — only work inside `apps/mobile/`.
+
+---
+
+## Tech Stack (Mobile)
+
+| Package | Version | Purpose |
+|---|---|---|
+| flutter_riverpod | ^2.x | State management |
+| go_router | ^13.x | Navigation + auth guard |
+| dio | ^5.x | HTTP client |
+| flutter_secure_storage | ^9.x | Token storage (Secure Enclave / Keystore) |
+| hive_flutter | ^1.x | Offline cache |
+| freezed | ^2.x | Immutable data models |
+| json_serializable | ^6.x | JSON serialization |
+| mobile_scanner | ^5.x | QR code scanning |
+| local_auth | ^2.x | Biometric auth |
+| cached_network_image | ^3.x | Image caching |
+| sentry_flutter | ^8.x | Error monitoring |
+
+---
+
+## Folder Structure (apps/mobile/lib/)
+
+```
+core/
+  config/         # AppConfig, environment flavors (dev/staging/prod)
+  network/        # Dio instance, auth interceptor, 401 handler
+  storage/        # SecureStorage wrapper (tokens), Hive (offline)
+  security/       # Jailbreak detector, screenshot guard
+  router/         # GoRouter, auth guard, role guard
+  theme/          # AppTheme, AppColors, AppTypography, AppSpacing
+
+features/
+  auth/
+    data/         # AuthRepository, AuthRemoteDataSource
+    domain/       # AuthState, User model
+    presentation/ # LoginScreen, MfaScreen, AuthNotifier (Riverpod)
+  dashboard/
+    data/
+    domain/
+    presentation/
+  properties/
+    data/
+    domain/
+    presentation/
+  inventory/
+    data/
+    domain/
+    presentation/
+  settings/
+    presentation/
+
+shared/
+  widgets/        # Reusable premium UI components
+  extensions/     # Dart extensions
+```
+
+---
+
+## Architecture Rules
+
+### State Management
+- Use **Riverpod** exclusively — no Provider, no BLoC, no setState in feature code
+- Every feature has a `*Notifier` class extending `AsyncNotifier` or `Notifier`
+- State classes use **Freezed** — immutable, with copyWith
+
+### Data Layer
+- Each feature has a `Repository` class that calls `RemoteDataSource`
+- `RemoteDataSource` uses the shared Dio instance from `core/network/`
+- Models use `freezed` + `json_serializable` — always generate with `build_runner`
+
+### Navigation
+- **GoRouter** only — no Navigator.push directly
+- Auth guard: redirect to `/login` if no valid token
+- Role guard: redirect to `/unauthorized` if role insufficient
+
+### UI
+- No business logic in widgets — widgets only call notifier methods and read state
+- Shared components only in `shared/widgets/`
+- Use `AppTheme`, `AppColors`, `AppTypography`, `AppSpacing` — no hardcoded colors or sizes
+
+---
+
+## API Integration
+
+### Base URL
+```dart
+// From AppConfig — never hardcode
+AppConfig.apiBaseUrl // e.g. http://10.0.2.2:3000/api (Android emulator)
+                     // or https://api.vaulted.app (production)
+```
+
+### Authentication
+- **Access Token**: stored in memory (Riverpod state) — never in SharedPreferences
+- **Refresh Token**: stored in `flutter_secure_storage`
+- On 401: Dio interceptor automatically calls `POST /auth/refresh`, retries original request
+- On refresh failure: clear tokens, redirect to login
+
+### Standard API Response format (from backend ResponseInterceptor)
+```json
+{ "success": true, "data": { ... } }
+{ "success": false, "error": { "statusCode": 401, "message": "..." } }
+```
+Always unwrap `.data` field before passing to domain layer.
+
+---
+
+## Security Rules (MANDATORY)
+
+1. **Tokens in memory or SecureStorage only** — never SharedPreferences, never logs
+2. **Certificate pinning** with Dio — implement in `core/network/api_client.dart`
+3. **Biometric re-auth** on app resume after 5 min background
+4. **Screenshot blocked** on sensitive screens (item detail with valuations, auth screens)
+5. **Jailbreak/root detection** on app start — warn user, optionally block
+6. **No hardcoded secrets** — all config from AppConfig / flavors
+
+---
+
+## Naming Conventions
+
+- Files: `snake_case.dart`
+- Classes: `PascalCase`
+- Riverpod providers: `camelCaseProvider` / `camelCaseNotifierProvider`
+- Freezed models: `@freezed class ModelName with _$ModelName`
+- Always run `dart fix --apply` after generating code
+
+---
+
+## Backend Endpoints Available
+
+### Auth
+```
+POST /api/auth/register
+POST /api/auth/login       → returns { accessToken, mfaRequired }
+POST /api/auth/refresh     → reads httpOnly cookie
+POST /api/auth/logout
+POST /api/auth/mfa/setup   → returns { secret, qrCodeUrl }
+POST /api/auth/mfa/verify  → returns { accessToken, mfaVerified: true }
+```
+
+### Properties
+```
+GET    /api/properties
+POST   /api/properties
+GET    /api/properties/:id
+PUT    /api/properties/:id
+DELETE /api/properties/:id
+POST   /api/properties/:id/floors
+POST   /api/properties/:id/floors/:floorId/rooms
+```
+
+### Inventory
+```
+GET    /api/items?propertyId=&category=&status=&q=&page=&limit=
+POST   /api/items
+GET    /api/items/:id
+PUT    /api/items/:id
+DELETE /api/items/:id
+POST   /api/items/:id/move
+POST   /api/items/:id/loan
+GET    /api/items/:id/history
+```
+
+### Dashboard
+```
+GET /api/dashboard
+```
+
+### Users
+```
+POST   /api/users/invite
+GET    /api/users
+GET    /api/users/:id
+PUT    /api/users/:id
+DELETE /api/users/:id
+```
+
+### Media
+```
+POST   /api/media/upload   → multipart/form-data, field: "file"
+DELETE /api/media/file?key=tenantId/uuid.ext
+```
+
+---
+
+## Flutter Phases to Build (in order)
+
+### Phase 1 — Auth screens
+- LoginScreen: email + password form, handle mfaRequired flag
+- MfaScreen: 6-digit TOTP input
+- AuthNotifier: manages login flow, token storage, redirect
+- GoRouter auth guard
+
+### Phase 2 — Properties
+- PropertiesListScreen: list of properties with PropertyCard widget
+- PropertyDetailScreen: floors and rooms tree
+- AddPropertyScreen: form with address fields
+- PropertiesNotifier + PropertiesRepository
+
+### Phase 3 — Inventory
+- ItemsListScreen: filterable list with ItemCard, CategoryFilter, StatusBadge
+- ItemDetailScreen: photos, attributes, valuation, QR code display
+- AddItemScreen: full form with category selection
+- QrScannerScreen: scan QR → navigate to item detail
+- InventoryNotifier + InventoryRepository
+
+### Phase 4 — Media
+- ImagePickerWidget: camera + gallery, preview, upload progress
+- Integrate into AddItemScreen and ItemDetailScreen
+- CachedNetworkImage for displaying photos
+
+### Phase 5 — Dashboard
+- DashboardScreen: stats cards (total items, total valuation, items by status)
+- PropertyCards on dashboard
+- GlobalSearchScreen: search bar + filters
+
+---
+
+## DO NOT
+
+- Do not modify anything in `apps/api/`
+- Do not use `setState` for feature state — use Riverpod
+- Do not hardcode colors, sizes, or API URLs
+- Do not store tokens in SharedPreferences
+- Do not call API directly from widgets — always through Repository
+- Do not skip Freezed for data models
