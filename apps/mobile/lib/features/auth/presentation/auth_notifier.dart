@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/storage/auth_token_store.dart';
@@ -33,7 +34,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
       AuthTokenStore.instance.setMfaPending(false);
       state = const AsyncData(AuthState.authenticated());
     } catch (e) {
-      state = AsyncData(AuthState.error(_mapError(e)));
+      state = AsyncData(AuthState.error(_mapMfaError(e)));
     }
   }
 
@@ -47,19 +48,37 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
   }
 
   String _mapError(Object e) {
-    final msg = e.toString().toLowerCase();
-    if (msg.contains('401') || msg.contains('invalid credentials') || msg.contains('unauthorized')) {
-      return 'Invalid email or password.';
-    }
-    if (msg.contains('mfa') || msg.contains('code') || msg.contains('totp')) {
-      return 'Invalid verification code. Please try again.';
-    }
-    if (msg.contains('network') || msg.contains('socket') || msg.contains('connection') ||
-        msg.contains('connection refused') || msg.contains('failed host lookup') ||
-        msg.contains('connection reset')) {
-      return 'Cannot reach API. Is the backend running on port 3000?';
+    if (e is DioException) {
+      // No connection to server
+      if (e.type == DioExceptionType.connectionError ||
+          e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.sendTimeout ||
+          e.type == DioExceptionType.receiveTimeout) {
+        return 'Cannot reach server. Is the backend running on port 3000?';
+      }
+
+      final statusCode = e.response?.statusCode;
+      if (statusCode == 401) return 'Invalid email or password.';
+      if (statusCode == 429) return 'Too many attempts. Wait a moment and try again.';
+
+      // Show the actual API error message if available
+      final data = e.response?.data;
+      if (data is Map) {
+        final apiMsg = data['error']?['message'];
+        if (apiMsg is String && apiMsg.isNotEmpty) return apiMsg;
+        if (apiMsg is List) return apiMsg.join(', ');
+      }
     }
     return 'Something went wrong. Please try again.';
+  }
+
+  String _mapMfaError(Object e) {
+    if (e is DioException) {
+      final statusCode = e.response?.statusCode;
+      if (statusCode == 401) return 'Invalid or expired verification code.';
+      if (statusCode == 429) return 'Too many attempts. Wait a moment and try again.';
+    }
+    return 'Invalid verification code. Please try again.';
   }
 }
 
