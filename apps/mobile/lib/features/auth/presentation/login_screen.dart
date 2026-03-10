@@ -25,7 +25,17 @@ class LoginScreen extends ConsumerWidget {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: authState.when(
-            data: (state) => _LoginForm(state: state),
+            data: (state) {
+              final errorMsg = state.whenOrNull(error: (msg) => msg);
+              // No mostrar errores de MFA en pantalla de login (vienen de volver atrás)
+              final showError =
+                  errorMsg != null &&
+                  !errorMsg.toLowerCase().contains('verification code');
+              return _LoginForm(
+                state: state,
+                error: showError ? errorMsg : null,
+              );
+            },
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, _) => _LoginForm(
               state: const AuthState.initial(),
@@ -56,14 +66,15 @@ class _LoginFormState extends State<_LoginForm> {
   @override
   void initState() {
     super.initState();
+    // Pre-fill inmediatamente para que estén listos al primer tap
+    _emailController.text = 'demo@vaulted.com';
+    _passwordController.text = 'Test1234abcDEF';
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (widget.error != null) {
+      if (widget.error != null && mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(widget.error!)));
       }
-      _emailController.text = 'test@vaulted.com';
-      _passwordController.text = 'PasswordSegura123!';
     });
   }
 
@@ -71,9 +82,13 @@ class _LoginFormState extends State<_LoginForm> {
   void didUpdateWidget(covariant _LoginForm oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.error != null && widget.error != oldWidget.error) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(widget.error!)));
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(widget.error!)));
+        }
+      });
     }
   }
 
@@ -138,9 +153,20 @@ class _LoginFormState extends State<_LoginForm> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.error_outline, color: Theme.of(context).colorScheme.onErrorContainer, size: 20),
+                  Icon(
+                    Icons.error_outline,
+                    color: Theme.of(context).colorScheme.onErrorContainer,
+                    size: 20,
+                  ),
                   const SizedBox(width: 8),
-                  Expanded(child: Text(widget.error!, style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer))),
+                  Expanded(
+                    child: Text(
+                      widget.error!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onErrorContainer,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -152,14 +178,20 @@ class _LoginFormState extends State<_LoginForm> {
                 onPressed: isLoading == true
                     ? null
                     : () {
-                        if (_formKey.currentState?.validate() ?? false) {
-                          ref
-                              .read(authNotifierProvider.notifier)
-                              .login(
-                                _emailController.text.trim(),
-                                _passwordController.text,
-                              );
+                        if (!(_formKey.currentState?.validate() ?? false)) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Please enter email and password'),
+                            ),
+                          );
+                          return;
                         }
+                        ref
+                            .read(authNotifierProvider.notifier)
+                            .login(
+                              _emailController.text.trim(),
+                              _passwordController.text,
+                            );
                       },
                 child: isLoading == true
                     ? const SizedBox(
