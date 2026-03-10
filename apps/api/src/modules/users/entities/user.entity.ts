@@ -39,7 +39,7 @@ export class User {
   @Column({ name: 'property_ids', type: 'simple-array', nullable: true })
   propertyIds!: string[] | null;
 
-  @Column({ name: 'invite_token', nullable: true })
+  @Column({ name: 'invite_token', nullable: true, type: 'varchar', length: 64 })
   inviteToken!: string | null;
 
   @Column({ default: 'active', length: 32 })
