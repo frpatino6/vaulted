@@ -58,10 +58,12 @@ class _LoginFormState extends State<_LoginForm> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (widget.error != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(widget.error!)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(widget.error!)));
       }
+      _emailController.text = 'test@vaulted.com';
+      _passwordController.text = 'PasswordSegura123!';
     });
   }
 
@@ -69,9 +71,9 @@ class _LoginFormState extends State<_LoginForm> {
   void didUpdateWidget(covariant _LoginForm oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.error != null && widget.error != oldWidget.error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(widget.error!)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(widget.error!)));
     }
   }
 
@@ -126,6 +128,23 @@ class _LoginFormState extends State<_LoginForm> {
             validator: (v) =>
                 v == null || v.isEmpty ? 'Password is required' : null,
           ),
+          if (widget.error != null) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.errorContainer,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.error_outline, color: Theme.of(context).colorScheme.onErrorContainer, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(widget.error!, style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer))),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 32),
           Consumer(
             builder: (context, ref, _) {
@@ -134,7 +153,9 @@ class _LoginFormState extends State<_LoginForm> {
                     ? null
                     : () {
                         if (_formKey.currentState?.validate() ?? false) {
-                          ref.read(authNotifierProvider.notifier).login(
+                          ref
+                              .read(authNotifierProvider.notifier)
+                              .login(
                                 _emailController.text.trim(),
                                 _passwordController.text,
                               );

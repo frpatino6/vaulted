@@ -54,8 +54,10 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     if (msg.contains('mfa') || msg.contains('code') || msg.contains('totp')) {
       return 'Invalid verification code. Please try again.';
     }
-    if (msg.contains('network') || msg.contains('socket') || msg.contains('connection')) {
-      return 'Connection error. Check your internet and try again.';
+    if (msg.contains('network') || msg.contains('socket') || msg.contains('connection') ||
+        msg.contains('connection refused') || msg.contains('failed host lookup') ||
+        msg.contains('connection reset')) {
+      return 'Cannot reach API. Is the backend running on port 3000?';
     }
     return 'Something went wrong. Please try again.';
   }
