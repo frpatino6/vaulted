@@ -1,6 +1,7 @@
 import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../data/models/address_model.dart';
@@ -460,8 +461,8 @@ class _FloorTile extends StatelessWidget {
                         ),
                   ),
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('${room.name} — detail in Phase 3')),
+                    context.push(
+                      '/properties/$propertyId/rooms/${room.roomId}?name=${Uri.encodeComponent(room.name)}',
                     );
                   },
                 ),

@@ -6,7 +6,8 @@ import 'auth_redirect_notifier.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/mfa_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
-import '../../features/properties/presentation/properties_screen.dart';
+import '../../features/inventory/presentation/item_detail_screen.dart';
+import '../../features/inventory/presentation/room_detail_screen.dart';
 import '../../features/properties/presentation/property_detail_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
 
@@ -19,6 +20,9 @@ GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
       final isMfaPending = AuthTokenStore.instance.isMfaPending;
       final isLogin = state.matchedLocation == '/login';
       final isMfa = state.matchedLocation == '/mfa';
+
+      // /properties removed — redirect to dashboard
+      if (state.matchedLocation == '/properties') return '/dashboard';
 
       // Not authenticated → force login
       if (!hasToken && !isLogin) return '/login';
@@ -45,14 +49,30 @@ GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
         builder: (context, state) => const DashboardScreen(),
       ),
       GoRoute(
-        path: '/properties',
-        builder: (context, state) => const PropertiesScreen(),
-      ),
-      GoRoute(
         path: '/properties/:id',
         builder: (context, state) {
           final id = state.pathParameters['id'] ?? '';
           return PropertyDetailScreen(propertyId: id);
+        },
+      ),
+      GoRoute(
+        path: '/properties/:propertyId/rooms/:roomId',
+        builder: (context, state) {
+          final propertyId = state.pathParameters['propertyId'] ?? '';
+          final roomId = state.pathParameters['roomId'] ?? '';
+          final roomName = state.uri.queryParameters['name'] ?? '';
+          return RoomDetailScreen(
+            propertyId: propertyId,
+            roomId: roomId,
+            roomName: roomName,
+          );
+        },
+      ),
+      GoRoute(
+        path: '/items/:id',
+        builder: (context, state) {
+          final id = state.pathParameters['id'] ?? '';
+          return ItemDetailScreen(itemId: id);
         },
       ),
       GoRoute(

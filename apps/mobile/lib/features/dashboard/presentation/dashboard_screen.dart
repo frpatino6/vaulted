@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../properties/data/models/property_model.dart';
 import '../../properties/domain/properties_notifier.dart';
+import '../../properties/presentation/add_property_sheet.dart';
 
 /// Dashboard: clean welcome header, Quick Actions grid, recent property cards.
 class DashboardScreen extends ConsumerWidget {
@@ -19,57 +20,93 @@ class DashboardScreen extends ConsumerWidget {
       backgroundColor: AppColors.backgroundElevated,
       body: CustomScrollView(
         slivers: [
-          SliverToBoxAdapter(
-            child: _DashboardHeader(),
-          ),
+          SliverToBoxAdapter(child: _DashboardHeader()),
           const SliverToBoxAdapter(
             child: Padding(
-              padding: EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.lg, AppSpacing.md, AppSpacing.md),
+              padding: EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                AppSpacing.lg,
+                AppSpacing.md,
+                AppSpacing.md,
+              ),
               child: DashboardQuickActions(),
             ),
           ),
           propertiesState.when(
             data: (list) {
               if (list.isEmpty) {
-                return const SliverToBoxAdapter(child: SizedBox.shrink());
+                return SliverToBoxAdapter(
+                  child: _EmptyPropertiesCta(
+                    onAddProperty: () => _showAddPropertySheet(context, ref),
+                  ),
+                );
               }
               return SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.lg),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.md,
+                    0,
+                    AppSpacing.md,
+                    AppSpacing.lg,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'RECENT PROPERTIES',
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                              color: AppColors.onSurfaceVariant.withOpacity(0.6),
-                              fontSize: 12.0,
-                              letterSpacing: 1.5,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Text(
+                            'RECENT PROPERTIES',
+                            style: Theme.of(context).textTheme.titleSmall
+                                ?.copyWith(
+                                  color: AppColors.onSurfaceVariant.withOpacity(
+                                    0.6,
+                                  ),
+                                  fontSize: 12.0,
+                                  letterSpacing: 1.5,
+                                ),
+                          ),
+                          TextButton.icon(
+                            onPressed: () =>
+                                _showAddPropertySheet(context, ref),
+                            icon: Icon(
+                              Icons.add,
+                              size: 18,
+                              color: AppColors.accent,
                             ),
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      ...list.take(3).map((p) => Padding(
-                            padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                            child: DashboardPropertyCard(property: p, itemCount: null),
-                          )),
-                      if (list.length > 3)
-                        Padding(
-                          padding: const EdgeInsets.only(top: AppSpacing.xs),
-                          child: TextButton(
-                            onPressed: () => context.push('/properties'),
-                            child: Text(
-                              'See all properties',
-                              style: TextStyle(color: AppColors.onSurfaceVariant.withOpacity(0.6)),
+                            label: Text(
+                              'Add',
+                              style: TextStyle(
+                                color: AppColors.accent,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ),
-                        ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      ...list
+                          .take(3)
+                          .map(
+                            (p) => Padding(
+                              padding: const EdgeInsets.only(
+                                bottom: AppSpacing.md,
+                              ),
+                              child: DashboardPropertyCard(
+                                property: p,
+                                itemCount: null,
+                              ),
+                            ),
+                          ),
                     ],
                   ),
                 ),
               );
             },
             loading: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
-            error: (_, __) => const SliverToBoxAdapter(child: SizedBox.shrink()),
+            error: (_, __) =>
+                const SliverToBoxAdapter(child: SizedBox.shrink()),
           ),
           const SliverToBoxAdapter(
             child: Padding(
@@ -78,6 +115,91 @@ class DashboardScreen extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showAddPropertySheet(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => const AddPropertySheet(),
+    ).then((created) {
+      if (created == true) {
+        ref.read(propertiesNotifierProvider.notifier).load();
+      }
+    });
+  }
+}
+
+/// Empty state: CTA to add first property from dashboard.
+class _EmptyPropertiesCta extends StatelessWidget {
+  const _EmptyPropertiesCta({required this.onAddProperty});
+
+  final VoidCallback onAddProperty;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        0,
+        AppSpacing.md,
+        AppSpacing.lg,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onAddProperty,
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              vertical: AppSpacing.lg,
+              horizontal: AppSpacing.md,
+            ),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: AppColors.onSurfaceVariant.withOpacity(0.2),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.home_work_outlined,
+                  size: 40,
+                  color: AppColors.onSurfaceVariant.withOpacity(0.5),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Add your first property',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(color: AppColors.onBackground),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Create a property to organize floors, rooms and items.',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.add_circle_outline,
+                  color: AppColors.accent,
+                  size: 28,
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -91,7 +213,12 @@ class _DashboardHeader extends StatelessWidget {
     const String displayName = 'Guest';
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.lg + 8, AppSpacing.md, 0),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.lg + 8,
+        AppSpacing.md,
+        0,
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -102,14 +229,16 @@ class _DashboardHeader extends StatelessWidget {
                 Text(
                   'Good morning,',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: AppColors.onSurfaceVariant.withOpacity(0.8),
-                        fontWeight: FontWeight.w400,
-                      ),
+                    color: AppColors.onSurfaceVariant.withOpacity(0.8),
+                    fontWeight: FontWeight.w400,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   displayName,
-                  style: AppTypography.displaySerif.copyWith(color: AppColors.onBackground),
+                  style: AppTypography.displaySerif.copyWith(
+                    color: AppColors.onBackground,
+                  ),
                 ),
               ],
             ),
@@ -137,7 +266,7 @@ class _DashboardHeader extends StatelessWidget {
   }
 }
 
-/// Quick Actions: 2x2 grid, outlined icons, light feel, no heavy backgrounds.
+/// Quick Actions: 2x2 grid, luxury look, equal square cards.
 class DashboardQuickActions extends StatelessWidget {
   const DashboardQuickActions({super.key});
 
@@ -149,41 +278,45 @@ class DashboardQuickActions extends StatelessWidget {
         Text(
           'QUICK ACTIONS',
           style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                color: AppColors.onSurfaceVariant.withOpacity(0.6),
-                fontSize: 12.0,
-                letterSpacing: 1.5,
-              ),
+            color: AppColors.onSurfaceVariant.withOpacity(0.6),
+            fontSize: 12.0,
+            letterSpacing: 1.5,
+          ),
         ),
-        const SizedBox(height: AppSpacing.sm),
-        GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: 2,
-          mainAxisSpacing: AppSpacing.sm,
-          crossAxisSpacing: AppSpacing.sm,
-          childAspectRatio: 1.4,
-          children: [
-            _QuickActionTile(
-              icon: Icons.home_work_outlined,
-              label: 'Properties',
-              onTap: () => context.push('/properties'),
-            ),
-            _QuickActionTile(
-              icon: Icons.inventory_2_outlined,
-              label: 'Inventory',
-              onTap: () {},
-            ),
-            _QuickActionTile(
-              icon: Icons.picture_as_pdf_outlined,
-              label: 'Reports',
-              onTap: () {},
-            ),
-            _QuickActionTile(
-              icon: Icons.settings_outlined,
-              label: 'Settings',
-              onTap: () => context.push('/settings'),
-            ),
-          ],
+        const SizedBox(height: 16.0),
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: 2,
+            mainAxisSpacing: 16.0,
+            crossAxisSpacing: 16.0,
+            childAspectRatio: 1.0,
+            padding: EdgeInsets.zero,
+            children: [
+              _QuickActionTile(
+                icon: Icons.home_work_outlined,
+                label: 'Properties',
+                onTap: () => context.go('/dashboard'),
+              ),
+              _QuickActionTile(
+                icon: Icons.inventory_2_outlined,
+                label: 'Inventory',
+                onTap: () {},
+              ),
+              _QuickActionTile(
+                icon: Icons.picture_as_pdf_outlined,
+                label: 'Reports',
+                onTap: () {},
+              ),
+              _QuickActionTile(
+                icon: Icons.settings_outlined,
+                label: 'Settings',
+                onTap: () => context.push('/settings'),
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -208,46 +341,34 @@ class _QuickActionTile extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         splashColor: Colors.white10,
-        highlightColor: Colors.white10.withOpacity(0.5),
-        borderRadius: BorderRadius.circular(16),
+        highlightColor: Colors.white12,
+        borderRadius: BorderRadius.circular(16.0),
         child: Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Color(0xFF252525),
-                Color(0xFF1E1E1E),
+            borderRadius: BorderRadius.circular(16.0),
+            color: const Color(0xFF1E1E1E),
+            border: Border.all(color: Colors.white10, width: 0.5),
+          ),
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, color: AppColors.accentBright, size: 28.0),
+                const SizedBox(height: 12.0),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14.0,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white.withOpacity(0.9),
+                  ),
+                ),
               ],
             ),
-            border: Border.all(color: Colors.white24, width: 0.2),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.12),
-                blurRadius: 20,
-                offset: const Offset(0, 6),
-                spreadRadius: -4,
-              ),
-              BoxShadow(
-                color: Colors.black.withOpacity(0.18),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: AppColors.accentBright, size: 28),
-              const SizedBox(height: AppSpacing.sm),
-              Text(
-                label,
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: AppColors.onSurface.withOpacity(0.9),
-                    ),
-              ),
-            ],
           ),
         ),
       ),
@@ -258,20 +379,24 @@ class _QuickActionTile extends StatelessWidget {
 /// Property card: background image + dark gradient overlay, ClipRRect 20,
 /// name + location at bottom, elegant "Primary" badge with fine gold border.
 class DashboardPropertyCard extends StatelessWidget {
-  const DashboardPropertyCard({super.key, required this.property, this.itemCount});
+  const DashboardPropertyCard({
+    super.key,
+    required this.property,
+    this.itemCount,
+  });
 
   final PropertyModel property;
+
   /// Total items inventoried in this property. When null, shows "— items".
   final int? itemCount;
 
   String get _typeLabel => switch (property.type) {
-        'primary' => 'Primary',
-        'vacation' => 'Vacation',
-        _ => 'Rental',
-      };
+    'primary' => 'Primary',
+    'vacation' => 'Vacation',
+    _ => 'Rental',
+  };
 
-  String get _location =>
-      '${property.address.city}, ${property.address.state}';
+  String get _location => '${property.address.city}, ${property.address.state}';
 
   @override
   Widget build(BuildContext context) {
@@ -311,7 +436,7 @@ class DashboardPropertyCard extends StatelessWidget {
                   )
                 else
                   _buildPlaceholderGradient(),
-                // Dark gradient overlay for legibility
+                // Dark gradient overlay for legibility (slightly lighter at bottom so text pops)
                 DecoratedBox(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(20),
@@ -320,10 +445,10 @@ class DashboardPropertyCard extends StatelessWidget {
                       end: Alignment.bottomCenter,
                       colors: [
                         Colors.transparent,
-                        Colors.black.withOpacity(0.3),
-                        Colors.black.withOpacity(0.85),
+                        Colors.black.withValues(alpha: 0.25),
+                        Colors.black.withValues(alpha: 0.72),
                       ],
-                      stops: const [0.3, 0.6, 1.0],
+                      stops: const [0.35, 0.65, 1.0],
                     ),
                   ),
                 ),
@@ -338,10 +463,10 @@ class DashboardPropertyCard extends StatelessWidget {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.35),
+                        color: Colors.black.withValues(alpha: 0.35),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: AppColors.accent.withOpacity(0.8),
+                          color: AppColors.accent.withValues(alpha: 0.8),
                           width: 1,
                         ),
                       ),
@@ -372,7 +497,8 @@ class DashboardPropertyCard extends StatelessWidget {
                           children: [
                             Text(
                               property.name,
-                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              style: Theme.of(context).textTheme.titleLarge
+                                  ?.copyWith(
                                     fontSize: 18.0,
                                     fontWeight: FontWeight.w700,
                                     color: AppColors.onBackground,
@@ -383,8 +509,11 @@ class DashboardPropertyCard extends StatelessWidget {
                             const SizedBox(height: 4),
                             Text(
                               _location,
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: Colors.white70,
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: 13,
                                   ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -392,17 +521,21 @@ class DashboardPropertyCard extends StatelessWidget {
                           ],
                         ),
                       ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 2),
-                        child: Text(
-                          itemCount != null ? '$itemCount items' : '— items',
-                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                color: Colors.white70,
-                                fontSize: 11,
-                              ),
+                      if (itemCount != null) ...[
+                        const SizedBox(width: AppSpacing.sm),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 2),
+                          child: Text(
+                            '$itemCount items',
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                          ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ),
@@ -421,10 +554,7 @@ class DashboardPropertyCard extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF2C2C2C),
-            Color(0xFF121212),
-          ],
+          colors: [Color(0xFF2C2C2C), Color(0xFF121212)],
         ),
       ),
     );
