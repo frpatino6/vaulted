@@ -3,10 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../shared/widgets/property_card.dart';
+import '../data/models/property_model.dart';
 import '../domain/properties_notifier.dart';
 import 'add_property_sheet.dart';
 
+/// Premium catalog of properties: large image cards, Serif header, outlined FAB.
 class PropertiesScreen extends ConsumerWidget {
   const PropertiesScreen({super.key});
 
@@ -18,16 +19,8 @@ class PropertiesScreen extends ConsumerWidget {
       backgroundColor: AppColors.background,
       body: CustomScrollView(
         slivers: [
-          SliverAppBar.large(
-            backgroundColor: AppColors.background,
-            title: Text(
-              'Properties',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: -0.5,
-                    color: AppColors.onBackground,
-                  ),
-            ),
+          SliverToBoxAdapter(
+            child: _PropertiesHeader(),
           ),
           asyncState.when(
             data: (list) {
@@ -36,31 +29,15 @@ class PropertiesScreen extends ConsumerWidget {
                   child: _EmptyState(onAddProperty: () => _showAddSheet(context, ref)),
                 );
               }
-              return SliverFillRemaining(
-                child: RefreshIndicator(
-                  onRefresh: () =>
-                      ref.read(propertiesNotifierProvider.notifier).load(),
-                  child: CustomScrollView(
-                    slivers: [
-                      SliverPadding(
-                        padding: const EdgeInsets.only(
-                          left: AppSpacing.md,
-                          right: AppSpacing.md,
-                          bottom: AppSpacing.xxl,
-                        ),
-                        sliver: SliverList(
-                          delegate: SliverChildBuilderDelegate(
-                            (context, index) => Padding(
-                              padding: const EdgeInsets.only(
-                                bottom: AppSpacing.sm,
-                              ),
-                              child: PropertyCard(property: list[index]),
-                            ),
-                            childCount: list.length,
-                          ),
-                        ),
-                      ),
-                    ],
+              return SliverPadding(
+                padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.xxl + 56),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) => Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                      child: _LuxuryPropertyCard(property: list[index]),
+                    ),
+                    childCount: list.length,
                   ),
                 ),
               );
@@ -79,11 +56,9 @@ class PropertiesScreen extends ConsumerWidget {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddSheet(context, ref),
-        backgroundColor: AppColors.accent,
-        foregroundColor: AppColors.background,
-        child: const Icon(Icons.add),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(right: 16, bottom: 24),
+        child: _LuxuryFab(onPressed: () => _showAddSheet(context, ref)),
       ),
     );
   }
@@ -102,6 +77,194 @@ class PropertiesScreen extends ConsumerWidget {
   }
 }
 
+/// Header: back button + 'Properties' in Serif (Playfair Display).
+class _PropertiesHeader extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      bottom: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(4, AppSpacing.sm, AppSpacing.md, AppSpacing.md),
+        child: Row(
+          children: [
+            IconButton(
+              onPressed: () => context.pop(),
+              icon: const Icon(Icons.arrow_back_ios_new, size: 20),
+              color: AppColors.onBackground,
+              style: IconButton.styleFrom(
+                minimumSize: const Size(44, 44),
+              ),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              'Properties',
+              style: AppTypography.displaySerif.copyWith(color: AppColors.onBackground),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Large catalog card: 220 height, full-width image, dark gradient, title + location in white.
+class _LuxuryPropertyCard extends StatelessWidget {
+  const _LuxuryPropertyCard({required this.property});
+
+  final PropertyModel property;
+
+  String get _location => '${property.address.city}, ${property.address.state}';
+
+  @override
+  Widget build(BuildContext context) {
+    final hasImage = property.photos.isNotEmpty;
+    final imageUrl = hasImage ? property.photos.first : null;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => context.push('/properties/${property.id}'),
+          splashColor: Colors.white10,
+          highlightColor: Colors.white10.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            height: 220,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.35),
+                  blurRadius: 12,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                if (imageUrl != null && imageUrl.isNotEmpty)
+                  Image.network(
+                    imageUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _buildPlaceholder(),
+                  )
+                else
+                  _buildPlaceholder(),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withOpacity(0.4),
+                        Colors.black.withOpacity(0.7),
+                      ],
+                      stops: const [0.35, 0.7, 1.0],
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: AppSpacing.md,
+                  right: AppSpacing.md,
+                  bottom: AppSpacing.md,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        property.name,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _location,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Colors.white.withOpacity(0.9),
+                            ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPlaceholder() {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF2A2A32),
+            Color(0xFF15151A),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Small circular FAB with gold outline and + icon.
+class _LuxuryFab extends StatelessWidget {
+  const _LuxuryFab({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(28),
+        child: Container(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: AppColors.background.withOpacity(0.85),
+            border: Border.all(
+              color: AppColors.accent,
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.25),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Icon(
+            Icons.add,
+            color: AppColors.accent,
+            size: 28,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Empty state: thin-stroke icon + premium copy.
 class _EmptyState extends StatelessWidget {
   const _EmptyState({required this.onAddProperty});
 
@@ -117,29 +280,35 @@ class _EmptyState extends StatelessWidget {
           children: [
             Icon(
               Icons.home_work_outlined,
-              size: 72,
-              color: AppColors.onSurfaceVariant.withValues(alpha: 0.4),
+              size: 80,
+              color: AppColors.onSurfaceVariant.withOpacity(0.35),
             ),
-            const SizedBox(height: AppSpacing.lg),
+            const SizedBox(height: AppSpacing.xl),
             Text(
-              'No properties yet',
+              'Add your first luxury property',
+              textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.onBackground,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.onBackground.withOpacity(0.85),
                   ),
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(
-              'Tap + to add your first property',
+              'Create a property to start organizing floors, rooms and items.',
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: AppColors.onSurfaceVariant,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.onSurfaceVariant.withOpacity(0.8),
                   ),
             ),
             const SizedBox(height: AppSpacing.xl),
-            FilledButton.icon(
+            OutlinedButton.icon(
               onPressed: onAddProperty,
-              icon: const Icon(Icons.add),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.accent,
+                side: const BorderSide(color: AppColors.accent),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+              ),
+              icon: const Icon(Icons.add, size: 20),
               label: const Text('Add property'),
             ),
           ],

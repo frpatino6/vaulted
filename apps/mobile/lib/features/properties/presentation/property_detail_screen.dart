@@ -1,3 +1,4 @@
+import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -57,15 +58,6 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
               .load(widget.propertyId),
         ),
       ),
-      floatingActionButton: state.value != null
-          ? FloatingActionButton.extended(
-              onPressed: () => _showAddFloor(context),
-              backgroundColor: AppColors.accent,
-              foregroundColor: AppColors.background,
-              icon: const Icon(Icons.add),
-              label: const Text('Add Floor'),
-            )
-          : null,
     );
   }
 
@@ -95,18 +87,88 @@ class _PropertyDetailBody extends StatelessWidget {
   final VoidCallback onRefresh;
   final VoidCallback onAddFloor;
 
+  static const double _appBarExpandedHeight = 280;
+
+  /// Placeholder: modern luxury mansion when property has no photos.
+  static const String _placeholderMansionUrl =
+      'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800';
+
   @override
   Widget build(BuildContext context) {
+    final hasHeroImage = property.photos.isNotEmpty;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surfaceOverlay = isDark ? Colors.white.withValues(alpha: 0.10) : Colors.black.withValues(alpha: 0.04);
+
     return CustomScrollView(
       slivers: [
         SliverAppBar(
+          expandedHeight: _appBarExpandedHeight,
+          pinned: true,
           backgroundColor: AppColors.background,
-          title: Text(
-            property.name,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.onBackground,
+          foregroundColor: AppColors.onBackground,
+          flexibleSpace: FlexibleSpaceBar(
+            titlePadding: const EdgeInsets.only(left: 24.0, bottom: 16),
+            title: Text(
+              property.name,
+              style: AppTypography.displaySerif.copyWith(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.onBackground,
+                    shadows: [
+                      Shadow(
+                        color: Colors.black.withValues(alpha: 0.6),
+                        blurRadius: 12,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+            ),
+            background: Stack(
+              fit: StackFit.expand,
+              children: [
+                Image.network(
+                  hasHeroImage ? property.photos.first : _placeholderMansionUrl,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => _LuxuryGradientBackground(),
                 ),
+                // Dark gradient at base so title reads perfectly
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withValues(alpha: 0.4),
+                        Colors.black.withValues(alpha: 0.85),
+                        AppColors.background,
+                      ],
+                      stops: const [0.3, 0.6, 0.85, 1.0],
+                    ),
+                  ),
+                ),
+                // Title overlay: strong gradient at bottom so title stands out on any photo
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    height: 140,
+                    padding: const EdgeInsets.only(left: 24.0),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          Colors.black.withValues(alpha: 0.8),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
         SliverToBoxAdapter(
@@ -115,28 +177,59 @@ class _PropertyDetailBody extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                const SizedBox(height: AppSpacing.md),
                 Text(
                   _typeLabel(property.type),
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         color: AppColors.accent,
-                        letterSpacing: 2,
+                        letterSpacing: 1.5,
                       ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
-                Text(
-                  _formatAddress(property.address),
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.onSurfaceVariant,
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.location_on_outlined,
+                      size: 18,
+                      color: Colors.white.withValues(alpha: 0.7),
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                    Expanded(
+                      child: Text(
+                        _formatAddress(property.address),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Colors.white.withValues(alpha: 0.7),
+                            ),
                       ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: AppSpacing.xl),
-                Text(
-                  'FLOORS & ROOMS',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: AppColors.accent,
-                        letterSpacing: 2,
-                        fontSize: 11,
+                const SizedBox(height: AppSpacing.xxl),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'FLOORS & ROOMS',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: AppColors.accent,
+                            letterSpacing: 2.0,
+                            fontSize: 10,
+                          ),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: onAddFloor,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.accent,
+                        side: const BorderSide(color: AppColors.accent, width: 1),
+                        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
+                      icon: const Icon(Icons.add, size: 18),
+                      label: const Text('Add floor'),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -151,7 +244,7 @@ class _PropertyDetailBody extends StatelessWidget {
                 child: Column(
                   children: [
                     Icon(
-                      Icons.layers_outlined,
+                      Icons.villa_outlined,
                       size: 48,
                       color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
                     ),
@@ -177,6 +270,7 @@ class _PropertyDetailBody extends StatelessWidget {
                   child: _FloorTile(
                     floor: property.floors[index],
                     propertyId: property.id,
+                    surfaceOverlay: surfaceOverlay,
                     onAddRoom: () => _showAddRoom(context, property.floors[index]),
                     onRefresh: onRefresh,
                   ),
@@ -185,6 +279,7 @@ class _PropertyDetailBody extends StatelessWidget {
               ),
             ),
           ),
+        if (property.floors.length == 1) const _SingleFloorPlaceholder(),
         const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.xxl)),
       ],
     );
@@ -217,16 +312,81 @@ class _PropertyDetailBody extends StatelessWidget {
   }
 }
 
+class _LuxuryGradientBackground extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF1A1A24),
+            Color(0xFF0E0E14),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SingleFloorPlaceholder extends StatelessWidget {
+  const _SingleFloorPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    final borderColor = AppColors.onSurfaceVariant.withValues(alpha: 0.25);
+
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.only(top: AppSpacing.md, bottom: AppSpacing.lg),
+        child: DottedBorder(
+          borderType: BorderType.RRect,
+          radius: const Radius.circular(16),
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl, horizontal: AppSpacing.lg),
+          dashPattern: const [6, 4],
+          color: borderColor,
+          strokeWidth: 1.2,
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg, horizontal: AppSpacing.md),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.add,
+                  size: 20,
+                  color: AppColors.accent,
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Flexible(
+                  child: Text(
+                    'Add another floor to organize more rooms',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.accent,
+                        ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _FloorTile extends StatelessWidget {
   const _FloorTile({
     required this.floor,
     required this.propertyId,
+    required this.surfaceOverlay,
     required this.onAddRoom,
     required this.onRefresh,
   });
 
   final FloorModel floor;
   final String propertyId;
+  final Color surfaceOverlay;
   final VoidCallback onAddRoom;
   final VoidCallback onRefresh;
 
@@ -234,25 +394,21 @@ class _FloorTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: const Border(
-          left: BorderSide(color: AppColors.accent, width: 3),
-        ),
+        color: surfaceOverlay,
+        borderRadius: BorderRadius.circular(16),
       ),
       child: ExpansionTile(
-        title: Row(
-          children: [
-            Icon(Icons.layers_outlined, size: 20, color: AppColors.accent),
-            const SizedBox(width: AppSpacing.sm),
-            Text(
-              floor.name,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.onBackground,
-                  ),
-            ),
-          ],
+        leading: Icon(
+          Icons.villa_outlined,
+          size: 18,
+          color: const Color(0xFFFFD700),
+        ),
+        title: Text(
+          floor.name,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w500,
+                color: AppColors.onBackground,
+              ),
         ),
         subtitle: Padding(
           padding: const EdgeInsets.only(top: AppSpacing.xs),
@@ -263,20 +419,21 @@ class _FloorTile extends StatelessWidget {
                 ),
           ),
         ),
-        trailing: IconButton(
-          icon: const Icon(Icons.add),
-          onPressed: onAddRoom,
-          tooltip: 'Add room',
+        trailing: Icon(
+          Icons.chevron_right,
+          color: AppColors.onSurfaceVariant.withValues(alpha: 0.4),
         ),
         children: [
           if (floor.rooms.isEmpty)
             Padding(
               padding: const EdgeInsets.all(AppSpacing.md),
-              child: Text(
-                'No rooms. Tap + to add one.',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.onSurfaceVariant,
-                    ),
+              child: TextButton.icon(
+                onPressed: onAddRoom,
+                icon: const Icon(Icons.add, size: 18, color: AppColors.accent),
+                label: const Text('Add room'),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.accent,
+                ),
               ),
             )
           else

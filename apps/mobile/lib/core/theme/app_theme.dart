@@ -19,9 +19,13 @@ class AppColors {
 
   // Dark palette
   static const Color background = Color(0xFF0A0A0F);
+  /// Slightly lighter background for depth (e.g. dashboard).
+  static const Color backgroundElevated = Color(0xFF121212);
   static const Color surface = Color(0xFF13131A);
   static const Color accent = Color(0xFFC9A84C);
   static const Color accentLight = Color(0xFFE5D4A1);
+  /// Brighter gold for icons and highlights on dark backgrounds.
+  static const Color accentBright = Color(0xFFD4AF37);
   static const Color surfaceVariant = Color(0xFF1C1C26);
   static const Color onBackground = Color(0xFFE8E8ED);
   static const Color onSurface = Color(0xFFB8B8C4);
@@ -82,6 +86,13 @@ class AppTypography {
   static TextStyle get labelSmall => GoogleFonts.dmSans(
         fontSize: 11,
         fontWeight: FontWeight.w500,
+      );
+
+  /// Serif display for luxury headings (e.g. user name on dashboard).
+  static TextStyle get displaySerif => GoogleFonts.playfairDisplay(
+        fontSize: 26,
+        fontWeight: FontWeight.w500,
+        letterSpacing: -0.3,
       );
 }
 
