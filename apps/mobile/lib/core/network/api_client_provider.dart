@@ -12,5 +12,6 @@ final apiClientProvider = Provider<ApiClient>((ref) {
     secureStorage: secureStorage,
     tokenStore: AuthTokenStore.instance,
     onAuthFailure: authRedirectNotifier.notifyAuthLost,
+    onMfaRequired: authRedirectNotifier.notifyAuthLost,
   );
 });

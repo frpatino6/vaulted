@@ -5,6 +5,10 @@ import '../storage/auth_token_store.dart';
 import 'auth_redirect_notifier.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/mfa_screen.dart';
+import '../../features/dashboard/presentation/dashboard_screen.dart';
+import '../../features/properties/presentation/properties_screen.dart';
+import '../../features/properties/presentation/property_detail_screen.dart';
+import '../../features/settings/presentation/settings_screen.dart';
 
 GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
   return GoRouter(
@@ -38,14 +42,22 @@ GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
       ),
       GoRoute(
         path: '/dashboard',
-        builder: (context, state) => Scaffold(
-          body: Center(
-            child: Text(
-              'Dashboard — coming soon',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-          ),
-        ),
+        builder: (context, state) => const DashboardScreen(),
+      ),
+      GoRoute(
+        path: '/properties',
+        builder: (context, state) => const PropertiesScreen(),
+      ),
+      GoRoute(
+        path: '/properties/:id',
+        builder: (context, state) {
+          final id = state.pathParameters['id'] ?? '';
+          return PropertyDetailScreen(propertyId: id);
+        },
+      ),
+      GoRoute(
+        path: '/settings',
+        builder: (context, state) => const SettingsScreen(),
       ),
       GoRoute(
         path: '/unauthorized',
@@ -61,3 +73,4 @@ GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
     ],
   );
 }
+

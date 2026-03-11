@@ -51,12 +51,17 @@ class AuthRepository {
 
   Future<Map<String, dynamic>> verifyMfa(String code) async {
     final result = await _remote.verifyMfa(code);
-    final accessToken = result['accessToken'] as String?;
+    final accessToken = result.data['accessToken'] as String?;
     if (accessToken == null || accessToken.isEmpty) {
       throw Exception('No access token in MFA verification response');
     }
+    // Save the new refresh token (mfaVerified=true encoded) — replaces the pre-MFA one
+    final refreshToken = _parseRefreshTokenFromCookie(result.setCookie);
+    if (refreshToken != null) {
+      await _secureStorage.saveRefreshToken(refreshToken);
+    }
     _tokenStore.setToken(accessToken);
-    return result;
+    return result.data;
   }
 
   Future<void> logout() async {

@@ -117,7 +117,7 @@ export class AuthController {
   }
 
   @SkipMfa()
-  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Throttle({ default: { limit: 100, ttl: 60000 } })
   @Post('mfa/verify')
   @HttpCode(HttpStatus.OK)
   async verifyMfa(
@@ -126,6 +126,7 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
+    console.log('[MFA VERIFY] code:', dto.code, 'user:', user?.sub ?? 'NO USER');
     const ip = req.ip ?? 'unknown';
     const { accessToken, refreshToken } = await this.authService.verifyMfa(
       user.sub,

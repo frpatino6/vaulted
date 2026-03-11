@@ -1,6 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+/// Spacing scale for consistent layout (8px base).
+class AppSpacing {
+  AppSpacing._();
+
+  static const double xs = 4;
+  static const double sm = 8;
+  static const double md = 16;
+  static const double lg = 24;
+  static const double xl = 32;
+  static const double xxl = 48;
+}
+
 /// Premium design system for Vaulted.
 class AppColors {
   AppColors._();
@@ -32,6 +44,11 @@ class AppTypography {
         fontWeight: FontWeight.w600,
       );
 
+  static TextStyle get headlineSmall => GoogleFonts.dmSans(
+        fontSize: 22,
+        fontWeight: FontWeight.w600,
+      );
+
   static TextStyle get titleLarge => GoogleFonts.dmSans(
         fontSize: 20,
         fontWeight: FontWeight.w600,
@@ -52,8 +69,18 @@ class AppTypography {
         fontWeight: FontWeight.w400,
       );
 
+  static TextStyle get bodySmall => GoogleFonts.dmSans(
+        fontSize: 12,
+        fontWeight: FontWeight.w400,
+      );
+
   static TextStyle get labelLarge => GoogleFonts.dmSans(
         fontSize: 14,
+        fontWeight: FontWeight.w500,
+      );
+
+  static TextStyle get labelSmall => GoogleFonts.dmSans(
+        fontSize: 11,
         fontWeight: FontWeight.w500,
       );
 }
@@ -85,6 +112,9 @@ class AppTheme {
         bodyLarge: AppTypography.bodyLarge.copyWith(color: AppColors.onSurface),
         bodyMedium: AppTypography.bodyMedium.copyWith(color: AppColors.onSurface),
         labelLarge: AppTypography.labelLarge.copyWith(color: AppColors.onBackground),
+        bodySmall: AppTypography.bodySmall.copyWith(color: AppColors.onSurface),
+        labelSmall: AppTypography.labelSmall.copyWith(color: AppColors.onSurfaceVariant),
+        headlineSmall: AppTypography.headlineSmall.copyWith(color: AppColors.onBackground),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
@@ -139,6 +169,9 @@ class AppTheme {
         bodyLarge: AppTypography.bodyLarge.copyWith(color: AppColors.surface),
         bodyMedium: AppTypography.bodyMedium.copyWith(color: AppColors.surface),
         labelLarge: AppTypography.labelLarge.copyWith(color: AppColors.background),
+        bodySmall: AppTypography.bodySmall.copyWith(color: AppColors.surface),
+        labelSmall: AppTypography.labelSmall.copyWith(color: const Color(0xFF6E6E7E)),
+        headlineSmall: AppTypography.headlineSmall.copyWith(color: AppColors.background),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,

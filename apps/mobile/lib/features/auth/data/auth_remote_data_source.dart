@@ -25,13 +25,15 @@ class AuthRemoteDataSource {
 
   /// POST /auth/mfa/verify
   /// Requires Authorization: Bearer {accessToken from login}
-  /// Returns { accessToken }.
-  Future<Map<String, dynamic>> verifyMfa(String code) async {
+  /// Returns (data: { accessToken }, setCookie: new refresh token cookie).
+  Future<({Map<String, dynamic> data, String? setCookie})> verifyMfa(String code) async {
     final response = await _dio.post<Map<String, dynamic>>(
       'auth/mfa/verify',
       data: {'code': code},
     );
-    return _unwrapData(response);
+    final setCookie = response.headers.value('set-cookie') ??
+        response.headers.value('Set-Cookie');
+    return (data: _unwrapData(response), setCookie: setCookie);
   }
 
   /// POST /auth/logout

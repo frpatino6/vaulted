@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../domain/auth_state.dart';
 import 'auth_notifier.dart';
 
@@ -12,13 +13,29 @@ class LoginScreen extends ConsumerStatefulWidget {
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends ConsumerState<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen>
+    with SingleTickerProviderStateMixin {
   final _emailController = TextEditingController(text: 'owner@test.com');
   final _passwordController = TextEditingController(text: 'Test1234abcDEF');
   final _formKey = GlobalKey<FormState>();
+  late AnimationController _shimmerController;
+  late Animation<double> _shimmerAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _shimmerController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    )..repeat(reverse: true);
+    _shimmerAnimation = Tween<double>(begin: 0.4, end: 0.9).animate(
+      CurvedAnimation(parent: _shimmerController, curve: Curves.easeInOut),
+    );
+  }
 
   @override
   void dispose() {
+    _shimmerController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -26,112 +43,193 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
-    await ref.read(authNotifierProvider.notifier).login(
-          _emailController.text.trim(),
-          _passwordController.text,
-        );
+    await ref
+        .read(authNotifierProvider.notifier)
+        .login(_emailController.text.trim(), _passwordController.text);
   }
 
   @override
   Widget build(BuildContext context) {
-    // Watch state directly — single source of truth
     final authAsync = ref.watch(authNotifierProvider);
     final authState = authAsync.valueOrNull ?? const AuthState.initial();
-    final isLoading = authAsync.isLoading ||
+    final isLoading =
+        authAsync.isLoading ||
         authState.maybeWhen(loading: () => true, orElse: () => false);
     final errorMsg = authState.whenOrNull(error: (msg) => msg);
 
-    // Navigate on state change
     ref.listen<AsyncValue<AuthState>>(authNotifierProvider, (_, next) {
-      next.whenData((s) => s.whenOrNull(
-            mfaRequired: () => context.push('/mfa'),
-            authenticated: () => context.go('/dashboard'),
-          ));
+      next.whenData(
+        (s) => s.whenOrNull(
+          mfaRequired: () => context.push('/mfa'),
+          authenticated: () => context.go('/dashboard'),
+        ),
+      );
     });
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
             child: Form(
               key: _formKey,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    'Vaulted',
-                    style: Theme.of(context).textTheme.displayLarge,
-                    textAlign: TextAlign.center,
+                  AnimatedBuilder(
+                    animation: _shimmerAnimation,
+                    builder: (context, child) {
+                      return Opacity(
+                        opacity: _shimmerAnimation.value,
+                        child: child,
+                      );
+                    },
+                    child: Column(
+                      children: [
+                        Text(
+                          'VAULTED',
+                          style: Theme.of(context).textTheme.headlineMedium
+                              ?.copyWith(
+                                color: AppColors.accent,
+                                fontWeight: FontWeight.w300,
+                                fontSize: 28,
+                                letterSpacing: 8,
+                              ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        Text(
+                          'Everything you own. Protected.',
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: AppColors.onSurfaceVariant,
+                                fontSize: 13,
+                              ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Everything you own. Protected. Organized. Yours.',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 48),
+                  const SizedBox(height: AppSpacing.xxl),
                   TextFormField(
                     controller: _emailController,
-                    decoration: const InputDecoration(labelText: 'Email'),
+                    decoration: InputDecoration(
+                      labelText: 'Email',
+                      border: const OutlineInputBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(14)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(14)),
+                        borderSide: const BorderSide(
+                          color: AppColors.onSurfaceVariant,
+                        ),
+                      ),
+                      focusedBorder: const OutlineInputBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(14)),
+                        borderSide: BorderSide(
+                          color: AppColors.accent,
+                          width: 2,
+                        ),
+                      ),
+                      filled: true,
+                      fillColor: AppColors.surfaceVariant,
+                    ),
                     keyboardType: TextInputType.emailAddress,
                     autocorrect: false,
                     enabled: !isLoading,
+                    enableInteractiveSelection: false,
                     validator: (v) =>
                         (v == null || v.isEmpty) ? 'Email is required' : null,
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.md),
                   TextFormField(
                     controller: _passwordController,
-                    decoration: const InputDecoration(labelText: 'Password'),
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      border: const OutlineInputBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(14)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(14)),
+                        borderSide: const BorderSide(
+                          color: AppColors.onSurfaceVariant,
+                        ),
+                      ),
+                      focusedBorder: const OutlineInputBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(14)),
+                        borderSide: BorderSide(
+                          color: AppColors.accent,
+                          width: 2,
+                        ),
+                      ),
+                      filled: true,
+                      fillColor: AppColors.surfaceVariant,
+                    ),
                     obscureText: true,
                     enabled: !isLoading,
-                    validator: (v) =>
-                        (v == null || v.isEmpty) ? 'Password is required' : null,
+                    enableInteractiveSelection: false,
+                    validator: (v) => (v == null || v.isEmpty)
+                        ? 'Password is required'
+                        : null,
                     onFieldSubmitted: (_) => _submit(),
                   ),
                   if (errorMsg != null) ...[
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.md),
                     Container(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(AppSpacing.md),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.errorContainer,
-                        borderRadius: BorderRadius.circular(8),
+                        color: AppColors.surfaceVariant,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: AppColors.error.withValues(alpha: 0.6),
+                        ),
                       ),
                       child: Row(
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.error_outline,
-                            color:
-                                Theme.of(context).colorScheme.onErrorContainer,
+                            color: AppColors.error,
                             size: 20,
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: AppSpacing.sm),
                           Expanded(
                             child: Text(
                               errorMsg,
-                              style: TextStyle(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onErrorContainer,
-                              ),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: AppColors.error),
                             ),
                           ),
                         ],
                       ),
                     ),
                   ],
-                  const SizedBox(height: 32),
-                  FilledButton(
-                    onPressed: isLoading ? null : _submit,
-                    child: isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('Log in'),
+                  const SizedBox(height: AppSpacing.xl),
+                  SizedBox(
+                    height: 56,
+                    child: FilledButton(
+                      onPressed: isLoading ? null : _submit,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.accent,
+                        foregroundColor: AppColors.background,
+                        elevation: 0,
+                        shadowColor: Colors.transparent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: isLoading
+                          ? const SizedBox(
+                              height: 24,
+                              width: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.background,
+                              ),
+                            )
+                          : const Text('Log in'),
+                    ),
                   ),
                 ],
               ),

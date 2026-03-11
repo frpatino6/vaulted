@@ -13,9 +13,11 @@ class ApiClient {
     required SecureStorage secureStorage,
     required AuthTokenStore tokenStore,
     VoidCallback? onAuthFailure,
+    VoidCallback? onMfaRequired,
   })  : _secureStorage = secureStorage,
         _tokenStore = tokenStore,
         _onAuthFailure = onAuthFailure,
+        _onMfaRequired = onMfaRequired,
         _dio = Dio(
           BaseOptions(
             baseUrl: AppConfig.apiBaseUrl,
@@ -32,12 +34,14 @@ class ApiClient {
       secureStorage: _secureStorage,
       tokenStore: _tokenStore,
       onAuthFailure: _onAuthFailure,
+      onMfaRequired: _onMfaRequired,
     ));
   }
 
   final SecureStorage _secureStorage;
   final AuthTokenStore _tokenStore;
   final VoidCallback? _onAuthFailure;
+  final VoidCallback? _onMfaRequired;
   final Dio _dio;
 
   Dio get dio => _dio;
@@ -49,15 +53,18 @@ class _AuthInterceptor extends Interceptor {
     required SecureStorage secureStorage,
     required AuthTokenStore tokenStore,
     VoidCallback? onAuthFailure,
+    VoidCallback? onMfaRequired,
   })  : _dio = dio,
         _secureStorage = secureStorage,
         _tokenStore = tokenStore,
-        _onAuthFailure = onAuthFailure;
+        _onAuthFailure = onAuthFailure,
+        _onMfaRequired = onMfaRequired;
 
   final Dio _dio;
   final SecureStorage _secureStorage;
   final AuthTokenStore _tokenStore;
   final VoidCallback? _onAuthFailure;
+  final VoidCallback? _onMfaRequired;
 
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
@@ -70,13 +77,32 @@ class _AuthInterceptor extends Interceptor {
 
   @override
   Future<void> onError(DioException err, ErrorInterceptorHandler handler) async {
-    if (err.response?.statusCode != 401) {
+    final status = err.response?.statusCode;
+    final body = err.response?.data;
+
+    // 403/401 with "MFA verification required" → redirect to MFA screen (keep token)
+    if ((status == 403 || status == 401) && _isMfaRequiredMessage(body)) {
+      _tokenStore.setMfaPending(true);
+      _onMfaRequired?.call();
       return handler.next(err);
     }
 
+    if (status != 401) {
+      return handler.next(err);
+    }
+
+    // Use the full URI path for reliable matching (path alone may lack leading slash)
+    final uriPath = err.requestOptions.uri.path;
+
     // Avoid retry loop on refresh endpoint
-    if (err.requestOptions.path.contains('/auth/refresh')) {
+    if (uriPath.contains('auth/refresh')) {
       _clearAndNotify();
+      return handler.next(err);
+    }
+
+    // Never intercept other auth endpoints (login, mfa/verify, etc.)
+    // Let errors propagate so the UI can handle them directly.
+    if (uriPath.contains('auth/')) {
       return handler.next(err);
     }
 
@@ -124,5 +150,12 @@ class _AuthInterceptor extends Interceptor {
     _tokenStore.clear();
     _secureStorage.deleteRefreshToken();
     _onAuthFailure?.call();
+  }
+
+  static bool _isMfaRequiredMessage(dynamic body) {
+    if (body is! Map) return false;
+    final msg = body['error'] is Map ? (body['error'] as Map)['message'] : body['message'];
+    final s = msg?.toString().toLowerCase() ?? '';
+    return s.contains('mfa') && (s.contains('verification') || s.contains('required'));
   }
 }

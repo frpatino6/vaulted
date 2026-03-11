@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../domain/auth_state.dart';
 import 'auth_notifier.dart';
 
@@ -50,57 +51,99 @@ class _MfaScreenState extends ConsumerState<MfaScreen> {
         authState.valueOrNull?.mapOrNull(loading: (_) => true) == true;
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              const Icon(
+                Icons.shield_outlined,
+                size: 56,
+                color: AppColors.accent,
+              ),
+              const SizedBox(height: AppSpacing.xl),
               Text(
-                'Two-factor authentication',
-                style: Theme.of(context).textTheme.headlineMedium,
+                'Two-Factor Authentication',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.onBackground,
+                    ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.sm),
               Text(
                 'Enter the 6-digit code from your authenticator app',
-                style: Theme.of(context).textTheme.bodyMedium,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppColors.onSurfaceVariant,
+                    ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 32),
-              TextField(
+              const SizedBox(height: AppSpacing.xl),
+              TextFormField(
                 controller: _codeController,
                 decoration: InputDecoration(
                   labelText: 'Verification code',
                   hintText: '000000',
                   errorText: _error,
+                  border: const OutlineInputBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(14)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(14)),
+                    borderSide: const BorderSide(color: AppColors.onSurfaceVariant),
+                  ),
+                  focusedBorder: const OutlineInputBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(14)),
+                    borderSide: BorderSide(color: AppColors.accent, width: 2),
+                  ),
+                  filled: true,
+                  fillColor: AppColors.surfaceVariant,
                 ),
                 keyboardType: TextInputType.number,
                 maxLength: 6,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 textAlign: TextAlign.center,
+                enableInteractiveSelection: false,
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       letterSpacing: 8,
+                      fontSize: 32,
                     ),
                 onChanged: (_) => setState(() => _error = null),
               ),
-              const SizedBox(height: 32),
-              ElevatedButton(
-                onPressed: isLoading == true
-                    ? null
-                    : () {
-                        if (_codeController.text.length == 6) {
-                          _verify();
-                        }
-                      },
-                child: isLoading == true
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Verify'),
+              const SizedBox(height: AppSpacing.xl),
+              SizedBox(
+                height: 56,
+                child: FilledButton(
+                  onPressed: isLoading == true
+                      ? null
+                      : () {
+                          if (_codeController.text.length == 6) {
+                            _verify();
+                          }
+                        },
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.accent,
+                    foregroundColor: AppColors.background,
+                    elevation: 0,
+                    shadowColor: Colors.transparent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: isLoading == true
+                      ? const SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.background,
+                          ),
+                        )
+                      : const Text('Verify'),
+                ),
               ),
             ],
           ),

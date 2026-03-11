@@ -1,0 +1,21 @@
+// GENERATED CODE - DO NOT MODIFY BY HAND
+
+part of 'room_model.dart';
+
+// **************************************************************************
+// JsonSerializableGenerator
+// **************************************************************************
+
+_$RoomModelImpl _$$RoomModelImplFromJson(Map<String, dynamic> json) =>
+    _$RoomModelImpl(
+      roomId: json['roomId'] as String,
+      name: json['name'] as String,
+      type: json['type'] as String,
+    );
+
+Map<String, dynamic> _$$RoomModelImplToJson(_$RoomModelImpl instance) =>
+    <String, dynamic>{
+      'roomId': instance.roomId,
+      'name': instance.name,
+      'type': instance.type,
+    };
