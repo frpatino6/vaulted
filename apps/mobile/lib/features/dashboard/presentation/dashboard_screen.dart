@@ -3,10 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'package:intl/intl.dart';
+
 import '../../../core/theme/app_theme.dart';
 import '../../properties/data/models/property_model.dart';
 import '../../properties/domain/properties_notifier.dart';
 import '../../properties/presentation/add_property_sheet.dart';
+import '../data/models/dashboard_model.dart';
+import '../domain/dashboard_notifier.dart';
 
 /// Dashboard: clean welcome header, Quick Actions grid, recent property cards.
 class DashboardScreen extends ConsumerWidget {
@@ -15,12 +19,26 @@ class DashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final propertiesState = ref.watch(propertiesNotifierProvider);
+    final dashboardState = ref.watch(dashboardNotifierProvider);
 
     return Scaffold(
       backgroundColor: AppColors.backgroundElevated,
       body: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(child: _DashboardHeader()),
+          // Stats section — only shown when data is available
+          if (dashboardState.hasValue && dashboardState.value != null)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.md,
+                  AppSpacing.lg,
+                  AppSpacing.md,
+                  0,
+                ),
+                child: _StatsSection(data: dashboardState.value!),
+              ),
+            ),
           const SliverToBoxAdapter(
             child: Padding(
               padding: EdgeInsets.fromLTRB(
@@ -60,9 +78,7 @@ class DashboardScreen extends ConsumerWidget {
                             'RECENT PROPERTIES',
                             style: Theme.of(context).textTheme.titleSmall
                                 ?.copyWith(
-                                  color: AppColors.onSurfaceVariant.withOpacity(
-                                    0.6,
-                                  ),
+                                  color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
                                   fontSize: 12.0,
                                   letterSpacing: 1.5,
                                 ),
@@ -87,7 +103,6 @@ class DashboardScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: AppSpacing.sm),
                       ...list
-                          .take(3)
                           .map(
                             (p) => Padding(
                               padding: const EdgeInsets.only(
@@ -105,7 +120,7 @@ class DashboardScreen extends ConsumerWidget {
               );
             },
             loading: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
-            error: (_, __) =>
+            error: (_, _) =>
                 const SliverToBoxAdapter(child: SizedBox.shrink()),
           ),
           const SliverToBoxAdapter(
@@ -161,7 +176,7 @@ class _EmptyPropertiesCta extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: AppColors.onSurfaceVariant.withOpacity(0.2),
+                color: AppColors.onSurfaceVariant.withValues(alpha: 0.2),
               ),
             ),
             child: Row(
@@ -169,7 +184,7 @@ class _EmptyPropertiesCta extends StatelessWidget {
                 Icon(
                   Icons.home_work_outlined,
                   size: 40,
-                  color: AppColors.onSurfaceVariant.withOpacity(0.5),
+                  color: AppColors.onSurfaceVariant.withValues(alpha: 0.5),
                 ),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
@@ -209,8 +224,13 @@ class _EmptyPropertiesCta extends StatelessWidget {
 class _DashboardHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    // TODO: replace with ref.watch(userProvider)?.displayName when user API exists
     const String displayName = 'Guest';
+    final hour = DateTime.now().hour;
+    final greeting = hour < 12
+        ? 'Good morning,'
+        : hour < 18
+            ? 'Good afternoon,'
+            : 'Good evening,';
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(
@@ -227,9 +247,9 @@ class _DashboardHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Good morning,',
+                  greeting,
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: AppColors.onSurfaceVariant.withOpacity(0.8),
+                    color: AppColors.onSurfaceVariant.withValues(alpha: 0.8),
                     fontWeight: FontWeight.w400,
                   ),
                 ),
@@ -250,7 +270,7 @@ class _DashboardHeader extends StatelessWidget {
               shape: BoxShape.circle,
               color: Colors.white10,
               border: Border.all(
-                color: AppColors.accent.withOpacity(0.6),
+                color: AppColors.accent.withValues(alpha: 0.6),
                 width: 1,
               ),
             ),
@@ -278,7 +298,7 @@ class DashboardQuickActions extends StatelessWidget {
         Text(
           'QUICK ACTIONS',
           style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            color: AppColors.onSurfaceVariant.withOpacity(0.6),
+            color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
             fontSize: 12.0,
             letterSpacing: 1.5,
           ),
@@ -364,7 +384,7 @@ class _QuickActionTile extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 14.0,
                     fontWeight: FontWeight.w500,
-                    color: Colors.white.withOpacity(0.9),
+                    color: Colors.white.withValues(alpha: 0.9),
                   ),
                 ),
               ],
@@ -410,7 +430,7 @@ class DashboardPropertyCard extends StatelessWidget {
         child: InkWell(
           onTap: () => context.push('/properties/${property.id}'),
           splashColor: Colors.white10,
-          highlightColor: Colors.white10.withOpacity(0.5),
+          highlightColor: Colors.white10.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(20),
           child: Container(
             height: 200,
@@ -418,7 +438,7 @@ class DashboardPropertyCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
+                  color: Colors.black.withValues(alpha: 0.3),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -432,7 +452,7 @@ class DashboardPropertyCard extends StatelessWidget {
                   Image.network(
                     imageUrl,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _buildPlaceholderGradient(),
+                    errorBuilder: (_, _, _) => _buildPlaceholderGradient(),
                   )
                 else
                   _buildPlaceholderGradient(),
@@ -561,6 +581,179 @@ class DashboardPropertyCard extends StatelessWidget {
   }
 }
 
+/// Portfolio overview: total valuation + total items + status breakdown.
+class _StatsSection extends StatelessWidget {
+  const _StatsSection({required this.data});
+
+  final DashboardModel data;
+
+  static final _currency = NumberFormat.currency(symbol: r'$', decimalDigits: 0);
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'PORTFOLIO OVERVIEW',
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
+                fontSize: 10,
+                letterSpacing: 2.0,
+              ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Row(
+          children: [
+            Expanded(
+              child: _StatCard(
+                label: 'Total Value',
+                value: _currency.format(data.totalValuation),
+                icon: Icons.account_balance_outlined,
+                highlight: true,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: _StatCard(
+                label: 'Total Items',
+                value: '${data.totalItems}',
+                icon: Icons.inventory_2_outlined,
+              ),
+            ),
+          ],
+        ),
+        if (data.itemsByStatus.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.sm),
+          _StatusRow(itemsByStatus: data.itemsByStatus),
+        ],
+      ],
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  const _StatCard({
+    required this.label,
+    required this.value,
+    required this.icon,
+    this.highlight = false,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+  final bool highlight;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariant,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: highlight
+              ? AppColors.accent.withValues(alpha: 0.3)
+              : AppColors.onSurfaceVariant.withValues(alpha: 0.1),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            icon,
+            size: 20,
+            color: highlight ? AppColors.accent : AppColors.onSurfaceVariant,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            value,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: highlight ? AppColors.accent : AppColors.onBackground,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 22,
+                ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: AppColors.onSurfaceVariant,
+                  fontSize: 10,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusRow extends StatelessWidget {
+  const _StatusRow({required this.itemsByStatus});
+
+  final Map<String, int> itemsByStatus;
+
+  static const _statusColors = {
+    'active': Color(0xFF4CAF50),
+    'loaned': Color(0xFFFFC107),
+    'repair': Color(0xFFFF9800),
+    'storage': Color(0xFF2196F3),
+    'disposed': Color(0xFF9E9E9E),
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final entries = itemsByStatus.entries
+        .where((e) => e.value > 0)
+        .toList();
+
+    if (entries.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariant,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColors.onSurfaceVariant.withValues(alpha: 0.1),
+        ),
+      ),
+      child: Wrap(
+        spacing: AppSpacing.md,
+        runSpacing: AppSpacing.xs,
+        children: entries.map((e) {
+          final color = _statusColors[e.key] ?? AppColors.onSurfaceVariant;
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: color,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                '${e.value} ${e.key}',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: AppColors.onSurface,
+                      fontSize: 11,
+                    ),
+              ),
+            ],
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
 class _FooterText extends StatelessWidget {
   const _FooterText();
 
@@ -573,13 +766,13 @@ class _FooterText extends StatelessWidget {
         Icon(
           Icons.lock_outline,
           size: 12,
-          color: AppColors.onSurfaceVariant.withOpacity(0.6),
+          color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
         ),
         const SizedBox(width: 8),
         Text(
           'Vaulted — Private',
           style: TextStyle(
-            color: AppColors.onSurfaceVariant.withOpacity(0.6),
+            color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
             fontSize: 11,
           ),
         ),

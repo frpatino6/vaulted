@@ -30,6 +30,8 @@ class AppColors {
   static const Color onBackground = Color(0xFFE8E8ED);
   static const Color onSurface = Color(0xFFB8B8C4);
   static const Color onSurfaceVariant = Color(0xFF8E8E9E);
+  /// Gold for catalog total value and premium highlights (e.g. room inventory summary).
+  static const Color catalogGold = Color(0xFFC5A059);
   static const Color error = Color(0xFFCF6679);
 }
 

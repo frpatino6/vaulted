@@ -66,5 +66,9 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Vaulted needs camera access to photograph your items.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Vaulted needs photo library access to select item photos.</string>
 </dict>
 </plist>

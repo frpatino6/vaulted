@@ -229,6 +229,13 @@ insurance/     # Policies and warranties (PostgreSQL)
 audit/         # Immutable audit logs (PostgreSQL)
 notifications/ # Push (FCM) and email (SendGrid/Resend)
 reports/       # PDF and Excel report generation
+ai/            # AI features: vision, chat/RAG, valuation, maintenance, insurance
+  vision/      #   Claude Vision → auto-catalog items from photos
+  chat/        #   RAG assistant (embeddings + vector search + Claude)
+  valuation/   #   Dynamic market price estimation via web search + Claude
+  maintenance/ #   Predictive maintenance risk scoring (nightly batch)
+  insurance/   #   PDF policy extraction + coverage gap analysis
+  shared/      #   Shared Claude client, prompt templates, cost logger
 ```
 
 ### Flutter architecture (apps/mobile/lib/)
@@ -595,6 +602,237 @@ flutter create . --org com.vaulted --project-name vaulted
 
 ---
 
+## AI Feature Phases (Post-MVP)
+
+> These phases are added after the core MVP is validated with real clients.
+> Each phase is independent and can be activated per tenant (feature flags).
+> AI costs are passed to clients via premium tier pricing (~$149–299/month per property).
+
+---
+
+### PHASE AI-1 — Visual Recognition (Photo → Auto-Catalog)
+**Goal: user photographs an item and AI pre-fills the catalog form**
+**Dependency: Phase 4 (Media Upload) complete**
+**AI cost estimate: ~$0.003–0.015 per photo analyzed**
+
+#### How it works
+1. User takes a photo in the app (camera or gallery)
+2. Photo uploaded to GCP Storage via `/media/upload`
+3. App calls `POST /ai/vision/analyze` with the media URL
+4. Backend sends image to Claude Vision API with structured prompt
+5. Claude returns JSON: `{ name, category, subcategory, brand, estimatedValue, attributes }`
+6. Flutter pre-fills the Add Item form — user reviews, edits, confirms
+7. Item saved to DB normally (AI only assists, never auto-saves)
+
+#### Backend
+1. `ai/` module — `AiVisionService`, `AiVisionController`
+2. `POST /ai/vision/analyze` — accepts `{ mediaUrl }`, returns pre-filled item JSON
+3. Claude Vision prompt:
+   ```
+   Analyze this image of a household item. Return ONLY valid JSON with:
+   { "name": string, "category": "furniture|art|technology|wardrobe|vehicles|wine|sports|other",
+     "subcategory": string, "brand": string|null, "estimatedValue": number|null,
+     "attributes": object, "confidence": number (0-1) }
+   ```
+4. BullMQ queue for bulk processing — max 5 concurrent Vision workers
+5. Rate limit: 10 photos/minute per tenant
+6. All AI calls logged to AuditService with token usage
+7. ✅ Done when: photo → JSON returned in <3s, form pre-filled, user confirms to save
+
+#### Flutter
+1. `features/inventory/presentation/ai_scan_screen.dart` — camera UI with AI overlay
+2. `AiVisionNotifier` — manages loading/result/error states
+3. Pre-fill form fields from AI response, highlight AI-suggested fields in amber
+4. Confidence score badge: show "AI suggested" label if confidence < 0.8
+5. ✅ Done when: user photographs item, form pre-fills, saves correctly
+
+#### New env vars required
+```
+ANTHROPIC_API_KEY=          # Claude Vision + other AI features
+AI_VISION_MODEL=claude-opus-4-5  # or claude-sonnet-4-5 for cost/speed tradeoff
+BULLMQ_REDIS_URL=redis://redis:6379  # same Redis instance, separate queue
+```
+
+---
+
+### PHASE AI-2 — RAG Chat Assistant (Natural Language Inventory Queries)
+**Goal: owner asks "where is my Rolex?" or "list all items over $10k" in plain English**
+**Dependency: Phase AI-1 complete, MongoDB Atlas or pgvector available**
+**AI cost estimate: ~$0.01–0.05 per query**
+
+#### How it works
+1. On item create/update, backend generates embedding for item description
+2. Embeddings stored in MongoDB with vector index (or pgvector in PostgreSQL)
+3. User types natural language query in the app
+4. Backend embeds query, runs vector similarity search → top-K relevant items
+5. Items + query sent to Claude with RAG context → structured natural language answer
+6. Response displayed in chat-style UI with item cards
+
+#### Backend
+1. `ai/embedding.service.ts` — generates embeddings via OpenAI `text-embedding-3-small` (1536 dims)
+2. Item schema extended: `embedding: [Number]` (1536 floats, indexed)
+3. Vector index: MongoDB Atlas Search vector index OR pgvector extension
+4. `POST /ai/chat` — accepts `{ query, propertyId? }`, returns `{ answer, items[], sources[] }`
+5. Context window management: max 20 items in RAG context, summarize if needed
+6. Conversation history: last 10 turns stored in Redis per session (TTL: 1h)
+7. ✅ Done when: "where is my Rolex?" returns correct item with location, <2s response
+
+#### Flutter
+1. `features/ai_chat/presentation/chat_screen.dart` — chat bubbles UI
+2. Item cards embedded in chat response (tap → navigate to item detail)
+3. Voice input option via `speech_to_text` package
+4. ✅ Done when: owner finds items via natural language from the app
+
+#### New env vars required
+```
+OPENAI_API_KEY=             # for text-embedding-3-small embeddings
+EMBEDDING_MODEL=text-embedding-3-small
+EMBEDDING_DIMS=1536
+```
+
+> **Infrastructure note**: MongoDB Atlas Vector Search requires Atlas (managed).
+> For MVP cost control, evaluate pgvector on existing PostgreSQL first.
+> pgvector extension: `CREATE EXTENSION vector;` — zero additional cost on existing VM.
+
+---
+
+### PHASE AI-3 — Dynamic Asset Valuation (AI Market Price Estimates)
+**Goal: AI estimates current market value of items using web search + reasoning**
+**Dependency: Phase AI-1 complete**
+**AI cost estimate: ~$0.05–0.20 per valuation request**
+
+#### How it works
+1. User taps "Get AI Valuation" on an item detail screen
+2. Backend builds search query: `{brand} {name} {year} current market value resale price`
+3. Web search via Brave Search API or Serper API — returns top 5 results
+4. Claude receives item details + search snippets → returns `{ estimatedValue, range, confidence, sources[], reasoning }`
+5. Valuation stored in item history as `action: "ai_valued"` with full reasoning
+6. Push notification sent when valuation is ready (async flow)
+
+#### Backend
+1. `ai/valuation.service.ts` — orchestrates search + Claude reasoning
+2. `POST /ai/valuation/:itemId` — triggers async valuation job
+3. BullMQ job: search → Claude → update item → notify
+4. Rate limit: 3 valuations/day per item (API cost control)
+5. ✅ Done when: item gets AI valuation with confidence score and source links
+
+#### Flutter
+1. "Get AI Valuation" button on ItemDetailScreen (owner/manager only)
+2. `ValuationResultSheet` — shows estimate, range, reasoning, sources
+3. "Accept valuation" → updates `currentValue` in item
+4. ✅ Done when: owner taps button, receives valuation with reasoning in <30s
+
+#### New env vars required
+```
+BRAVE_SEARCH_API_KEY=       # or SERPER_API_KEY for web search
+VALUATION_SEARCH_ENGINE=brave  # brave | serper
+```
+
+---
+
+### PHASE AI-4 — Predictive Maintenance Alerts
+**Goal: AI identifies items at risk of failure and schedules preventive maintenance**
+**Dependency: Phase 7 (Notifications) complete**
+**AI cost estimate: ~$0.10–0.30/day per property (nightly batch)**
+
+#### How it works
+1. Nightly cron job (2 AM) runs for every active tenant
+2. Claude receives full inventory list with purchase dates, service history, categories
+3. Claude returns risk scores (0–100) per item with maintenance recommendations
+4. Items with score ≥ 70 → maintenance alert queued → push + email
+5. Maintenance record created in ItemHistory: `action: "maintenance_alert"`
+
+#### Backend
+1. `ai/maintenance.service.ts` — nightly batch processor
+2. `ai-maintenance` BullMQ queue — one job per property, max 3 concurrent
+3. Claude prompt: returns sorted `[{ itemId, riskScore, reason, recommendedAction, urgency }]`
+4. `POST /ai/maintenance/trigger` — manual trigger for testing (admin only)
+5. ✅ Done when: nightly job runs, high-risk items trigger push notifications
+
+#### Flutter
+1. Maintenance alerts shown in notification center
+2. Item detail shows maintenance risk badge when score ≥ 70
+3. ✅ Done when: user receives alert, taps to see recommended action on item detail
+
+---
+
+### PHASE AI-5 — Insurance Intelligence
+**Goal: AI extracts policy data from PDFs and identifies coverage gaps**
+**Dependency: Phase 8 (Reports) complete**
+**AI cost estimate: ~$0.20–0.50 per policy analysis**
+
+#### How it works
+1. Owner uploads insurance policy PDF via the app
+2. Backend extracts text (pdf-parse) → Claude analyzes → structured policy data
+3. Claude cross-references policy coverage vs. item valuations → gap report
+4. Claims assistant: owner describes incident → Claude drafts claim letter
+5. Renewal reminders: 60/30/7 days before policy expiry
+
+#### Backend
+1. `ai/insurance.service.ts` — PDF extraction + Claude analysis
+2. `POST /ai/insurance/analyze` — upload PDF → returns structured policy JSON
+3. `POST /ai/insurance/gap-analysis/:propertyId` — coverage vs. inventory comparison
+4. `POST /ai/insurance/claim-draft` — accepts incident description → draft letter
+5. Scheduled job: daily check for policies expiring in ≤60 days → alert queue
+6. ✅ Done when: PDF uploaded → policy data extracted → gap report generated
+
+#### Flutter
+1. `features/insurance/` — policy list, upload PDF, gap report screen
+2. `ClaimDraftScreen` — chat-style incident input → formatted claim letter output
+3. ✅ Done when: owner uploads policy, sees gap analysis vs. inventory valuation
+
+---
+
+## AI Architecture Decisions
+
+### AI Provider
+- **Primary**: Anthropic Claude (Vision, reasoning, generation)
+  - Model: `claude-sonnet-4-5` for speed/cost, `claude-opus-4-5` for complex reasoning
+- **Embeddings**: OpenAI `text-embedding-3-small` (cheapest, 1536 dims)
+- **Web Search**: Brave Search API ($3/1000 queries) — privacy-first, no tracking
+
+### Queue Architecture (BullMQ)
+```
+Redis (existing container) → BullMQ queues:
+  ai-vision       # max 5 workers, 10 jobs/min per tenant
+  ai-valuation    # max 3 workers, 3 jobs/day per item
+  ai-maintenance  # max 3 workers, runs nightly at 2 AM
+  ai-insurance    # max 2 workers, triggered on demand
+```
+
+### Vector Storage Decision
+- **MVP AI**: pgvector extension on existing PostgreSQL — $0 additional cost
+- **Scale**: Migrate to MongoDB Atlas Vector Search when >100k items
+- pgvector setup: `CREATE EXTENSION vector; ALTER TABLE items ADD COLUMN embedding vector(1536);`
+
+### Cost Control
+- All AI API calls rate-limited per tenant
+- Token usage logged to AuditService for per-tenant cost accounting
+- Feature flags per tenant: AI features can be enabled/disabled per subscription tier
+- AI tier pricing recommendation: $49/month add-on to base subscription
+
+### New Backend Module Structure (AI addition)
+```
+apps/api/src/modules/
+  ai/
+    vision/         # Photo analysis service
+    chat/           # RAG chat, embedding generation
+    valuation/      # Market price estimation
+    maintenance/    # Predictive maintenance scoring
+    insurance/      # Policy extraction, gap analysis
+    shared/         # Shared prompt templates, Claude client, cost logger
+```
+
+### New Flutter Features (AI addition)
+```
+apps/mobile/lib/features/
+  ai_scan/          # Camera + AI overlay for item cataloging
+  ai_chat/          # RAG chat assistant
+  insurance/        # Policy management + claims assistant
+```
+
+---
+
 ### MVP Definition of Done
 The MVP is complete when a real user (owner) can:
 - [ ] Create an account and set up MFA
@@ -635,6 +873,21 @@ This decision is intentional — migrate only if scale demands it.
 | Firebase FCM (push notifications) | $0 Free tier |
 | Resend (transactional email) | $0 up to 3k emails/month |
 | **Total** | **~$125-130/month** |
+
+### AI tier cost estimate (per active property/month, post-MVP)
+| Feature | Cost/month |
+|---|---|
+| Claude Vision (AI-1) — ~500 photos analyzed | ~$3-5 |
+| RAG Chat (AI-2) — ~200 queries | ~$2-5 |
+| Dynamic Valuation (AI-3) — ~50 requests | ~$3-8 |
+| Predictive Maintenance (AI-4) — nightly batch | ~$1-3 |
+| Insurance Intelligence (AI-5) — on demand | ~$2-4 |
+| OpenAI embeddings (AI-2) | ~$1-2 |
+| Brave Search API (AI-3) | ~$1 |
+| **Total AI per property** | **~$13-28/month** |
+
+AI features recommended as a $49/month add-on to base subscription.
+At $149–299/month per property (base + AI), margin remains strong.
 
 ---
 
@@ -683,6 +936,15 @@ EMAIL_FROM=noreply@vaulted.app
 
 # Sentry
 SENTRY_DSN=
+
+# AI Features (Phase AI-1+)
+ANTHROPIC_API_KEY=
+AI_VISION_MODEL=claude-sonnet-4-5
+OPENAI_API_KEY=
+EMBEDDING_MODEL=text-embedding-3-small
+EMBEDDING_DIMS=1536
+BRAVE_SEARCH_API_KEY=
+VALUATION_SEARCH_ENGINE=brave
 ```
 
 ---

@@ -130,7 +130,7 @@ class _PropertyDetailBody extends StatelessWidget {
                 Image.network(
                   hasHeroImage ? property.photos.first : _placeholderMansionUrl,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => _LuxuryGradientBackground(),
+                  errorBuilder: (_, _, _) => _LuxuryGradientBackground(),
                 ),
                 // Dark gradient at base so title reads perfectly
                 DecoratedBox(

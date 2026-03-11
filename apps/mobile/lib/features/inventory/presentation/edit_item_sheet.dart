@@ -6,19 +6,18 @@ import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/item_photo_picker.dart';
 import '../../media/data/media_repository_provider.dart';
 import '../data/item_repository_provider.dart';
-import '../domain/item_list_notifier.dart';
+import '../data/models/item_model.dart';
+import '../domain/item_detail_notifier.dart';
 
-class AddItemSheet extends ConsumerStatefulWidget {
-  const AddItemSheet({
+class EditItemSheet extends ConsumerStatefulWidget {
+  const EditItemSheet({
     super.key,
-    required this.propertyId,
-    required this.roomId,
-    required this.onAdded,
+    required this.item,
+    required this.onUpdated,
   });
 
-  final String propertyId;
-  final String roomId;
-  final VoidCallback onAdded;
+  final ItemModel item;
+  final VoidCallback onUpdated;
 
   static const List<String> _categories = [
     'furniture',
@@ -32,22 +31,47 @@ class AddItemSheet extends ConsumerStatefulWidget {
   ];
 
   @override
-  ConsumerState<AddItemSheet> createState() => _AddItemSheetState();
+  ConsumerState<EditItemSheet> createState() => _EditItemSheetState();
 }
 
-class _AddItemSheetState extends ConsumerState<AddItemSheet> {
-  final _nameController = TextEditingController();
-  final _subcategoryController = TextEditingController();
-  final _serialNumberController = TextEditingController();
-  final _purchasePriceController = TextEditingController();
-  final _currentValueController = TextEditingController();
-  final _tagsController = TextEditingController();
+class _EditItemSheetState extends ConsumerState<EditItemSheet> {
+  late final TextEditingController _nameController;
+  late final TextEditingController _subcategoryController;
+  late final TextEditingController _serialNumberController;
+  late final TextEditingController _purchasePriceController;
+  late final TextEditingController _currentValueController;
+  late final TextEditingController _tagsController;
 
+  late List<String> _existingPhotos;
   final List<XFile> _pendingPhotos = [];
   bool _uploadingPhotos = false;
 
-  String _category = 'furniture';
+  late String _category;
   bool _submitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final item = widget.item;
+    _existingPhotos = List.from(item.photos);
+    _nameController = TextEditingController(text: item.name);
+    _subcategoryController = TextEditingController(text: item.subcategory);
+    _serialNumberController = TextEditingController(text: item.serialNumber ?? '');
+    _purchasePriceController = TextEditingController(
+      text: item.valuation != null && item.valuation!.purchasePrice > 0
+          ? item.valuation!.purchasePrice.toString()
+          : '',
+    );
+    _currentValueController = TextEditingController(
+      text: item.valuation != null && item.valuation!.currentValue > 0
+          ? item.valuation!.currentValue.toString()
+          : '',
+    );
+    _tagsController = TextEditingController(text: item.tags.join(', '));
+    _category = EditItemSheet._categories.contains(item.category)
+        ? item.category
+        : 'other';
+  }
 
   @override
   void dispose() {
@@ -60,10 +84,10 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
     super.dispose();
   }
 
-  int? _parseInt(String s) {
+  int _parseInt(String s) {
     final cleaned = s.replaceAll(RegExp(r'[^\d-]'), '');
-    if (cleaned.isEmpty) return null;
-    return int.tryParse(cleaned);
+    if (cleaned.isEmpty) return 0;
+    return int.tryParse(cleaned) ?? 0;
   }
 
   Future<void> _submit() async {
@@ -73,10 +97,13 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
     try {
       final repo = ref.read(itemRepositoryProvider);
       final mediaRepo = ref.read(mediaRepositoryProvider);
-      final purchasePrice = _parseInt(_purchasePriceController.text) ?? 0;
-      final currentValue = _parseInt(_currentValueController.text) ?? 0;
+      final purchasePrice = _parseInt(_purchasePriceController.text);
+      final currentValue = _parseInt(_currentValueController.text);
       final tagsStr = _tagsController.text.trim();
-      final tags = tagsStr.isEmpty ? <String>[] : tagsStr.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+      final tags = tagsStr.isEmpty
+          ? <String>[]
+          : tagsStr.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+      final serialNum = _serialNumberController.text.trim();
 
       List<String> uploadedUrls = [];
       if (_pendingPhotos.isNotEmpty) {
@@ -101,30 +128,33 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
         }
       }
 
-      await repo.createItem(
-        propertyId: widget.propertyId,
-        roomId: widget.roomId,
+      final allPhotos = [..._existingPhotos, ...uploadedUrls];
+      await repo.updateItem(
+        widget.item.id,
         name: name,
         category: _category,
         subcategory: _subcategoryController.text.trim(),
-        serialNumber: _serialNumberController.text.trim().isEmpty ? null : _serialNumberController.text.trim(),
-        purchasePrice: purchasePrice,
-        currentValue: currentValue,
+        serialNumber: serialNum.isEmpty ? null : serialNum,
+        valuation: {
+          'purchasePrice': purchasePrice,
+          'currentValue': currentValue,
+          'currency': 'USD',
+        },
         tags: tags,
-        photos: uploadedUrls,
+        photos: allPhotos,
       );
       if (mounted) {
-        widget.onAdded();
+        widget.onUpdated();
         Navigator.of(context).pop(true);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Item added')),
+          const SnackBar(content: Text('Item updated')),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(ItemListNotifier.message(e)),
+            content: Text(ItemDetailNotifier.message(e)),
             backgroundColor: AppColors.error,
           ),
         );
@@ -169,7 +199,7 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
             ),
             const SizedBox(height: AppSpacing.lg),
             Text(
-              'Add item',
+              'Edit item',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w600,
                     color: AppColors.onBackground,
@@ -179,7 +209,7 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
             SizedBox(
               height: 100,
               child: ItemPhotoPicker(
-                photos: const [],
+                photos: _existingPhotos,
                 pendingFiles: _pendingPhotos,
                 onPickFromGallery: () async {
                   final picker = ImagePicker();
@@ -188,7 +218,8 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
                   final images = list.where((x) => x.path.isNotEmpty).toList();
                   if (images.isEmpty || !mounted) return;
                   setState(() {
-                    final remaining = 10 - _pendingPhotos.length;
+                    final total = _existingPhotos.length + _pendingPhotos.length;
+                    final remaining = 10 - total;
                     if (remaining > 0) {
                       _pendingPhotos.addAll(images.take(remaining));
                     }
@@ -199,10 +230,11 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
                   final file = await picker.pickImage(source: ImageSource.camera);
                   if (file == null || !mounted) return;
                   setState(() {
-                    if (_pendingPhotos.length < 10) _pendingPhotos.add(file);
+                    final total = _existingPhotos.length + _pendingPhotos.length;
+                    if (total < 10) _pendingPhotos.add(file);
                   });
                 },
-                onRemoveExisting: (_) {},
+                onRemoveExisting: (index) => setState(() => _existingPhotos.removeAt(index)),
                 onRemovePending: (index) => setState(() => _pendingPhotos.removeAt(index)),
                 uploading: _uploadingPhotos,
               ),
@@ -224,7 +256,7 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
                 labelText: 'Category',
               ),
               dropdownColor: AppColors.surfaceVariant,
-              items: AddItemSheet._categories
+              items: EditItemSheet._categories
                   .map(
                     (c) => DropdownMenuItem(
                       value: c,
@@ -235,7 +267,7 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
                     ),
                   )
                   .toList(),
-              onChanged: (v) => setState(() => _category = v ?? 'furniture'),
+              onChanged: (v) => setState(() => _category = v ?? 'other'),
             ),
             const SizedBox(height: AppSpacing.md),
             TextFormField(
@@ -258,7 +290,7 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
               controller: _purchasePriceController,
               decoration: const InputDecoration(
                 labelText: 'Purchase price (optional)',
-                hintText: '\$',
+                hintText: r'$',
                 prefixText: r'$ ',
               ),
               keyboardType: TextInputType.number,
@@ -268,7 +300,7 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
               controller: _currentValueController,
               decoration: const InputDecoration(
                 labelText: 'Current value (optional)',
-                hintText: '\$',
+                hintText: r'$',
                 prefixText: r'$ ',
               ),
               keyboardType: TextInputType.number,
@@ -300,7 +332,7 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
                         width: 20,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Text('Add item'),
+                    : const Text('Save changes'),
               ),
             ),
           ],

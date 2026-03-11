@@ -86,7 +86,9 @@ export class AuthService {
 
     await this.usersService.updateLastLogin(user.id);
 
-    const roleRequiresMfa = MFA_REQUIRED_ROLES.includes(user.role);
+    // Require MFA only if role is in MFA_REQUIRED_ROLES AND user has MFA enabled
+    const roleRequiresMfa =
+      MFA_REQUIRED_ROLES.includes(user.role) && user.mfaEnabled;
     const mfaRequired = roleRequiresMfa;
 
     await this.auditService.log({

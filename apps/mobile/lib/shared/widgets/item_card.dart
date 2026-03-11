@@ -38,7 +38,11 @@ class ItemCard extends StatelessWidget {
 
   final ItemModel item;
 
-  static final _currencyFormat = NumberFormat.currency(symbol: r'$', decimalDigits: 0);
+  static final _currencyFormat = NumberFormat.currency(
+    locale: 'en_US',
+    symbol: r'$',
+    decimalDigits: 0,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -74,42 +78,53 @@ class ItemCard extends StatelessWidget {
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Text(
-                      item.name,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.onBackground,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            item.name,
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.onBackground,
+                                ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (item.subcategory.isNotEmpty) ...[
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        item.subcategory,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: AppColors.onSurfaceVariant,
+                          if (item.subcategory.isNotEmpty) ...[
+                            const SizedBox(height: AppSpacing.xs),
+                            Text(
+                              item.subcategory,
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: AppColors.onSurfaceVariant,
+                                  ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                          ],
+                          const SizedBox(height: AppSpacing.xs),
+                          StatusBadge(status: item.status),
+                        ],
                       ),
-                    ],
-                    const SizedBox(height: AppSpacing.xs),
-                    StatusBadge(status: item.status),
+                    ),
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      width: 80,
+                      child: Text(
+                        valueText,
+                        textAlign: TextAlign.right,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.accent,
+                            ),
+                      ),
+                    ),
                   ],
                 ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Text(
-                valueText,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.accent,
-                    ),
               ),
             ],
           ),
