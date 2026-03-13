@@ -57,9 +57,8 @@ class ItemRemoteDataSource {
   Future<ItemModel> createItem(Map<String, dynamic> body) async {
     final response = await _dio.post<Map<String, dynamic>>(_path, data: body);
     final data = _unwrapData(response);
-    return ItemModel.fromJson(
-      Map<String, dynamic>.from(data is Map ? data : {}),
-    );
+    final raw = Map<String, dynamic>.from(data is Map ? data : <String, dynamic>{});
+    return ItemModel.fromJson(_normalizeItemJson(raw));
   }
 
   /// PUT /items/:id
@@ -69,9 +68,8 @@ class ItemRemoteDataSource {
       data: body,
     );
     final data = _unwrapData(response);
-    return ItemModel.fromJson(
-      Map<String, dynamic>.from(data is Map ? data : {}),
-    );
+    final raw = Map<String, dynamic>.from(data is Map ? data : <String, dynamic>{});
+    return ItemModel.fromJson(_normalizeItemJson(raw));
   }
 
   /// DELETE /items/:id

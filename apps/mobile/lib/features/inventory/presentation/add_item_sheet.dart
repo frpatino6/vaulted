@@ -66,9 +66,23 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
     return int.tryParse(cleaned);
   }
 
+  void _showSnackBar(String message, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: isError ? AppColors.error : null,
+      ),
+    );
+  }
+
   Future<void> _submit() async {
     final name = _nameController.text.trim();
-    if (name.isEmpty || _submitting) return;
+    if (_submitting) return;
+    if (name.isEmpty) {
+      _showSnackBar('Please enter a name', isError: true);
+      return;
+    }
     setState(() => _submitting = true);
     try {
       final repo = ref.read(itemRepositoryProvider);
@@ -92,12 +106,7 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
         }
         if (mounted) setState(() => _uploadingPhotos = false);
         if (mounted && failedCount > 0) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('$failedCount photo(s) could not be uploaded'),
-              backgroundColor: AppColors.error,
-            ),
-          );
+          _showSnackBar('$failedCount photo(s) could not be uploaded', isError: true);
         }
       }
 
@@ -116,18 +125,11 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
       if (mounted) {
         widget.onAdded();
         Navigator.of(context).pop(true);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Item added')),
-        );
+        _showSnackBar('Item added');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(ItemListNotifier.message(e)),
-            backgroundColor: AppColors.error,
-          ),
-        );
+        _showSnackBar(ItemListNotifier.message(e), isError: true);
       }
     } finally {
       if (mounted) setState(() => _submitting = false);
@@ -140,21 +142,23 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
       initialChildSize: 0.85,
       minChildSize: 0.4,
       maxChildSize: 0.95,
-      builder: (context, scrollController) => Container(
-        decoration: const BoxDecoration(
-          color: AppColors.surfaceVariant,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(24),
-            topRight: Radius.circular(24),
-          ),
-        ),
-        padding: EdgeInsets.only(
-          left: AppSpacing.md,
-          right: AppSpacing.md,
-          top: AppSpacing.md,
-          bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.md,
-        ),
-        child: ListView(
+      builder: (context, scrollController) => Stack(
+        children: [
+          Container(
+            decoration: const BoxDecoration(
+              color: AppColors.surfaceVariant,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(24),
+                topRight: Radius.circular(24),
+              ),
+            ),
+            padding: EdgeInsets.only(
+              left: AppSpacing.md,
+              right: AppSpacing.md,
+              top: AppSpacing.md,
+              bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.md,
+            ),
+            child: ListView(
           controller: scrollController,
           children: [
             Center(
@@ -305,6 +309,39 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
             ),
           ],
         ),
+          ),
+          if (_submitting)
+            Positioned.fill(
+              child: ColoredBox(
+                color: Colors.black.withValues(alpha: 0.4),
+                child: Center(
+                  child: Card(
+                    margin: const EdgeInsets.all(AppSpacing.xl),
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppSpacing.xl),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const SizedBox(
+                            height: 40,
+                            width: 40,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          Text(
+                            'Saving item…',
+                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              color: AppColors.onSurface,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

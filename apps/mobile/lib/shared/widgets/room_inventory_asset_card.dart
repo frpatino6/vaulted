@@ -15,10 +15,12 @@ class RoomInventoryAssetCard extends StatelessWidget {
     super.key,
     required this.item,
     this.roomNameToStrip,
+    this.canSeeValues = true,
   });
 
   final ItemModel item;
   final String? roomNameToStrip;
+  final bool canSeeValues;
 
   static final _currencyFormat = NumberFormat.currency(
     locale: 'en_US',
@@ -102,18 +104,20 @@ class RoomInventoryAssetCard extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    SizedBox(
-                      width: 80,
-                      child: Text(
-                        valueText,
-                        textAlign: TextAlign.right,
-                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                              color: valueColor,
-                              fontWeight: FontWeight.w500,
-                            ),
+                    if (canSeeValues) ...[
+                      const SizedBox(width: 8),
+                      SizedBox(
+                        width: 80,
+                        child: Text(
+                          valueText,
+                          textAlign: TextAlign.right,
+                          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                                color: valueColor,
+                                fontWeight: FontWeight.w500,
+                              ),
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),

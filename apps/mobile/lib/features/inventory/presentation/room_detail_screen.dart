@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../users/domain/current_user_jwt.dart';
 import '../data/item_repository_provider.dart';
 import '../data/models/item_model.dart';
 import '../domain/item_list_notifier.dart';
@@ -58,6 +59,11 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final role = currentUserRole() ?? 'guest';
+    final canAddItem = role == 'owner' || role == 'manager' || role == 'staff';
+    final canEditItem = role == 'owner' || role == 'manager' || role == 'staff';
+    final canDeleteItem = role == 'owner' || role == 'manager';
+    final canSeeValues = role == 'owner' || role == 'auditor';
     final state = ref.watch(itemListNotifierProvider);
 
     return Scaffold(
@@ -83,12 +89,13 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
               ),
             ),
             actions: [
-              IconButton(
-                onPressed: () => _showAddItem(context),
-                icon: const Icon(Icons.add, color: AppColors.accent),
-                tooltip: 'Add item',
-                splashRadius: 24,
-              ),
+              if (canAddItem)
+                IconButton(
+                  onPressed: () => _showAddItem(context),
+                  icon: const Icon(Icons.add, color: AppColors.accent),
+                  tooltip: 'Add item',
+                  splashRadius: 24,
+                ),
             ],
           ),
           state.when(
@@ -105,7 +112,7 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const SizedBox(height: AppSpacing.sm),
-                      _buildSummarySection(context, items.length, totalValue, currencyFormat),
+                      _buildSummarySection(context, items.length, totalValue, currencyFormat, canSeeValues),
                       const SizedBox(height: AppSpacing.lg),
                       Text(
                         'INVENTORY',
@@ -126,7 +133,31 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
                 ),
               );
             },
-            loading: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
+            loading: () => SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.lg),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.accent,
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Text(
+                      'Loading inventory...',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppColors.onSurfaceVariant,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
             error: (_, _) => const SliverToBoxAdapter(child: SizedBox.shrink()),
           ),
           state.when(
@@ -169,35 +200,45 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
                       final item = filtered[index];
+                      final slidableActions = <Widget>[
+                        if (canEditItem)
+                          SlidableAction(
+                            onPressed: (_) => context.push('/items/${item.id}'),
+                            backgroundColor: AppColors.surfaceVariant,
+                            foregroundColor: AppColors.onBackground,
+                            icon: Icons.edit_outlined,
+                            label: 'Edit',
+                          ),
+                        if (canDeleteItem)
+                          SlidableAction(
+                            onPressed: (_) => _confirmDelete(context, item),
+                            backgroundColor: AppColors.error,
+                            foregroundColor: Colors.white,
+                            icon: Icons.delete_outline,
+                            label: 'Delete',
+                          ),
+                      ];
                       return Padding(
                         padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                        child: Slidable(
-                          key: ValueKey(item.id),
-                          endActionPane: ActionPane(
-                            motion: const DrawerMotion(),
-                            extentRatio: 0.32,
-                            children: [
-                              SlidableAction(
-                                onPressed: (_) => context.push('/items/${item.id}'),
-                                backgroundColor: AppColors.surfaceVariant,
-                                foregroundColor: AppColors.onBackground,
-                                icon: Icons.edit_outlined,
-                                label: 'Edit',
+                        child: slidableActions.isEmpty
+                            ? RoomInventoryAssetCard(
+                                item: item,
+                                roomNameToStrip: widget.roomName,
+                                canSeeValues: canSeeValues,
+                              )
+                            : Slidable(
+                                key: ValueKey(item.id),
+                                endActionPane: ActionPane(
+                                  motion: const DrawerMotion(),
+                                  extentRatio: 0.32,
+                                  children: slidableActions,
+                                ),
+                                child: RoomInventoryAssetCard(
+                                  item: item,
+                                  roomNameToStrip: widget.roomName,
+                                  canSeeValues: canSeeValues,
+                                ),
                               ),
-                              SlidableAction(
-                                onPressed: (_) => _confirmDelete(context, item),
-                                backgroundColor: AppColors.error,
-                                foregroundColor: Colors.white,
-                                icon: Icons.delete_outline,
-                                label: 'Delete',
-                              ),
-                            ],
-                          ),
-                          child: RoomInventoryAssetCard(
-                          item: item,
-                          roomNameToStrip: widget.roomName,
-                        ),
-                        ),
                       );
                     },
                     childCount: filtered.length,
@@ -205,8 +246,30 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
                 ),
               );
             },
-            loading: () => const SliverFillRemaining(
-              child: Center(child: CircularProgressIndicator()),
+            loading: () => SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 40,
+                      height: 40,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.accent,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    Text(
+                      'Loading items...',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppColors.onSurfaceVariant,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
             ),
             error: (err, _) => SliverFillRemaining(
               child: Center(
@@ -237,11 +300,12 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
           const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.xxl)),
         ],
       ),
-      bottomNavigationBar: _buildAddItemFooter(context),
+      bottomNavigationBar: _buildAddItemFooter(context, canAddItem),
     );
   }
 
-  Widget _buildAddItemFooter(BuildContext context) {
+  Widget _buildAddItemFooter(BuildContext context, bool canAddItem) {
+    if (!canAddItem) return const SizedBox.shrink();
     return Container(
       color: const Color(0xFF0A0A0F),
       padding: const EdgeInsets.fromLTRB(
@@ -279,6 +343,7 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
     int itemCount,
     int totalValue,
     NumberFormat currencyFormat,
+    bool canSeeValues,
   ) {
     final hasValue = totalValue > 0;
     final valueColor = hasValue
@@ -311,28 +376,31 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
                     color: AppColors.onSurfaceVariant,
                   ),
             ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  currencyFormat.format(totalValue),
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: valueColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 24,
-                      ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'Total Value',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: labelColor,
-                        fontSize: 10,
-                      ),
-                ),
-              ],
-            ),
+            if (canSeeValues)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    currencyFormat.format(totalValue),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: valueColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 24,
+                        ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Total Value',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: labelColor,
+                          fontSize: 10,
+                        ),
+                  ),
+                ],
+              )
+            else
+              const SizedBox.shrink(),
           ],
         ),
       ],

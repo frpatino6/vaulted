@@ -6,9 +6,6 @@ part of 'property_model.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-PropertyModel _$PropertyModelFromJson(Map<String, dynamic> json) =>
-    _$$PropertyModelImplFromJson(json);
-
 _$PropertyModelImpl _$$PropertyModelImplFromJson(Map<String, dynamic> json) =>
     _$PropertyModelImpl(
       id: json['id'] as String,

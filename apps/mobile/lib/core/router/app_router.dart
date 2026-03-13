@@ -10,6 +10,7 @@ import '../../features/inventory/presentation/item_detail_screen.dart';
 import '../../features/inventory/presentation/room_detail_screen.dart';
 import '../../features/properties/presentation/property_detail_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
+import '../../features/users/presentation/users_screen.dart';
 
 GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
   return GoRouter(
@@ -78,6 +79,10 @@ GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
       GoRoute(
         path: '/settings',
         builder: (context, state) => const SettingsScreen(),
+      ),
+      GoRoute(
+        path: '/settings/users',
+        builder: (context, state) => const UsersScreen(),
       ),
       GoRoute(
         path: '/unauthorized',

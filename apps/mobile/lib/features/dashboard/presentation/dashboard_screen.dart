@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,7 +7,10 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'package:intl/intl.dart';
 
+import '../../../core/storage/auth_token_store.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../auth/presentation/auth_notifier.dart';
+import '../../users/domain/current_user_jwt.dart';
 import '../../properties/data/models/property_model.dart';
 import '../../properties/domain/properties_notifier.dart';
 import '../../properties/presentation/add_property_sheet.dart';
@@ -18,6 +23,9 @@ class DashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final role = currentUserRole() ?? 'guest';
+    final canManageProperties = role == 'owner' || role == 'manager';
+    final canSeeValues = role == 'owner' || role == 'auditor';
     final propertiesState = ref.watch(propertiesNotifierProvider);
     final dashboardState = ref.watch(dashboardNotifierProvider);
 
@@ -36,7 +44,10 @@ class DashboardScreen extends ConsumerWidget {
                   AppSpacing.md,
                   0,
                 ),
-                child: _StatsSection(data: dashboardState.value!),
+                child: _StatsSection(
+                  data: dashboardState.value!,
+                  canSeeValues: canSeeValues,
+                ),
               ),
             ),
           const SliverToBoxAdapter(
@@ -53,6 +64,26 @@ class DashboardScreen extends ConsumerWidget {
           propertiesState.when(
             data: (list) {
               if (list.isEmpty) {
+                if (!canManageProperties) {
+                  return SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.md,
+                        0,
+                        AppSpacing.md,
+                        AppSpacing.lg,
+                      ),
+                      child: Center(
+                        child: Text(
+                          'No properties assigned to your account',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: AppColors.onSurfaceVariant,
+                              ),
+                        ),
+                      ),
+                    ),
+                  );
+                }
                 return SliverToBoxAdapter(
                   child: _EmptyPropertiesCta(
                     onAddProperty: () => _showAddPropertySheet(context, ref),
@@ -83,22 +114,23 @@ class DashboardScreen extends ConsumerWidget {
                                   letterSpacing: 1.5,
                                 ),
                           ),
-                          TextButton.icon(
-                            onPressed: () =>
-                                _showAddPropertySheet(context, ref),
-                            icon: Icon(
-                              Icons.add,
-                              size: 18,
-                              color: AppColors.accent,
-                            ),
-                            label: Text(
-                              'Add',
-                              style: TextStyle(
+                          if (canManageProperties)
+                            TextButton.icon(
+                              onPressed: () =>
+                                  _showAddPropertySheet(context, ref),
+                              icon: Icon(
+                                Icons.add,
+                                size: 18,
                                 color: AppColors.accent,
-                                fontWeight: FontWeight.w500,
+                              ),
+                              label: Text(
+                                'Add',
+                                style: TextStyle(
+                                  color: AppColors.accent,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                             ),
-                          ),
                         ],
                       ),
                       const SizedBox(height: AppSpacing.sm),
@@ -220,17 +252,19 @@ class _EmptyPropertiesCta extends StatelessWidget {
   }
 }
 
-/// Clean welcome: small greeting + user name in Playfair Display + avatar.
-class _DashboardHeader extends StatelessWidget {
+/// Clean welcome: small greeting + avatar that opens user menu.
+class _DashboardHeader extends ConsumerWidget {
   @override
-  Widget build(BuildContext context) {
-    const String displayName = 'Guest';
+  Widget build(BuildContext context, WidgetRef ref) {
+    final email = _emailFromJwt() ?? 'Guest';
+    final role = currentUserRole() ?? 'guest';
     final hour = DateTime.now().hour;
     final greeting = hour < 12
         ? 'Good morning,'
         : hour < 18
             ? 'Good afternoon,'
             : 'Good evening,';
+    final firstName = email.split('@').first;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(
@@ -255,7 +289,7 @@ class _DashboardHeader extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  displayName,
+                  firstName,
                   style: AppTypography.displaySerif.copyWith(
                     color: AppColors.onBackground,
                   ),
@@ -263,35 +297,178 @@ class _DashboardHeader extends StatelessWidget {
               ],
             ),
           ),
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white10,
-              border: Border.all(
-                color: AppColors.accent.withValues(alpha: 0.6),
-                width: 1,
+          GestureDetector(
+            onTap: () => _showUserMenu(context, ref, email, role),
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white10,
+                border: Border.all(
+                  color: AppColors.accent.withValues(alpha: 0.6),
+                  width: 1,
+                ),
               ),
-            ),
-            child: Icon(
-              Icons.person_outline,
-              size: 20,
-              color: AppColors.accentBright,
+              child: Center(
+                child: Text(
+                  email.isNotEmpty ? email[0].toUpperCase() : '?',
+                  style: TextStyle(
+                    color: AppColors.accentBright,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
             ),
           ),
         ],
       ),
     );
   }
+
+  String? _emailFromJwt() {
+    final token = AuthTokenStore.instance.getToken();
+    if (token == null) return null;
+    final parts = token.split('.');
+    if (parts.length != 3) return null;
+    try {
+      final payload = utf8.decode(base64Url.decode(base64Url.normalize(parts[1])));
+      return jsonDecode(payload)['email'] as String?;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  void _showUserMenu(BuildContext context, WidgetRef ref, String email, String role) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.surfaceVariant,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.md,
+            AppSpacing.lg,
+            AppSpacing.md,
+            AppSpacing.md,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.onSurfaceVariant.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.accent.withValues(alpha: 0.15),
+                      border: Border.all(
+                        color: AppColors.accent.withValues(alpha: 0.4),
+                      ),
+                    ),
+                    child: Center(
+                      child: Text(
+                        email.isNotEmpty ? email[0].toUpperCase() : '?',
+                        style: TextStyle(
+                          color: AppColors.accent,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 20,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          email,
+                          style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
+                                color: AppColors.onBackground,
+                                fontWeight: FontWeight.w500,
+                              ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          role[0].toUpperCase() + role.substring(1),
+                          style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
+                                color: AppColors.accent,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              const Divider(color: Colors.white10),
+              ListTile(
+                leading: Icon(Icons.settings_outlined, color: AppColors.onSurfaceVariant),
+                title: Text(
+                  'Settings',
+                  style: Theme.of(ctx).textTheme.bodyLarge?.copyWith(
+                        color: AppColors.onBackground,
+                      ),
+                ),
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  context.push('/settings');
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.logout, color: AppColors.error),
+                title: Text(
+                  'Sign out',
+                  style: Theme.of(ctx).textTheme.bodyLarge?.copyWith(
+                        color: AppColors.error,
+                      ),
+                ),
+                onTap: () async {
+                  Navigator.of(ctx).pop();
+                  await ref.read(authNotifierProvider.notifier).logout();
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// Quick Actions: 2x2 grid, luxury look, equal square cards.
-class DashboardQuickActions extends StatelessWidget {
+class DashboardQuickActions extends ConsumerWidget {
   const DashboardQuickActions({super.key});
 
+  void _showComingSoon(BuildContext context, String feature) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$feature — coming soon'),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final properties = ref.watch(propertiesNotifierProvider).valueOrNull ?? [];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -316,19 +493,25 @@ class DashboardQuickActions extends StatelessWidget {
             padding: EdgeInsets.zero,
             children: [
               _QuickActionTile(
-                icon: Icons.home_work_outlined,
-                label: 'Properties',
-                onTap: () => context.go('/dashboard'),
+                icon: Icons.qr_code_scanner_outlined,
+                label: 'Scan QR',
+                onTap: () => _showComingSoon(context, 'QR Scanner'),
               ),
               _QuickActionTile(
                 icon: Icons.inventory_2_outlined,
                 label: 'Inventory',
-                onTap: () {},
+                onTap: () {
+                  if (properties.isNotEmpty) {
+                    context.push('/properties/${properties.first.id}');
+                  } else {
+                    _showComingSoon(context, 'Inventory');
+                  }
+                },
               ),
               _QuickActionTile(
                 icon: Icons.picture_as_pdf_outlined,
                 label: 'Reports',
-                onTap: () {},
+                onTap: () => _showComingSoon(context, 'Reports'),
               ),
               _QuickActionTile(
                 icon: Icons.settings_outlined,
@@ -556,6 +739,12 @@ class DashboardPropertyCard extends StatelessWidget {
                           ),
                         ),
                       ],
+                      const SizedBox(width: AppSpacing.sm),
+                      Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        size: 14,
+                        color: Colors.white.withValues(alpha: 0.6),
+                      ),
                     ],
                   ),
                 ),
@@ -583,9 +772,10 @@ class DashboardPropertyCard extends StatelessWidget {
 
 /// Portfolio overview: total valuation + total items + status breakdown.
 class _StatsSection extends StatelessWidget {
-  const _StatsSection({required this.data});
+  const _StatsSection({required this.data, required this.canSeeValues});
 
   final DashboardModel data;
+  final bool canSeeValues;
 
   static final _currency = NumberFormat.currency(symbol: r'$', decimalDigits: 0);
 
@@ -605,15 +795,17 @@ class _StatsSection extends StatelessWidget {
         const SizedBox(height: AppSpacing.sm),
         Row(
           children: [
-            Expanded(
-              child: _StatCard(
-                label: 'Total Value',
-                value: _currency.format(data.totalValuation),
-                icon: Icons.account_balance_outlined,
-                highlight: true,
+            if (canSeeValues) ...[
+              Expanded(
+                child: _StatCard(
+                  label: 'Total Value',
+                  value: _currency.format(data.totalValuation),
+                  icon: Icons.account_balance_outlined,
+                  highlight: true,
+                ),
               ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
+              const SizedBox(width: AppSpacing.sm),
+            ],
             Expanded(
               child: _StatCard(
                 label: 'Total Items',

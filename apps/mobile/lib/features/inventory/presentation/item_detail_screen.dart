@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../users/domain/current_user_jwt.dart';
 import '../../media/data/media_repository_provider.dart';
 import '../data/item_repository_provider.dart';
 import '../data/models/item_model.dart';
@@ -46,6 +47,9 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final role = currentUserRole() ?? 'guest';
+    final canEdit = role == 'owner' || role == 'manager' || role == 'staff';
+    final canSeeValues = role == 'owner' || role == 'auditor';
     final state = ref.watch(itemDetailNotifierProvider);
 
     return Scaffold(
@@ -69,11 +73,12 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                   ),
                 ),
                 actions: [
-                  IconButton(
-                    icon: const Icon(Icons.edit_outlined),
-                    color: AppColors.accent,
-                    onPressed: () => _showEditSheet(context, item),
-                  ),
+                  if (canEdit)
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined),
+                      onPressed: () => _showEditSheet(context, item),
+                      tooltip: 'Edit',
+                    ),
                 ],
               ),
               SliverToBoxAdapter(
@@ -85,11 +90,12 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                       const SizedBox(height: AppSpacing.md),
                       _ItemImageHeader(
                         item: item,
+                        canEdit: canEdit,
                         onAddPhoto: () => _onAddOrChangePhoto(context, item),
                       ),
                       const SizedBox(height: AppSpacing.lg),
-                      _PriceHighlightSection(item: item),
-                      const SizedBox(height: AppSpacing.lg),
+                      if (canSeeValues) _PriceHighlightSection(item: item),
+                      if (canSeeValues) const SizedBox(height: AppSpacing.lg),
                       _SpecsGrid(item: item),
                       if (item.subcategory.isNotEmpty) ...[
                         const SizedBox(height: AppSpacing.lg),
@@ -102,7 +108,8 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                               ),
                         ),
                       ],
-                      if (item.valuation != null &&
+                      if (canSeeValues &&
+                          item.valuation != null &&
                           (item.valuation!.purchasePrice > 0 ||
                               item.valuation!.currentValue > 0 ||
                               item.valuation!.purchaseDate != null)) ...[
@@ -161,18 +168,6 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                       _HistorySectionLabel(),
                       const SizedBox(height: AppSpacing.sm),
                       _HistorySection(historyEntries: []),
-                      const SizedBox(height: AppSpacing.lg),
-                      OutlinedButton(
-                        onPressed: () => _showEditSheet(context, item),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: _kCatalogGold,
-                          side: const BorderSide(color: _kCatalogGold, width: 1),
-                          padding: const EdgeInsets.symmetric(
-                              vertical: AppSpacing.md, horizontal: AppSpacing.lg),
-                          minimumSize: const Size(double.infinity, 48),
-                        ),
-                        child: const Text('Edit Details'),
-                      ),
                       const SizedBox(height: AppSpacing.xxl),
                     ],
                   ),
@@ -202,6 +197,42 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                 child: const Text('Retry'),
               ),
             ],
+          ),
+        ),
+      ),
+      bottomNavigationBar: state.valueOrNull != null && canEdit
+          ? _buildEditFooter(context, state.valueOrNull!)
+          : null,
+    );
+  }
+
+  Widget _buildEditFooter(BuildContext context, ItemModel item) {
+    return Container(
+      color: const Color(0xFF0A0A0F),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.sm,
+        AppSpacing.md,
+        AppSpacing.sm,
+      ),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          width: double.infinity,
+          child: OutlinedButton(
+            onPressed: () => _showEditSheet(context, item),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.accent,
+              side: const BorderSide(color: AppColors.accent),
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+            ),
+            child: Text(
+              'Edit Item',
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    letterSpacing: 1.2,
+                    fontWeight: FontWeight.w500,
+                  ),
+            ),
           ),
         ),
       ),
@@ -329,10 +360,12 @@ class _HistorySectionLabel extends StatelessWidget {
 class _ItemImageHeader extends StatefulWidget {
   const _ItemImageHeader({
     required this.item,
+    required this.canEdit,
     required this.onAddPhoto,
   });
 
   final ItemModel item;
+  final bool canEdit;
   final VoidCallback onAddPhoto;
 
   @override
@@ -406,26 +439,27 @@ class _ItemImageHeaderState extends State<_ItemImageHeader> {
                         )
                   : _gradientPlaceholder(context, item),
             ),
-            Positioned(
-              right: AppSpacing.sm,
-              bottom: AppSpacing.sm,
-              child: Material(
-                color: Colors.black.withValues(alpha: 0.4),
-                borderRadius: BorderRadius.circular(20),
-                child: InkWell(
-                  onTap: widget.onAddPhoto,
+            if (widget.canEdit)
+              Positioned(
+                right: AppSpacing.sm,
+                bottom: AppSpacing.sm,
+                child: Material(
+                  color: Colors.black.withValues(alpha: 0.4),
                   borderRadius: BorderRadius.circular(20),
-                  child: Padding(
-                    padding: const EdgeInsets.all(10),
-                    child: Icon(
-                      Icons.camera_alt_outlined,
-                      size: 22,
-                      color: _kCatalogGold,
+                  child: InkWell(
+                    onTap: widget.onAddPhoto,
+                    borderRadius: BorderRadius.circular(20),
+                    child: Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: Icon(
+                        Icons.camera_alt_outlined,
+                        size: 22,
+                        color: _kCatalogGold,
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
           ],
         ),
         if (multiplePhotos) ...[

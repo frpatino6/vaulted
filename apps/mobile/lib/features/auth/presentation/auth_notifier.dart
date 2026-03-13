@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/router/auth_redirect_notifier_provider.dart';
 import '../../../core/storage/auth_token_store.dart';
 import '../data/auth_repository_provider.dart';
 import '../domain/auth_state.dart';
@@ -44,6 +45,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
       await ref.read(authRepositoryProvider).logout();
     } finally {
       state = const AsyncData(AuthState.initial());
+      ref.read(authRedirectNotifierProvider).notifyAuthLost();
     }
   }
 

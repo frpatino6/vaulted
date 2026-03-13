@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../users/domain/current_user_jwt.dart';
 import '../data/models/address_model.dart';
 import '../data/models/floor_model.dart';
 import '../data/models/property_model.dart';
@@ -34,6 +35,8 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final role = currentUserRole() ?? 'guest';
+    final canManageProperties = role == 'owner' || role == 'manager';
     final state = ref.watch(propertyDetailNotifierProvider);
 
     return Scaffold(
@@ -45,13 +48,35 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
           }
           return _PropertyDetailBody(
             property: property,
+            canManageProperties: canManageProperties,
             onRefresh: () => ref
                 .read(propertyDetailNotifierProvider.notifier)
                 .load(widget.propertyId),
-            onAddFloor: () => _showAddFloor(context),
+            onAddFloor: canManageProperties ? () => _showAddFloor(context) : null,
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 40,
+                height: 40,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppColors.accent,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                'Loading property...',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppColors.onSurfaceVariant,
+                    ),
+              ),
+            ],
+          ),
+        ),
         error: (err, _) => _ErrorView(
           message: PropertyDetailNotifier.message(err),
           onRetry: () => ref
@@ -80,13 +105,15 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
 class _PropertyDetailBody extends StatelessWidget {
   const _PropertyDetailBody({
     required this.property,
+    required this.canManageProperties,
     required this.onRefresh,
-    required this.onAddFloor,
+    this.onAddFloor,
   });
 
   final PropertyModel property;
+  final bool canManageProperties;
   final VoidCallback onRefresh;
-  final VoidCallback onAddFloor;
+  final VoidCallback? onAddFloor;
 
   static const double _appBarExpandedHeight = 280;
 
@@ -218,18 +245,19 @@ class _PropertyDetailBody extends StatelessWidget {
                             fontSize: 10,
                           ),
                     ),
-                    OutlinedButton.icon(
-                      onPressed: onAddFloor,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.accent,
-                        side: const BorderSide(color: AppColors.accent, width: 1),
-                        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    if (onAddFloor != null)
+                      OutlinedButton.icon(
+                        onPressed: onAddFloor,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.accent,
+                          side: const BorderSide(color: AppColors.accent, width: 1),
+                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        icon: const Icon(Icons.add, size: 18),
+                        label: const Text('Add floor'),
                       ),
-                      icon: const Icon(Icons.add, size: 18),
-                      label: const Text('Add floor'),
-                    ),
                   ],
                 ),
               ],
@@ -272,6 +300,7 @@ class _PropertyDetailBody extends StatelessWidget {
                     floor: property.floors[index],
                     propertyId: property.id,
                     surfaceOverlay: surfaceOverlay,
+                    canManageProperties: canManageProperties,
                     onAddRoom: () => _showAddRoom(context, property.floors[index]),
                     onRefresh: onRefresh,
                   ),
@@ -381,6 +410,7 @@ class _FloorTile extends StatelessWidget {
     required this.floor,
     required this.propertyId,
     required this.surfaceOverlay,
+    required this.canManageProperties,
     required this.onAddRoom,
     required this.onRefresh,
   });
@@ -388,6 +418,7 @@ class _FloorTile extends StatelessWidget {
   final FloorModel floor;
   final String propertyId;
   final Color surfaceOverlay;
+  final bool canManageProperties;
   final VoidCallback onAddRoom;
   final VoidCallback onRefresh;
 
@@ -425,7 +456,7 @@ class _FloorTile extends StatelessWidget {
           color: AppColors.onSurfaceVariant.withValues(alpha: 0.4),
         ),
         children: [
-          if (floor.rooms.isEmpty)
+          if (floor.rooms.isEmpty && canManageProperties)
             Padding(
               padding: const EdgeInsets.all(AppSpacing.md),
               child: TextButton.icon(
@@ -436,8 +467,8 @@ class _FloorTile extends StatelessWidget {
                   foregroundColor: AppColors.accent,
                 ),
               ),
-            )
-          else
+            ),
+          if (floor.rooms.isNotEmpty)
             ...floor.rooms.map(
               (room) => Padding(
                 padding: const EdgeInsets.only(left: AppSpacing.lg),

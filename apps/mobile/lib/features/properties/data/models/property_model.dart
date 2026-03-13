@@ -23,6 +23,6 @@ class PropertyModel with _$PropertyModel {
     final id = data['id'] ?? data['_id'];
     if (id == null) throw ArgumentError('Property must have id or _id');
     data['id'] = id is String ? id : id.toString();
-    return _$PropertyModelFromJson(data);
+    return _$$PropertyModelImplFromJson(data);
   }
 }
