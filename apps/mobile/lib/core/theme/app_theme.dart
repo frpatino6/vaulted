@@ -96,6 +96,13 @@ class AppTypography {
         fontWeight: FontWeight.w500,
         letterSpacing: -0.3,
       );
+
+  /// Smaller serif for app bar titles (e.g. Global Search).
+  static TextStyle get titleSerif => GoogleFonts.playfairDisplay(
+        fontSize: 18,
+        fontWeight: FontWeight.w500,
+        letterSpacing: -0.2,
+      );
 }
 
 class AppTheme {

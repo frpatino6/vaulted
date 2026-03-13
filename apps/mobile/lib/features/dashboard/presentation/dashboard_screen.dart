@@ -468,7 +468,6 @@ class DashboardQuickActions extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final properties = ref.watch(propertiesNotifierProvider).valueOrNull ?? [];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -495,18 +494,12 @@ class DashboardQuickActions extends ConsumerWidget {
               _QuickActionTile(
                 icon: Icons.qr_code_scanner_outlined,
                 label: 'Scan QR',
-                onTap: () => _showComingSoon(context, 'QR Scanner'),
+                onTap: () => context.push('/scanner'),
               ),
               _QuickActionTile(
-                icon: Icons.inventory_2_outlined,
-                label: 'Inventory',
-                onTap: () {
-                  if (properties.isNotEmpty) {
-                    context.push('/properties/${properties.first.id}');
-                  } else {
-                    _showComingSoon(context, 'Inventory');
-                  }
-                },
+                icon: Icons.search,
+                label: 'Search',
+                onTap: () => context.push('/search'),
               ),
               _QuickActionTile(
                 icon: Icons.picture_as_pdf_outlined,

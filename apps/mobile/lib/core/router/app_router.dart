@@ -7,7 +7,9 @@ import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/mfa_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/inventory/presentation/item_detail_screen.dart';
+import '../../features/inventory/presentation/qr_scanner_screen.dart';
 import '../../features/inventory/presentation/room_detail_screen.dart';
+import '../../features/inventory/presentation/search_screen.dart';
 import '../../features/properties/presentation/property_detail_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
 import '../../features/users/presentation/users_screen.dart';
@@ -77,6 +79,14 @@ GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
         },
       ),
       GoRoute(
+        path: '/search',
+        builder: (context, state) => const SearchScreen(),
+      ),
+      GoRoute(
+        path: '/scanner',
+        builder: (context, state) => const QrScannerScreen(),
+      ),
+      GoRoute(
         path: '/settings',
         builder: (context, state) => const SettingsScreen(),
       ),
@@ -98,4 +108,3 @@ GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
     ],
   );
 }
-

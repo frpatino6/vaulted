@@ -10,17 +10,23 @@ import 'status_badge.dart';
 /// Catalog-style asset card for room inventory: image, name, brand/category, price tag, refined status.
 /// Height 100; supports slidable parent for Edit/Delete.
 /// [roomNameToStrip] when set, removes " – $roomNameToStrip" from the displayed item name.
+/// [nameMaxLines] allows more text before ellipsis (e.g. 2 for search results).
+/// [valueFontWeight] controls price emphasis (e.g. FontWeight.bold for search).
 class RoomInventoryAssetCard extends StatelessWidget {
   const RoomInventoryAssetCard({
     super.key,
     required this.item,
     this.roomNameToStrip,
     this.canSeeValues = true,
+    this.nameMaxLines = 1,
+    this.valueFontWeight = FontWeight.w500,
   });
 
   final ItemModel item;
   final String? roomNameToStrip;
   final bool canSeeValues;
+  final int nameMaxLines;
+  final FontWeight valueFontWeight;
 
   static final _currencyFormat = NumberFormat.currency(
     locale: 'en_US',
@@ -49,7 +55,7 @@ class RoomInventoryAssetCard extends StatelessWidget {
         onTap: () => context.push('/items/${item.id}'),
         borderRadius: BorderRadius.circular(12),
         child: Container(
-          height: 100,
+          height: nameMaxLines > 1 ? 120 : 100,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
@@ -71,7 +77,7 @@ class RoomInventoryAssetCard extends StatelessWidget {
               const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
                       child: Column(
@@ -85,7 +91,7 @@ class RoomInventoryAssetCard extends StatelessWidget {
                                   fontWeight: FontWeight.w700,
                                   color: AppColors.onBackground,
                                 ),
-                            maxLines: 1,
+                            maxLines: nameMaxLines,
                             overflow: TextOverflow.ellipsis,
                           ),
                           const SizedBox(height: 4),
@@ -105,16 +111,21 @@ class RoomInventoryAssetCard extends StatelessWidget {
                       ),
                     ),
                     if (canSeeValues) ...[
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 12),
                       SizedBox(
-                        width: 80,
-                        child: Text(
-                          valueText,
-                          textAlign: TextAlign.right,
-                          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                                color: valueColor,
-                                fontWeight: FontWeight.w500,
-                              ),
+                        width: 92,
+                        child: Align(
+                          alignment: Alignment.topRight,
+                          child: Text(
+                            valueText,
+                            textAlign: TextAlign.right,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                                  color: valueColor,
+                                  fontWeight: valueFontWeight,
+                                ),
+                          ),
                         ),
                       ),
                     ],

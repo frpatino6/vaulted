@@ -7,7 +7,9 @@ import '../../../shared/widgets/item_photo_picker.dart';
 import '../../media/data/media_repository_provider.dart';
 import '../data/item_repository_provider.dart';
 import '../data/models/item_model.dart';
+import '../domain/item_list_notifier.dart';
 import '../domain/item_detail_notifier.dart';
+import '../../dashboard/domain/dashboard_notifier.dart';
 
 class EditItemSheet extends ConsumerStatefulWidget {
   const EditItemSheet({
@@ -143,6 +145,9 @@ class _EditItemSheetState extends ConsumerState<EditItemSheet> {
         tags: tags,
         photos: allPhotos,
       );
+      await ref.read(itemDetailNotifierProvider.notifier).load(widget.item.id);
+      await ref.read(itemListNotifierProvider.notifier).refresh();
+      await ref.read(dashboardNotifierProvider.notifier).load();
       if (mounted) {
         widget.onUpdated();
         Navigator.of(context).pop(true);

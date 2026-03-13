@@ -21,6 +21,10 @@ class ItemModel with _$ItemModel {
   const factory ItemModel({
     required String id,
     required String name,
+    String? propertyId,
+    String? propertyName,
+    String? roomId,
+    String? roomName,
     required String category,
     @Default('') String subcategory,
     @Default('active') String status,
@@ -30,6 +34,7 @@ class ItemModel with _$ItemModel {
     ItemValuationModel? valuation,
     @Default([]) List<String> documents,
     String? createdAt,
+    String? qrCode,
   }) = _ItemModel;
 
   factory ItemModel.fromJson(Map<String, dynamic> json) =>

@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -163,6 +166,10 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                               )
                               .toList(),
                         ),
+                      ],
+                      if (item.qrCode != null && item.qrCode!.isNotEmpty) ...[
+                        const SizedBox(height: AppSpacing.lg),
+                        _QrSection(qrCode: item.qrCode!),
                       ],
                       const SizedBox(height: AppSpacing.lg),
                       _HistorySectionLabel(),
@@ -353,6 +360,74 @@ class _HistorySectionLabel extends StatelessWidget {
             fontSize: 10,
             fontWeight: FontWeight.w600,
           ),
+    );
+  }
+}
+
+class _QrSection extends StatelessWidget {
+  const _QrSection({required this.qrCode});
+
+  final String qrCode;
+
+  @override
+  Widget build(BuildContext context) {
+    final base64Str = qrCode.split(',').last;
+    final Uint8List bytes = base64Decode(base64Str);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariant,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionLabel('QR CODE'),
+          const SizedBox(height: AppSpacing.md),
+          Center(
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Image.memory(
+                bytes,
+                width: 180,
+                height: 180,
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Center(
+            child: Text(
+              'Scan to identify this item',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.onSurfaceVariant,
+                  ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Center(
+            child: OutlinedButton(
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Share coming soon')),
+                );
+              },
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.onSurfaceVariant,
+                side: BorderSide(
+                  color: AppColors.onSurfaceVariant.withValues(alpha: 0.35),
+                ),
+              ),
+              child: const Text('Share QR'),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

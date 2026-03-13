@@ -262,6 +262,10 @@ ItemModel _$ItemModelFromJson(Map<String, dynamic> json) {
 mixin _$ItemModel {
   String get id => throw _privateConstructorUsedError;
   String get name => throw _privateConstructorUsedError;
+  String? get propertyId => throw _privateConstructorUsedError;
+  String? get propertyName => throw _privateConstructorUsedError;
+  String? get roomId => throw _privateConstructorUsedError;
+  String? get roomName => throw _privateConstructorUsedError;
   String get category => throw _privateConstructorUsedError;
   String get subcategory => throw _privateConstructorUsedError;
   String get status => throw _privateConstructorUsedError;
@@ -271,6 +275,7 @@ mixin _$ItemModel {
   ItemValuationModel? get valuation => throw _privateConstructorUsedError;
   List<String> get documents => throw _privateConstructorUsedError;
   String? get createdAt => throw _privateConstructorUsedError;
+  String? get qrCode => throw _privateConstructorUsedError;
 
   /// Serializes this ItemModel to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -290,6 +295,10 @@ abstract class $ItemModelCopyWith<$Res> {
   $Res call({
     String id,
     String name,
+    String? propertyId,
+    String? propertyName,
+    String? roomId,
+    String? roomName,
     String category,
     String subcategory,
     String status,
@@ -299,6 +308,7 @@ abstract class $ItemModelCopyWith<$Res> {
     ItemValuationModel? valuation,
     List<String> documents,
     String? createdAt,
+    String? qrCode,
   });
 
   $ItemValuationModelCopyWith<$Res>? get valuation;
@@ -321,6 +331,10 @@ class _$ItemModelCopyWithImpl<$Res, $Val extends ItemModel>
   $Res call({
     Object? id = null,
     Object? name = null,
+    Object? propertyId = freezed,
+    Object? propertyName = freezed,
+    Object? roomId = freezed,
+    Object? roomName = freezed,
     Object? category = null,
     Object? subcategory = null,
     Object? status = null,
@@ -330,6 +344,7 @@ class _$ItemModelCopyWithImpl<$Res, $Val extends ItemModel>
     Object? valuation = freezed,
     Object? documents = null,
     Object? createdAt = freezed,
+    Object? qrCode = freezed,
   }) {
     return _then(
       _value.copyWith(
@@ -341,6 +356,22 @@ class _$ItemModelCopyWithImpl<$Res, $Val extends ItemModel>
                 ? _value.name
                 : name // ignore: cast_nullable_to_non_nullable
                       as String,
+            propertyId: freezed == propertyId
+                ? _value.propertyId
+                : propertyId // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            propertyName: freezed == propertyName
+                ? _value.propertyName
+                : propertyName // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            roomId: freezed == roomId
+                ? _value.roomId
+                : roomId // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            roomName: freezed == roomName
+                ? _value.roomName
+                : roomName // ignore: cast_nullable_to_non_nullable
+                      as String?,
             category: null == category
                 ? _value.category
                 : category // ignore: cast_nullable_to_non_nullable
@@ -377,6 +408,10 @@ class _$ItemModelCopyWithImpl<$Res, $Val extends ItemModel>
                 ? _value.createdAt
                 : createdAt // ignore: cast_nullable_to_non_nullable
                       as String?,
+            qrCode: freezed == qrCode
+                ? _value.qrCode
+                : qrCode // ignore: cast_nullable_to_non_nullable
+                      as String?,
           )
           as $Val,
     );
@@ -409,6 +444,10 @@ abstract class _$$ItemModelImplCopyWith<$Res>
   $Res call({
     String id,
     String name,
+    String? propertyId,
+    String? propertyName,
+    String? roomId,
+    String? roomName,
     String category,
     String subcategory,
     String status,
@@ -418,6 +457,7 @@ abstract class _$$ItemModelImplCopyWith<$Res>
     ItemValuationModel? valuation,
     List<String> documents,
     String? createdAt,
+    String? qrCode,
   });
 
   @override
@@ -440,6 +480,10 @@ class __$$ItemModelImplCopyWithImpl<$Res>
   $Res call({
     Object? id = null,
     Object? name = null,
+    Object? propertyId = freezed,
+    Object? propertyName = freezed,
+    Object? roomId = freezed,
+    Object? roomName = freezed,
     Object? category = null,
     Object? subcategory = null,
     Object? status = null,
@@ -449,6 +493,7 @@ class __$$ItemModelImplCopyWithImpl<$Res>
     Object? valuation = freezed,
     Object? documents = null,
     Object? createdAt = freezed,
+    Object? qrCode = freezed,
   }) {
     return _then(
       _$ItemModelImpl(
@@ -460,6 +505,22 @@ class __$$ItemModelImplCopyWithImpl<$Res>
             ? _value.name
             : name // ignore: cast_nullable_to_non_nullable
                   as String,
+        propertyId: freezed == propertyId
+            ? _value.propertyId
+            : propertyId // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        propertyName: freezed == propertyName
+            ? _value.propertyName
+            : propertyName // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        roomId: freezed == roomId
+            ? _value.roomId
+            : roomId // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        roomName: freezed == roomName
+            ? _value.roomName
+            : roomName // ignore: cast_nullable_to_non_nullable
+                  as String?,
         category: null == category
             ? _value.category
             : category // ignore: cast_nullable_to_non_nullable
@@ -496,6 +557,10 @@ class __$$ItemModelImplCopyWithImpl<$Res>
             ? _value.createdAt
             : createdAt // ignore: cast_nullable_to_non_nullable
                   as String?,
+        qrCode: freezed == qrCode
+            ? _value.qrCode
+            : qrCode // ignore: cast_nullable_to_non_nullable
+                  as String?,
       ),
     );
   }
@@ -507,6 +572,10 @@ class _$ItemModelImpl implements _ItemModel {
   const _$ItemModelImpl({
     required this.id,
     required this.name,
+    this.propertyId,
+    this.propertyName,
+    this.roomId,
+    this.roomName,
     required this.category,
     this.subcategory = '',
     this.status = 'active',
@@ -516,6 +585,7 @@ class _$ItemModelImpl implements _ItemModel {
     this.valuation,
     final List<String> documents = const [],
     this.createdAt,
+    this.qrCode,
   }) : _photos = photos,
        _tags = tags,
        _documents = documents;
@@ -527,6 +597,14 @@ class _$ItemModelImpl implements _ItemModel {
   final String id;
   @override
   final String name;
+  @override
+  final String? propertyId;
+  @override
+  final String? propertyName;
+  @override
+  final String? roomId;
+  @override
+  final String? roomName;
   @override
   final String category;
   @override
@@ -568,10 +646,12 @@ class _$ItemModelImpl implements _ItemModel {
 
   @override
   final String? createdAt;
+  @override
+  final String? qrCode;
 
   @override
   String toString() {
-    return 'ItemModel(id: $id, name: $name, category: $category, subcategory: $subcategory, status: $status, photos: $photos, tags: $tags, serialNumber: $serialNumber, valuation: $valuation, documents: $documents, createdAt: $createdAt)';
+    return 'ItemModel(id: $id, name: $name, propertyId: $propertyId, propertyName: $propertyName, roomId: $roomId, roomName: $roomName, category: $category, subcategory: $subcategory, status: $status, photos: $photos, tags: $tags, serialNumber: $serialNumber, valuation: $valuation, documents: $documents, createdAt: $createdAt, qrCode: $qrCode)';
   }
 
   @override
@@ -581,6 +661,13 @@ class _$ItemModelImpl implements _ItemModel {
             other is _$ItemModelImpl &&
             (identical(other.id, id) || other.id == id) &&
             (identical(other.name, name) || other.name == name) &&
+            (identical(other.propertyId, propertyId) ||
+                other.propertyId == propertyId) &&
+            (identical(other.propertyName, propertyName) ||
+                other.propertyName == propertyName) &&
+            (identical(other.roomId, roomId) || other.roomId == roomId) &&
+            (identical(other.roomName, roomName) ||
+                other.roomName == roomName) &&
             (identical(other.category, category) ||
                 other.category == category) &&
             (identical(other.subcategory, subcategory) ||
@@ -597,7 +684,8 @@ class _$ItemModelImpl implements _ItemModel {
               _documents,
             ) &&
             (identical(other.createdAt, createdAt) ||
-                other.createdAt == createdAt));
+                other.createdAt == createdAt) &&
+            (identical(other.qrCode, qrCode) || other.qrCode == qrCode));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -606,6 +694,10 @@ class _$ItemModelImpl implements _ItemModel {
     runtimeType,
     id,
     name,
+    propertyId,
+    propertyName,
+    roomId,
+    roomName,
     category,
     subcategory,
     status,
@@ -615,6 +707,7 @@ class _$ItemModelImpl implements _ItemModel {
     valuation,
     const DeepCollectionEquality().hash(_documents),
     createdAt,
+    qrCode,
   );
 
   /// Create a copy of ItemModel
@@ -635,6 +728,10 @@ abstract class _ItemModel implements ItemModel {
   const factory _ItemModel({
     required final String id,
     required final String name,
+    final String? propertyId,
+    final String? propertyName,
+    final String? roomId,
+    final String? roomName,
     required final String category,
     final String subcategory,
     final String status,
@@ -644,6 +741,7 @@ abstract class _ItemModel implements ItemModel {
     final ItemValuationModel? valuation,
     final List<String> documents,
     final String? createdAt,
+    final String? qrCode,
   }) = _$ItemModelImpl;
 
   factory _ItemModel.fromJson(Map<String, dynamic> json) =
@@ -653,6 +751,14 @@ abstract class _ItemModel implements ItemModel {
   String get id;
   @override
   String get name;
+  @override
+  String? get propertyId;
+  @override
+  String? get propertyName;
+  @override
+  String? get roomId;
+  @override
+  String? get roomName;
   @override
   String get category;
   @override
@@ -671,6 +777,8 @@ abstract class _ItemModel implements ItemModel {
   List<String> get documents;
   @override
   String? get createdAt;
+  @override
+  String? get qrCode;
 
   /// Create a copy of ItemModel
   /// with the given fields replaced by the non-null parameter values.

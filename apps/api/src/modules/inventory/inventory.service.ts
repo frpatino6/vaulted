@@ -8,6 +8,7 @@ import { MoveItemDto } from './dto/move-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
 import { Item, ItemDocument } from './schemas/item.schema';
 import { ItemHistory, ItemHistoryDocument } from './schemas/item-history.schema';
+import { Property, PropertyDocument } from '../properties/schemas/property.schema';
 
 interface InventoryFilters {
   propertyId?: string;
@@ -26,10 +27,14 @@ interface InventorySearchFilters {
 }
 
 export interface InventorySearchResponse {
-  items: Item[];
+  items: Array<ItemDocument & { propertyName: string | null; roomName: string | null }>;
   total: number;
   page: number;
   limit: number;
+}
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 @Injectable()
@@ -39,6 +44,8 @@ export class InventoryService {
     private readonly itemModel: Model<ItemDocument>,
     @InjectModel(ItemHistory.name)
     private readonly itemHistoryModel: Model<ItemHistoryDocument>,
+    @InjectModel(Property.name)
+    private readonly propertyModel: Model<PropertyDocument>,
   ) {}
 
   async create(tenantId: string, userId: string, dto: CreateItemDto): Promise<Item> {
@@ -255,9 +262,16 @@ export class InventoryService {
     const skip = (page - 1) * limit;
 
     const query: Record<string, unknown> = { tenantId };
+    const normalizedQuery = filters.query?.trim();
 
-    if (filters.query) {
-      query.$text = { $search: filters.query };
+    if (normalizedQuery) {
+      const searchRegex = new RegExp(escapeRegex(normalizedQuery), 'i');
+      query.$or = [
+        { name: searchRegex },
+        { subcategory: searchRegex },
+        { tags: searchRegex },
+        { serialNumber: searchRegex },
+      ];
     }
 
     if (filters.category) {
@@ -274,19 +288,46 @@ export class InventoryService {
 
     const itemQuery = this.itemModel.find(query);
 
-    if (filters.query) {
-      itemQuery.sort({ score: { $meta: 'textScore' }, createdAt: -1 });
-    } else {
-      itemQuery.sort({ createdAt: -1 });
-    }
+    itemQuery.sort({ createdAt: -1 });
 
     const [items, total] = await Promise.all([
       itemQuery.skip(skip).limit(limit).exec(),
       this.itemModel.countDocuments(query).exec(),
     ]);
 
+    const propertyIds = [...new Set(items.map((item) => String(item.propertyId)))];
+
+    const properties = await this.propertyModel
+      .find({ _id: { $in: propertyIds }, tenantId })
+      .select('_id name floors')
+      .exec();
+
+    const propertyMap = new Map(properties.map((property) => [String(property._id), property]));
+
+    const enrichedItems = items.map((item) => {
+      const property = propertyMap.get(String(item.propertyId));
+      const propertyName = property?.name ?? null;
+
+      let roomName: string | null = null;
+      if (property && item.roomId) {
+        for (const floor of property.floors ?? []) {
+          const room = floor.rooms?.find((candidate) => candidate.roomId === String(item.roomId));
+          if (room) {
+            roomName = room.name;
+            break;
+          }
+        }
+      }
+
+      return {
+        ...item.toObject(),
+        propertyName,
+        roomName,
+      } as ItemDocument & { propertyName: string | null; roomName: string | null };
+    });
+
     return {
-      items,
+      items: enrichedItems,
       total,
       page,
       limit,

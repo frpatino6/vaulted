@@ -31,6 +31,10 @@ _$ItemModelImpl _$$ItemModelImplFromJson(
 ) => _$ItemModelImpl(
   id: json['id'] as String,
   name: json['name'] as String,
+  propertyId: json['propertyId'] as String?,
+  propertyName: json['propertyName'] as String?,
+  roomId: json['roomId'] as String?,
+  roomName: json['roomName'] as String?,
   category: json['category'] as String,
   subcategory: json['subcategory'] as String? ?? '',
   status: json['status'] as String? ?? 'active',
@@ -48,12 +52,17 @@ _$ItemModelImpl _$$ItemModelImplFromJson(
       (json['documents'] as List<dynamic>?)?.map((e) => e as String).toList() ??
       const [],
   createdAt: json['createdAt'] as String?,
+  qrCode: json['qrCode'] as String?,
 );
 
 Map<String, dynamic> _$$ItemModelImplToJson(_$ItemModelImpl instance) =>
     <String, dynamic>{
       'id': instance.id,
       'name': instance.name,
+      'propertyId': instance.propertyId,
+      'propertyName': instance.propertyName,
+      'roomId': instance.roomId,
+      'roomName': instance.roomName,
       'category': instance.category,
       'subcategory': instance.subcategory,
       'status': instance.status,
@@ -63,4 +72,5 @@ Map<String, dynamic> _$$ItemModelImplToJson(_$ItemModelImpl instance) =>
       'valuation': instance.valuation,
       'documents': instance.documents,
       'createdAt': instance.createdAt,
+      'qrCode': instance.qrCode,
     };

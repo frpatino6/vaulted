@@ -1,7 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../media/data/media_repository_provider.dart';
 import '../domain/properties_notifier.dart';
 
 /// Bottom sheet to create a new property.
@@ -20,6 +24,8 @@ class _AddPropertySheetState extends ConsumerState<AddPropertySheet> {
   final _stateController = TextEditingController();
   final _zipController = TextEditingController();
 
+  XFile? _pendingPhoto;
+  bool _uploadingPhoto = false;
   String _type = 'primary';
   bool _submitting = false;
 
@@ -37,6 +43,15 @@ class _AddPropertySheetState extends ConsumerState<AddPropertySheet> {
     if (!_formKey.currentState!.validate() || _submitting) return;
     setState(() => _submitting = true);
     try {
+      var uploadedPhotos = const <String>[];
+      if (_pendingPhoto != null) {
+        setState(() => _uploadingPhoto = true);
+        final cdnUrl = await ref
+            .read(mediaRepositoryProvider)
+            .uploadPhoto(_pendingPhoto!);
+        uploadedPhotos = [cdnUrl];
+      }
+
       await ref
           .read(propertiesNotifierProvider.notifier)
           .create(
@@ -46,6 +61,7 @@ class _AddPropertySheetState extends ConsumerState<AddPropertySheet> {
             city: _cityController.text.trim(),
             state: _stateController.text.trim(),
             zip: _zipController.text.trim(),
+            photos: uploadedPhotos,
           );
       if (mounted) {
         Navigator.of(context).pop(true);
@@ -63,8 +79,114 @@ class _AddPropertySheetState extends ConsumerState<AddPropertySheet> {
         );
       }
     } finally {
-      if (mounted) setState(() => _submitting = false);
+      if (mounted) {
+        setState(() {
+          _submitting = false;
+          _uploadingPhoto = false;
+        });
+      }
     }
+  }
+
+  Future<void> _pickPhoto() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: const Text('Camera'),
+              onTap: () => Navigator.of(ctx).pop(ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Gallery'),
+              onTap: () => Navigator.of(ctx).pop(ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null || !mounted) return;
+
+    final file = await ImagePicker().pickImage(
+      source: source,
+      imageQuality: 85,
+    );
+    if (file == null || !mounted) return;
+
+    setState(() => _pendingPhoto = file);
+  }
+
+  Widget _buildCoverPhotoPicker() {
+    final photo = _pendingPhoto;
+
+    return GestureDetector(
+      onTap: (_submitting || _uploadingPhoto) ? null : _pickPhoto,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: SizedBox(
+          height: 160,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (photo == null)
+                Container(
+                  color: AppColors.surface,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.camera_alt_outlined,
+                        color: AppColors.onSurfaceVariant.withValues(
+                          alpha: 0.8,
+                        ),
+                        size: 28,
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        'Add cover photo',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              color: AppColors.onSurfaceVariant,
+                              fontWeight: FontWeight.w500,
+                            ),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                Image.file(File(photo.path), fit: BoxFit.cover),
+              if (photo != null)
+                Positioned(
+                  right: AppSpacing.sm,
+                  bottom: AppSpacing.sm,
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white30),
+                    ),
+                    child: const Icon(
+                      Icons.camera_alt_outlined,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                  ),
+                ),
+              if (_uploadingPhoto)
+                Container(
+                  color: Colors.black38,
+                  child: const Center(child: CircularProgressIndicator()),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -107,10 +229,12 @@ class _AddPropertySheetState extends ConsumerState<AddPropertySheet> {
                   Text(
                     'Add Property',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.onBackground,
-                        ),
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.onBackground,
+                    ),
                   ),
+                  const SizedBox(height: AppSpacing.lg),
+                  _buildCoverPhotoPicker(),
                   const SizedBox(height: AppSpacing.lg),
                   TextFormField(
                     controller: _nameController,
@@ -127,8 +251,14 @@ class _AddPropertySheetState extends ConsumerState<AddPropertySheet> {
                     initialValue: _type,
                     decoration: const InputDecoration(labelText: 'Type'),
                     items: const [
-                      DropdownMenuItem(value: 'primary', child: Text('Primary')),
-                      DropdownMenuItem(value: 'vacation', child: Text('Vacation')),
+                      DropdownMenuItem(
+                        value: 'primary',
+                        child: Text('Primary'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'vacation',
+                        child: Text('Vacation'),
+                      ),
                       DropdownMenuItem(value: 'rental', child: Text('Rental')),
                     ],
                     onChanged: (v) => setState(() => _type = v ?? 'primary'),
@@ -156,8 +286,9 @@ class _AddPropertySheetState extends ConsumerState<AddPropertySheet> {
                             hintText: 'City',
                           ),
                           enableInteractiveSelection: false,
-                          validator: (v) =>
-                              (v == null || v.trim().isEmpty) ? 'Required' : null,
+                          validator: (v) => (v == null || v.trim().isEmpty)
+                              ? 'Required'
+                              : null,
                         ),
                       ),
                       const SizedBox(width: AppSpacing.md),
@@ -169,8 +300,9 @@ class _AddPropertySheetState extends ConsumerState<AddPropertySheet> {
                             hintText: 'State',
                           ),
                           enableInteractiveSelection: false,
-                          validator: (v) =>
-                              (v == null || v.trim().isEmpty) ? 'Required' : null,
+                          validator: (v) => (v == null || v.trim().isEmpty)
+                              ? 'Required'
+                              : null,
                         ),
                       ),
                     ],
@@ -191,7 +323,9 @@ class _AddPropertySheetState extends ConsumerState<AddPropertySheet> {
                   SizedBox(
                     height: 52,
                     child: FilledButton(
-                      onPressed: _submitting ? null : _submit,
+                      onPressed: (_submitting || _uploadingPhoto)
+                          ? null
+                          : _submit,
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.accent,
                         foregroundColor: AppColors.background,
@@ -200,7 +334,7 @@ class _AddPropertySheetState extends ConsumerState<AddPropertySheet> {
                           borderRadius: BorderRadius.circular(14),
                         ),
                       ),
-                      child: _submitting
+                      child: (_submitting || _uploadingPhoto)
                           ? const SizedBox(
                               height: 20,
                               width: 20,

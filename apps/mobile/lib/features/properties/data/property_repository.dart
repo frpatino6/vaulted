@@ -16,6 +16,7 @@ class PropertyRepository {
     required String state,
     required String zip,
     String country = 'USA',
+    List<String> photos = const [],
   }) => _remote.createProperty({
     'name': name,
     'type': type,
@@ -26,20 +27,25 @@ class PropertyRepository {
       'zip': zip,
       'country': country,
     },
+    'photos': photos,
   });
 
   Future<PropertyModel> getProperty(String id) => _remote.getProperty(id);
 
-  Future<PropertyModel> updateProperty(
-    String id, {
+  Future<PropertyModel> updateProperty({
+    required String id,
     String? name,
     String? type,
     Map<String, dynamic>? address,
-  }) => _remote.updateProperty(id, {
-    'name': ?name,
-    'type': ?type,
-    'address': ?address,
-  });
+    List<String>? photos,
+  }) {
+    final body = <String, dynamic>{};
+    if (name != null) body['name'] = name;
+    if (type != null) body['type'] = type;
+    if (address != null) body['address'] = address;
+    if (photos != null) body['photos'] = photos;
+    return _remote.updateProperty(id, body);
+  }
 
   Future<void> deleteProperty(String id) => _remote.deleteProperty(id);
 

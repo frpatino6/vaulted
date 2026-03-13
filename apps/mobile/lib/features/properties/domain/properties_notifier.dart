@@ -30,9 +30,12 @@ class PropertiesNotifier extends AsyncNotifier<List<PropertyModel>> {
     required String state,
     required String zip,
     String country = 'USA',
+    List<String> photos = const [],
   }) async {
     try {
-      final property = await ref.read(propertyRepositoryProvider).createProperty(
+      final property = await ref
+          .read(propertyRepositoryProvider)
+          .createProperty(
             name: name,
             type: type,
             street: street,
@@ -40,12 +43,20 @@ class PropertiesNotifier extends AsyncNotifier<List<PropertyModel>> {
             state: state,
             zip: zip,
             country: country,
+            photos: photos,
           );
       await load();
       return property;
     } catch (_) {
       rethrow;
     }
+  }
+
+  Future<void> updatePhotos(String propertyId, List<String> photos) async {
+    await ref
+        .read(propertyRepositoryProvider)
+        .updateProperty(id: propertyId, photos: photos);
+    await load();
   }
 
   Future<void> delete(String id) async {
@@ -67,5 +78,5 @@ class PropertiesNotifier extends AsyncNotifier<List<PropertyModel>> {
 
 final propertiesNotifierProvider =
     AsyncNotifierProvider<PropertiesNotifier, List<PropertyModel>>(
-  PropertiesNotifier.new,
-);
+      PropertiesNotifier.new,
+    );

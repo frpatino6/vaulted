@@ -12,8 +12,7 @@ _$PropertyModelImpl _$$PropertyModelImplFromJson(Map<String, dynamic> json) =>
       tenantId: json['tenantId'] as String,
       name: json['name'] as String,
       type: json['type'] as String,
-      address:
-          AddressModel.fromJson(json['address'] as Map<String, dynamic>),
+      address: AddressModel.fromJson(json['address'] as Map<String, dynamic>),
       floors: (json['floors'] as List<dynamic>?)
               ?.map((e) => FloorModel.fromJson(e as Map<String, dynamic>))
               .toList() ??
