@@ -16,6 +16,7 @@ import { PropertiesModule } from './modules/properties/properties.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { MediaModule } from './modules/media/media.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { AiModule } from './modules/ai/ai.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { MfaVerifiedGuard } from './common/guards/mfa-verified.guard';
@@ -68,6 +69,7 @@ import { AuditLog } from './modules/audit/entities/audit-log.entity';
     UsersModule,
     AuthModule,
     PropertiesModule,
+    AiModule,
     InventoryModule,
     MediaModule,
     DashboardModule,

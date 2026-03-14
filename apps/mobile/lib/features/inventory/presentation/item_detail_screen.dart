@@ -9,6 +9,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../users/domain/current_user_jwt.dart';
+import '../../wardrobe/data/models/wardrobe_attributes.dart';
 import '../../media/data/media_repository_provider.dart';
 import '../data/item_repository_provider.dart';
 import '../data/models/item_model.dart';
@@ -86,7 +87,9 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
               ),
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -100,15 +103,18 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                       if (canSeeValues) _PriceHighlightSection(item: item),
                       if (canSeeValues) const SizedBox(height: AppSpacing.lg),
                       _SpecsGrid(item: item),
+                      if (item.isWardrobe && item.hasWardrobeDetails) ...[
+                        const SizedBox(height: AppSpacing.lg),
+                        _WardrobeDetailSection(attrs: item.wardrobeAttributes),
+                      ],
                       if (item.subcategory.isNotEmpty) ...[
                         const SizedBox(height: AppSpacing.lg),
                         _SectionLabel('SUBCATEGORY'),
                         const SizedBox(height: AppSpacing.sm),
                         Text(
                           item.subcategory,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: AppColors.onBackground,
-                              ),
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(color: AppColors.onBackground),
                         ),
                       ],
                       if (canSeeValues &&
@@ -128,8 +134,11 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                         const SizedBox(height: AppSpacing.sm),
                         Text(
                           _formatCreatedAt(item.createdAt!),
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: AppColors.onSurfaceVariant.withValues(alpha: 0.8),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: AppColors.onSurfaceVariant.withValues(
+                                  alpha: 0.8,
+                                ),
                               ),
                         ),
                       ],
@@ -139,8 +148,11 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                         const SizedBox(height: AppSpacing.sm),
                         Text(
                           '${item.documents.length} document(s)',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: AppColors.onSurfaceVariant.withValues(alpha: 0.8),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: AppColors.onSurfaceVariant.withValues(
+                                  alpha: 0.8,
+                                ),
                               ),
                         ),
                       ],
@@ -155,13 +167,15 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                               .map(
                                 (t) => Chip(
                                   label: Text(t),
-                                  backgroundColor:
-                                      AppColors.surfaceVariant.withValues(alpha: 0.6),
+                                  backgroundColor: AppColors.surfaceVariant
+                                      .withValues(alpha: 0.6),
                                   side: BorderSide.none,
-                                  labelStyle:
-                                      Theme.of(context).textTheme.bodySmall?.copyWith(
-                                            color: AppColors.onSurfaceVariant,
-                                          ),
+                                  labelStyle: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(
+                                        color: AppColors.onSurfaceVariant,
+                                      ),
                                 ),
                               )
                               .toList(),
@@ -188,19 +202,24 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.error_outline, size: 48, color: AppColors.onSurfaceVariant),
+              Icon(
+                Icons.error_outline,
+                size: 48,
+                color: AppColors.onSurfaceVariant,
+              ),
               const SizedBox(height: AppSpacing.md),
               Text(
                 ItemDetailNotifier.message(err),
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.onBackground,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: AppColors.onBackground),
               ),
               const SizedBox(height: AppSpacing.lg),
               FilledButton.tonal(
-                onPressed: () =>
-                    ref.read(itemDetailNotifierProvider.notifier).load(widget.itemId),
+                onPressed: () => ref
+                    .read(itemDetailNotifierProvider.notifier)
+                    .load(widget.itemId),
                 child: const Text('Retry'),
               ),
             ],
@@ -236,9 +255,9 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
             child: Text(
               'Edit Item',
               style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    letterSpacing: 1.2,
-                    fontWeight: FontWeight.w500,
-                  ),
+                letterSpacing: 1.2,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
         ),
@@ -265,19 +284,31 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
               Text(
                 'Add photo',
                 style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
-                      color: AppColors.onBackground,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  color: AppColors.onBackground,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               const SizedBox(height: AppSpacing.lg),
               ListTile(
-                leading: Icon(Icons.camera_alt_outlined, color: AppColors.accent),
-                title: const Text('Camera', style: TextStyle(color: AppColors.onBackground)),
+                leading: Icon(
+                  Icons.camera_alt_outlined,
+                  color: AppColors.accent,
+                ),
+                title: const Text(
+                  'Camera',
+                  style: TextStyle(color: AppColors.onBackground),
+                ),
                 onTap: () => Navigator.of(ctx).pop(ImageSource.camera),
               ),
               ListTile(
-                leading: Icon(Icons.photo_library_outlined, color: AppColors.accent),
-                title: const Text('Gallery', style: TextStyle(color: AppColors.onBackground)),
+                leading: Icon(
+                  Icons.photo_library_outlined,
+                  color: AppColors.accent,
+                ),
+                title: const Text(
+                  'Gallery',
+                  style: TextStyle(color: AppColors.onBackground),
+                ),
                 onTap: () => Navigator.of(ctx).pop(ImageSource.gallery),
               ),
             ],
@@ -300,9 +331,9 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
       if (!context.mounted) return;
       await ref.read(itemDetailNotifierProvider.notifier).load(item.id);
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Photo added')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Photo added')));
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -339,10 +370,10 @@ class _SectionLabel extends StatelessWidget {
     return Text(
       label,
       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            color: AppColors.accent,
-            letterSpacing: 2.0,
-            fontSize: 10,
-          ),
+        color: AppColors.accent,
+        letterSpacing: 2.0,
+        fontSize: 10,
+      ),
     );
   }
 }
@@ -355,11 +386,11 @@ class _HistorySectionLabel extends StatelessWidget {
     return Text(
       'HISTORY',
       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            color: _kCatalogGold,
-            letterSpacing: 2.0,
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
-          ),
+        color: _kCatalogGold,
+        letterSpacing: 2.0,
+        fontSize: 10,
+        fontWeight: FontWeight.w600,
+      ),
     );
   }
 }
@@ -393,11 +424,7 @@ class _QrSection extends StatelessWidget {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: Image.memory(
-                bytes,
-                width: 180,
-                height: 180,
-              ),
+              child: Image.memory(bytes, width: 180, height: 180),
             ),
           ),
           const SizedBox(height: AppSpacing.md),
@@ -405,8 +432,8 @@ class _QrSection extends StatelessWidget {
             child: Text(
               'Scan to identify this item',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.onSurfaceVariant,
-                  ),
+                color: AppColors.onSurfaceVariant,
+              ),
             ),
           ),
           const SizedBox(height: AppSpacing.md),
@@ -428,6 +455,186 @@ class _QrSection extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _WardrobeDetailSection extends StatelessWidget {
+  const _WardrobeDetailSection({required this.attrs});
+
+  final WardrobeAttributes attrs;
+
+  static const Map<String, String> _typeLabels = {
+    'clothing': 'Clothing',
+    'footwear': 'Footwear',
+    'accessories': 'Accessories',
+    'jewelry_watches': 'Jewelry & Watches',
+  };
+
+  static const Map<String, String> _seasonLabels = {
+    'spring_summer': 'Spring/Summer',
+    'fall_winter': 'Fall/Winter',
+    'all_season': 'All Season',
+  };
+
+  static const Map<String, String> _cleaningLabels = {
+    'clean': 'Clean ✓',
+    'needs_cleaning': 'Needs Cleaning',
+    'at_dry_cleaner': 'At Dry Cleaner',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final hasAny =
+        attrs.type != null ||
+        attrs.brand != null ||
+        attrs.size != null ||
+        attrs.color != null ||
+        attrs.material != null ||
+        attrs.season != null ||
+        attrs.cleaningStatus != null;
+    if (!hasAny) return const SizedBox.shrink();
+
+    final rows = <Widget>[
+      if (attrs.type != null)
+        _WardrobeRow(
+          icon: Icons.checkroom_outlined,
+          label: 'Type',
+          value: _typeLabels[attrs.type] ?? attrs.type!,
+        ),
+      if (attrs.brand != null)
+        _WardrobeRow(
+          icon: Icons.label_outline,
+          label: 'Brand',
+          value: attrs.brand!,
+        ),
+      if (attrs.size != null)
+        _WardrobeRow(
+          icon: Icons.straighten_outlined,
+          label: 'Size',
+          value: attrs.size!,
+        ),
+      if (attrs.color != null)
+        _WardrobeRow(
+          icon: Icons.palette_outlined,
+          label: 'Color',
+          value: attrs.color!,
+        ),
+      if (attrs.material != null)
+        _WardrobeRow(
+          icon: Icons.texture_outlined,
+          label: 'Material',
+          value: attrs.material!,
+        ),
+      if (attrs.season != null)
+        _WardrobeRow(
+          icon: Icons.wb_sunny_outlined,
+          label: 'Season',
+          value: _seasonLabels[attrs.season] ?? attrs.season!,
+        ),
+      if (attrs.cleaningStatus != null)
+        _WardrobeRow(
+          icon: Icons.local_laundry_service_outlined,
+          label: 'Cleaning',
+          value: _cleaningLabels[attrs.cleaningStatus] ?? attrs.cleaningStatus!,
+          trailing: _CleaningStatusChip(status: attrs.cleaningStatus!),
+        ),
+    ];
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariant,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white10, width: 0.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionLabel('WARDROBE DETAILS'),
+          const SizedBox(height: AppSpacing.md),
+          ...rows,
+        ],
+      ),
+    );
+  }
+}
+
+class _WardrobeRow extends StatelessWidget {
+  const _WardrobeRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.trailing,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: AppColors.accent),
+          const SizedBox(width: AppSpacing.sm),
+          Text(
+            '$label:',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: AppColors.onSurfaceVariant.withValues(alpha: 0.8),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              value,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: AppColors.onBackground),
+            ),
+          ),
+          // ignore: use_null_aware_elements
+          if (trailing case final trailing?) trailing,
+        ],
+      ),
+    );
+  }
+}
+
+class _CleaningStatusChip extends StatelessWidget {
+  const _CleaningStatusChip({required this.status});
+
+  final String status;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color color;
+    switch (status) {
+      case 'clean':
+        color = Colors.green;
+        break;
+      case 'needs_cleaning':
+        color = Colors.amber;
+        break;
+      case 'at_dry_cleaner':
+        color = Colors.blue;
+        break;
+      default:
+        color = AppColors.onSurfaceVariant;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.6), width: 0.5),
+      ),
+      child: Text('●', style: TextStyle(color: color, fontSize: 10)),
     );
   }
 }
@@ -488,30 +695,34 @@ class _ItemImageHeaderState extends State<_ItemImageHeader> {
               borderRadius: BorderRadius.circular(16),
               child: hasPhoto
                   ? multiplePhotos
-                      ? SizedBox(
-                          height: 220,
-                          width: double.infinity,
-                          child: PageView.builder(
-                            controller: _pageController,
-                            itemCount: item.photos.length,
-                            itemBuilder: (_, index) => CachedNetworkImage(
-                              imageUrl: item.photos[index],
-                              height: 220,
-                              width: double.infinity,
-                              fit: BoxFit.cover,
-                              placeholder: (_, _) => _gradientPlaceholder(context, item),
-                              errorWidget: (_, _, _) => _gradientPlaceholder(context, item),
+                        ? SizedBox(
+                            height: 220,
+                            width: double.infinity,
+                            child: PageView.builder(
+                              controller: _pageController,
+                              itemCount: item.photos.length,
+                              itemBuilder: (_, index) => CachedNetworkImage(
+                                imageUrl: item.photos[index],
+                                height: 220,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                                placeholder: (_, _) =>
+                                    _gradientPlaceholder(context, item),
+                                errorWidget: (_, _, _) =>
+                                    _gradientPlaceholder(context, item),
+                              ),
                             ),
-                          ),
-                        )
-                      : CachedNetworkImage(
-                          imageUrl: item.photos.first,
-                          height: 220,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                          placeholder: (_, _) => _gradientPlaceholder(context, item),
-                          errorWidget: (_, _, _) => _gradientPlaceholder(context, item),
-                        )
+                          )
+                        : CachedNetworkImage(
+                            imageUrl: item.photos.first,
+                            height: 220,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            placeholder: (_, _) =>
+                                _gradientPlaceholder(context, item),
+                            errorWidget: (_, _, _) =>
+                                _gradientPlaceholder(context, item),
+                          )
                   : _gradientPlaceholder(context, item),
             ),
             if (widget.canEdit)
@@ -638,7 +849,10 @@ class _PriceHighlightSection extends StatelessWidget {
 
   final ItemModel item;
 
-  static final _currencyFormat = NumberFormat.currency(symbol: r'$', decimalDigits: 0);
+  static final _currencyFormat = NumberFormat.currency(
+    symbol: r'$',
+    decimalDigits: 0,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -663,9 +877,9 @@ class _PriceHighlightSection extends StatelessWidget {
             Text(
               'Estimated Value',
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: AppColors.onBackground.withValues(alpha: 0.5),
-                    fontSize: 11,
-                  ),
+                color: AppColors.onBackground.withValues(alpha: 0.5),
+                fontSize: 11,
+              ),
             ),
           ],
         ),
@@ -679,7 +893,10 @@ class _ValuationDetailsSection extends StatelessWidget {
 
   final ItemModel item;
 
-  static final _currencyFormat = NumberFormat.currency(symbol: r'$', decimalDigits: 0);
+  static final _currencyFormat = NumberFormat.currency(
+    symbol: r'$',
+    decimalDigits: 0,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -696,15 +913,15 @@ class _ValuationDetailsSection extends StatelessWidget {
               Text(
                 'Purchase price',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.onSurfaceVariant.withValues(alpha: 0.8),
-                    ),
+                  color: AppColors.onSurfaceVariant.withValues(alpha: 0.8),
+                ),
               ),
               Text(
                 '${_currencyFormat.format(v.purchasePrice)} ${v.currency}',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.onBackground,
-                      fontWeight: FontWeight.w500,
-                    ),
+                  color: AppColors.onBackground,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ],
           ),
@@ -721,15 +938,15 @@ class _ValuationDetailsSection extends StatelessWidget {
               Text(
                 'Current value',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.onSurfaceVariant.withValues(alpha: 0.8),
-                    ),
+                  color: AppColors.onSurfaceVariant.withValues(alpha: 0.8),
+                ),
               ),
               Text(
                 '${_currencyFormat.format(v.currentValue)} ${v.currency}',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.onBackground,
-                      fontWeight: FontWeight.w500,
-                    ),
+                  color: AppColors.onBackground,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ],
           ),
@@ -746,14 +963,14 @@ class _ValuationDetailsSection extends StatelessWidget {
               Text(
                 'Purchase date',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.onSurfaceVariant.withValues(alpha: 0.8),
-                    ),
+                  color: AppColors.onSurfaceVariant.withValues(alpha: 0.8),
+                ),
               ),
               Text(
                 DateFormat.yMMMd().format(v.purchaseDate!),
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.onBackground,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: AppColors.onBackground),
               ),
             ],
           ),
@@ -783,11 +1000,11 @@ class _SpecsGrid extends StatelessWidget {
 
   static TextStyle _labelStyle(BuildContext context) {
     return Theme.of(context).textTheme.labelSmall!.copyWith(
-          color: Colors.white54,
-          fontSize: 10,
-          letterSpacing: 1.2,
-          fontWeight: FontWeight.w600,
-        );
+      color: Colors.white54,
+      fontSize: 10,
+      letterSpacing: 1.2,
+      fontWeight: FontWeight.w600,
+    );
   }
 
   @override
@@ -821,7 +1038,9 @@ class _SpecsGrid extends StatelessWidget {
           ),
           _SpecCell(
             label: 'SERIAL NUMBER',
-            value: item.serialNumber?.isNotEmpty == true ? item.serialNumber! : '—',
+            value: item.serialNumber?.isNotEmpty == true
+                ? item.serialNumber!
+                : '—',
             labelStyle: _labelStyle(context),
           ),
         ],
@@ -856,9 +1075,9 @@ class _SpecCell extends StatelessWidget {
         else
           Text(
             value ?? '—',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppColors.onBackground,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: AppColors.onBackground),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
@@ -880,10 +1099,10 @@ class _HistorySection extends StatelessWidget {
         child: Text(
           'No movement recorded yet.',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: AppColors.onSurfaceVariant.withValues(alpha: 0.5),
-                fontStyle: FontStyle.italic,
-                fontSize: 13,
-              ),
+            color: AppColors.onSurfaceVariant.withValues(alpha: 0.5),
+            fontStyle: FontStyle.italic,
+            fontSize: 13,
+          ),
         ),
       );
     }
@@ -944,17 +1163,14 @@ class _HistoryTimeline extends StatelessWidget {
                       children: [
                         Text(
                           entries[i].date,
-                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                color: Colors.white54,
-                                fontSize: 10,
-                              ),
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(color: Colors.white54, fontSize: 10),
                         ),
                         const SizedBox(height: 2),
                         Text(
                           entries[i].label,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: AppColors.onBackground,
-                              ),
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(color: AppColors.onBackground),
                         ),
                       ],
                     ),

@@ -4,7 +4,6 @@ import 'address_model.dart';
 import 'floor_model.dart';
 
 part 'property_model.freezed.dart';
-part 'property_model.g.dart';
 
 @freezed
 class PropertyModel with _$PropertyModel {
@@ -23,6 +22,30 @@ class PropertyModel with _$PropertyModel {
     final id = data['id'] ?? data['_id'];
     if (id == null) throw ArgumentError('Property must have id or _id');
     data['id'] = id is String ? id : id.toString();
-    return _$$PropertyModelImplFromJson(data);
+
+    final floorsJson = data['floors'];
+    final photosJson = data['photos'];
+
+    return PropertyModel(
+      id: data['id'] as String,
+      tenantId: data['tenantId'] as String? ?? '',
+      name: data['name'] as String? ?? '',
+      type: data['type'] as String? ?? '',
+      address: AddressModel.fromJson(
+        Map<String, dynamic>.from(data['address'] as Map? ?? {}),
+      ),
+      floors: floorsJson is List
+          ? floorsJson
+                .whereType<Map>()
+                .map(
+                  (floor) =>
+                      FloorModel.fromJson(Map<String, dynamic>.from(floor)),
+                )
+                .toList()
+          : const <FloorModel>[],
+      photos: photosJson is List
+          ? photosJson.whereType<String>().toList()
+          : const <String>[],
+    );
   }
 }

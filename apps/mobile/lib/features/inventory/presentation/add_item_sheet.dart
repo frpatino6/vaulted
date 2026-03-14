@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/item_photo_picker.dart';
 import '../../media/data/media_repository_provider.dart';
+import '../../wardrobe/data/models/wardrobe_attributes.dart';
 import '../data/item_repository_provider.dart';
 import '../domain/item_list_notifier.dart';
 
@@ -44,6 +45,8 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
   final _tagsController = TextEditingController();
 
   final List<XFile> _pendingPhotos = [];
+  final GlobalKey<_WardrobeFieldsSectionState> _wardrobeSectionKey =
+      GlobalKey<_WardrobeFieldsSectionState>();
   bool _uploadingPhotos = false;
 
   String _category = 'furniture';
@@ -90,7 +93,13 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
       final purchasePrice = _parseInt(_purchasePriceController.text) ?? 0;
       final currentValue = _parseInt(_currentValueController.text) ?? 0;
       final tagsStr = _tagsController.text.trim();
-      final tags = tagsStr.isEmpty ? <String>[] : tagsStr.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+      final tags = tagsStr.isEmpty
+          ? <String>[]
+          : tagsStr
+                .split(',')
+                .map((e) => e.trim())
+                .where((e) => e.isNotEmpty)
+                .toList();
 
       List<String> uploadedUrls = [];
       if (_pendingPhotos.isNotEmpty) {
@@ -106,7 +115,10 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
         }
         if (mounted) setState(() => _uploadingPhotos = false);
         if (mounted && failedCount > 0) {
-          _showSnackBar('$failedCount photo(s) could not be uploaded', isError: true);
+          _showSnackBar(
+            '$failedCount photo(s) could not be uploaded',
+            isError: true,
+          );
         }
       }
 
@@ -116,11 +128,16 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
         name: name,
         category: _category,
         subcategory: _subcategoryController.text.trim(),
-        serialNumber: _serialNumberController.text.trim().isEmpty ? null : _serialNumberController.text.trim(),
+        serialNumber: _serialNumberController.text.trim().isEmpty
+            ? null
+            : _serialNumberController.text.trim(),
         purchasePrice: purchasePrice,
         currentValue: currentValue,
         tags: tags,
         photos: uploadedUrls,
+        attributes: _category == 'wardrobe'
+            ? _wardrobeSectionKey.currentState?.value.toMap()
+            : null,
       );
       if (mounted) {
         widget.onAdded();
@@ -159,156 +176,168 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
               bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.md,
             ),
             child: ListView(
-          controller: scrollController,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.onSurfaceVariant,
-                  borderRadius: BorderRadius.circular(2),
+              controller: scrollController,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.onSurfaceVariant,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            Text(
-              'Add item',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                const SizedBox(height: AppSpacing.lg),
+                Text(
+                  'Add item',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w600,
                     color: AppColors.onBackground,
                   ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            SizedBox(
-              height: 100,
-              child: ItemPhotoPicker(
-                photos: const [],
-                pendingFiles: _pendingPhotos,
-                onPickFromGallery: () async {
-                  final picker = ImagePicker();
-                  final list = await picker.pickMultipleMedia();
-                  if (list.isEmpty || !mounted) return;
-                  final images = list.where((x) => x.path.isNotEmpty).toList();
-                  if (images.isEmpty || !mounted) return;
-                  setState(() {
-                    final remaining = 10 - _pendingPhotos.length;
-                    if (remaining > 0) {
-                      _pendingPhotos.addAll(images.take(remaining));
-                    }
-                  });
-                },
-                onPickFromCamera: () async {
-                  final picker = ImagePicker();
-                  final file = await picker.pickImage(source: ImageSource.camera);
-                  if (file == null || !mounted) return;
-                  setState(() {
-                    if (_pendingPhotos.length < 10) _pendingPhotos.add(file);
-                  });
-                },
-                onRemoveExisting: (_) {},
-                onRemovePending: (index) => setState(() => _pendingPhotos.removeAt(index)),
-                uploading: _uploadingPhotos,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            TextFormField(
-              controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: 'Name',
-                hintText: 'e.g. Chesterfield Sofa',
-              ),
-              onFieldSubmitted: (_) => _submit(),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            DropdownButtonFormField<String>(
-              // ignore: deprecated_member_use
-              value: _category,
-              decoration: const InputDecoration(
-                labelText: 'Category',
-              ),
-              dropdownColor: AppColors.surfaceVariant,
-              items: AddItemSheet._categories
-                  .map(
-                    (c) => DropdownMenuItem(
-                      value: c,
-                      child: Text(
-                        c[0].toUpperCase() + c.substring(1),
-                        style: const TextStyle(color: AppColors.onBackground),
-                      ),
-                    ),
-                  )
-                  .toList(),
-              onChanged: (v) => setState(() => _category = v ?? 'furniture'),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            TextFormField(
-              controller: _subcategoryController,
-              decoration: const InputDecoration(
-                labelText: 'Subcategory (optional)',
-                hintText: 'e.g. living room',
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            TextFormField(
-              controller: _serialNumberController,
-              decoration: const InputDecoration(
-                labelText: 'Serial number (optional)',
-                hintText: 'e.g. SN123',
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            TextFormField(
-              controller: _purchasePriceController,
-              decoration: const InputDecoration(
-                labelText: 'Purchase price (optional)',
-                hintText: '\$',
-                prefixText: r'$ ',
-              ),
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            TextFormField(
-              controller: _currentValueController,
-              decoration: const InputDecoration(
-                labelText: 'Current value (optional)',
-                hintText: '\$',
-                prefixText: r'$ ',
-              ),
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            TextFormField(
-              controller: _tagsController,
-              decoration: const InputDecoration(
-                labelText: 'Tags (optional)',
-                hintText: 'comma separated',
-              ),
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            SizedBox(
-              height: 52,
-              child: FilledButton(
-                onPressed: _submitting ? null : _submit,
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.accent,
-                  foregroundColor: AppColors.background,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                SizedBox(
+                  height: 100,
+                  child: ItemPhotoPicker(
+                    photos: const [],
+                    pendingFiles: _pendingPhotos,
+                    onPickFromGallery: () async {
+                      final picker = ImagePicker();
+                      final list = await picker.pickMultipleMedia();
+                      if (list.isEmpty || !mounted) return;
+                      final images = list
+                          .where((x) => x.path.isNotEmpty)
+                          .toList();
+                      if (images.isEmpty || !mounted) return;
+                      setState(() {
+                        final remaining = 10 - _pendingPhotos.length;
+                        if (remaining > 0) {
+                          _pendingPhotos.addAll(images.take(remaining));
+                        }
+                      });
+                    },
+                    onPickFromCamera: () async {
+                      final picker = ImagePicker();
+                      final file = await picker.pickImage(
+                        source: ImageSource.camera,
+                      );
+                      if (file == null || !mounted) return;
+                      setState(() {
+                        if (_pendingPhotos.length < 10) {
+                          _pendingPhotos.add(file);
+                        }
+                      });
+                    },
+                    onRemoveExisting: (_) {},
+                    onRemovePending: (index) =>
+                        setState(() => _pendingPhotos.removeAt(index)),
+                    uploading: _uploadingPhotos,
                   ),
                 ),
-                child: _submitting
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                const SizedBox(height: AppSpacing.lg),
+                TextFormField(
+                  controller: _nameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Name',
+                    hintText: 'e.g. Chesterfield Sofa',
+                  ),
+                  onFieldSubmitted: (_) => _submit(),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                DropdownButtonFormField<String>(
+                  // ignore: deprecated_member_use
+                  value: _category,
+                  decoration: const InputDecoration(labelText: 'Category'),
+                  dropdownColor: AppColors.surfaceVariant,
+                  items: AddItemSheet._categories
+                      .map(
+                        (c) => DropdownMenuItem(
+                          value: c,
+                          child: Text(
+                            c[0].toUpperCase() + c.substring(1),
+                            style: const TextStyle(
+                              color: AppColors.onBackground,
+                            ),
+                          ),
+                        ),
                       )
-                    : const Text('Add item'),
-              ),
+                      .toList(),
+                  onChanged: (v) =>
+                      setState(() => _category = v ?? 'furniture'),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                TextFormField(
+                  controller: _subcategoryController,
+                  decoration: const InputDecoration(
+                    labelText: 'Subcategory (optional)',
+                    hintText: 'e.g. living room',
+                  ),
+                ),
+                if (_category == 'wardrobe') ...[
+                  const SizedBox(height: AppSpacing.lg),
+                  _WardrobeFieldsSection(key: _wardrobeSectionKey),
+                ],
+                const SizedBox(height: AppSpacing.md),
+                TextFormField(
+                  controller: _serialNumberController,
+                  decoration: const InputDecoration(
+                    labelText: 'Serial number (optional)',
+                    hintText: 'e.g. SN123',
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                TextFormField(
+                  controller: _purchasePriceController,
+                  decoration: const InputDecoration(
+                    labelText: 'Purchase price (optional)',
+                    hintText: '\$',
+                    prefixText: r'$ ',
+                  ),
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                TextFormField(
+                  controller: _currentValueController,
+                  decoration: const InputDecoration(
+                    labelText: 'Current value (optional)',
+                    hintText: '\$',
+                    prefixText: r'$ ',
+                  ),
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                TextFormField(
+                  controller: _tagsController,
+                  decoration: const InputDecoration(
+                    labelText: 'Tags (optional)',
+                    hintText: 'comma separated',
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xl),
+                SizedBox(
+                  height: 52,
+                  child: FilledButton(
+                    onPressed: _submitting ? null : _submit,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.accent,
+                      foregroundColor: AppColors.background,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: _submitting
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Add item'),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
           ),
           if (_submitting)
             Positioned.fill(
@@ -330,9 +359,8 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
                           const SizedBox(height: AppSpacing.md),
                           Text(
                             'Saving item…',
-                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                              color: AppColors.onSurface,
-                            ),
+                            style: Theme.of(context).textTheme.titleSmall
+                                ?.copyWith(color: AppColors.onSurface),
                           ),
                         ],
                       ),
@@ -343,6 +371,162 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
             ),
         ],
       ),
+    );
+  }
+}
+
+class _WardrobeFieldsSection extends StatefulWidget {
+  const _WardrobeFieldsSection({super.key});
+
+  @override
+  State<_WardrobeFieldsSection> createState() => _WardrobeFieldsSectionState();
+}
+
+class _WardrobeFieldsSectionState extends State<_WardrobeFieldsSection> {
+  static const Map<String, String> _typeLabels = {
+    'clothing': 'Clothing',
+    'footwear': 'Footwear',
+    'accessories': 'Accessories',
+    'jewelry_watches': 'Jewelry & Watches',
+  };
+
+  static const Map<String, String> _seasonLabels = {
+    'spring_summer': 'Spring/Summer',
+    'fall_winter': 'Fall/Winter',
+    'all_season': 'All Season',
+  };
+
+  static const Map<String, String> _cleaningLabels = {
+    'clean': 'Clean ✓',
+    'needs_cleaning': 'Needs Cleaning',
+    'at_dry_cleaner': 'At Dry Cleaner',
+  };
+
+  String? _type;
+  String? _season;
+  String? _cleaningStatus;
+  final _brandController = TextEditingController();
+  final _sizeController = TextEditingController();
+  final _colorController = TextEditingController();
+  final _materialController = TextEditingController();
+
+  WardrobeAttributes get value => WardrobeAttributes(
+    type: _type,
+    brand: _trimOrNull(_brandController.text),
+    size: _trimOrNull(_sizeController.text),
+    color: _trimOrNull(_colorController.text),
+    material: _trimOrNull(_materialController.text),
+    season: _season,
+    cleaningStatus: _cleaningStatus,
+  );
+
+  String? _trimOrNull(String value) {
+    final normalized = value.trim();
+    return normalized.isEmpty ? null : normalized;
+  }
+
+  @override
+  void dispose() {
+    _brandController.dispose();
+    _sizeController.dispose();
+    _colorController.dispose();
+    _materialController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'WARDROBE DETAILS',
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
+            letterSpacing: 1.5,
+            fontSize: 10,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        DropdownButtonFormField<String>(
+          initialValue: _type,
+          decoration: const InputDecoration(labelText: 'Type'),
+          dropdownColor: AppColors.surfaceVariant,
+          items: WardrobeAttributes.types
+              .map(
+                (type) => DropdownMenuItem<String>(
+                  value: type,
+                  child: Text(
+                    _typeLabels[type] ?? type,
+                    style: const TextStyle(color: AppColors.onBackground),
+                  ),
+                ),
+              )
+              .toList(),
+          onChanged: (value) => setState(() => _type = value),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        TextFormField(
+          controller: _brandController,
+          decoration: const InputDecoration(labelText: 'Brand (optional)'),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        TextFormField(
+          controller: _sizeController,
+          decoration: const InputDecoration(
+            labelText: 'Size (optional)',
+            hintText: 'S / M / L / 42 / 38...',
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        TextFormField(
+          controller: _colorController,
+          decoration: const InputDecoration(labelText: 'Color (optional)'),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        TextFormField(
+          controller: _materialController,
+          decoration: const InputDecoration(labelText: 'Material (optional)'),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        DropdownButtonFormField<String>(
+          initialValue: _season,
+          decoration: const InputDecoration(labelText: 'Season (optional)'),
+          dropdownColor: AppColors.surfaceVariant,
+          items: WardrobeAttributes.seasons
+              .map(
+                (season) => DropdownMenuItem<String>(
+                  value: season,
+                  child: Text(
+                    _seasonLabels[season] ?? season,
+                    style: const TextStyle(color: AppColors.onBackground),
+                  ),
+                ),
+              )
+              .toList(),
+          onChanged: (value) => setState(() => _season = value),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        DropdownButtonFormField<String>(
+          initialValue: _cleaningStatus,
+          decoration: const InputDecoration(
+            labelText: 'Cleaning Status (optional)',
+          ),
+          dropdownColor: AppColors.surfaceVariant,
+          items: WardrobeAttributes.cleaningStatuses
+              .map(
+                (status) => DropdownMenuItem<String>(
+                  value: status,
+                  child: Text(
+                    _cleaningLabels[status] ?? status,
+                    style: const TextStyle(color: AppColors.onBackground),
+                  ),
+                ),
+              )
+              .toList(),
+          onChanged: (value) => setState(() => _cleaningStatus = value),
+        ),
+      ],
     );
   }
 }

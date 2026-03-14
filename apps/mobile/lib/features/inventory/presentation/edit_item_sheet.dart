@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/item_photo_picker.dart';
 import '../../media/data/media_repository_provider.dart';
+import '../../wardrobe/data/models/wardrobe_attributes.dart';
 import '../data/item_repository_provider.dart';
 import '../data/models/item_model.dart';
 import '../domain/item_list_notifier.dart';
@@ -12,11 +13,7 @@ import '../domain/item_detail_notifier.dart';
 import '../../dashboard/domain/dashboard_notifier.dart';
 
 class EditItemSheet extends ConsumerStatefulWidget {
-  const EditItemSheet({
-    super.key,
-    required this.item,
-    required this.onUpdated,
-  });
+  const EditItemSheet({super.key, required this.item, required this.onUpdated});
 
   final ItemModel item;
   final VoidCallback onUpdated;
@@ -46,6 +43,8 @@ class _EditItemSheetState extends ConsumerState<EditItemSheet> {
 
   late List<String> _existingPhotos;
   final List<XFile> _pendingPhotos = [];
+  final GlobalKey<_WardrobeFieldsSectionState> _wardrobeSectionKey =
+      GlobalKey<_WardrobeFieldsSectionState>();
   bool _uploadingPhotos = false;
 
   late String _category;
@@ -58,7 +57,9 @@ class _EditItemSheetState extends ConsumerState<EditItemSheet> {
     _existingPhotos = List.from(item.photos);
     _nameController = TextEditingController(text: item.name);
     _subcategoryController = TextEditingController(text: item.subcategory);
-    _serialNumberController = TextEditingController(text: item.serialNumber ?? '');
+    _serialNumberController = TextEditingController(
+      text: item.serialNumber ?? '',
+    );
     _purchasePriceController = TextEditingController(
       text: item.valuation != null && item.valuation!.purchasePrice > 0
           ? item.valuation!.purchasePrice.toString()
@@ -104,7 +105,11 @@ class _EditItemSheetState extends ConsumerState<EditItemSheet> {
       final tagsStr = _tagsController.text.trim();
       final tags = tagsStr.isEmpty
           ? <String>[]
-          : tagsStr.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+          : tagsStr
+                .split(',')
+                .map((e) => e.trim())
+                .where((e) => e.isNotEmpty)
+                .toList();
       final serialNum = _serialNumberController.text.trim();
 
       List<String> uploadedUrls = [];
@@ -144,6 +149,9 @@ class _EditItemSheetState extends ConsumerState<EditItemSheet> {
         },
         tags: tags,
         photos: allPhotos,
+        attributes: _category == 'wardrobe'
+            ? _wardrobeSectionKey.currentState?.value.toMap()
+            : null,
       );
       await ref.read(itemDetailNotifierProvider.notifier).load(widget.item.id);
       await ref.read(itemListNotifierProvider.notifier).refresh();
@@ -151,9 +159,9 @@ class _EditItemSheetState extends ConsumerState<EditItemSheet> {
       if (mounted) {
         widget.onUpdated();
         Navigator.of(context).pop(true);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Item updated')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Item updated')));
       }
     } catch (e) {
       if (mounted) {
@@ -206,9 +214,9 @@ class _EditItemSheetState extends ConsumerState<EditItemSheet> {
             Text(
               'Edit item',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.onBackground,
-                  ),
+                fontWeight: FontWeight.w600,
+                color: AppColors.onBackground,
+              ),
             ),
             const SizedBox(height: AppSpacing.lg),
             SizedBox(
@@ -223,7 +231,8 @@ class _EditItemSheetState extends ConsumerState<EditItemSheet> {
                   final images = list.where((x) => x.path.isNotEmpty).toList();
                   if (images.isEmpty || !mounted) return;
                   setState(() {
-                    final total = _existingPhotos.length + _pendingPhotos.length;
+                    final total =
+                        _existingPhotos.length + _pendingPhotos.length;
                     final remaining = 10 - total;
                     if (remaining > 0) {
                       _pendingPhotos.addAll(images.take(remaining));
@@ -232,15 +241,20 @@ class _EditItemSheetState extends ConsumerState<EditItemSheet> {
                 },
                 onPickFromCamera: () async {
                   final picker = ImagePicker();
-                  final file = await picker.pickImage(source: ImageSource.camera);
+                  final file = await picker.pickImage(
+                    source: ImageSource.camera,
+                  );
                   if (file == null || !mounted) return;
                   setState(() {
-                    final total = _existingPhotos.length + _pendingPhotos.length;
+                    final total =
+                        _existingPhotos.length + _pendingPhotos.length;
                     if (total < 10) _pendingPhotos.add(file);
                   });
                 },
-                onRemoveExisting: (index) => setState(() => _existingPhotos.removeAt(index)),
-                onRemovePending: (index) => setState(() => _pendingPhotos.removeAt(index)),
+                onRemoveExisting: (index) =>
+                    setState(() => _existingPhotos.removeAt(index)),
+                onRemovePending: (index) =>
+                    setState(() => _pendingPhotos.removeAt(index)),
                 uploading: _uploadingPhotos,
               ),
             ),
@@ -257,9 +271,7 @@ class _EditItemSheetState extends ConsumerState<EditItemSheet> {
             DropdownButtonFormField<String>(
               // ignore: deprecated_member_use
               value: _category,
-              decoration: const InputDecoration(
-                labelText: 'Category',
-              ),
+              decoration: const InputDecoration(labelText: 'Category'),
               dropdownColor: AppColors.surfaceVariant,
               items: EditItemSheet._categories
                   .map(
@@ -282,6 +294,13 @@ class _EditItemSheetState extends ConsumerState<EditItemSheet> {
                 hintText: 'e.g. living room',
               ),
             ),
+            if (_category == 'wardrobe') ...[
+              const SizedBox(height: AppSpacing.lg),
+              _WardrobeFieldsSection(
+                key: _wardrobeSectionKey,
+                initialValue: widget.item.wardrobeAttributes,
+              ),
+            ],
             const SizedBox(height: AppSpacing.md),
             TextFormField(
               controller: _serialNumberController,
@@ -343,6 +362,178 @@ class _EditItemSheetState extends ConsumerState<EditItemSheet> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _WardrobeFieldsSection extends StatefulWidget {
+  const _WardrobeFieldsSection({super.key, required this.initialValue});
+
+  final WardrobeAttributes initialValue;
+
+  @override
+  State<_WardrobeFieldsSection> createState() => _WardrobeFieldsSectionState();
+}
+
+class _WardrobeFieldsSectionState extends State<_WardrobeFieldsSection> {
+  static const Map<String, String> _typeLabels = {
+    'clothing': 'Clothing',
+    'footwear': 'Footwear',
+    'accessories': 'Accessories',
+    'jewelry_watches': 'Jewelry & Watches',
+  };
+
+  static const Map<String, String> _seasonLabels = {
+    'spring_summer': 'Spring/Summer',
+    'fall_winter': 'Fall/Winter',
+    'all_season': 'All Season',
+  };
+
+  static const Map<String, String> _cleaningLabels = {
+    'clean': 'Clean ✓',
+    'needs_cleaning': 'Needs Cleaning',
+    'at_dry_cleaner': 'At Dry Cleaner',
+  };
+
+  late String? _type;
+  late String? _season;
+  late String? _cleaningStatus;
+  late final TextEditingController _brandController;
+  late final TextEditingController _sizeController;
+  late final TextEditingController _colorController;
+  late final TextEditingController _materialController;
+
+  WardrobeAttributes get value => WardrobeAttributes(
+    type: _type,
+    brand: _trimOrNull(_brandController.text),
+    size: _trimOrNull(_sizeController.text),
+    color: _trimOrNull(_colorController.text),
+    material: _trimOrNull(_materialController.text),
+    season: _season,
+    cleaningStatus: _cleaningStatus,
+  );
+
+  String? _trimOrNull(String value) {
+    final normalized = value.trim();
+    return normalized.isEmpty ? null : normalized;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _type = widget.initialValue.type;
+    _season = widget.initialValue.season;
+    _cleaningStatus = widget.initialValue.cleaningStatus;
+    _brandController = TextEditingController(text: widget.initialValue.brand);
+    _sizeController = TextEditingController(text: widget.initialValue.size);
+    _colorController = TextEditingController(text: widget.initialValue.color);
+    _materialController = TextEditingController(
+      text: widget.initialValue.material,
+    );
+  }
+
+  @override
+  void dispose() {
+    _brandController.dispose();
+    _sizeController.dispose();
+    _colorController.dispose();
+    _materialController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'WARDROBE DETAILS',
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
+            letterSpacing: 1.5,
+            fontSize: 10,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        DropdownButtonFormField<String>(
+          initialValue: _type,
+          decoration: const InputDecoration(labelText: 'Type'),
+          dropdownColor: AppColors.surfaceVariant,
+          items: WardrobeAttributes.types
+              .map(
+                (type) => DropdownMenuItem<String>(
+                  value: type,
+                  child: Text(
+                    _typeLabels[type] ?? type,
+                    style: const TextStyle(color: AppColors.onBackground),
+                  ),
+                ),
+              )
+              .toList(),
+          onChanged: (value) => setState(() => _type = value),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        TextFormField(
+          controller: _brandController,
+          decoration: const InputDecoration(labelText: 'Brand (optional)'),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        TextFormField(
+          controller: _sizeController,
+          decoration: const InputDecoration(
+            labelText: 'Size (optional)',
+            hintText: 'S / M / L / 42 / 38...',
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        TextFormField(
+          controller: _colorController,
+          decoration: const InputDecoration(labelText: 'Color (optional)'),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        TextFormField(
+          controller: _materialController,
+          decoration: const InputDecoration(labelText: 'Material (optional)'),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        DropdownButtonFormField<String>(
+          initialValue: _season,
+          decoration: const InputDecoration(labelText: 'Season (optional)'),
+          dropdownColor: AppColors.surfaceVariant,
+          items: WardrobeAttributes.seasons
+              .map(
+                (season) => DropdownMenuItem<String>(
+                  value: season,
+                  child: Text(
+                    _seasonLabels[season] ?? season,
+                    style: const TextStyle(color: AppColors.onBackground),
+                  ),
+                ),
+              )
+              .toList(),
+          onChanged: (value) => setState(() => _season = value),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        DropdownButtonFormField<String>(
+          initialValue: _cleaningStatus,
+          decoration: const InputDecoration(
+            labelText: 'Cleaning Status (optional)',
+          ),
+          dropdownColor: AppColors.surfaceVariant,
+          items: WardrobeAttributes.cleaningStatuses
+              .map(
+                (status) => DropdownMenuItem<String>(
+                  value: status,
+                  child: Text(
+                    _cleaningLabels[status] ?? status,
+                    style: const TextStyle(color: AppColors.onBackground),
+                  ),
+                ),
+              )
+              .toList(),
+          onChanged: (value) => setState(() => _cleaningStatus = value),
+        ),
+      ],
     );
   }
 }

@@ -24,9 +24,9 @@ class SettingsScreen extends ConsumerWidget {
         title: Text(
           'Settings',
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: AppColors.onBackground,
-              ),
+            fontWeight: FontWeight.w600,
+            color: AppColors.onBackground,
+          ),
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -39,9 +39,9 @@ class SettingsScreen extends ConsumerWidget {
           Text(
             'Appearance',
             style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  color: AppColors.accent,
-                  letterSpacing: 1,
-                ),
+              color: AppColors.accent,
+              letterSpacing: 1,
+            ),
           ),
           const SizedBox(height: AppSpacing.sm),
           _ThemeModeTile(
@@ -49,60 +49,93 @@ class SettingsScreen extends ConsumerWidget {
             label: 'Light',
             icon: Icons.light_mode_outlined,
             current: themeMode,
-            onSelected: () => ref.read(themeModeProvider.notifier).state = ThemeMode.light,
+            onSelected: () =>
+                ref.read(themeModeProvider.notifier).state = ThemeMode.light,
           ),
           _ThemeModeTile(
             value: ThemeMode.dark,
             label: 'Dark',
             icon: Icons.dark_mode_outlined,
             current: themeMode,
-            onSelected: () => ref.read(themeModeProvider.notifier).state = ThemeMode.dark,
+            onSelected: () =>
+                ref.read(themeModeProvider.notifier).state = ThemeMode.dark,
           ),
           _ThemeModeTile(
             value: ThemeMode.system,
             label: 'System',
             icon: Icons.brightness_auto_outlined,
             current: themeMode,
-            onSelected: () => ref.read(themeModeProvider.notifier).state = ThemeMode.system,
+            onSelected: () =>
+                ref.read(themeModeProvider.notifier).state = ThemeMode.system,
           ),
           if (canManageTeam) ...[
             const SizedBox(height: AppSpacing.xl),
             Text(
               'Team',
               style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: AppColors.accent,
-                    letterSpacing: 1,
-                  ),
+                color: AppColors.accent,
+                letterSpacing: 1,
+              ),
             ),
             const SizedBox(height: AppSpacing.sm),
             ListTile(
-              leading: Icon(Icons.people_outline, color: AppColors.accent, size: 24),
+              leading: Icon(
+                Icons.people_outline,
+                color: AppColors.accent,
+                size: 24,
+              ),
               title: Text(
                 'Team members',
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: AppColors.onBackground,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyLarge?.copyWith(color: AppColors.onBackground),
               ),
-              trailing: const Icon(Icons.chevron_right, color: AppColors.onSurfaceVariant),
+              trailing: const Icon(
+                Icons.chevron_right,
+                color: AppColors.onSurfaceVariant,
+              ),
               onTap: () => context.push('/settings/users'),
             ),
           ],
           const SizedBox(height: AppSpacing.xl),
           Text(
+            'Features',
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: AppColors.accent,
+              letterSpacing: 1,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          ListTile(
+            leading: Icon(Icons.checkroom_outlined, color: AppColors.accent),
+            title: Text(
+              'Wardrobe',
+              style: Theme.of(
+                context,
+              ).textTheme.bodyLarge?.copyWith(color: AppColors.onBackground),
+            ),
+            trailing: const Icon(
+              Icons.chevron_right,
+              color: AppColors.onSurfaceVariant,
+            ),
+            onTap: () => context.push('/wardrobe'),
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          Text(
             'Account',
             style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  color: AppColors.accent,
-                  letterSpacing: 1,
-                ),
+              color: AppColors.accent,
+              letterSpacing: 1,
+            ),
           ),
           const SizedBox(height: AppSpacing.sm),
           ListTile(
             leading: Icon(Icons.logout, color: AppColors.error, size: 24),
             title: Text(
               'Sign out',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: AppColors.error,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyLarge?.copyWith(color: AppColors.error),
             ),
             onTap: () => _confirmLogout(context, ref),
           ),
@@ -160,9 +193,9 @@ class _ThemeModeTile extends StatelessWidget {
       title: Text(
         label,
         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: AppColors.onBackground,
-              fontWeight: isSelected ? FontWeight.w600 : null,
-            ),
+          color: AppColors.onBackground,
+          fontWeight: isSelected ? FontWeight.w600 : null,
+        ),
       ),
       trailing: isSelected
           ? Icon(Icons.check, color: AppColors.accent, size: 22)

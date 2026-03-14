@@ -7,6 +7,7 @@ import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/mfa_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/reports/presentation/reports_screen.dart';
+import '../../features/wardrobe/presentation/wardrobe_screen.dart';
 import '../../features/inventory/presentation/item_detail_screen.dart';
 import '../../features/inventory/presentation/qr_scanner_screen.dart';
 import '../../features/inventory/presentation/room_detail_screen.dart';
@@ -14,6 +15,7 @@ import '../../features/inventory/presentation/search_screen.dart';
 import '../../features/properties/presentation/property_detail_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
 import '../../features/users/presentation/users_screen.dart';
+import '../../features/ai_chat/presentation/chat_screen.dart';
 
 GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
   return GoRouter(
@@ -40,14 +42,8 @@ GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
       return null;
     },
     routes: [
-      GoRoute(
-        path: '/login',
-        builder: (context, state) => const LoginScreen(),
-      ),
-      GoRoute(
-        path: '/mfa',
-        builder: (context, state) => const MfaScreen(),
-      ),
+      GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
+      GoRoute(path: '/mfa', builder: (context, state) => const MfaScreen()),
       GoRoute(
         path: '/dashboard',
         builder: (context, state) => const DashboardScreen(),
@@ -92,12 +88,20 @@ GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
         builder: (context, state) => const ReportsScreen(),
       ),
       GoRoute(
+        path: '/wardrobe',
+        builder: (context, state) => const WardrobeScreen(),
+      ),
+      GoRoute(
         path: '/settings',
         builder: (context, state) => const SettingsScreen(),
       ),
       GoRoute(
         path: '/settings/users',
         builder: (context, state) => const UsersScreen(),
+      ),
+      GoRoute(
+        path: '/chat',
+        builder: (context, state) => const ChatScreen(),
       ),
       GoRoute(
         path: '/unauthorized',

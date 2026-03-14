@@ -272,7 +272,10 @@ mixin _$ItemModel {
   List<String> get photos => throw _privateConstructorUsedError;
   List<String> get tags => throw _privateConstructorUsedError;
   String? get serialNumber => throw _privateConstructorUsedError;
-  ItemValuationModel? get valuation => throw _privateConstructorUsedError;
+  ItemValuationModel? get valuation =>
+      throw _privateConstructorUsedError; // ignore: invalid_annotation_target
+  @JsonKey(includeIfNull: false)
+  Map<String, dynamic>? get attributes => throw _privateConstructorUsedError;
   List<String> get documents => throw _privateConstructorUsedError;
   String? get createdAt => throw _privateConstructorUsedError;
   String? get qrCode => throw _privateConstructorUsedError;
@@ -306,6 +309,7 @@ abstract class $ItemModelCopyWith<$Res> {
     List<String> tags,
     String? serialNumber,
     ItemValuationModel? valuation,
+    @JsonKey(includeIfNull: false) Map<String, dynamic>? attributes,
     List<String> documents,
     String? createdAt,
     String? qrCode,
@@ -342,6 +346,7 @@ class _$ItemModelCopyWithImpl<$Res, $Val extends ItemModel>
     Object? tags = null,
     Object? serialNumber = freezed,
     Object? valuation = freezed,
+    Object? attributes = freezed,
     Object? documents = null,
     Object? createdAt = freezed,
     Object? qrCode = freezed,
@@ -400,6 +405,10 @@ class _$ItemModelCopyWithImpl<$Res, $Val extends ItemModel>
                 ? _value.valuation
                 : valuation // ignore: cast_nullable_to_non_nullable
                       as ItemValuationModel?,
+            attributes: freezed == attributes
+                ? _value.attributes
+                : attributes // ignore: cast_nullable_to_non_nullable
+                      as Map<String, dynamic>?,
             documents: null == documents
                 ? _value.documents
                 : documents // ignore: cast_nullable_to_non_nullable
@@ -455,6 +464,7 @@ abstract class _$$ItemModelImplCopyWith<$Res>
     List<String> tags,
     String? serialNumber,
     ItemValuationModel? valuation,
+    @JsonKey(includeIfNull: false) Map<String, dynamic>? attributes,
     List<String> documents,
     String? createdAt,
     String? qrCode,
@@ -491,6 +501,7 @@ class __$$ItemModelImplCopyWithImpl<$Res>
     Object? tags = null,
     Object? serialNumber = freezed,
     Object? valuation = freezed,
+    Object? attributes = freezed,
     Object? documents = null,
     Object? createdAt = freezed,
     Object? qrCode = freezed,
@@ -549,6 +560,10 @@ class __$$ItemModelImplCopyWithImpl<$Res>
             ? _value.valuation
             : valuation // ignore: cast_nullable_to_non_nullable
                   as ItemValuationModel?,
+        attributes: freezed == attributes
+            ? _value._attributes
+            : attributes // ignore: cast_nullable_to_non_nullable
+                  as Map<String, dynamic>?,
         documents: null == documents
             ? _value._documents
             : documents // ignore: cast_nullable_to_non_nullable
@@ -583,11 +598,13 @@ class _$ItemModelImpl implements _ItemModel {
     final List<String> tags = const [],
     this.serialNumber,
     this.valuation,
+    @JsonKey(includeIfNull: false) final Map<String, dynamic>? attributes,
     final List<String> documents = const [],
     this.createdAt,
     this.qrCode,
   }) : _photos = photos,
        _tags = tags,
+       _attributes = attributes,
        _documents = documents;
 
   factory _$ItemModelImpl.fromJson(Map<String, dynamic> json) =>
@@ -635,6 +652,19 @@ class _$ItemModelImpl implements _ItemModel {
   final String? serialNumber;
   @override
   final ItemValuationModel? valuation;
+  // ignore: invalid_annotation_target
+  final Map<String, dynamic>? _attributes;
+  // ignore: invalid_annotation_target
+  @override
+  @JsonKey(includeIfNull: false)
+  Map<String, dynamic>? get attributes {
+    final value = _attributes;
+    if (value == null) return null;
+    if (_attributes is EqualUnmodifiableMapView) return _attributes;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableMapView(value);
+  }
+
   final List<String> _documents;
   @override
   @JsonKey()
@@ -651,7 +681,7 @@ class _$ItemModelImpl implements _ItemModel {
 
   @override
   String toString() {
-    return 'ItemModel(id: $id, name: $name, propertyId: $propertyId, propertyName: $propertyName, roomId: $roomId, roomName: $roomName, category: $category, subcategory: $subcategory, status: $status, photos: $photos, tags: $tags, serialNumber: $serialNumber, valuation: $valuation, documents: $documents, createdAt: $createdAt, qrCode: $qrCode)';
+    return 'ItemModel(id: $id, name: $name, propertyId: $propertyId, propertyName: $propertyName, roomId: $roomId, roomName: $roomName, category: $category, subcategory: $subcategory, status: $status, photos: $photos, tags: $tags, serialNumber: $serialNumber, valuation: $valuation, attributes: $attributes, documents: $documents, createdAt: $createdAt, qrCode: $qrCode)';
   }
 
   @override
@@ -680,6 +710,10 @@ class _$ItemModelImpl implements _ItemModel {
             (identical(other.valuation, valuation) ||
                 other.valuation == valuation) &&
             const DeepCollectionEquality().equals(
+              other._attributes,
+              _attributes,
+            ) &&
+            const DeepCollectionEquality().equals(
               other._documents,
               _documents,
             ) &&
@@ -705,6 +739,7 @@ class _$ItemModelImpl implements _ItemModel {
     const DeepCollectionEquality().hash(_tags),
     serialNumber,
     valuation,
+    const DeepCollectionEquality().hash(_attributes),
     const DeepCollectionEquality().hash(_documents),
     createdAt,
     qrCode,
@@ -739,6 +774,7 @@ abstract class _ItemModel implements ItemModel {
     final List<String> tags,
     final String? serialNumber,
     final ItemValuationModel? valuation,
+    @JsonKey(includeIfNull: false) final Map<String, dynamic>? attributes,
     final List<String> documents,
     final String? createdAt,
     final String? qrCode,
@@ -772,7 +808,10 @@ abstract class _ItemModel implements ItemModel {
   @override
   String? get serialNumber;
   @override
-  ItemValuationModel? get valuation;
+  ItemValuationModel? get valuation; // ignore: invalid_annotation_target
+  @override
+  @JsonKey(includeIfNull: false)
+  Map<String, dynamic>? get attributes;
   @override
   List<String> get documents;
   @override

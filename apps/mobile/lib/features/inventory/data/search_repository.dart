@@ -7,7 +7,7 @@ class SearchRepository {
   final SearchRemoteDataSource _remoteDataSource;
 
   Future<List<ItemModel>> search({
-    required String query,
+    String? query,
     String? category,
     String? status,
   }) {

@@ -487,9 +487,9 @@ class DashboardQuickActions extends ConsumerWidget {
                 onTap: () => context.push('/scanner'),
               ),
               _QuickActionTile(
-                icon: Icons.search,
-                label: 'Search',
-                onTap: () => context.push('/search'),
+                icon: Icons.auto_awesome_outlined,
+                label: 'AI Assistant',
+                onTap: () => context.push('/chat'),
               ),
               _QuickActionTile(
                 icon: Icons.picture_as_pdf_outlined,

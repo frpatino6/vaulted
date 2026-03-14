@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { InventoryController } from './inventory.controller';
 import { InventoryService } from './inventory.service';
 import { Item, ItemSchema } from './schemas/item.schema';
@@ -13,6 +14,7 @@ import { Property, PropertySchema } from '../properties/schemas/property.schema'
       { name: ItemHistory.name, schema: ItemHistorySchema },
       { name: Property.name, schema: PropertySchema },
     ]),
+    TypeOrmModule.forFeature([]),
   ],
   controllers: [InventoryController],
   providers: [InventoryService],

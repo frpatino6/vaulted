@@ -1,6 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { DataSource } from 'typeorm';
+import { InjectDataSource } from '@nestjs/typeorm';
 import * as QRCode from 'qrcode';
 import { CreateItemDto, ItemStatus } from './dto/create-item.dto';
 import { LoanItemDto } from './dto/loan-item.dto';
@@ -9,6 +11,7 @@ import { UpdateItemDto } from './dto/update-item.dto';
 import { Item, ItemDocument } from './schemas/item.schema';
 import { ItemHistory, ItemHistoryDocument } from './schemas/item-history.schema';
 import { Property, PropertyDocument } from '../properties/schemas/property.schema';
+import { EmbeddingService } from '../ai/shared/embedding.service';
 
 interface InventoryFilters {
   propertyId?: string;
@@ -39,6 +42,8 @@ function escapeRegex(value: string): string {
 
 @Injectable()
 export class InventoryService {
+  private readonly logger = new Logger(InventoryService.name);
+
   constructor(
     @InjectModel(Item.name)
     private readonly itemModel: Model<ItemDocument>,
@@ -46,6 +51,8 @@ export class InventoryService {
     private readonly itemHistoryModel: Model<ItemHistoryDocument>,
     @InjectModel(Property.name)
     private readonly propertyModel: Model<PropertyDocument>,
+    @InjectDataSource() private readonly dataSource: DataSource,
+    @Optional() private readonly embeddingService?: EmbeddingService,
   ) {}
 
   async create(tenantId: string, userId: string, dto: CreateItemDto): Promise<Item> {
@@ -69,6 +76,8 @@ export class InventoryService {
     const qrCode = await QRCode.toDataURL(`vaulted://items/${String(item._id)}`);
     item.qrCode = qrCode;
     await item.save();
+
+    void this.indexItemEmbedding(item);
 
     return item;
   }
@@ -128,6 +137,8 @@ export class InventoryService {
     if (!item) {
       throw new NotFoundException('Item not found');
     }
+
+    void this.indexItemEmbedding(item);
 
     return item;
   }
@@ -345,5 +356,26 @@ export class InventoryService {
     }
 
     return item;
+  }
+
+  private indexItemEmbedding(item: ItemDocument): void {
+    if (!this.embeddingService) return;
+    const svc = this.embeddingService;
+    const ds = this.dataSource;
+    const logger = this.logger;
+    const text = svc.buildItemText(item);
+    const itemId = String(item._id);
+    const tenantId = String(item.tenantId);
+    svc.generateEmbedding(text).then((embedding) => {
+      const vector = `[${embedding.join(',')}]`;
+      const upsertSql = [
+        'INSERT INTO item_embeddings (item_id, tenant_id, embedding, updated_at)',
+        'VALUES ($1, $2, $3::vector, NOW())',
+        'ON CONFLICT (item_id) DO UPDATE SET embedding = EXCLUDED.embedding, updated_at = NOW()',
+      ].join(' ');
+      return ds.query(upsertSql, [itemId, tenantId, vector]);
+    }).catch((err: unknown) => {
+      logger.error(`Embedding index failed for item ${itemId}`, err);
+    });
   }
 }

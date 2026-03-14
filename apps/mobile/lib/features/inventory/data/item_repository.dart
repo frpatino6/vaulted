@@ -11,13 +11,12 @@ class ItemRepository {
     required String roomId,
     String? category,
     String? status,
-  }) =>
-      _remote.getItems(
-        propertyId: propertyId,
-        roomId: roomId,
-        category: category,
-        status: status,
-      );
+  }) => _remote.getItems(
+    propertyId: propertyId,
+    roomId: roomId,
+    category: category,
+    status: status,
+  );
 
   Future<ItemModel> getItem(String id) => _remote.getItem(id);
 
@@ -35,24 +34,29 @@ class ItemRepository {
     List<String> tags = const [],
     List<String> photos = const [],
     List<String> documents = const [],
-  }) =>
-      _remote.createItem({
-        'propertyId': propertyId,
-        'roomId': roomId,
-        'name': name,
-        'category': category,
-        if (subcategory.isNotEmpty) 'subcategory': subcategory,
-        'status': status,
-        if (serialNumber != null && serialNumber.isNotEmpty) 'serialNumber': serialNumber,
-        'valuation': {
-          'purchasePrice': purchasePrice,
-          'currentValue': currentValue,
-          'currency': currency,
-        },
-        'tags': tags,
-        'photos': photos,
-        'documents': documents,
-      });
+    Map<String, dynamic>? attributes,
+  }) {
+    final body = <String, dynamic>{
+      'propertyId': propertyId,
+      'roomId': roomId,
+      'name': name,
+      'category': category,
+      if (subcategory.isNotEmpty) 'subcategory': subcategory,
+      'status': status,
+      if (serialNumber != null && serialNumber.isNotEmpty)
+        'serialNumber': serialNumber,
+      'valuation': {
+        'purchasePrice': purchasePrice,
+        'currentValue': currentValue,
+        'currency': currency,
+      },
+      'tags': tags,
+      'photos': photos,
+      'documents': documents,
+    };
+    if (attributes != null) body['attributes'] = attributes;
+    return _remote.createItem(body);
+  }
 
   Future<ItemModel> updateItem(
     String id, {
@@ -65,6 +69,7 @@ class ItemRepository {
     List<String>? tags,
     List<String>? photos,
     List<String>? documents,
+    Map<String, dynamic>? attributes,
   }) {
     final body = <String, dynamic>{};
     if (name != null) body['name'] = name;
@@ -76,6 +81,7 @@ class ItemRepository {
     if (tags != null) body['tags'] = tags;
     if (photos != null) body['photos'] = photos;
     if (documents != null) body['documents'] = documents;
+    if (attributes != null) body['attributes'] = attributes;
     return _remote.updateItem(id, body);
   }
 

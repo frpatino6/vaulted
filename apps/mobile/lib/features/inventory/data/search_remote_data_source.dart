@@ -8,12 +8,12 @@ class SearchRemoteDataSource {
   final Dio _dio;
 
   Future<List<ItemModel>> search({
-    required String query,
+    String? query,
     String? category,
     String? status,
   }) async {
     final queryParameters = <String, dynamic>{
-      'q': query,
+      if (query != null && query.trim().isNotEmpty) 'q': query.trim(),
       if (category != null && category.isNotEmpty) 'category': category,
       if (status != null && status.isNotEmpty) 'status': status,
     };
@@ -67,7 +67,9 @@ class SearchRemoteDataSource {
 
     final propertyId = json['propertyId'];
     if (propertyId != null) {
-      json['propertyId'] = propertyId is String ? propertyId : propertyId.toString();
+      json['propertyId'] = propertyId is String
+          ? propertyId
+          : propertyId.toString();
     }
 
     final roomId = json['roomId'];
