@@ -7,8 +7,8 @@ services:
       dockerfile: Dockerfile.prod
     image: vaulted-api:latest
     container_name: vaulted_api
-    ports:
-      - '3000:3000'
+    expose:
+      - '3000'
     environment:
       NODE_ENV: ${NODE_ENV}
       PORT: ${PORT}
@@ -36,3 +36,21 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: vaulted_caddy
+    restart: always
+    ports:
+      - '80:80'
+      - '443:443'
+    command: caddy reverse-proxy --from https://api-vaulted.casacam.net --to http://api:3000
+    depends_on:
+      - api
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:
