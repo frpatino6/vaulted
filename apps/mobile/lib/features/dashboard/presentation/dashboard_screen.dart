@@ -456,16 +456,6 @@ class _DashboardHeader extends ConsumerWidget {
 class DashboardQuickActions extends ConsumerWidget {
   const DashboardQuickActions({super.key});
 
-  void _showComingSoon(BuildContext context, String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$feature — coming soon'),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Column(
@@ -504,7 +494,7 @@ class DashboardQuickActions extends ConsumerWidget {
               _QuickActionTile(
                 icon: Icons.picture_as_pdf_outlined,
                 label: 'Reports',
-                onTap: () => _showComingSoon(context, 'Reports'),
+                onTap: () => context.push('/reports'),
               ),
               _QuickActionTile(
                 icon: Icons.settings_outlined,

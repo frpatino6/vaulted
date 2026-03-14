@@ -6,6 +6,7 @@ import 'auth_redirect_notifier.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/mfa_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
+import '../../features/reports/presentation/reports_screen.dart';
 import '../../features/inventory/presentation/item_detail_screen.dart';
 import '../../features/inventory/presentation/qr_scanner_screen.dart';
 import '../../features/inventory/presentation/room_detail_screen.dart';
@@ -85,6 +86,10 @@ GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
       GoRoute(
         path: '/scanner',
         builder: (context, state) => const QrScannerScreen(),
+      ),
+      GoRoute(
+        path: '/reports',
+        builder: (context, state) => const ReportsScreen(),
       ),
       GoRoute(
         path: '/settings',
