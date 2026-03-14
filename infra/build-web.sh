@@ -5,4 +5,4 @@ flutter build web \
   --dart-define=API_BASE_URL=https://api-vaulted.casacam.net/api/ \
   --release
 echo "Build complete → apps/mobile/build/web"
-firebase deploy --only hosting
+firebase deploy --only hosting --project vaulted-prod-2026
