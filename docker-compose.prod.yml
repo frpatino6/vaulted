@@ -9,8 +9,26 @@ services:
     container_name: vaulted_api
     ports:
       - '3000:3000'
-    env_file:
-      - .env.prod
+    environment:
+      NODE_ENV: ${NODE_ENV}
+      PORT: ${PORT}
+      APP_URL: ${APP_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN}
+      MONGODB_URI: ${MONGODB_URI}
+      DATABASE_URL: ${DATABASE_URL}
+      TYPEORM_SYNC: ${TYPEORM_SYNC}
+      REDIS_URL: ${REDIS_URL}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      GOOGLE_GENAI_API_KEY: ${GOOGLE_GENAI_API_KEY}
+      AI_CHAT_MODEL: ${AI_CHAT_MODEL}
+      AI_EMBEDDING_MODEL: ${AI_EMBEDDING_MODEL}
+      AI_EMBEDDING_DIMS: ${AI_EMBEDDING_DIMS}
+      AI_CHAT_RATE_LIMIT_PER_MINUTE: ${AI_CHAT_RATE_LIMIT_PER_MINUTE}
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID}
+      GCP_STORAGE_BUCKET: ${GCP_STORAGE_BUCKET:-}
     restart: always
     healthcheck:
       test: ['CMD', 'wget', '-qO-', 'http://localhost:3000/health']
