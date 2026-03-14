@@ -1191,3 +1191,96 @@ All three files are derived from the same decisions — single source of truth.
   ##3. Instalar los 4 marketplaces y 4 plugins
  ## 4. /plugin list  ← verificar que todo quedó
   ##5. Arrancar Phase 0
+
+---
+
+## Deployment (Testing)
+
+> Current state as of March 2026. Infrastructure runs entirely on free tiers for the testing phase.
+
+### Live URLs
+
+| Endpoint | URL |
+|---|---|
+| API (production) | `https://api-vaulted.casacam.net` |
+| API health check | `https://api-vaulted.casacam.net/health` |
+| Web app | `https://vaulted-prod-2026.web.app` |
+
+### Infrastructure Summary
+
+| Component | Service | Details |
+|---|---|---|
+| VM | GCP e2-micro (free tier) | `tennis-backend`, us-central1-c, IP 34.57.81.166 |
+| API container | Docker (`vaulted_api`) | NestJS on internal port 3000 |
+| Reverse proxy | Docker (`frpatino6-caddy-1`) | Caddy, ports 80/443, SSL via Let's Encrypt |
+| MongoDB | MongoDB Atlas M0 (free) | `mycoffecluster.yerjpro.mongodb.net` |
+| PostgreSQL | Neon.tech (free) | Includes pgvector extension |
+| Redis | Upstash (free) | TLS required — use `rediss://` scheme |
+| Web hosting | Firebase Hosting (free) | Project: `vaulted-prod-2026` |
+| DNS | Dynu (`casacam.net`) | A record `api-vaulted.casacam.net` → 34.57.81.166 |
+
+The VM is shared with an unrelated `tennis-backend` app. Both share the same Caddy container for reverse proxying.
+
+### Deploy API Updates
+
+SSH into the VM and run:
+
+```bash
+gcloud compute ssh tennis-backend --zone us-central1-c --project tennis-management-fcd54
+
+cd ~/vaulted/vaulted
+git pull
+./start-prod.sh down
+docker compose -f docker-compose.prod.yml build --no-cache
+./start-prod.sh up -d
+
+# Verify
+docker ps | grep vaulted_api
+docker logs vaulted_api --tail 50
+```
+
+### Deploy Web App Updates
+
+Run locally (not on the VM):
+
+```bash
+./infra/build-web.sh
+```
+
+Builds Flutter web with `API_BASE_URL=https://api-vaulted.casacam.net/api/` and deploys to Firebase Hosting. Live immediately after deploy.
+
+### Upload Updated .env.prod to VM
+
+Run locally when secrets change:
+
+```bash
+./infra/upload-env.sh
+```
+
+Then restart the API on the VM:
+
+```bash
+./start-prod.sh down && ./start-prod.sh up -d
+```
+
+### Test Credentials
+
+| Environment | Email | Password |
+|---|---|---|
+| Production | `owner@test.com` | `Test1234!Secure` |
+| Local dev | `owner@test.com` | `Test1234!` |
+
+### Key Files
+
+| File | Purpose |
+|---|---|
+| `docker-compose.prod.yml` | Production compose — API only, joins `frpatino6_default` network |
+| `docker-compose.dev.yml` | Local dev — API + all databases in Docker |
+| `start-prod.sh` | Safe wrapper: parses `.env.prod` correctly, then runs docker compose |
+| `.env.prod` | NOT in git — real secrets. Create from `.env.prod.example` |
+| `.env.prod.example` | Template with all required variable names |
+| `apps/api/Dockerfile.prod` | Multi-stage build (builder + runner) |
+| `infra/build-web.sh` | Flutter web build + Firebase deploy |
+| `infra/Caddyfile` | Caddy config for both domains (copy to `~/Caddyfile` on VM) |
+| `infra/upload-env.sh` | Uploads `.env.prod` from local to VM via `gcloud scp` |
+| `infra/README.md` | Full infrastructure and deployment guide |
