@@ -1,0 +1,7 @@
+tenis-uat.casacam.net {
+	reverse_proxy backend:3000
+}
+
+api-vaulted.casacam.net {
+	reverse_proxy vaulted_api:3000
+}

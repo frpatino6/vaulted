@@ -30,6 +30,9 @@ services:
       GCP_PROJECT_ID: ${GCP_PROJECT_ID}
       GCP_STORAGE_BUCKET: ${GCP_STORAGE_BUCKET:-}
     restart: always
+    networks:
+      - default
+      - proxy
     healthcheck:
       test: ['CMD', 'wget', '-qO-', 'http://localhost:3000/health']
       interval: 30s
@@ -37,20 +40,8 @@ services:
       retries: 3
       start_period: 40s
 
-  caddy:
-    image: caddy:2-alpine
-    container_name: vaulted_caddy
-    restart: always
-    ports:
-      - '80:80'
-      - '443:443'
-    command: caddy reverse-proxy --from https://api-vaulted.casacam.net --to http://api:3000
-    depends_on:
-      - api
-    volumes:
-      - caddy_data:/data
-      - caddy_config:/config
-
-volumes:
-  caddy_data:
-  caddy_config:
+networks:
+  default:
+  proxy:
+    external: true
+    name: frpatino6_default
