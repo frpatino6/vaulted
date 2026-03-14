@@ -31,17 +31,14 @@ export class AiChatModule implements OnModuleInit {
         CREATE TABLE IF NOT EXISTS item_embeddings (
           id          SERIAL PRIMARY KEY,
           item_id     VARCHAR(24)  NOT NULL UNIQUE,
-          tenant_id   VARCHAR(24)  NOT NULL,
-          embedding   vector(768)  NOT NULL,
+          tenant_id   VARCHAR(36)  NOT NULL,
+          embedding   vector(3072) NOT NULL,
           updated_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
         )
       `);
 
-      await this.dataSource.query(`
-        CREATE INDEX IF NOT EXISTS item_embeddings_hnsw_idx
-          ON item_embeddings USING hnsw (embedding vector_cosine_ops)
-      `);
-
+      // Note: HNSW index supports max 2000 dims. With 3072-dim embeddings,
+      // we use exact KNN search (fine for MVP scale).
       await this.dataSource.query(`
         CREATE INDEX IF NOT EXISTS item_embeddings_tenant_idx
           ON item_embeddings (tenant_id)

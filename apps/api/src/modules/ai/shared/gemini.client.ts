@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { GoogleGenAI, Content } from '@google/genai';
+import { GoogleGenerativeAI, Content } from '@google/generative-ai';
 
 export interface GeminiChatMessage {
   role: 'user' | 'model';
@@ -16,11 +16,11 @@ export interface GeminiChatResult {
 @Injectable()
 export class GeminiClient {
   private readonly logger = new Logger(GeminiClient.name);
-  private readonly ai: GoogleGenAI;
+  private readonly genAI: GoogleGenerativeAI;
   private readonly model: string;
 
   constructor(private readonly config: ConfigService) {
-    this.ai = new GoogleGenAI({ apiKey: config.getOrThrow<string>('GOOGLE_GENAI_API_KEY') });
+    this.genAI = new GoogleGenerativeAI(config.getOrThrow<string>('GOOGLE_GENAI_API_KEY'));
     this.model = config.get<string>('AI_CHAT_MODEL') ?? 'gemini-2.0-flash';
   }
 
@@ -29,21 +29,19 @@ export class GeminiClient {
     history: GeminiChatMessage[],
     userMessage: string,
   ): Promise<GeminiChatResult> {
-    const contents: Content[] = [
-      ...history.map((m) => ({
-        role: m.role,
-        parts: [{ text: m.content }],
-      })),
-      { role: 'user' as const, parts: [{ text: userMessage }] },
-    ];
-
-    const response = await this.ai.models.generateContent({
+    const geminiModel = this.genAI.getGenerativeModel({
       model: this.model,
-      contents,
-      config: { systemInstruction: systemPrompt },
+      systemInstruction: systemPrompt,
     });
 
-    const text = response.text ?? '';
+    const contents: Content[] = history.map((m) => ({
+      role: m.role,
+      parts: [{ text: m.content }],
+    }));
+
+    const chat = geminiModel.startChat({ history: contents });
+    const result = await chat.sendMessage(userMessage);
+    const response = result.response;
     const usage = response.usageMetadata;
 
     this.logger.debug(
@@ -51,7 +49,7 @@ export class GeminiClient {
     );
 
     return {
-      text,
+      text: response.text(),
       inputTokens: usage?.promptTokenCount ?? 0,
       outputTokens: usage?.candidatesTokenCount ?? 0,
     };

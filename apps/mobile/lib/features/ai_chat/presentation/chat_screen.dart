@@ -96,7 +96,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         children: [
           Expanded(
             child: state.messages.isEmpty
-                ? _EmptyState()
+                ? _EmptyState(
+                    onSuggestionTap: (q) {
+                      ref.read(aiChatNotifierProvider.notifier).sendMessage(q);
+                      _scrollToBottom();
+                    },
+                  )
                 : ListView.builder(
                     controller: _scrollController,
                     padding: const EdgeInsets.symmetric(
@@ -127,36 +132,114 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 // ---------------------------------------------------------------------------
 
 class _EmptyState extends StatelessWidget {
+  const _EmptyState({required this.onSuggestionTap});
+
+  final void Function(String) onSuggestionTap;
+
+  static const List<String> _suggestions = [
+    'Where is my most valuable item?',
+    'What items are currently on loan?',
+    'List all items in storage',
+    'Show my jewelry collection',
+    'What furniture do I have?',
+    'Items worth over \$10,000',
+  ];
+
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSpacing.xl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.auto_awesome_outlined,
-              size: 56,
-              color: AppColors.accentBright.withValues(alpha: 0.6),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            Text(
-              'Ask about your inventory',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppColors.onBackground,
-                    fontWeight: FontWeight.w600,
-                  ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              'Try: "Where is my Rolex?"\nor "List furniture over \$5,000"',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.auto_awesome_outlined,
+                size: 56,
+                color: AppColors.accentBright.withValues(alpha: 0.6),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                'Ask about your inventory',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: AppColors.onBackground,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                'Try: "Where is my Rolex?"\nor "List furniture over \$5,000"',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppColors.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Suggested',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: AppColors.onSurfaceVariant,
                   ),
-            ),
-          ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Wrap(
+                  spacing: AppSpacing.sm,
+                  runSpacing: AppSpacing.sm,
+                  children: _suggestions.map((suggestion) {
+                    return InkWell(
+                      borderRadius: BorderRadius.circular(20),
+                      onTap: () => onSuggestionTap(suggestion),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceVariant,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: AppColors.accentBright.withValues(
+                              alpha: 0.7,
+                            ),
+                            width: 0.8,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.bolt_outlined,
+                              size: 14,
+                              color: AppColors.accentBright.withValues(
+                                alpha: 0.7,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              suggestion,
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: AppColors.accentBright.withValues(
+                                      alpha: 0.7,
+                                    ),
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -178,8 +261,9 @@ class _MessageBubble extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: Column(
-        crossAxisAlignment:
-            _isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        crossAxisAlignment: _isUser
+            ? CrossAxisAlignment.end
+            : CrossAxisAlignment.start,
         children: [
           Align(
             alignment: _isUser ? Alignment.centerRight : Alignment.centerLeft,
@@ -208,11 +292,11 @@ class _MessageBubble extends StatelessWidget {
                     : Text(
                         message.content,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: _isUser
-                                  ? Colors.black87
-                                  : AppColors.onBackground,
-                              height: 1.4,
-                            ),
+                          color: _isUser
+                              ? Colors.black87
+                              : AppColors.onBackground,
+                          height: 1.4,
+                        ),
                       ),
               ),
             ),
@@ -242,10 +326,13 @@ class _ItemsRow extends StatelessWidget {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: items.length,
-        separatorBuilder: (context, idx) => const SizedBox(width: AppSpacing.sm),
+        separatorBuilder: (context, idx) =>
+            const SizedBox(width: AppSpacing.sm),
         itemBuilder: (context, index) {
           final chatItem = items[index];
-          final itemModel = AiChatRemoteDataSource.chatItemToItemModel(chatItem);
+          final itemModel = AiChatRemoteDataSource.chatItemToItemModel(
+            chatItem,
+          );
           return SizedBox(
             width: 280,
             child: RoomInventoryAssetCard(
@@ -343,9 +430,7 @@ class _InputBar extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        border: Border(
-          top: BorderSide(color: Colors.white10, width: 0.5),
-        ),
+        border: Border(top: BorderSide(color: Colors.white10, width: 0.5)),
       ),
       child: Row(
         children: [

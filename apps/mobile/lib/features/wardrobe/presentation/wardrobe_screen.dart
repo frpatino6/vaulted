@@ -34,6 +34,14 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
   String _selectedCleaningStatus = 'all';
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(wardrobeNotifierProvider.notifier).refresh();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final state = ref.watch(wardrobeNotifierProvider);
 
@@ -65,10 +73,11 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
             _FiltersRow(
               values: _cleaningFilters,
               selected: _selectedCleaningStatus,
+              subtleSelected: true,
               onSelected: (value) =>
                   setState(() => _selectedCleaningStatus = value),
             ),
-            const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: 24),
             Expanded(
               child: state.when(
                 data: (items) {
@@ -79,19 +88,26 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
                         ref.read(wardrobeNotifierProvider.notifier).refresh(),
                     child: GridView.builder(
                       physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.only(bottom: 20),
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 2,
                             childAspectRatio: 0.75,
-                            crossAxisSpacing: AppSpacing.sm,
-                            mainAxisSpacing: AppSpacing.sm,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
                           ),
                       itemCount: filtered.length,
                       itemBuilder: (context, index) {
                         final item = filtered[index];
                         return WardrobeItemCard(
                           item: item,
-                          onTap: () => context.push('/items/${item.id}'),
+                          onTap: () async {
+                            await context.push('/items/${item.id}');
+                            if (!mounted) return;
+                            await ref
+                                .read(wardrobeNotifierProvider.notifier)
+                                .refresh();
+                          },
                           onStatusTap: () => _showCleaningStatusPicker(item),
                         );
                       },
@@ -117,7 +133,7 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
 
   List<ItemModel> _applyFilters(List<ItemModel> items) {
     return items.where((item) {
-      if (item.category != 'wardrobe') return false;
+      if (item.category.trim().toLowerCase() != 'wardrobe') return false;
       final attrs = item.wardrobeAttributes;
       final matchesType = _selectedType == 'all' || attrs.type == _selectedType;
       final matchesCleaning =
@@ -193,11 +209,13 @@ class _FiltersRow extends StatelessWidget {
     required this.values,
     required this.selected,
     required this.onSelected,
+    this.subtleSelected = false,
   });
 
   final Map<String, String> values;
   final String selected;
   final ValueChanged<String> onSelected;
+  final bool subtleSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -209,19 +227,47 @@ class _FiltersRow extends StatelessWidget {
           return Padding(
             padding: const EdgeInsets.only(right: AppSpacing.sm),
             child: FilterChip(
-              label: Text(entry.value),
+              visualDensity: VisualDensity.compact,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              labelPadding: const EdgeInsets.symmetric(horizontal: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
+              label: subtleSelected
+                  ? Container(
+                      padding: const EdgeInsets.only(bottom: 2),
+                      decoration: BoxDecoration(
+                        border: isSelected
+                            ? const Border(
+                                bottom: BorderSide(
+                                  color: AppColors.accent,
+                                  width: 1,
+                                ),
+                              )
+                            : null,
+                      ),
+                      child: Text(entry.value),
+                    )
+                  : Text(entry.value),
               selected: isSelected,
               showCheckmark: false,
-              selectedColor: AppColors.accent.withValues(alpha: 0.15),
+              selectedColor: subtleSelected
+                  ? AppColors.surfaceVariant
+                  : AppColors.accent.withValues(alpha: 0.15),
               backgroundColor: AppColors.surfaceVariant,
               side: BorderSide(
-                color: isSelected ? AppColors.accent : Colors.white10,
+                color: subtleSelected
+                    ? Colors.white10
+                    : isSelected
+                    ? AppColors.accent
+                    : Colors.white10,
                 width: 0.5,
               ),
               labelStyle: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: isSelected
-                    ? AppColors.accent
+                    ? subtleSelected
+                          ? AppColors.onBackground
+                          : AppColors.accent
                     : AppColors.onBackground.withValues(alpha: 0.85),
+                fontSize: 11,
               ),
               onSelected: (_) => onSelected(entry.key),
             ),

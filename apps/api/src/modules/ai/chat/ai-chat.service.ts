@@ -111,23 +111,26 @@ export class AiChatService {
 
     await this.updateSessionHistory(sessionId, dto.query, result.text);
 
-    const chatItems: ChatItemResult[] = items.map((item) => ({
-      id: item.id,
-      name: item.name,
-      category: String(item.category),
-      status: String(item.status ?? 'active'),
-      propertyName: item.propertyName,
-      roomName: item.roomName,
-      photos: (item.photos as string[] | undefined) ?? [],
-      valuation:
-        item.valuation?.currentValue
-          ? {
-              currentValue: item.valuation.currentValue as number,
-              currency: (item.valuation.currency as string | undefined) ?? 'USD',
-            }
-          : null,
-      score: scoreMap.get(item.id) ?? 0,
-    }));
+    const chatItems: ChatItemResult[] = items
+      .map((item) => ({
+        id: item.id,
+        name: item.name,
+        category: String(item.category),
+        status: String(item.status ?? 'active'),
+        propertyName: item.propertyName,
+        roomName: item.roomName,
+        photos: (item.photos as string[] | undefined) ?? [],
+        valuation:
+          item.valuation?.currentValue
+            ? {
+                currentValue: item.valuation.currentValue as number,
+                currency: (item.valuation.currency as string | undefined) ?? 'USD',
+              }
+            : null,
+        score: scoreMap.get(item.id) ?? 0,
+      }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5);
 
     return { answer: result.text, items: chatItems, sessionId, sources: chatItems.map((i) => i.name) };
   }

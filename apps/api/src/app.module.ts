@@ -48,17 +48,27 @@ import { AuditLog } from './modules/audit/entities/audit-log.entity';
 
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        type: 'postgres',
-        host: config.getOrThrow<string>('POSTGRES_HOST'),
-        port: config.getOrThrow<number>('POSTGRES_PORT'),
-        database: config.getOrThrow<string>('POSTGRES_DB'),
-        username: config.getOrThrow<string>('POSTGRES_USER'),
-        password: config.getOrThrow<string>('POSTGRES_PASSWORD'),
-        entities: [Tenant, User, AuditLog],
-        synchronize: config.get<string>('NODE_ENV') === 'development',
-        logging: config.get<string>('NODE_ENV') === 'development',
-      }),
+      useFactory: (config: ConfigService) => {
+        const databaseUrl = config.get<string>('DATABASE_URL');
+        const isProd = config.get<string>('NODE_ENV') === 'production';
+        const base = {
+          type: 'postgres' as const,
+          entities: [Tenant, User, AuditLog],
+          synchronize: config.get<string>('TYPEORM_SYNC') === 'true' || !isProd,
+          logging: !isProd,
+        };
+        if (databaseUrl) {
+          return { ...base, url: databaseUrl, ssl: { rejectUnauthorized: false } };
+        }
+        return {
+          ...base,
+          host: config.getOrThrow<string>('POSTGRES_HOST'),
+          port: config.getOrThrow<number>('POSTGRES_PORT'),
+          database: config.getOrThrow<string>('POSTGRES_DB'),
+          username: config.getOrThrow<string>('POSTGRES_USER'),
+          password: config.getOrThrow<string>('POSTGRES_PASSWORD'),
+        };
+      },
     }),
 
     RedisModule,

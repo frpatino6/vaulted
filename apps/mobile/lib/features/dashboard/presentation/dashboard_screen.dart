@@ -76,9 +76,8 @@ class DashboardScreen extends ConsumerWidget {
                       child: Center(
                         child: Text(
                           'No properties assigned to your account',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: AppColors.onSurfaceVariant,
-                              ),
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(color: AppColors.onSurfaceVariant),
                         ),
                       ),
                     ),
@@ -109,7 +108,9 @@ class DashboardScreen extends ConsumerWidget {
                             'RECENT PROPERTIES',
                             style: Theme.of(context).textTheme.titleSmall
                                 ?.copyWith(
-                                  color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
+                                  color: AppColors.onSurfaceVariant.withValues(
+                                    alpha: 0.6,
+                                  ),
                                   fontSize: 12.0,
                                   letterSpacing: 1.5,
                                 ),
@@ -134,26 +135,22 @@ class DashboardScreen extends ConsumerWidget {
                         ],
                       ),
                       const SizedBox(height: AppSpacing.sm),
-                      ...list
-                          .map(
-                            (p) => Padding(
-                              padding: const EdgeInsets.only(
-                                bottom: AppSpacing.md,
-                              ),
-                              child: DashboardPropertyCard(
-                                property: p,
-                                itemCount: null,
-                              ),
-                            ),
+                      ...list.map(
+                        (p) => Padding(
+                          padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                          child: DashboardPropertyCard(
+                            property: p,
+                            itemCount: null,
                           ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
               );
             },
             loading: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
-            error: (_, _) =>
-                const SliverToBoxAdapter(child: SizedBox.shrink()),
+            error: (_, _) => const SliverToBoxAdapter(child: SizedBox.shrink()),
           ),
           const SliverToBoxAdapter(
             child: Padding(
@@ -262,8 +259,8 @@ class _DashboardHeader extends ConsumerWidget {
     final greeting = hour < 12
         ? 'Good morning,'
         : hour < 18
-            ? 'Good afternoon,'
-            : 'Good evening,';
+        ? 'Good afternoon,'
+        : 'Good evening,';
     final firstName = email.split('@').first;
 
     return Padding(
@@ -333,14 +330,21 @@ class _DashboardHeader extends ConsumerWidget {
     final parts = token.split('.');
     if (parts.length != 3) return null;
     try {
-      final payload = utf8.decode(base64Url.decode(base64Url.normalize(parts[1])));
+      final payload = utf8.decode(
+        base64Url.decode(base64Url.normalize(parts[1])),
+      );
       return jsonDecode(payload)['email'] as String?;
     } catch (_) {
       return null;
     }
   }
 
-  void _showUserMenu(BuildContext context, WidgetRef ref, String email, String role) {
+  void _showUserMenu(
+    BuildContext context,
+    WidgetRef ref,
+    String email,
+    String role,
+  ) {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: AppColors.surfaceVariant,
@@ -399,17 +403,17 @@ class _DashboardHeader extends ConsumerWidget {
                         Text(
                           email,
                           style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
-                                color: AppColors.onBackground,
-                                fontWeight: FontWeight.w500,
-                              ),
+                            color: AppColors.onBackground,
+                            fontWeight: FontWeight.w500,
+                          ),
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 2),
                         Text(
                           role[0].toUpperCase() + role.substring(1),
                           style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
-                                color: AppColors.accent,
-                              ),
+                            color: AppColors.accent,
+                          ),
                         ),
                       ],
                     ),
@@ -419,12 +423,15 @@ class _DashboardHeader extends ConsumerWidget {
               const SizedBox(height: AppSpacing.lg),
               const Divider(color: Colors.white10),
               ListTile(
-                leading: Icon(Icons.settings_outlined, color: AppColors.onSurfaceVariant),
+                leading: Icon(
+                  Icons.settings_outlined,
+                  color: AppColors.onSurfaceVariant,
+                ),
                 title: Text(
                   'Settings',
                   style: Theme.of(ctx).textTheme.bodyLarge?.copyWith(
-                        color: AppColors.onBackground,
-                      ),
+                    color: AppColors.onBackground,
+                  ),
                 ),
                 onTap: () {
                   Navigator.of(ctx).pop();
@@ -435,9 +442,9 @@ class _DashboardHeader extends ConsumerWidget {
                 leading: Icon(Icons.logout, color: AppColors.error),
                 title: Text(
                   'Sign out',
-                  style: Theme.of(ctx).textTheme.bodyLarge?.copyWith(
-                        color: AppColors.error,
-                      ),
+                  style: Theme.of(
+                    ctx,
+                  ).textTheme.bodyLarge?.copyWith(color: AppColors.error),
                 ),
                 onTap: () async {
                   Navigator.of(ctx).pop();
@@ -497,9 +504,9 @@ class DashboardQuickActions extends ConsumerWidget {
                 onTap: () => context.push('/reports'),
               ),
               _QuickActionTile(
-                icon: Icons.settings_outlined,
-                label: 'Settings',
-                onTap: () => context.push('/settings'),
+                icon: Icons.checkroom_outlined,
+                label: 'Wardrobe',
+                onTap: () => context.push('/wardrobe'),
               ),
             ],
           ),
@@ -760,7 +767,10 @@ class _StatsSection extends StatelessWidget {
   final DashboardModel data;
   final bool canSeeValues;
 
-  static final _currency = NumberFormat.currency(symbol: r'$', decimalDigits: 0);
+  static final _currency = NumberFormat.currency(
+    symbol: r'$',
+    decimalDigits: 0,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -770,10 +780,10 @@ class _StatsSection extends StatelessWidget {
         Text(
           'PORTFOLIO OVERVIEW',
           style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
-                fontSize: 10,
-                letterSpacing: 2.0,
-              ),
+            color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
+            fontSize: 10,
+            letterSpacing: 2.0,
+          ),
         ),
         const SizedBox(height: AppSpacing.sm),
         Row(
@@ -845,18 +855,18 @@ class _StatCard extends StatelessWidget {
           Text(
             value,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: highlight ? AppColors.accent : AppColors.onBackground,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 22,
-                ),
+              color: highlight ? AppColors.accent : AppColors.onBackground,
+              fontWeight: FontWeight.w700,
+              fontSize: 22,
+            ),
           ),
           const SizedBox(height: 2),
           Text(
             label,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: AppColors.onSurfaceVariant,
-                  fontSize: 10,
-                ),
+              color: AppColors.onSurfaceVariant,
+              fontSize: 10,
+            ),
           ),
         ],
       ),
@@ -879,9 +889,7 @@ class _StatusRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final entries = itemsByStatus.entries
-        .where((e) => e.value > 0)
-        .toList();
+    final entries = itemsByStatus.entries.where((e) => e.value > 0).toList();
 
     if (entries.isEmpty) return const SizedBox.shrink();
 
@@ -908,18 +916,15 @@ class _StatusRow extends StatelessWidget {
               Container(
                 width: 6,
                 height: 6,
-                decoration: BoxDecoration(
-                  color: color,
-                  shape: BoxShape.circle,
-                ),
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
               ),
               const SizedBox(width: 4),
               Text(
                 '${e.value} ${e.key}',
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: AppColors.onSurface,
-                      fontSize: 11,
-                    ),
+                  color: AppColors.onSurface,
+                  fontSize: 11,
+                ),
               ),
             ],
           );
