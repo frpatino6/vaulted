@@ -12,6 +12,20 @@ async function bootstrap(): Promise<void> {
   const logger = new Logger('Bootstrap');
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
+  app.enableCors({
+    origin: [
+      'http://localhost:3000',
+      'http://localhost:4200',
+      'http://localhost:8080',
+      'https://vaulted-prod-2026.web.app',
+      'https://vaulted-prod-2026.firebaseapp.com',
+      process.env['APP_URL'] ?? '',
+    ].filter(Boolean),
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  });
+
   app.use(cookieParser());
   app.useStaticAssets(join(process.cwd(), 'uploads'), {
     prefix: '/uploads',
