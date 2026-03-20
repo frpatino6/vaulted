@@ -16,6 +16,7 @@ import '../../features/properties/presentation/property_detail_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
 import '../../features/users/presentation/users_screen.dart';
 import '../../features/ai_chat/presentation/chat_screen.dart';
+import '../../features/maintenance/presentation/maintenance_list_screen.dart';
 
 GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
   return GoRouter(
@@ -102,6 +103,10 @@ GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
       GoRoute(
         path: '/chat',
         builder: (context, state) => const ChatScreen(),
+      ),
+      GoRoute(
+        path: '/maintenance',
+        builder: (context, state) => const MaintenanceListScreen(),
       ),
       GoRoute(
         path: '/unauthorized',

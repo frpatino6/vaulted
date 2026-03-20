@@ -90,6 +90,12 @@ export class Item {
 
   @Prop({ required: true })
   createdBy!: string;
+
+  @Prop({ default: null })
+  nextMaintenanceDate?: Date;
+
+  @Prop({ default: 0 })
+  maintenanceDueCount!: number;
 }
 
 export const ItemValuationSchema = SchemaFactory.createForClass(ItemValuation);
