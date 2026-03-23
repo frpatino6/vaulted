@@ -13,7 +13,17 @@ export class ItemHistory {
 
   @Prop({
     required: true,
-    enum: ['moved', 'loaned', 'returned', 'repaired', 'valued', 'status_changed'],
+    enum: [
+      'moved',
+      'loaned',
+      'returned',
+      'repaired',
+      'valued',
+      'status_changed',
+      'maintenance_scheduled',
+      'maintenance_completed',
+      'maintenance_ai_suggested',
+    ],
   })
   action!:
     | 'moved'
@@ -21,7 +31,10 @@ export class ItemHistory {
     | 'returned'
     | 'repaired'
     | 'valued'
-    | 'status_changed';
+    | 'status_changed'
+    | 'maintenance_scheduled'
+    | 'maintenance_completed'
+    | 'maintenance_ai_suggested';
 
   @Prop()
   fromPropertyId?: string;

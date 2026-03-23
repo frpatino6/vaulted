@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AppThrottlerGuard } from './common/guards/throttler.guard';
 import { APP_GUARD } from '@nestjs/core';
 import { HealthModule } from './health/health.module';
@@ -17,6 +18,7 @@ import { InventoryModule } from './modules/inventory/inventory.module';
 import { MediaModule } from './modules/media/media.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { AiModule } from './modules/ai/ai.module';
+import { MaintenanceModule } from './modules/maintenance/maintenance.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { MfaVerifiedGuard } from './common/guards/mfa-verified.guard';
@@ -38,6 +40,8 @@ import { AuditLog } from './modules/audit/entities/audit-log.entity';
         limit: 100,
       },
     ]),
+
+    ScheduleModule.forRoot(),
 
     MongooseModule.forRootAsync({
       inject: [ConfigService],
@@ -83,6 +87,7 @@ import { AuditLog } from './modules/audit/entities/audit-log.entity';
     InventoryModule,
     MediaModule,
     DashboardModule,
+    MaintenanceModule,
   ],
   providers: [
     // Order matters: Throttler → JWT → MFA → Roles

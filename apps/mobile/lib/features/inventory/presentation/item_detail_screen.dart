@@ -11,6 +11,8 @@ import '../../../core/theme/app_theme.dart';
 import '../../users/domain/current_user_jwt.dart';
 import '../../wardrobe/data/models/wardrobe_attributes.dart';
 import '../../media/data/media_repository_provider.dart';
+import '../../maintenance/domain/maintenance_notifier.dart';
+import '../../maintenance/presentation/add_maintenance_sheet.dart';
 import '../data/item_repository_provider.dart';
 import '../data/models/item_model.dart';
 import '../domain/item_detail_notifier.dart';
@@ -185,6 +187,11 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                         const SizedBox(height: AppSpacing.lg),
                         _QrSection(qrCode: item.qrCode!),
                       ],
+                      const SizedBox(height: AppSpacing.lg),
+                      _MaintenanceSectionWidget(
+                        itemId: item.id,
+                        canSchedule: canEdit,
+                      ),
                       const SizedBox(height: AppSpacing.lg),
                       _HistorySectionLabel(),
                       const SizedBox(height: AppSpacing.sm),
@@ -374,6 +381,158 @@ class _SectionLabel extends StatelessWidget {
         letterSpacing: 2.0,
         fontSize: 10,
       ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Maintenance section embedded in item detail
+// ---------------------------------------------------------------------------
+
+class _MaintenanceSectionWidget extends ConsumerWidget {
+  const _MaintenanceSectionWidget({
+    required this.itemId,
+    required this.canSchedule,
+  });
+
+  final String itemId;
+  final bool canSchedule;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(itemMaintenanceNotifierProvider(itemId));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'MAINTENANCE',
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: AppColors.accent,
+                    letterSpacing: 2.0,
+                    fontSize: 10,
+                  ),
+            ),
+            if (canSchedule)
+              TextButton.icon(
+                onPressed: () async {
+                  final record =
+                      await showAddMaintenanceSheet(context, itemId);
+                  if (record != null) {
+                    ref
+                        .read(itemMaintenanceNotifierProvider(itemId).notifier)
+                        .reload();
+                  }
+                },
+                icon: Icon(Icons.add, size: 16, color: AppColors.accent),
+                label: Text(
+                  'Schedule',
+                  style: TextStyle(color: AppColors.accent, fontSize: 12),
+                ),
+                style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+              ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        state.when(
+          data: (records) {
+            final active = records
+                .where((r) => r.isPending || r.isOverdue)
+                .take(3)
+                .toList();
+            if (active.isEmpty) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+                child: Text(
+                  'No maintenance scheduled.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.onSurfaceVariant
+                            .withValues(alpha: 0.5),
+                        fontStyle: FontStyle.italic,
+                      ),
+                ),
+              );
+            }
+            return Column(
+              children: active.map((r) {
+                final isOverdue = r.isOverdue;
+                final color = isOverdue
+                    ? const Color(0xFFCF6679)
+                    : r.isUrgent
+                        ? const Color(0xFFE07B39)
+                        : const Color(0xFFD4AF37);
+                final date = DateTime.tryParse(r.scheduledDate);
+                final dateStr = date != null
+                    ? DateFormat.yMMMd().format(date)
+                    : r.scheduledDate;
+
+                return Container(
+                  margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                    vertical: AppSpacing.sm,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceVariant.withValues(alpha: 0.6),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                        color: color.withValues(alpha: 0.3), width: 1),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.build_outlined, size: 16, color: color),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              r.title,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                    color: AppColors.onBackground,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                            ),
+                            Text(
+                              isOverdue
+                                  ? 'Overdue · Was $dateStr'
+                                  : dateStr,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelSmall
+                                  ?.copyWith(color: color, fontSize: 10),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (r.isAiSuggested)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 4),
+                          child: Icon(Icons.auto_awesome,
+                              size: 14, color: AppColors.accentLight),
+                        ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            );
+          },
+          loading: () => const Padding(
+            padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
+            child: LinearProgressIndicator(),
+          ),
+          error: (_, __) => const SizedBox.shrink(),
+        ),
+      ],
     );
   }
 }
