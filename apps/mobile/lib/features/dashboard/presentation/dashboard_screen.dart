@@ -501,9 +501,9 @@ class DashboardQuickActions extends ConsumerWidget {
           child: GridView.count(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
-            mainAxisSpacing: 16.0,
-            crossAxisSpacing: 16.0,
+            crossAxisCount: 3,
+            mainAxisSpacing: 12.0,
+            crossAxisSpacing: 12.0,
             childAspectRatio: 1.0,
             padding: EdgeInsets.zero,
             children: [
@@ -516,6 +516,16 @@ class DashboardQuickActions extends ConsumerWidget {
                 icon: Icons.auto_awesome_outlined,
                 label: 'AI Assistant',
                 onTap: () => context.push('/chat'),
+              ),
+              _QuickActionTile(
+                icon: Icons.checkroom_outlined,
+                label: 'Wardrobe',
+                onTap: () => context.push('/wardrobe'),
+              ),
+              _QuickActionTile(
+                icon: Icons.home_work_outlined,
+                label: 'Properties',
+                onTap: () => context.push('/properties'),
               ),
               _QuickActionTile(
                 icon: Icons.picture_as_pdf_outlined,
@@ -566,15 +576,15 @@ class _QuickActionTile extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(icon, color: AppColors.accentBright, size: 28.0),
-                const SizedBox(height: 12.0),
+                Icon(icon, color: AppColors.accentBright, size: 24.0),
+                const SizedBox(height: 8.0),
                 Text(
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: 14.0,
+                    fontSize: 12.0,
                     fontWeight: FontWeight.w500,
                     color: Colors.white.withValues(alpha: 0.9),
                   ),
