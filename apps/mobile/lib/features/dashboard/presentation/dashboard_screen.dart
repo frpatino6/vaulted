@@ -523,11 +523,6 @@ class DashboardQuickActions extends ConsumerWidget {
                 onTap: () => context.push('/wardrobe'),
               ),
               _QuickActionTile(
-                icon: Icons.home_work_outlined,
-                label: 'Properties',
-                onTap: () => context.push('/properties'),
-              ),
-              _QuickActionTile(
                 icon: Icons.picture_as_pdf_outlined,
                 label: 'Reports',
                 onTap: () => context.push('/reports'),
