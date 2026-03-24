@@ -11,6 +11,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../users/domain/current_user_jwt.dart';
 import '../../wardrobe/data/models/wardrobe_attributes.dart';
 import '../../media/data/media_repository_provider.dart';
+import '../../maintenance/data/models/maintenance_model.dart';
 import '../../maintenance/domain/maintenance_notifier.dart';
 import '../../maintenance/presentation/add_maintenance_sheet.dart';
 import '../data/item_repository_provider.dart';
