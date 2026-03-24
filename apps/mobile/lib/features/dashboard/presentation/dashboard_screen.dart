@@ -11,6 +11,7 @@ import '../../../core/storage/auth_token_store.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/presentation/auth_notifier.dart';
 import '../../users/domain/current_user_jwt.dart';
+import '../../maintenance/data/models/maintenance_model.dart';
 import '../../maintenance/domain/maintenance_notifier.dart';
 import '../../properties/data/models/property_model.dart';
 import '../../properties/domain/properties_notifier.dart';
