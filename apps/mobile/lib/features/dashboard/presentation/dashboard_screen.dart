@@ -11,6 +11,7 @@ import '../../../core/storage/auth_token_store.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/presentation/auth_notifier.dart';
 import '../../users/domain/current_user_jwt.dart';
+import '../../maintenance/domain/maintenance_notifier.dart';
 import '../../properties/data/models/property_model.dart';
 import '../../properties/domain/properties_notifier.dart';
 import '../../properties/presentation/add_property_sheet.dart';
@@ -50,6 +51,7 @@ class DashboardScreen extends ConsumerWidget {
                 ),
               ),
             ),
+          const SliverToBoxAdapter(child: _MaintenanceAlertCard()),
           const SliverToBoxAdapter(
             child: Padding(
               padding: EdgeInsets.fromLTRB(
@@ -424,6 +426,22 @@ class _DashboardHeader extends ConsumerWidget {
               const Divider(color: Colors.white10),
               ListTile(
                 leading: Icon(
+                  Icons.build_circle_outlined,
+                  color: AppColors.onSurfaceVariant,
+                ),
+                title: Text(
+                  'Maintenance',
+                  style: Theme.of(ctx).textTheme.bodyLarge?.copyWith(
+                    color: AppColors.onBackground,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  context.push('/maintenance');
+                },
+              ),
+              ListTile(
+                leading: Icon(
                   Icons.settings_outlined,
                   color: AppColors.onSurfaceVariant,
                 ),
@@ -504,9 +522,9 @@ class DashboardQuickActions extends ConsumerWidget {
                 onTap: () => context.push('/reports'),
               ),
               _QuickActionTile(
-                icon: Icons.checkroom_outlined,
-                label: 'Wardrobe',
-                onTap: () => context.push('/wardrobe'),
+                icon: Icons.build_circle_outlined,
+                label: 'Maintenance',
+                onTap: () => context.push('/maintenance'),
               ),
             ],
           ),
@@ -933,6 +951,175 @@ class _StatusRow extends StatelessWidget {
     );
   }
 }
+
+// ---------------------------------------------------------------------------
+// Maintenance alert card — shown only when overdue or due-this-week items exist
+// ---------------------------------------------------------------------------
+
+class _MaintenanceAlertCard extends ConsumerStatefulWidget {
+  const _MaintenanceAlertCard();
+
+  @override
+  ConsumerState<_MaintenanceAlertCard> createState() =>
+      _MaintenanceAlertCardState();
+}
+
+class _MaintenanceAlertCardState extends ConsumerState<_MaintenanceAlertCard> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(maintenanceListNotifierProvider.notifier).load();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = ref.watch(maintenanceListNotifierProvider);
+
+    return state.when(
+      data: (records) {
+        final overdue = records.where((r) => r.isOverdue).length;
+        final dueSoon = records.where((r) => r.isDueSoon).length;
+
+        if (overdue == 0 && dueSoon == 0) return const SizedBox.shrink();
+
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.md,
+            AppSpacing.lg,
+            AppSpacing.md,
+            0,
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceVariant,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: const Color(0xFFCF6679).withValues(alpha: 0.35),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'MAINTENANCE ALERTS',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
+                        fontSize: 10,
+                        letterSpacing: 2.0,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => context.push('/maintenance'),
+                      child: Text(
+                        'See all →',
+                        style: TextStyle(
+                          color: AppColors.accent,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Row(
+                  children: [
+                    if (overdue > 0) ...[
+                      Expanded(
+                        child: _AlertCountTile(
+                          count: overdue,
+                          label: 'Overdue',
+                          color: const Color(0xFFCF6679),
+                        ),
+                      ),
+                      if (dueSoon > 0) const SizedBox(width: AppSpacing.sm),
+                    ],
+                    if (dueSoon > 0)
+                      Expanded(
+                        child: _AlertCountTile(
+                          count: dueSoon,
+                          label: 'Due this week',
+                          color: const Color(0xFFD4AF37),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
+    );
+  }
+}
+
+class _AlertCountTile extends StatelessWidget {
+  const _AlertCountTile({
+    required this.count,
+    required this.label,
+    required this.color,
+  });
+
+  final int count;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '$count',
+                style: TextStyle(
+                  color: color,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: AppColors.onSurfaceVariant,
+                  fontSize: 10,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 
 class _FooterText extends StatelessWidget {
   const _FooterText();

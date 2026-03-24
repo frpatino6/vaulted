@@ -130,6 +130,11 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                         const SizedBox(height: AppSpacing.sm),
                         _ValuationDetailsSection(item: item),
                       ],
+                      const SizedBox(height: AppSpacing.lg),
+                      _MaintenanceSectionWidget(
+                        itemId: item.id,
+                        canSchedule: canEdit,
+                      ),
                       if (item.createdAt != null &&
                           item.createdAt!.isNotEmpty) ...[
                         const SizedBox(height: AppSpacing.lg),
@@ -188,11 +193,6 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                         const SizedBox(height: AppSpacing.lg),
                         _QrSection(qrCode: item.qrCode!),
                       ],
-                      const SizedBox(height: AppSpacing.lg),
-                      _MaintenanceSectionWidget(
-                        itemId: item.id,
-                        canSchedule: canEdit,
-                      ),
                       const SizedBox(height: AppSpacing.lg),
                       _HistorySectionLabel(),
                       const SizedBox(height: AppSpacing.sm),
