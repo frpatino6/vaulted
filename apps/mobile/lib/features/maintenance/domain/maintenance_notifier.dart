@@ -155,6 +155,21 @@ class ItemMaintenanceNotifier
       state = AsyncError(e, StackTrace.current);
     }
   }
+
+  /// Returns the AI result map, or null on error.
+  /// Automatically reloads the list if a record was created.
+  Future<Map<String, dynamic>?> analyzeWithAi() async {
+    try {
+      final result =
+          await ref.read(maintenanceRepositoryProvider).analyzeWithAi(arg);
+      if (result['recordCreated'] == true) {
+        await reload();
+      }
+      return result;
+    } catch (e) {
+      return null;
+    }
+  }
 }
 
 final itemMaintenanceNotifierProvider = AsyncNotifierProviderFamily<

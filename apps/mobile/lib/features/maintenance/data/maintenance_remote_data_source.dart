@@ -73,6 +73,15 @@ class MaintenanceRemoteDataSource {
     await _dio.delete<void>('maintenance/$id');
   }
 
+  /// POST /ai/maintenance/analyze/:itemId
+  Future<Map<String, dynamic>> analyzeWithAi(String itemId) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      'ai/maintenance/analyze/$itemId',
+    );
+    final data = _unwrapData(response);
+    return Map<String, dynamic>.from(data as Map);
+  }
+
   static Map<String, dynamic> _normalize(Map<String, dynamic> json) {
     final id = json['id'] ?? json['_id'];
     if (id != null) json['id'] = id is String ? id : id.toString();
