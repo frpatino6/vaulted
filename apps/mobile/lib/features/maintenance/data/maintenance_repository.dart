@@ -79,4 +79,7 @@ class MaintenanceRepository {
       _remote.update(id, fields);
 
   Future<void> delete(String id) => _remote.delete(id);
+
+  Future<Map<String, dynamic>> analyzeWithAi(String itemId) =>
+      _remote.analyzeWithAi(itemId);
 }

@@ -390,7 +390,7 @@ class _SectionLabel extends StatelessWidget {
 // Maintenance section embedded in item detail
 // ---------------------------------------------------------------------------
 
-class _MaintenanceSectionWidget extends ConsumerWidget {
+class _MaintenanceSectionWidget extends ConsumerStatefulWidget {
   const _MaintenanceSectionWidget({
     required this.itemId,
     required this.canSchedule,
@@ -400,8 +400,126 @@ class _MaintenanceSectionWidget extends ConsumerWidget {
   final bool canSchedule;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(itemMaintenanceNotifierProvider(itemId));
+  ConsumerState<_MaintenanceSectionWidget> createState() =>
+      _MaintenanceSectionWidgetState();
+}
+
+class _MaintenanceSectionWidgetState
+    extends ConsumerState<_MaintenanceSectionWidget> {
+  bool _aiLoading = false;
+
+  Future<void> _runAiAnalysis() async {
+    setState(() => _aiLoading = true);
+    final result = await ref
+        .read(itemMaintenanceNotifierProvider(widget.itemId).notifier)
+        .analyzeWithAi();
+    if (!mounted) return;
+    setState(() => _aiLoading = false);
+
+    if (result == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('AI analysis failed. Please try again.')),
+      );
+      return;
+    }
+
+    final suggestion = result['suggestion'] as Map<String, dynamic>?;
+    final recordCreated = result['recordCreated'] == true;
+
+    if (suggestion == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This item was recently analyzed. Try again in 7 days.'),
+        ),
+      );
+      return;
+    }
+
+    final riskScore = (suggestion['riskScore'] as num?)?.toInt() ?? 0;
+    final title = suggestion['title'] as String? ?? '';
+    final reason = suggestion['reason'] as String? ?? '';
+    final action = suggestion['recommendedAction'] as String? ?? '';
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E1E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.auto_awesome, color: AppColors.accentLight, size: 20),
+            const SizedBox(width: 8),
+            const Text('AI Maintenance Analysis',
+                style: TextStyle(fontSize: 16, color: Colors.white)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _AiRiskBadge(score: riskScore),
+            const SizedBox(height: 12),
+            if (title.isNotEmpty) ...[
+              Text(title,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14)),
+              const SizedBox(height: 6),
+            ],
+            if (reason.isNotEmpty)
+              Text(reason,
+                  style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.7), fontSize: 13)),
+            if (action.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Text('Recommended action:',
+                  style: TextStyle(
+                      color: AppColors.accent,
+                      fontSize: 11,
+                      letterSpacing: 0.5)),
+              const SizedBox(height: 4),
+              Text(action,
+                  style: const TextStyle(color: Colors.white, fontSize: 13)),
+            ],
+            if (recordCreated) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.accent.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.check_circle_outline,
+                        size: 14, color: AppColors.accent),
+                    const SizedBox(width: 6),
+                    Text('Maintenance scheduled automatically',
+                        style: TextStyle(
+                            color: AppColors.accent, fontSize: 12)),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child:
+                Text('Close', style: TextStyle(color: AppColors.accentLight)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state =
+        ref.watch(itemMaintenanceNotifierProvider(widget.itemId));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -417,26 +535,57 @@ class _MaintenanceSectionWidget extends ConsumerWidget {
                     fontSize: 10,
                   ),
             ),
-            if (canSchedule)
-              TextButton.icon(
-                onPressed: () async {
-                  final record =
-                      await showAddMaintenanceSheet(context, itemId);
-                  if (record != null) {
-                    ref
-                        .read(itemMaintenanceNotifierProvider(itemId).notifier)
-                        .reload();
-                  }
-                },
-                icon: Icon(Icons.add, size: 16, color: AppColors.accent),
-                label: Text(
-                  'Schedule',
-                  style: TextStyle(color: AppColors.accent, fontSize: 12),
-                ),
-                style: TextButton.styleFrom(
-                    padding: EdgeInsets.zero,
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+            if (widget.canSchedule)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextButton.icon(
+                    onPressed: _aiLoading ? null : _runAiAnalysis,
+                    icon: _aiLoading
+                        ? SizedBox(
+                            width: 12,
+                            height: 12,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 1.5,
+                              color: AppColors.accentLight,
+                            ),
+                          )
+                        : Icon(Icons.auto_awesome,
+                            size: 14, color: AppColors.accentLight),
+                    label: Text(
+                      'AI Analysis',
+                      style: TextStyle(
+                          color: AppColors.accentLight, fontSize: 12),
+                    ),
+                    style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                  ),
+                  const SizedBox(width: 12),
+                  TextButton.icon(
+                    onPressed: () async {
+                      final record = await showAddMaintenanceSheet(
+                          context, widget.itemId);
+                      if (record != null) {
+                        ref
+                            .read(itemMaintenanceNotifierProvider(widget.itemId)
+                                .notifier)
+                            .reload();
+                      }
+                    },
+                    icon: Icon(Icons.add, size: 16, color: AppColors.accent),
+                    label: Text(
+                      'Schedule',
+                      style:
+                          TextStyle(color: AppColors.accent, fontSize: 12),
+                    ),
+                    style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                  ),
+                ],
               ),
           ],
         ),
@@ -1339,6 +1488,50 @@ class _HistoryTimeline extends StatelessWidget {
               ],
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+
+class _AiRiskBadge extends StatelessWidget {
+  const _AiRiskBadge({required this.score});
+
+  final int score;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color color;
+    final String label;
+    if (score >= 75) {
+      color = const Color(0xFFCF6679);
+      label = 'High risk';
+    } else if (score >= 50) {
+      color = const Color(0xFFE07B39);
+      label = 'Medium risk';
+    } else {
+      color = const Color(0xFF4CAF50);
+      label = 'Low risk';
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.shield_outlined, size: 13, color: color),
+          const SizedBox(width: 5),
+          Text(
+            '$label · $score/100',
+            style: TextStyle(
+                color: color, fontSize: 12, fontWeight: FontWeight.w600),
+          ),
         ],
       ),
     );
