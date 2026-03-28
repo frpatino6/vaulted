@@ -11,6 +11,7 @@ import '../data/models/item_model.dart';
 import '../domain/item_list_notifier.dart';
 import '../../../shared/widgets/room_inventory_asset_card.dart';
 import 'add_item_sheet.dart';
+import 'section_qr_sheet.dart';
 
 class RoomDetailScreen extends ConsumerStatefulWidget {
   const RoomDetailScreen({
@@ -89,6 +90,28 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
               ),
             ),
             actions: [
+              if (state.valueOrNull?.any((i) => i.locationDetail?.isNotEmpty == true) == true)
+                IconButton(
+                  onPressed: () {
+                    final items = state.valueOrNull ?? [];
+                    final sections = items
+                        .map((i) => i.locationDetail)
+                        .whereType<String>()
+                        .where((s) => s.isNotEmpty)
+                        .toSet()
+                        .toList()
+                      ..sort();
+                    showSectionQrSheet(
+                      context,
+                      widget.roomId,
+                      widget.roomName,
+                      sections,
+                    );
+                  },
+                  icon: const Icon(Icons.qr_code_2, color: AppColors.accentLight),
+                  tooltip: 'Section QR codes',
+                  splashRadius: 24,
+                ),
               if (canAddItem)
                 IconButton(
                   onPressed: () => _showAddItem(context),
