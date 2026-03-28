@@ -272,6 +272,7 @@ mixin _$ItemModel {
   List<String> get photos => throw _privateConstructorUsedError;
   List<String> get tags => throw _privateConstructorUsedError;
   String? get serialNumber => throw _privateConstructorUsedError;
+  String? get locationDetail => throw _privateConstructorUsedError;
   ItemValuationModel? get valuation =>
       throw _privateConstructorUsedError; // ignore: invalid_annotation_target
   @JsonKey(includeIfNull: false)
@@ -308,6 +309,7 @@ abstract class $ItemModelCopyWith<$Res> {
     List<String> photos,
     List<String> tags,
     String? serialNumber,
+    String? locationDetail,
     ItemValuationModel? valuation,
     @JsonKey(includeIfNull: false) Map<String, dynamic>? attributes,
     List<String> documents,
@@ -345,6 +347,7 @@ class _$ItemModelCopyWithImpl<$Res, $Val extends ItemModel>
     Object? photos = null,
     Object? tags = null,
     Object? serialNumber = freezed,
+    Object? locationDetail = freezed,
     Object? valuation = freezed,
     Object? attributes = freezed,
     Object? documents = null,
@@ -400,6 +403,10 @@ class _$ItemModelCopyWithImpl<$Res, $Val extends ItemModel>
             serialNumber: freezed == serialNumber
                 ? _value.serialNumber
                 : serialNumber // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            locationDetail: freezed == locationDetail
+                ? _value.locationDetail
+                : locationDetail // ignore: cast_nullable_to_non_nullable
                       as String?,
             valuation: freezed == valuation
                 ? _value.valuation
@@ -463,6 +470,7 @@ abstract class _$$ItemModelImplCopyWith<$Res>
     List<String> photos,
     List<String> tags,
     String? serialNumber,
+    String? locationDetail,
     ItemValuationModel? valuation,
     @JsonKey(includeIfNull: false) Map<String, dynamic>? attributes,
     List<String> documents,
@@ -500,6 +508,7 @@ class __$$ItemModelImplCopyWithImpl<$Res>
     Object? photos = null,
     Object? tags = null,
     Object? serialNumber = freezed,
+    Object? locationDetail = freezed,
     Object? valuation = freezed,
     Object? attributes = freezed,
     Object? documents = null,
@@ -556,6 +565,10 @@ class __$$ItemModelImplCopyWithImpl<$Res>
             ? _value.serialNumber
             : serialNumber // ignore: cast_nullable_to_non_nullable
                   as String?,
+        locationDetail: freezed == locationDetail
+            ? _value.locationDetail
+            : locationDetail // ignore: cast_nullable_to_non_nullable
+                  as String?,
         valuation: freezed == valuation
             ? _value.valuation
             : valuation // ignore: cast_nullable_to_non_nullable
@@ -597,6 +610,7 @@ class _$ItemModelImpl implements _ItemModel {
     final List<String> photos = const [],
     final List<String> tags = const [],
     this.serialNumber,
+    this.locationDetail,
     this.valuation,
     @JsonKey(includeIfNull: false) final Map<String, dynamic>? attributes,
     final List<String> documents = const [],
@@ -651,6 +665,8 @@ class _$ItemModelImpl implements _ItemModel {
   @override
   final String? serialNumber;
   @override
+  final String? locationDetail;
+  @override
   final ItemValuationModel? valuation;
   // ignore: invalid_annotation_target
   final Map<String, dynamic>? _attributes;
@@ -681,7 +697,7 @@ class _$ItemModelImpl implements _ItemModel {
 
   @override
   String toString() {
-    return 'ItemModel(id: $id, name: $name, propertyId: $propertyId, propertyName: $propertyName, roomId: $roomId, roomName: $roomName, category: $category, subcategory: $subcategory, status: $status, photos: $photos, tags: $tags, serialNumber: $serialNumber, valuation: $valuation, attributes: $attributes, documents: $documents, createdAt: $createdAt, qrCode: $qrCode)';
+    return 'ItemModel(id: $id, name: $name, propertyId: $propertyId, propertyName: $propertyName, roomId: $roomId, roomName: $roomName, category: $category, subcategory: $subcategory, status: $status, photos: $photos, tags: $tags, serialNumber: $serialNumber, locationDetail: $locationDetail, valuation: $valuation, attributes: $attributes, documents: $documents, createdAt: $createdAt, qrCode: $qrCode)';
   }
 
   @override
@@ -707,6 +723,8 @@ class _$ItemModelImpl implements _ItemModel {
             const DeepCollectionEquality().equals(other._tags, _tags) &&
             (identical(other.serialNumber, serialNumber) ||
                 other.serialNumber == serialNumber) &&
+            (identical(other.locationDetail, locationDetail) ||
+                other.locationDetail == locationDetail) &&
             (identical(other.valuation, valuation) ||
                 other.valuation == valuation) &&
             const DeepCollectionEquality().equals(
@@ -738,6 +756,7 @@ class _$ItemModelImpl implements _ItemModel {
     const DeepCollectionEquality().hash(_photos),
     const DeepCollectionEquality().hash(_tags),
     serialNumber,
+    locationDetail,
     valuation,
     const DeepCollectionEquality().hash(_attributes),
     const DeepCollectionEquality().hash(_documents),
@@ -773,6 +792,7 @@ abstract class _ItemModel implements ItemModel {
     final List<String> photos,
     final List<String> tags,
     final String? serialNumber,
+    final String? locationDetail,
     final ItemValuationModel? valuation,
     @JsonKey(includeIfNull: false) final Map<String, dynamic>? attributes,
     final List<String> documents,
@@ -807,6 +827,8 @@ abstract class _ItemModel implements ItemModel {
   List<String> get tags;
   @override
   String? get serialNumber;
+  @override
+  String? get locationDetail;
   @override
   ItemValuationModel? get valuation; // ignore: invalid_annotation_target
   @override

@@ -40,6 +40,7 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
   final _nameController = TextEditingController();
   final _subcategoryController = TextEditingController();
   final _serialNumberController = TextEditingController();
+  final _locationDetailController = TextEditingController();
   final _purchasePriceController = TextEditingController();
   final _currentValueController = TextEditingController();
   final _tagsController = TextEditingController();
@@ -57,6 +58,7 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
     _nameController.dispose();
     _subcategoryController.dispose();
     _serialNumberController.dispose();
+    _locationDetailController.dispose();
     _purchasePriceController.dispose();
     _currentValueController.dispose();
     _tagsController.dispose();
@@ -131,6 +133,9 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
         serialNumber: _serialNumberController.text.trim().isEmpty
             ? null
             : _serialNumberController.text.trim(),
+        locationDetail: _locationDetailController.text.trim().isEmpty
+            ? null
+            : _locationDetailController.text.trim(),
         purchasePrice: purchasePrice,
         currentValue: currentValue,
         tags: tags,
@@ -284,6 +289,14 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
                   decoration: const InputDecoration(
                     labelText: 'Serial number (optional)',
                     hintText: 'e.g. SN123',
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                TextFormField(
+                  controller: _locationDetailController,
+                  decoration: const InputDecoration(
+                    labelText: 'Location / Section (optional)',
+                    hintText: 'e.g. Cabinet 3, Section A',
                   ),
                 ),
                 const SizedBox(height: AppSpacing.md),

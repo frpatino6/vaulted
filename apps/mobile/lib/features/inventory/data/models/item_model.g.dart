@@ -45,6 +45,7 @@ _$ItemModelImpl _$$ItemModelImplFromJson(
       (json['tags'] as List<dynamic>?)?.map((e) => e as String).toList() ??
       const [],
   serialNumber: json['serialNumber'] as String?,
+  locationDetail: json['locationDetail'] as String?,
   valuation: json['valuation'] == null
       ? null
       : ItemValuationModel.fromJson(json['valuation'] as Map<String, dynamic>),
@@ -70,6 +71,7 @@ Map<String, dynamic> _$$ItemModelImplToJson(_$ItemModelImpl instance) =>
       'photos': instance.photos,
       'tags': instance.tags,
       'serialNumber': instance.serialNumber,
+      'locationDetail': instance.locationDetail,
       'valuation': instance.valuation,
       if (instance.attributes case final value?) 'attributes': value,
       'documents': instance.documents,

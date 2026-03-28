@@ -112,4 +112,9 @@ export class CreateItemDto {
   @IsString()
   @MaxLength(255)
   serialNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  locationDetail?: string;
 }

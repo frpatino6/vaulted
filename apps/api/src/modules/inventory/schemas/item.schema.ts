@@ -88,6 +88,9 @@ export class Item {
   @Prop()
   serialNumber?: string;
 
+  @Prop({ trim: true })
+  locationDetail?: string;
+
   @Prop({ required: true })
   createdBy!: string;
 

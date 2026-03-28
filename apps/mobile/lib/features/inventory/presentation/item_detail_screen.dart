@@ -1374,6 +1374,12 @@ class _SpecsGrid extends StatelessWidget {
                 : '—',
             labelStyle: _labelStyle(context),
           ),
+          if (item.locationDetail?.isNotEmpty == true)
+            _SpecCell(
+              label: 'SECTION / LOCATION',
+              value: item.locationDetail!,
+              labelStyle: _labelStyle(context),
+            ),
         ],
       ),
     );
