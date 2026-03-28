@@ -7,9 +7,16 @@ import '../data/models/maintenance_model.dart';
 import '../domain/maintenance_notifier.dart';
 
 class AddMaintenanceSheet extends ConsumerStatefulWidget {
-  const AddMaintenanceSheet({super.key, required this.itemId});
+  const AddMaintenanceSheet({
+    super.key,
+    required this.itemId,
+    this.initialTitle,
+    this.initialNotes,
+  });
 
   final String itemId;
+  final String? initialTitle;
+  final String? initialNotes;
 
   @override
   ConsumerState<AddMaintenanceSheet> createState() =>
@@ -19,8 +26,10 @@ class AddMaintenanceSheet extends ConsumerStatefulWidget {
 class _AddMaintenanceSheetState extends ConsumerState<AddMaintenanceSheet> {
   final _formKey = GlobalKey<FormState>();
 
-  final _titleController = TextEditingController();
-  final _descriptionController = TextEditingController();
+  late final _titleController =
+      TextEditingController(text: widget.initialTitle ?? '');
+  late final _descriptionController =
+      TextEditingController(text: widget.initialNotes ?? '');
   final _providerNameController = TextEditingController();
   final _providerContactController = TextEditingController();
   final _costController = TextEditingController();
@@ -413,12 +422,18 @@ class _SectionLabel extends StatelessWidget {
 /// Helper to show AddMaintenanceSheet and return the created record.
 Future<MaintenanceModel?> showAddMaintenanceSheet(
   BuildContext context,
-  String itemId,
-) {
+  String itemId, {
+  String? initialTitle,
+  String? initialNotes,
+}) {
   return showModalBottomSheet<MaintenanceModel>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (_) => AddMaintenanceSheet(itemId: itemId),
+    builder: (_) => AddMaintenanceSheet(
+      itemId: itemId,
+      initialTitle: initialTitle,
+      initialNotes: initialNotes,
+    ),
   );
 }
