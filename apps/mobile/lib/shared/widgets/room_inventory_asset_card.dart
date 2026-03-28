@@ -20,6 +20,7 @@ class RoomInventoryAssetCard extends StatelessWidget {
     this.canSeeValues = true,
     this.nameMaxLines = 1,
     this.valueFontWeight = FontWeight.w500,
+    this.showLocation = false,
   });
 
   final ItemModel item;
@@ -27,6 +28,7 @@ class RoomInventoryAssetCard extends StatelessWidget {
   final bool canSeeValues;
   final int nameMaxLines;
   final FontWeight valueFontWeight;
+  final bool showLocation;
 
   static final _currencyFormat = NumberFormat.currency(
     locale: 'en_US',
@@ -55,7 +57,7 @@ class RoomInventoryAssetCard extends StatelessWidget {
         onTap: () => context.push('/items/${item.id}'),
         borderRadius: BorderRadius.circular(12),
         child: Container(
-          height: nameMaxLines > 1 ? 120 : 100,
+          constraints: BoxConstraints(minHeight: nameMaxLines > 1 ? 120 : 100),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
@@ -105,6 +107,19 @@ class RoomInventoryAssetCard extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
+                          if (showLocation && _locationText.isNotEmpty) ...[
+                            const SizedBox(height: 3),
+                            Text(
+                              _locationText,
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: AppColors.accentLight.withValues(alpha: 0.8),
+                                    fontSize: 10,
+                                    letterSpacing: 0.3,
+                                  ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
                           const SizedBox(height: AppSpacing.xs),
                           StatusBadge(status: item.status, compact: true),
                         ],
@@ -151,6 +166,13 @@ class RoomInventoryAssetCard extends StatelessWidget {
     if (item.subcategory.isNotEmpty) parts.add(item.subcategory);
     parts.add(item.category);
     return parts.join(' · ');
+  }
+
+  String get _locationText {
+    final parts = <String>[];
+    if (item.roomName?.isNotEmpty == true) parts.add(item.roomName!);
+    if (item.locationDetail?.isNotEmpty == true) parts.add(item.locationDetail!);
+    return parts.join(' → ');
   }
 
   Widget _buildThumbnail() {
