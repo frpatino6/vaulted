@@ -338,7 +338,8 @@ class _ItemsRow extends StatelessWidget {
             child: RoomInventoryAssetCard(
               item: itemModel,
               canSeeValues: canSeeValues,
-              nameMaxLines: 2,
+              nameMaxLines: 3,
+              showLocation: true,
             ),
           );
         },
