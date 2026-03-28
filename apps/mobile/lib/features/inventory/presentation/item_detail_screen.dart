@@ -511,6 +511,28 @@ class _MaintenanceSectionWidgetState
             child:
                 Text('Close', style: TextStyle(color: AppColors.accentLight)),
           ),
+          if (!recordCreated)
+            TextButton(
+              onPressed: () async {
+                Navigator.of(ctx).pop();
+                final record = await showAddMaintenanceSheet(
+                  context,
+                  widget.itemId,
+                  initialTitle: title,
+                  initialNotes: action.isNotEmpty ? action : reason,
+                );
+                if (record != null && mounted) {
+                  ref
+                      .read(itemMaintenanceNotifierProvider(widget.itemId)
+                          .notifier)
+                      .reload();
+                }
+              },
+              child: Text('Schedule',
+                  style: TextStyle(
+                      color: AppColors.accent,
+                      fontWeight: FontWeight.w600)),
+            ),
         ],
       ),
     );
@@ -1352,6 +1374,12 @@ class _SpecsGrid extends StatelessWidget {
                 : '—',
             labelStyle: _labelStyle(context),
           ),
+          if (item.locationDetail?.isNotEmpty == true)
+            _SpecCell(
+              label: 'SECTION / LOCATION',
+              value: item.locationDetail!,
+              labelStyle: _labelStyle(context),
+            ),
         ],
       ),
     );

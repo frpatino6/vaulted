@@ -37,6 +37,7 @@ class _EditItemSheetState extends ConsumerState<EditItemSheet> {
   late final TextEditingController _nameController;
   late final TextEditingController _subcategoryController;
   late final TextEditingController _serialNumberController;
+  late final TextEditingController _locationDetailController;
   late final TextEditingController _purchasePriceController;
   late final TextEditingController _currentValueController;
   late final TextEditingController _tagsController;
@@ -60,6 +61,9 @@ class _EditItemSheetState extends ConsumerState<EditItemSheet> {
     _serialNumberController = TextEditingController(
       text: item.serialNumber ?? '',
     );
+    _locationDetailController = TextEditingController(
+      text: item.locationDetail ?? '',
+    );
     _purchasePriceController = TextEditingController(
       text: item.valuation != null && item.valuation!.purchasePrice > 0
           ? item.valuation!.purchasePrice.toString()
@@ -81,6 +85,7 @@ class _EditItemSheetState extends ConsumerState<EditItemSheet> {
     _nameController.dispose();
     _subcategoryController.dispose();
     _serialNumberController.dispose();
+    _locationDetailController.dispose();
     _purchasePriceController.dispose();
     _currentValueController.dispose();
     _tagsController.dispose();
@@ -111,6 +116,7 @@ class _EditItemSheetState extends ConsumerState<EditItemSheet> {
                 .where((e) => e.isNotEmpty)
                 .toList();
       final serialNum = _serialNumberController.text.trim();
+      final locationDet = _locationDetailController.text.trim();
 
       List<String> uploadedUrls = [];
       if (_pendingPhotos.isNotEmpty) {
@@ -142,6 +148,7 @@ class _EditItemSheetState extends ConsumerState<EditItemSheet> {
         category: _category,
         subcategory: _subcategoryController.text.trim(),
         serialNumber: serialNum.isEmpty ? null : serialNum,
+        locationDetail: locationDet.isEmpty ? null : locationDet,
         valuation: {
           'purchasePrice': purchasePrice,
           'currentValue': currentValue,
@@ -307,6 +314,14 @@ class _EditItemSheetState extends ConsumerState<EditItemSheet> {
               decoration: const InputDecoration(
                 labelText: 'Serial number (optional)',
                 hintText: 'e.g. SN123',
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            TextFormField(
+              controller: _locationDetailController,
+              decoration: const InputDecoration(
+                labelText: 'Location / Section (optional)',
+                hintText: 'e.g. Cabinet 3, Section A',
               ),
             ),
             const SizedBox(height: AppSpacing.md),

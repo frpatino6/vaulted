@@ -28,6 +28,7 @@ class ItemRepository {
     String subcategory = '',
     String status = 'active',
     String? serialNumber,
+    String? locationDetail,
     int purchasePrice = 0,
     int currentValue = 0,
     String currency = 'USD',
@@ -45,6 +46,8 @@ class ItemRepository {
       'status': status,
       if (serialNumber != null && serialNumber.isNotEmpty)
         'serialNumber': serialNumber,
+      if (locationDetail != null && locationDetail.isNotEmpty)
+        'locationDetail': locationDetail,
       'valuation': {
         'purchasePrice': purchasePrice,
         'currentValue': currentValue,
@@ -65,6 +68,7 @@ class ItemRepository {
     String? subcategory,
     String? status,
     String? serialNumber,
+    String? locationDetail,
     Map<String, dynamic>? valuation,
     List<String>? tags,
     List<String>? photos,
@@ -77,6 +81,7 @@ class ItemRepository {
     if (subcategory != null) body['subcategory'] = subcategory;
     if (status != null) body['status'] = status;
     if (serialNumber != null) body['serialNumber'] = serialNumber;
+    if (locationDetail != null) body['locationDetail'] = locationDetail;
     if (valuation != null) body['valuation'] = valuation;
     if (tags != null) body['tags'] = tags;
     if (photos != null) body['photos'] = photos;

@@ -12,6 +12,7 @@ export interface ItemEmbeddingInput {
   attributes?: Record<string, unknown>;
   valuation?: { currentValue?: number; currency?: string };
   serialNumber?: string;
+  locationDetail?: string;
 }
 
 @Injectable()
@@ -32,6 +33,7 @@ export class EmbeddingService {
     if (item.tags?.length) parts.push(item.tags.join(', '));
     if (item.status) parts.push(`status: ${item.status}`);
     if (item.serialNumber) parts.push(`serial: ${item.serialNumber}`);
+    if (item.locationDetail) parts.push(`location: ${item.locationDetail}`);
     if (item.valuation?.currentValue) {
       parts.push(`value: ${item.valuation.currentValue} ${item.valuation.currency ?? 'USD'}`);
     }

@@ -70,6 +70,7 @@ export class InventoryService {
       documents: dto.documents ?? [],
       tags: dto.tags ?? [],
       serialNumber: dto.serialNumber,
+      locationDetail: dto.locationDetail,
       createdBy: userId,
     });
 
@@ -128,6 +129,7 @@ export class InventoryService {
             ...(dto.documents !== undefined ? { documents: dto.documents } : {}),
             ...(dto.tags !== undefined ? { tags: dto.tags } : {}),
             ...(dto.serialNumber !== undefined ? { serialNumber: dto.serialNumber } : {}),
+            ...(dto.locationDetail !== undefined ? { locationDetail: dto.locationDetail } : {}),
           },
         },
         { new: true, runValidators: true },
