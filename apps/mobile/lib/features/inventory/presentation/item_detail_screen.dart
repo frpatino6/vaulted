@@ -1003,6 +1003,19 @@ class _ItemImageHeaderState extends State<_ItemImageHeader> {
     }
   }
 
+  void _openGallery(int initialIndex) {
+    Navigator.of(context).push(
+      PageRouteBuilder<void>(
+        opaque: false,
+        barrierColor: Colors.black.withValues(alpha: 0.95),
+        pageBuilder: (_, __, ___) => _FullscreenGallery(
+          photos: widget.item.photos,
+          initialIndex: initialIndex,
+        ),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _pageController.removeListener(_onPageChanged);
@@ -1032,27 +1045,33 @@ class _ItemImageHeaderState extends State<_ItemImageHeader> {
                             child: PageView.builder(
                               controller: _pageController,
                               itemCount: item.photos.length,
-                              itemBuilder: (_, index) => CachedNetworkImage(
-                                imageUrl: item.photos[index],
-                                height: 220,
-                                width: double.infinity,
-                                fit: BoxFit.cover,
-                                placeholder: (_, _) =>
-                                    _gradientPlaceholder(context, item),
-                                errorWidget: (_, _, _) =>
-                                    _gradientPlaceholder(context, item),
+                              itemBuilder: (_, index) => GestureDetector(
+                                onTap: () => _openGallery(index),
+                                child: CachedNetworkImage(
+                                  imageUrl: item.photos[index],
+                                  height: 220,
+                                  width: double.infinity,
+                                  fit: BoxFit.cover,
+                                  placeholder: (_, _) =>
+                                      _gradientPlaceholder(context, item),
+                                  errorWidget: (_, _, _) =>
+                                      _gradientPlaceholder(context, item),
+                                ),
                               ),
                             ),
                           )
-                        : CachedNetworkImage(
-                            imageUrl: item.photos.first,
-                            height: 220,
-                            width: double.infinity,
-                            fit: BoxFit.cover,
-                            placeholder: (_, _) =>
-                                _gradientPlaceholder(context, item),
-                            errorWidget: (_, _, _) =>
-                                _gradientPlaceholder(context, item),
+                        : GestureDetector(
+                            onTap: () => _openGallery(0),
+                            child: CachedNetworkImage(
+                              imageUrl: item.photos.first,
+                              height: 220,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                              placeholder: (_, _) =>
+                                  _gradientPlaceholder(context, item),
+                              errorWidget: (_, _, _) =>
+                                  _gradientPlaceholder(context, item),
+                            ),
                           )
                   : _gradientPlaceholder(context, item),
             ),
@@ -1114,11 +1133,7 @@ class _ItemImageHeaderState extends State<_ItemImageHeader> {
               itemBuilder: (ctx, i) => Padding(
                 padding: const EdgeInsets.only(right: AppSpacing.sm),
                 child: GestureDetector(
-                  onTap: () => _pageController.animateToPage(
-                    i,
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeInOut,
-                  ),
+                  onTap: () => _openGallery(i),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(AppSpacing.xs),
                     child: CachedNetworkImage(
@@ -1560,6 +1575,114 @@ class _AiRiskBadge extends StatelessWidget {
             style: TextStyle(
                 color: color, fontSize: 12, fontWeight: FontWeight.w600),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Fullscreen photo gallery ──────────────────────────────────────────────────
+
+class _FullscreenGallery extends StatefulWidget {
+  const _FullscreenGallery({
+    required this.photos,
+    required this.initialIndex,
+  });
+
+  final List<String> photos;
+  final int initialIndex;
+
+  @override
+  State<_FullscreenGallery> createState() => _FullscreenGalleryState();
+}
+
+class _FullscreenGalleryState extends State<_FullscreenGallery> {
+  late final PageController _ctrl;
+  late int _current;
+
+  @override
+  void initState() {
+    super.initState();
+    _current = widget.initialIndex;
+    _ctrl = PageController(initialPage: widget.initialIndex);
+    _ctrl.addListener(() {
+      final p = _ctrl.page?.round() ?? 0;
+      if (p != _current && mounted) setState(() => _current = p);
+    });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          // Swipeable full-screen photos with pinch-zoom
+          PageView.builder(
+            controller: _ctrl,
+            itemCount: widget.photos.length,
+            itemBuilder: (_, i) => InteractiveViewer(
+              minScale: 0.8,
+              maxScale: 4.0,
+              child: CachedNetworkImage(
+                imageUrl: widget.photos[i],
+                fit: BoxFit.contain,
+                placeholder: (_, _) => const Center(
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                errorWidget: (_, _, _) => const Center(
+                  child: Icon(Icons.broken_image_outlined,
+                      color: Colors.white38, size: 64),
+                ),
+              ),
+            ),
+          ),
+          // Close button
+          SafeArea(
+            child: Align(
+              alignment: Alignment.topRight,
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: IconButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close, color: Colors.white, size: 28),
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.black45,
+                    shape: const CircleBorder(),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // Page counter
+          if (widget.photos.length > 1)
+            Positioned(
+              bottom: 24,
+              left: 0,
+              right: 0,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(
+                  widget.photos.length,
+                  (i) => Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                    width: i == _current ? 16 : 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(4),
+                      color: Colors.white
+                          .withValues(alpha: i == _current ? 1.0 : 0.4),
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
