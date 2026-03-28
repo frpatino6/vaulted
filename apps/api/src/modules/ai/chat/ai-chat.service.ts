@@ -83,7 +83,7 @@ export class AiChatService {
         return (
           `- ${item.name} (${item.category}${item.subcategory ? '/' + String(item.subcategory) : ''})` +
           ` | status: ${item.status}` +
-          ` | location: ${item.propertyName ?? 'unknown'} → ${item.roomName ?? 'unknown room'}` +
+          ` | location: ${item.propertyName ?? 'unknown'} → ${item.roomName ?? 'unknown room'}${item.locationDetail ? ' → ' + String(item.locationDetail) : ''}` +
           valuePart
         );
       })
