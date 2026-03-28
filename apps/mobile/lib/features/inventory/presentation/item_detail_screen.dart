@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -274,61 +275,58 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
   }
 
   Future<void> _onAddOrChangePhoto(BuildContext context, ItemModel item) async {
-    final source = await showModalBottomSheet<ImageSource?>(
-      context: context,
-      backgroundColor: AppColors.surfaceVariant,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            vertical: AppSpacing.lg,
-            horizontal: AppSpacing.md,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Add photo',
-                style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
-                  color: AppColors.onBackground,
-                  fontWeight: FontWeight.w600,
+    final picker = ImagePicker();
+    XFile? file;
+
+    if (kIsWeb) {
+      // On web, camera access via image_picker is unreliable across browsers.
+      // Use gallery (file picker) directly — it works in all modern browsers.
+      file = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+      );
+    } else {
+      final source = await showModalBottomSheet<ImageSource?>(
+        context: context,
+        backgroundColor: AppColors.surfaceVariant,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        ),
+        builder: (ctx) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              vertical: AppSpacing.lg,
+              horizontal: AppSpacing.md,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Add photo',
+                  style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                    color: AppColors.onBackground,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              ListTile(
-                leading: Icon(
-                  Icons.camera_alt_outlined,
-                  color: AppColors.accent,
+                const SizedBox(height: AppSpacing.lg),
+                ListTile(
+                  leading: const Icon(Icons.camera_alt_outlined, color: AppColors.accent),
+                  title: const Text('Camera', style: TextStyle(color: AppColors.onBackground)),
+                  onTap: () => Navigator.of(ctx).pop(ImageSource.camera),
                 ),
-                title: const Text(
-                  'Camera',
-                  style: TextStyle(color: AppColors.onBackground),
+                ListTile(
+                  leading: const Icon(Icons.photo_library_outlined, color: AppColors.accent),
+                  title: const Text('Gallery', style: TextStyle(color: AppColors.onBackground)),
+                  onTap: () => Navigator.of(ctx).pop(ImageSource.gallery),
                 ),
-                onTap: () => Navigator.of(ctx).pop(ImageSource.camera),
-              ),
-              ListTile(
-                leading: Icon(
-                  Icons.photo_library_outlined,
-                  color: AppColors.accent,
-                ),
-                title: const Text(
-                  'Gallery',
-                  style: TextStyle(color: AppColors.onBackground),
-                ),
-                onTap: () => Navigator.of(ctx).pop(ImageSource.gallery),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
-      ),
-    );
-    if (source == null || !context.mounted) return;
-    final picker = ImagePicker();
-    final file = source == ImageSource.camera
-        ? await picker.pickImage(source: ImageSource.camera)
-        : await picker.pickImage(source: ImageSource.gallery);
+      );
+      if (source == null || !context.mounted) return;
+      file = await picker.pickImage(source: source, imageQuality: 85);
+    }
     if (file == null || !context.mounted) return;
     try {
       final mediaRepo = ref.read(mediaRepositoryProvider);
