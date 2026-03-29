@@ -19,20 +19,34 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
 
     for (final barcode in capture.barcodes) {
       final value = barcode.rawValue;
-      if (value == null || !value.startsWith('vaulted://items/')) {
-        continue;
-      }
+      if (value == null) continue;
 
       final uri = Uri.tryParse(value);
-      final segments = uri?.pathSegments ?? const <String>[];
-      final itemId = segments.isNotEmpty ? segments.last : '';
-      if (itemId.isEmpty) {
-        continue;
+      if (uri == null) continue;
+
+      // vaulted://items/:itemId
+      if (value.startsWith('vaulted://items/')) {
+        final segments = uri.pathSegments;
+        final itemId = segments.isNotEmpty ? segments.last : '';
+        if (itemId.isEmpty) continue;
+        _isHandlingDetection = true;
+        context.pushReplacement('/items/$itemId');
+        return;
       }
 
-      _isHandlingDetection = true;
-      context.pushReplacement('/items/$itemId');
-      return;
+      // vaulted://rooms/:roomId?section=X
+      if (value.startsWith('vaulted://rooms/')) {
+        final segments = uri.pathSegments;
+        final roomId = segments.isNotEmpty ? segments.last : '';
+        final section = uri.queryParameters['section'] ?? '';
+        if (roomId.isEmpty) continue;
+        _isHandlingDetection = true;
+        final sectionParam = section.isNotEmpty
+            ? '&section=${Uri.encodeComponent(section)}'
+            : '';
+        context.pushReplacement('/rooms/$roomId?name=&$sectionParam');
+        return;
+      }
     }
   }
 
@@ -62,7 +76,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   Text(
-                    'Point camera at item QR code',
+                    'Point camera at an item or section QR code',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Colors.white,
                         ),
