@@ -19,11 +19,14 @@ class RoomDetailScreen extends ConsumerStatefulWidget {
     required this.propertyId,
     required this.roomId,
     required this.roomName,
+    this.initialSection,
   });
 
   final String propertyId;
   final String roomId;
   final String roomName;
+  /// When set, the list is pre-filtered to this section (from QR scan).
+  final String? initialSection;
 
   @override
   ConsumerState<RoomDetailScreen> createState() => _RoomDetailScreenState();
@@ -32,10 +35,12 @@ class RoomDetailScreen extends ConsumerStatefulWidget {
 class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
+  late String? _activeSection;
 
   @override
   void initState() {
     super.initState();
+    _activeSection = widget.initialSection;
     _searchController.addListener(() => setState(() => _searchQuery = _searchController.text));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(itemListNotifierProvider.notifier).load(widget.propertyId, widget.roomId);
@@ -49,13 +54,23 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
   }
 
   List<ItemModel> _filterItems(List<ItemModel> items) {
-    if (_searchQuery.trim().isEmpty) return items;
-    final q = _searchQuery.trim().toLowerCase();
-    return items.where((i) {
-      return i.name.toLowerCase().contains(q) ||
-          i.category.toLowerCase().contains(q) ||
-          i.subcategory.toLowerCase().contains(q);
-    }).toList();
+    var result = items;
+    // Section filter (from QR scan or chip selection)
+    if (_activeSection != null) {
+      result = result
+          .where((i) => i.locationDetail == _activeSection)
+          .toList();
+    }
+    // Text search
+    if (_searchQuery.trim().isNotEmpty) {
+      final q = _searchQuery.trim().toLowerCase();
+      result = result.where((i) {
+        return i.name.toLowerCase().contains(q) ||
+            i.category.toLowerCase().contains(q) ||
+            i.subcategory.toLowerCase().contains(q);
+      }).toList();
+    }
+    return result;
   }
 
   @override
@@ -145,6 +160,10 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
                               fontSize: 10,
                             ),
                       ),
+                      if (_activeSection != null) ...[
+                        const SizedBox(height: AppSpacing.md),
+                        _buildSectionBanner(context),
+                      ],
                       if (items.isNotEmpty) ...[
                         const SizedBox(height: 16),
                         _buildSearchBar(context),
@@ -217,6 +236,44 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
                 );
               }
               final filtered = _filterItems(items);
+              if (filtered.isEmpty) {
+                return SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.search_off_rounded,
+                          size: 64,
+                          color: AppColors.onSurfaceVariant.withValues(alpha: 0.4),
+                        ),
+                        const SizedBox(height: AppSpacing.lg),
+                        Text(
+                          _activeSection != null
+                              ? 'No items in "$_activeSection"'
+                              : 'No items match your search',
+                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                color: AppColors.onSurfaceVariant,
+                              ),
+                          textAlign: TextAlign.center,
+                        ),
+                        if (_activeSection != null) ...[
+                          const SizedBox(height: AppSpacing.md),
+                          TextButton.icon(
+                            onPressed: () => setState(() => _activeSection = null),
+                            icon: const Icon(Icons.clear, size: 16),
+                            label: const Text('Clear section filter'),
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppColors.accentLight,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                );
+              }
               return SliverPadding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 sliver: SliverList(
@@ -324,6 +381,66 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
         ],
       ),
       bottomNavigationBar: _buildAddItemFooter(context, canAddItem),
+    );
+  }
+
+  Widget _buildSectionBanner(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.accent.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColors.accent.withValues(alpha: 0.25),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.qr_code_scanner_rounded,
+            size: 16,
+            color: AppColors.accent,
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'SECTION FILTER',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: AppColors.accent,
+                        letterSpacing: 1.5,
+                        fontSize: 9,
+                      ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _activeSection!,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppColors.onBackground,
+                        fontWeight: FontWeight.w600,
+                      ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: () => setState(() => _activeSection = null),
+            icon: const Icon(Icons.close_rounded, size: 18),
+            color: AppColors.onSurfaceVariant,
+            tooltip: 'Clear filter',
+            visualDensity: VisualDensity.compact,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+          ),
+        ],
+      ),
     );
   }
 

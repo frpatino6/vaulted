@@ -69,6 +69,21 @@ GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
           );
         },
       ),
+      // Route used when navigating from a section QR scan — no propertyId known
+      GoRoute(
+        path: '/rooms/:roomId',
+        builder: (context, state) {
+          final roomId = state.pathParameters['roomId'] ?? '';
+          final roomName = state.uri.queryParameters['name'] ?? '';
+          final section = state.uri.queryParameters['section'] ?? '';
+          return RoomDetailScreen(
+            propertyId: '',
+            roomId: roomId,
+            roomName: roomName.isNotEmpty ? roomName : 'Section',
+            initialSection: section.isNotEmpty ? section : null,
+          );
+        },
+      ),
       GoRoute(
         path: '/items/:id',
         builder: (context, state) {
