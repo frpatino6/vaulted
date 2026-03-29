@@ -198,15 +198,19 @@ class _EditItemSheetState extends ConsumerState<EditItemSheet> {
             topRight: Radius.circular(24),
           ),
         ),
-        padding: EdgeInsets.only(
-          left: AppSpacing.md,
-          right: AppSpacing.md,
-          top: AppSpacing.md,
-          bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.md,
-        ),
-        child: ListView(
-          controller: scrollController,
+        child: Column(
           children: [
+            // Scrollable form content
+            Expanded(
+              child: ListView(
+                controller: scrollController,
+                padding: EdgeInsets.only(
+                  left: AppSpacing.md,
+                  right: AppSpacing.md,
+                  top: AppSpacing.md,
+                  bottom: AppSpacing.sm,
+                ),
+                children: [
             Center(
               child: Container(
                 width: 40,
@@ -352,26 +356,41 @@ class _EditItemSheetState extends ConsumerState<EditItemSheet> {
                 hintText: 'comma separated',
               ),
             ),
-            const SizedBox(height: AppSpacing.xl),
-            SizedBox(
-              height: 52,
-              child: FilledButton(
-                onPressed: _submitting ? null : _submit,
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.accent,
-                  foregroundColor: AppColors.background,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+        ),
+      ),
+    ),
+            // Sticky save button — always visible regardless of scroll position
+            Container(
+              color: AppColors.surfaceVariant,
+              padding: EdgeInsets.only(
+                left: AppSpacing.md,
+                right: AppSpacing.md,
+                top: AppSpacing.sm,
+                bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.md,
+              ),
+              child: SizedBox(
+                height: 52,
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: _submitting ? null : _submit,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.accent,
+                    foregroundColor: AppColors.background,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                   ),
+                  child: _submitting
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Save changes'),
                 ),
-                child: _submitting
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Save changes'),
               ),
             ),
           ],

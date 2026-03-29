@@ -1,7 +1,9 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dotted_border/dotted_border.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -34,6 +36,11 @@ class ItemPhotoPicker extends StatelessWidget {
   static const int _maxPhotos = 10;
 
   void _showPickerOptions(BuildContext context) {
+    // On web, camera is not available — go directly to file picker.
+    if (kIsWeb) {
+      onPickFromGallery();
+      return;
+    }
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: AppColors.surfaceVariant,
@@ -58,22 +65,16 @@ class ItemPhotoPicker extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.lg),
               ListTile(
-                leading: Icon(Icons.camera_alt_outlined, color: AppColors.accent),
-                title: Text(
-                  'Camera',
-                  style: const TextStyle(color: AppColors.onBackground),
-                ),
+                leading: const Icon(Icons.camera_alt_outlined, color: AppColors.accent),
+                title: const Text('Camera', style: TextStyle(color: AppColors.onBackground)),
                 onTap: () {
                   Navigator.of(ctx).pop();
                   onPickFromCamera();
                 },
               ),
               ListTile(
-                leading: Icon(Icons.photo_library_outlined, color: AppColors.accent),
-                title: Text(
-                  'Gallery',
-                  style: const TextStyle(color: AppColors.onBackground),
-                ),
+                leading: const Icon(Icons.photo_library_outlined, color: AppColors.accent),
+                title: const Text('Gallery', style: TextStyle(color: AppColors.onBackground)),
                 onTap: () {
                   Navigator.of(ctx).pop();
                   onPickFromGallery();
@@ -149,7 +150,28 @@ class ItemPhotoPicker extends StatelessWidget {
 
   Widget _buildPendingThumb(BuildContext context, int index) {
     final file = pendingFiles[index];
-    final path = file.path;
+    final decoration = BoxDecoration(
+      border: Border.all(color: AppColors.accent.withValues(alpha: 0.8), width: 2),
+      borderRadius: BorderRadius.circular(AppSpacing.sm),
+    );
+    Widget imageWidget;
+    if (kIsWeb) {
+      // On web, file.path is a blob URL — must read bytes to display.
+      imageWidget = FutureBuilder<Uint8List>(
+        future: file.readAsBytes(),
+        builder: (_, snap) {
+          if (snap.hasData) {
+            return Image.memory(snap.data!, fit: BoxFit.cover);
+          }
+          return _placeholderBox(context);
+        },
+      );
+    } else {
+      final path = file.path;
+      imageWidget = path.isNotEmpty && File(path).existsSync()
+          ? Image.file(File(path), fit: BoxFit.cover)
+          : _placeholderBox(context);
+    }
     return Padding(
       padding: const EdgeInsets.only(right: AppSpacing.sm),
       child: SizedBox(
@@ -160,21 +182,7 @@ class ItemPhotoPicker extends StatelessWidget {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(AppSpacing.sm),
-              child: Container(
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: AppColors.accent.withValues(alpha: 0.8),
-                    width: 2,
-                  ),
-                  borderRadius: BorderRadius.circular(AppSpacing.sm),
-                ),
-                child: path.isNotEmpty && File(path).existsSync()
-                    ? Image.file(
-                        File(path),
-                        fit: BoxFit.cover,
-                      )
-                    : _placeholderBox(context),
-              ),
+              child: Container(decoration: decoration, child: imageWidget),
             ),
             Positioned(
               top: AppSpacing.xs,
