@@ -200,175 +200,178 @@ class _EditItemSheetState extends ConsumerState<EditItemSheet> {
         ),
         child: Column(
           children: [
-            // Scrollable form content
+            // ── Scrollable form ──────────────────────────────────────────
             Expanded(
               child: ListView(
                 controller: scrollController,
-                padding: EdgeInsets.only(
+                padding: const EdgeInsets.only(
                   left: AppSpacing.md,
                   right: AppSpacing.md,
                   top: AppSpacing.md,
                   bottom: AppSpacing.sm,
                 ),
                 children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.onSurfaceVariant,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            Text(
-              'Edit item',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: AppColors.onBackground,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            SizedBox(
-              height: 100,
-              child: ItemPhotoPicker(
-                photos: _existingPhotos,
-                pendingFiles: _pendingPhotos,
-                onPickFromGallery: () async {
-                  final picker = ImagePicker();
-                  final list = await picker.pickMultipleMedia();
-                  if (list.isEmpty || !mounted) return;
-                  final images = list.where((x) => x.path.isNotEmpty).toList();
-                  if (images.isEmpty || !mounted) return;
-                  setState(() {
-                    final total =
-                        _existingPhotos.length + _pendingPhotos.length;
-                    final remaining = 10 - total;
-                    if (remaining > 0) {
-                      _pendingPhotos.addAll(images.take(remaining));
-                    }
-                  });
-                },
-                onPickFromCamera: () async {
-                  final picker = ImagePicker();
-                  final file = await picker.pickImage(
-                    source: ImageSource.camera,
-                  );
-                  if (file == null || !mounted) return;
-                  setState(() {
-                    final total =
-                        _existingPhotos.length + _pendingPhotos.length;
-                    if (total < 10) _pendingPhotos.add(file);
-                  });
-                },
-                onRemoveExisting: (index) =>
-                    setState(() => _existingPhotos.removeAt(index)),
-                onRemovePending: (index) =>
-                    setState(() => _pendingPhotos.removeAt(index)),
-                uploading: _uploadingPhotos,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            TextFormField(
-              controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: 'Name',
-                hintText: 'e.g. Chesterfield Sofa',
-              ),
-              onFieldSubmitted: (_) => _submit(),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            DropdownButtonFormField<String>(
-              // ignore: deprecated_member_use
-              value: _category,
-              decoration: const InputDecoration(labelText: 'Category'),
-              dropdownColor: AppColors.surfaceVariant,
-              items: EditItemSheet._categories
-                  .map(
-                    (c) => DropdownMenuItem(
-                      value: c,
-                      child: Text(
-                        c[0].toUpperCase() + c.substring(1),
-                        style: const TextStyle(color: AppColors.onBackground),
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: AppColors.onSurfaceVariant,
+                        borderRadius: BorderRadius.circular(2),
                       ),
                     ),
-                  )
-                  .toList(),
-              onChanged: (v) => setState(() => _category = v ?? 'other'),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            TextFormField(
-              controller: _subcategoryController,
-              decoration: const InputDecoration(
-                labelText: 'Subcategory (optional)',
-                hintText: 'e.g. living room',
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  Text(
+                    'Edit item',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.onBackground,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  SizedBox(
+                    height: 100,
+                    child: ItemPhotoPicker(
+                      photos: _existingPhotos,
+                      pendingFiles: _pendingPhotos,
+                      onPickFromGallery: () async {
+                        final picker = ImagePicker();
+                        final list = await picker.pickMultipleMedia();
+                        if (list.isEmpty || !mounted) return;
+                        final images =
+                            list.where((x) => x.path.isNotEmpty).toList();
+                        if (images.isEmpty || !mounted) return;
+                        setState(() {
+                          final total =
+                              _existingPhotos.length + _pendingPhotos.length;
+                          final remaining = 10 - total;
+                          if (remaining > 0) {
+                            _pendingPhotos.addAll(images.take(remaining));
+                          }
+                        });
+                      },
+                      onPickFromCamera: () async {
+                        final picker = ImagePicker();
+                        final file = await picker.pickImage(
+                          source: ImageSource.camera,
+                        );
+                        if (file == null || !mounted) return;
+                        setState(() {
+                          final total =
+                              _existingPhotos.length + _pendingPhotos.length;
+                          if (total < 10) _pendingPhotos.add(file);
+                        });
+                      },
+                      onRemoveExisting: (index) =>
+                          setState(() => _existingPhotos.removeAt(index)),
+                      onRemovePending: (index) =>
+                          setState(() => _pendingPhotos.removeAt(index)),
+                      uploading: _uploadingPhotos,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  TextFormField(
+                    controller: _nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Name',
+                      hintText: 'e.g. Chesterfield Sofa',
+                    ),
+                    onFieldSubmitted: (_) => _submit(),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  DropdownButtonFormField<String>(
+                    // ignore: deprecated_member_use
+                    value: _category,
+                    decoration: const InputDecoration(labelText: 'Category'),
+                    dropdownColor: AppColors.surfaceVariant,
+                    items: EditItemSheet._categories
+                        .map(
+                          (c) => DropdownMenuItem(
+                            value: c,
+                            child: Text(
+                              c[0].toUpperCase() + c.substring(1),
+                              style: const TextStyle(
+                                color: AppColors.onBackground,
+                              ),
+                            ),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (v) => setState(() => _category = v ?? 'other'),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  TextFormField(
+                    controller: _subcategoryController,
+                    decoration: const InputDecoration(
+                      labelText: 'Subcategory (optional)',
+                      hintText: 'e.g. living room',
+                    ),
+                  ),
+                  if (_category == 'wardrobe') ...[
+                    const SizedBox(height: AppSpacing.lg),
+                    _WardrobeFieldsSection(
+                      key: _wardrobeSectionKey,
+                      initialValue: widget.item.wardrobeAttributes,
+                    ),
+                  ],
+                  const SizedBox(height: AppSpacing.md),
+                  TextFormField(
+                    controller: _serialNumberController,
+                    decoration: const InputDecoration(
+                      labelText: 'Serial number (optional)',
+                      hintText: 'e.g. SN123',
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  TextFormField(
+                    controller: _locationDetailController,
+                    decoration: const InputDecoration(
+                      labelText: 'Location / Section (optional)',
+                      hintText: 'e.g. Cabinet 3, Section A',
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  TextFormField(
+                    controller: _purchasePriceController,
+                    decoration: const InputDecoration(
+                      labelText: 'Purchase price (optional)',
+                      hintText: r'$',
+                      prefixText: r'$ ',
+                    ),
+                    keyboardType: TextInputType.number,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  TextFormField(
+                    controller: _currentValueController,
+                    decoration: const InputDecoration(
+                      labelText: 'Current value (optional)',
+                      hintText: r'$',
+                      prefixText: r'$ ',
+                    ),
+                    keyboardType: TextInputType.number,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  TextFormField(
+                    controller: _tagsController,
+                    decoration: const InputDecoration(
+                      labelText: 'Tags (optional)',
+                      hintText: 'comma separated',
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                ],
               ),
             ),
-            if (_category == 'wardrobe') ...[
-              const SizedBox(height: AppSpacing.lg),
-              _WardrobeFieldsSection(
-                key: _wardrobeSectionKey,
-                initialValue: widget.item.wardrobeAttributes,
-              ),
-            ],
-            const SizedBox(height: AppSpacing.md),
-            TextFormField(
-              controller: _serialNumberController,
-              decoration: const InputDecoration(
-                labelText: 'Serial number (optional)',
-                hintText: 'e.g. SN123',
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            TextFormField(
-              controller: _locationDetailController,
-              decoration: const InputDecoration(
-                labelText: 'Location / Section (optional)',
-                hintText: 'e.g. Cabinet 3, Section A',
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            TextFormField(
-              controller: _purchasePriceController,
-              decoration: const InputDecoration(
-                labelText: 'Purchase price (optional)',
-                hintText: r'$',
-                prefixText: r'$ ',
-              ),
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            TextFormField(
-              controller: _currentValueController,
-              decoration: const InputDecoration(
-                labelText: 'Current value (optional)',
-                hintText: r'$',
-                prefixText: r'$ ',
-              ),
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            TextFormField(
-              controller: _tagsController,
-              decoration: const InputDecoration(
-                labelText: 'Tags (optional)',
-                hintText: 'comma separated',
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-          ],
-        ),
-      ),
-    ),
-            // Sticky save button — always visible regardless of scroll position
+            // ── Sticky save button — always visible ───────────────────────
             Container(
               color: AppColors.surfaceVariant,
               padding: EdgeInsets.only(
                 left: AppSpacing.md,
                 right: AppSpacing.md,
                 top: AppSpacing.sm,
-                bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.md,
+                bottom:
+                    MediaQuery.of(context).viewInsets.bottom + AppSpacing.md,
               ),
               child: SizedBox(
                 height: 52,
