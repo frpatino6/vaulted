@@ -105,6 +105,12 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
               ),
             ),
             actions: [
+              IconButton(
+                onPressed: () => context.push('/scanner'),
+                icon: const Icon(Icons.qr_code_scanner, color: AppColors.accent),
+                tooltip: 'Scan QR code',
+                splashRadius: 24,
+              ),
               if (state.valueOrNull?.any((i) => i.locationDetail?.isNotEmpty == true) == true)
                 IconButton(
                   onPressed: () {
