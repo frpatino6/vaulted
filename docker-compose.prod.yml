@@ -30,6 +30,8 @@ services:
       GCP_PROJECT_ID: ${GCP_PROJECT_ID}
       GCP_STORAGE_BUCKET: ${GCP_STORAGE_BUCKET:-}
     restart: always
+    volumes:
+      - uploads_data:/app/uploads
     networks:
       - default
       - proxy
@@ -39,6 +41,9 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+
+volumes:
+  uploads_data:
 
 networks:
   default:
