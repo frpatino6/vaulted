@@ -12,6 +12,10 @@ async function bootstrap(): Promise<void> {
   const logger = new Logger('Bootstrap');
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
+  // Global prefix must be set BEFORE static assets so Express static
+  // middleware is registered on the raw path without the /api prefix.
+  app.setGlobalPrefix('api');
+
   app.enableCors({
     origin: [
       'http://localhost:3000',
@@ -27,6 +31,9 @@ async function bootstrap(): Promise<void> {
   });
 
   app.use(cookieParser());
+
+  // Serve uploaded files at /uploads/* — must be registered after setGlobalPrefix
+  // so NestJS routing does not intercept these paths.
   app.useStaticAssets(join(process.cwd(), 'uploads'), {
     prefix: '/uploads',
   });
@@ -41,8 +48,6 @@ async function bootstrap(): Promise<void> {
 
   app.useGlobalInterceptors(new ResponseInterceptor());
   app.useGlobalFilters(new HttpExceptionFilter());
-
-  app.setGlobalPrefix('api');
 
   const port = process.env['PORT'] ?? 3000;
   await app.listen(port);
