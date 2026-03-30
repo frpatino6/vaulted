@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -26,26 +27,34 @@ void main() async {
 /// On any failure (expired token, network error, server down) the function
 /// returns silently and the user proceeds through the normal login flow.
 Future<void> _tryRestoreSession() async {
-  const storage = FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
-  );
-
-  final refreshToken = await storage.read(key: 'refresh_token');
-  if (refreshToken == null || refreshToken.isEmpty) return;
-
   try {
     final dio = Dio(BaseOptions(
       baseUrl: AppConfig.apiBaseUrl,
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 10),
       headers: {'Content-Type': 'application/json'},
+      extra: {'withCredentials': kIsWeb},
     ));
+
+    final Options refreshOptions;
+    if (kIsWeb) {
+      // On web, browser sends the httpOnly cookie automatically.
+      // Setting Cookie manually is blocked by browsers (forbidden header).
+      refreshOptions = Options(extra: {'withCredentials': true});
+    } else {
+      const storage = FlutterSecureStorage(
+        aOptions: AndroidOptions(encryptedSharedPreferences: true),
+      );
+      final refreshToken = await storage.read(key: 'refresh_token');
+      if (refreshToken == null || refreshToken.isEmpty) return;
+      refreshOptions = Options(
+        headers: {'Cookie': 'refresh_token=$refreshToken'},
+      );
+    }
 
     final response = await dio.post<Map<String, dynamic>>(
       'auth/refresh',
-      options: Options(
-        headers: {'Cookie': 'refresh_token=$refreshToken'},
-      ),
+      options: refreshOptions,
     );
 
     final body = response.data;
