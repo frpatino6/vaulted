@@ -18,6 +18,8 @@ import '../../properties/domain/properties_notifier.dart';
 import '../../properties/presentation/add_property_sheet.dart';
 import '../data/models/dashboard_model.dart';
 import '../domain/dashboard_notifier.dart';
+import '../../movements/data/models/movement_model.dart';
+import '../../movements/domain/movement_list_notifier.dart';
 
 /// Dashboard: clean welcome header, Quick Actions grid, recent property cards.
 class DashboardScreen extends ConsumerWidget {
@@ -53,6 +55,7 @@ class DashboardScreen extends ConsumerWidget {
               ),
             ),
           const SliverToBoxAdapter(child: _MaintenanceAlertCard()),
+          const SliverToBoxAdapter(child: _ActiveOperationsCard()),
           const SliverToBoxAdapter(
             child: Padding(
               padding: EdgeInsets.fromLTRB(
@@ -518,6 +521,11 @@ class DashboardQuickActions extends ConsumerWidget {
                 onTap: () => context.push('/chat'),
               ),
               _QuickActionTile(
+                icon: Icons.swap_horiz_rounded,
+                label: 'Operations',
+                onTap: () => context.push('/movements'),
+              ),
+              _QuickActionTile(
                 icon: Icons.checkroom_outlined,
                 label: 'Wardrobe',
                 onTap: () => context.push('/wardrobe'),
@@ -526,6 +534,11 @@ class DashboardQuickActions extends ConsumerWidget {
                 icon: Icons.build_circle_outlined,
                 label: 'Maintenance',
                 onTap: () => context.push('/maintenance'),
+              ),
+              _QuickActionTile(
+                icon: Icons.picture_as_pdf_outlined,
+                label: 'Reports',
+                onTap: () => context.push('/reports'),
               ),
             ],
           ),
@@ -1061,6 +1074,194 @@ class _MaintenanceAlertCardState extends ConsumerState<_MaintenanceAlertCard> {
     );
   }
 }
+
+// ---------------------------------------------------------------------------
+// Active Operations card — shown when there are draft or active movements
+// ---------------------------------------------------------------------------
+
+class _ActiveOperationsCard extends ConsumerStatefulWidget {
+  const _ActiveOperationsCard();
+
+  @override
+  ConsumerState<_ActiveOperationsCard> createState() =>
+      _ActiveOperationsCardState();
+}
+
+class _ActiveOperationsCardState
+    extends ConsumerState<_ActiveOperationsCard> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(movementListNotifierProvider.notifier).load();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = ref.watch(movementListNotifierProvider);
+
+    return state.when(
+      data: (movements) {
+        final active = movements
+            .where((m) => m.isDraft || m.isActive)
+            .toList();
+        if (active.isEmpty) return const SizedBox.shrink();
+
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md, AppSpacing.lg, AppSpacing.md, 0),
+          child: Container(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceVariant,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                  color: const Color(0xFF2196F3).withValues(alpha: 0.3)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'ACTIVE OPERATIONS',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: AppColors.onSurfaceVariant
+                                .withValues(alpha: 0.6),
+                            fontSize: 10,
+                            letterSpacing: 2.0,
+                          ),
+                    ),
+                    GestureDetector(
+                      onTap: () => context.push('/movements'),
+                      child: Text(
+                        'See all →',
+                        style: TextStyle(
+                          color: AppColors.accent,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                ...active.take(2).map((m) => _OperationRow(movement: m)),
+                if (active.length > 2)
+                  Padding(
+                    padding: const EdgeInsets.only(top: AppSpacing.xs),
+                    child: Text(
+                      '+${active.length - 2} more',
+                      style: TextStyle(
+                          color: AppColors.onSurfaceVariant, fontSize: 11),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
+    );
+  }
+}
+
+class _OperationRow extends StatelessWidget {
+  const _OperationRow({required this.movement});
+
+  final MovementModel movement;
+
+  @override
+  Widget build(BuildContext context) {
+    final typeIcon = _typeIcon(movement.operationType);
+    final typeColor = _typeColor(movement.operationType);
+    final isDraft = movement.isDraft;
+
+    return GestureDetector(
+      onTap: () => context.push(
+          isDraft ? '/movements/${movement.id}/scan' : '/movements/${movement.id}'),
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+        child: Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: typeColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(typeIcon, color: typeColor, size: 16),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    movement.title,
+                    style: TextStyle(
+                        color: AppColors.onBackground,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    '${movement.items.length} item${movement.items.length == 1 ? '' : 's'} · ${isDraft ? 'Draft' : '${movement.returnedCount}/${movement.items.length} returned'}',
+                    style: TextStyle(
+                        color: AppColors.onSurfaceVariant, fontSize: 11),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: (isDraft
+                        ? const Color(0xFF9E9E9E)
+                        : const Color(0xFF2196F3))
+                    .withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                isDraft ? 'DRAFT' : 'ACTIVE',
+                style: TextStyle(
+                  color: isDraft
+                      ? const Color(0xFF9E9E9E)
+                      : const Color(0xFF2196F3),
+                  fontSize: 9,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.4,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  IconData _typeIcon(String t) => switch (t) {
+        'loan' => Icons.person_outline_rounded,
+        'repair' => Icons.build_outlined,
+        'disposal' => Icons.delete_outline_rounded,
+        _ => Icons.swap_horiz_rounded,
+      };
+
+  Color _typeColor(String t) => switch (t) {
+        'loan' => const Color(0xFF9C27B0),
+        'repair' => const Color(0xFFFF9800),
+        'disposal' => const Color(0xFFCF6679),
+        _ => const Color(0xFF2196F3),
+      };
+}
+
+// ---------------------------------------------------------------------------
 
 class _AlertCountTile extends StatelessWidget {
   const _AlertCountTile({

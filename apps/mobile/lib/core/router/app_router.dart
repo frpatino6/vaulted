@@ -17,6 +17,9 @@ import '../../features/settings/presentation/settings_screen.dart';
 import '../../features/users/presentation/users_screen.dart';
 import '../../features/ai_chat/presentation/chat_screen.dart';
 import '../../features/maintenance/presentation/maintenance_list_screen.dart';
+import '../../features/movements/presentation/movements_screen.dart';
+import '../../features/movements/presentation/movement_scan_screen.dart';
+import '../../features/movements/presentation/movement_detail_screen.dart';
 
 GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
   return GoRouter(
@@ -122,6 +125,24 @@ GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
       GoRoute(
         path: '/maintenance',
         builder: (context, state) => const MaintenanceListScreen(),
+      ),
+      GoRoute(
+        path: '/movements',
+        builder: (context, state) => const MovementsScreen(),
+      ),
+      GoRoute(
+        path: '/movements/:id',
+        builder: (context, state) {
+          final id = state.pathParameters['id'] ?? '';
+          return MovementDetailScreen(movementId: id);
+        },
+      ),
+      GoRoute(
+        path: '/movements/:id/scan',
+        builder: (context, state) {
+          final id = state.pathParameters['id'] ?? '';
+          return MovementScanScreen(movementId: id);
+        },
       ),
       GoRoute(
         path: '/unauthorized',

@@ -19,6 +19,7 @@ import { MediaModule } from './modules/media/media.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { AiModule } from './modules/ai/ai.module';
 import { MaintenanceModule } from './modules/maintenance/maintenance.module';
+import { MovementsModule } from './modules/movements/movements.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { MfaVerifiedGuard } from './common/guards/mfa-verified.guard';
@@ -88,6 +89,7 @@ import { AuditLog } from './modules/audit/entities/audit-log.entity';
     MediaModule,
     DashboardModule,
     MaintenanceModule,
+    MovementsModule,
   ],
   providers: [
     // Order matters: Throttler → JWT → MFA → Roles
