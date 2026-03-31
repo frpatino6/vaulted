@@ -16,15 +16,19 @@ async function bootstrap(): Promise<void> {
   // middleware is registered on the raw path without the /api prefix.
   app.setGlobalPrefix('api');
 
+  const allowedOrigins = [
+    'http://localhost:3000',
+    'http://localhost:4200',
+    'http://localhost:8080',
+    'https://vaulted-prod-2026.web.app',
+    'https://vaulted-prod-2026.firebaseapp.com',
+    // Always allow the canonical API domain so CachedNetworkImage on Flutter
+    // Web (CanvasKit) can fetch /uploads/* from the same host.
+    'https://api-vaulted.casacam.net',
+  ].filter(Boolean);
+
   app.enableCors({
-    origin: [
-      'http://localhost:3000',
-      'http://localhost:4200',
-      'http://localhost:8080',
-      'https://vaulted-prod-2026.web.app',
-      'https://vaulted-prod-2026.firebaseapp.com',
-      process.env['APP_URL'] ?? '',
-    ].filter(Boolean),
+    origin: allowedOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
@@ -34,8 +38,17 @@ async function bootstrap(): Promise<void> {
 
   // Serve uploaded files at /uploads/* — must be registered after setGlobalPrefix
   // so NestJS routing does not intercept these paths.
+  // The cors() middleware registered above runs before this handler, so all
+  // /uploads responses include the correct Access-Control-Allow-Origin header,
+  // which is required by Flutter Web (CanvasKit fetch API).
   app.useStaticAssets(join(process.cwd(), 'uploads'), {
     prefix: '/uploads',
+    setHeaders: (res) => {
+      // Belt-and-suspenders: explicitly set CORS headers on every static
+      // file response so CanvasKit fetch() does not get blocked.
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    },
   });
 
   app.useGlobalPipes(
