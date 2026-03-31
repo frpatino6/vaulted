@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import '../config/app_config.dart';
@@ -27,6 +28,9 @@ class ApiClient {
               'Content-Type': 'application/json',
               'Accept': 'application/json',
             },
+            // On web, withCredentials allows the browser to send httpOnly cookies
+            // cross-origin (requires SameSite=None; Secure on the server cookie).
+            extra: {'withCredentials': kIsWeb},
           ),
         ) {
     _dio.interceptors.add(_AuthInterceptor(
@@ -107,17 +111,26 @@ class _AuthInterceptor extends Interceptor {
     }
 
     try {
-      final refreshToken = await _secureStorage.getRefreshToken();
-      if (refreshToken == null || refreshToken.isEmpty) {
-        _clearAndNotify();
-        return handler.next(err);
+      // On web, the browser sends the httpOnly cookie automatically
+      // (withCredentials=true + SameSite=None on server).
+      // Setting Cookie manually is a forbidden header in browsers.
+      final Options refreshOptions;
+      if (kIsWeb) {
+        refreshOptions = Options(extra: {'withCredentials': true});
+      } else {
+        final refreshToken = await _secureStorage.getRefreshToken();
+        if (refreshToken == null || refreshToken.isEmpty) {
+          _clearAndNotify();
+          return handler.next(err);
+        }
+        refreshOptions = Options(
+          headers: {'Cookie': 'refresh_token=$refreshToken'},
+        );
       }
 
       final response = await _dio.post<Map<String, dynamic>>(
         'auth/refresh',
-        options: Options(
-          headers: {'Cookie': 'refresh_token=$refreshToken'},
-        ),
+        options: refreshOptions,
       );
 
       final data = response.data;

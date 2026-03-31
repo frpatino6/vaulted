@@ -24,7 +24,10 @@ import { JwtRefreshPayload } from './strategies/jwt-refresh.strategy';
 const REFRESH_COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env['NODE_ENV'] === 'production',
-  sameSite: 'strict' as const,
+  // SameSite=None required for cross-origin requests from the web app
+  // (web app on web.app, API on casacam.net — different origins).
+  // SameSite=Lax for local dev where secure=false.
+  sameSite: (process.env['NODE_ENV'] === 'production' ? 'none' : 'lax') as 'none' | 'lax',
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in ms
   path: '/api/auth/refresh',
 };
