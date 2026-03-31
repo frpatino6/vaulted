@@ -5,5 +5,5 @@ import 'movement_remote_data_source.dart';
 
 final movementRemoteDataSourceProvider =
     Provider<MovementRemoteDataSource>((ref) {
-  return MovementRemoteDataSource(ref.watch(apiClientProvider));
+  return MovementRemoteDataSource(ref.watch(apiClientProvider).dio);
 });
