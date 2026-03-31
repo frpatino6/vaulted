@@ -56,7 +56,7 @@ export class MovementItem {
   @Prop({ type: Date, default: null })
   checkedInAt!: Date | null;
 
-  @Prop({ default: null })
+  @Prop({ type: String, default: null })
   checkedInBy!: string | null;
 
   @Prop({
