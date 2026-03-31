@@ -37,12 +37,13 @@ Future<void> _tryRestoreSession() async {
     ));
 
     final Options refreshOptions;
+    FlutterSecureStorage? storage;
     if (kIsWeb) {
       // On web, browser sends the httpOnly cookie automatically.
       // Setting Cookie manually is blocked by browsers (forbidden header).
       refreshOptions = Options(extra: {'withCredentials': true});
     } else {
-      const storage = FlutterSecureStorage(
+      storage = const FlutterSecureStorage(
         aOptions: AndroidOptions(encryptedSharedPreferences: true),
       );
       final refreshToken = await storage.read(key: 'refresh_token');
@@ -66,13 +67,15 @@ Future<void> _tryRestoreSession() async {
     AuthTokenStore.instance.setToken(accessToken);
     AuthTokenStore.instance.setMfaPending(false);
 
-    // Save the rotated refresh token returned by the server
-    final setCookie = response.headers.value('set-cookie') ??
-        response.headers.value('Set-Cookie');
-    if (setCookie != null) {
-      final newRefreshToken = _parseRefreshToken(setCookie);
-      if (newRefreshToken != null) {
-        await storage.write(key: 'refresh_token', value: newRefreshToken);
+    // Save the rotated refresh token (mobile only — web uses httpOnly cookie)
+    if (storage != null) {
+      final setCookie = response.headers.value('set-cookie') ??
+          response.headers.value('Set-Cookie');
+      if (setCookie != null) {
+        final newRefreshToken = _parseRefreshToken(setCookie);
+        if (newRefreshToken != null) {
+          await storage.write(key: 'refresh_token', value: newRefreshToken);
+        }
       }
     }
   } catch (_) {
