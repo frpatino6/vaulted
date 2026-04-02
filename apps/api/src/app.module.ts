@@ -20,6 +20,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { AiModule } from './modules/ai/ai.module';
 import { MaintenanceModule } from './modules/maintenance/maintenance.module';
 import { MovementsModule } from './modules/movements/movements.module';
+import { WardrobeModule } from './modules/wardrobe/wardrobe.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { MfaVerifiedGuard } from './common/guards/mfa-verified.guard';
@@ -63,7 +64,11 @@ import { AuditLog } from './modules/audit/entities/audit-log.entity';
           logging: !isProd,
         };
         if (databaseUrl) {
-          return { ...base, url: databaseUrl, ssl: { rejectUnauthorized: false } };
+          return {
+            ...base,
+            url: databaseUrl,
+            ssl: { rejectUnauthorized: false },
+          };
         }
         return {
           ...base,
@@ -90,6 +95,7 @@ import { AuditLog } from './modules/audit/entities/audit-log.entity';
     DashboardModule,
     MaintenanceModule,
     MovementsModule,
+    WardrobeModule,
   ],
   providers: [
     // Order matters: Throttler → JWT → MFA → Roles

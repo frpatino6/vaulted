@@ -8,6 +8,9 @@ import '../../features/auth/presentation/mfa_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/reports/presentation/reports_screen.dart';
 import '../../features/wardrobe/presentation/wardrobe_screen.dart';
+import '../../features/wardrobe/presentation/outfit_detail_screen.dart';
+import '../../features/wardrobe/presentation/create_outfit_screen.dart';
+import '../../features/wardrobe/presentation/outfit_list_screen.dart';
 import '../../features/inventory/presentation/item_detail_screen.dart';
 import '../../features/inventory/presentation/qr_scanner_screen.dart';
 import '../../features/inventory/presentation/room_detail_screen.dart';
@@ -109,6 +112,22 @@ GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
       GoRoute(
         path: '/wardrobe',
         builder: (context, state) => const WardrobeScreen(),
+      ),
+
+      GoRoute(
+        path: '/wardrobe/outfits',
+        builder: (context, state) => const OutfitListScreen(),
+      ),
+      GoRoute(
+        path: '/wardrobe/outfits/new',
+        builder: (context, state) => const CreateOutfitScreen(),
+      ),
+      GoRoute(
+        path: '/wardrobe/outfits/:id',
+        builder: (context, state) {
+          final id = state.pathParameters['id'] ?? '';
+          return OutfitDetailScreen(outfitId: id);
+        },
       ),
       GoRoute(
         path: '/settings',
