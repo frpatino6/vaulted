@@ -11,6 +11,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../users/domain/current_user_jwt.dart';
 import '../../wardrobe/data/models/wardrobe_attributes.dart';
+import '../../wardrobe/presentation/dry_cleaning_history_sheet.dart';
 import '../../media/data/media_repository_provider.dart';
 import '../../maintenance/data/models/maintenance_model.dart';
 import '../../maintenance/domain/maintenance_notifier.dart';
@@ -110,6 +111,19 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                       if (item.isWardrobe && item.hasWardrobeDetails) ...[
                         const SizedBox(height: AppSpacing.lg),
                         _WardrobeDetailSection(attrs: item.wardrobeAttributes),
+                      ],
+                      if (item.isWardrobe) ...[
+                        const SizedBox(height: AppSpacing.md),
+                        FilledButton.tonalIcon(
+                          onPressed: () => _showDryCleaningHistory(context, item.id),
+                          icon: Icon(
+                            Icons.local_laundry_service,
+                            color: item.wardrobeAttributes.cleaningStatus == 'at_dry_cleaner'
+                                ? Colors.blue
+                                : null,
+                          ),
+                          label: const Text('Dry Cleaning History'),
+                        ),
                       ],
                       if (item.subcategory.isNotEmpty) ...[
                         const SizedBox(height: AppSpacing.lg),
