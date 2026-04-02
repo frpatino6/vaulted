@@ -16,9 +16,7 @@ class DryCleaningRepository {
 
     return data
         .map(
-          (dynamic e) => DryCleaningModel.fromJson(
-            normalizeDryCleaningJson(Map<String, dynamic>.from(e as Map)),
-          ),
+          (dynamic e) => DryCleaningModel.fromJson(Map<String, dynamic>.from(e as Map)),
         )
         .toList();
   }

@@ -13,7 +13,7 @@ class OutfitRepository {
     final dynamic data = _unwrapData(response);
     if (data is! List) return <OutfitModel>[];
     return data
-        .map((dynamic e) => OutfitModel.fromJson(normalizeOutfitJson(Map<String, dynamic>.from(e as Map))))
+        .map((dynamic e) => OutfitModel.fromJson(Map<String, dynamic>.from(e as Map)))
         .toList();
   }
 
@@ -21,14 +21,14 @@ class OutfitRepository {
     final Response<Map<String, dynamic>> response = await _dio.post<Map<String, dynamic>>(_path, data: payload);
     final dynamic data = _unwrapData(response);
     final Map<String, dynamic> raw = Map<String, dynamic>.from(data as Map);
-    return OutfitModel.fromJson(normalizeOutfitJson(raw));
+    return OutfitModel.fromJson(raw);
   }
 
   Future<OutfitModel> getOutfitById(String id) async {
     final Response<Map<String, dynamic>> response = await _dio.get<Map<String, dynamic>>('$_path/$id');
     final dynamic data = _unwrapData(response);
     final Map<String, dynamic> raw = Map<String, dynamic>.from(data as Map);
-    return OutfitModel.fromJson(normalizeOutfitJson(raw));
+    return OutfitModel.fromJson(raw);
   }
 
   Future<void> deleteOutfit(String id) async {
