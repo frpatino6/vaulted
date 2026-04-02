@@ -630,27 +630,34 @@ flutter create . --org com.vaulted --project-name vaulted
 
 #### How it works
 1. User takes a photo in the app (camera or gallery)
-2. Photo uploaded to GCP Storage via `/media/upload`
+2. Photo uploaded via `/media/upload`
 3. App calls `POST /ai/vision/analyze` with the media URL
-4. Backend sends image to Claude Vision API with structured prompt
+4. Backend resolves the URL to a local file path (`/app/uploads/{tenantId}/{uuid}.jpg`),
+   reads the buffer, converts to base64 and sends to Claude Vision API
 5. Claude returns JSON: `{ name, category, subcategory, brand, estimatedValue, attributes }`
 6. Flutter pre-fills the Add Item form — user reviews, edits, confirms
 7. Item saved to DB normally (AI only assists, never auto-saves)
 
+> **Storage note**: Photos are stored locally on the Docker volume (`/app/uploads/`),
+> NOT in GCP Cloud Storage (GCP bucket is not configured in the current testing environment).
+> The Vision service must read the file from disk and send it as base64 — NOT as a public URL.
+> When GCP Storage is enabled in the future, switch to sending the signed URL directly.
+
 #### Backend
-1. `ai/` module — `AiVisionService`, `AiVisionController`
+1. `ai/vision/` module — `AiVisionService`, `AiVisionController`
 2. `POST /ai/vision/analyze` — accepts `{ mediaUrl }`, returns pre-filled item JSON
-3. Claude Vision prompt:
+3. Service resolves `mediaUrl` → local path via `APP_URL` prefix stripping → reads file as base64
+4. Claude Vision prompt:
    ```
    Analyze this image of a household item. Return ONLY valid JSON with:
    { "name": string, "category": "furniture|art|technology|wardrobe|vehicles|wine|sports|other",
      "subcategory": string, "brand": string|null, "estimatedValue": number|null,
      "attributes": object, "confidence": number (0-1) }
    ```
-4. BullMQ queue for bulk processing — max 5 concurrent Vision workers
-5. Rate limit: 10 photos/minute per tenant
-6. All AI calls logged to AuditService with token usage
-7. ✅ Done when: photo → JSON returned in <3s, form pre-filled, user confirms to save
+5. BullMQ queue for bulk processing — max 5 concurrent Vision workers
+6. Rate limit: 10 photos/minute per tenant
+7. All AI calls logged to AuditService with token usage
+8. ✅ Done when: photo → JSON returned in <3s, form pre-filled, user confirms to save
 
 #### Flutter
 1. `features/inventory/presentation/ai_scan_screen.dart` — camera UI with AI overlay
