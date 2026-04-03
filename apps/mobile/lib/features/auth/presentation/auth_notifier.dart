@@ -56,7 +56,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
           e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.sendTimeout ||
           e.type == DioExceptionType.receiveTimeout) {
-        return 'Cannot reach server. Is the backend running on port 3000?';
+        return 'Cannot reach the server. Please check your internet connection and try again.';
       }
 
       final statusCode = e.response?.statusCode;
