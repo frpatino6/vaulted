@@ -93,31 +93,50 @@ class _MovementScanScreenState extends ConsumerState<MovementScanScreen> {
             feedbackError: _feedbackError,
           ),
 
+          // Floating counter — positioned below the top bar, always above
+          // the bottom panel regardless of its expanded/collapsed state.
+          // minChildSize: 0.12 → ~100px; initialChildSize: 0.28 → ~240px.
+          // Using bottom: 260 keeps it above the panel in all snap states.
           Positioned(
             left: 0,
             right: 0,
-            bottom: 100,
+            bottom: 260,
             child: IgnorePointer(
               child: AnimatedOpacity(
                 opacity: movement.items.isEmpty ? 0 : 1,
-                duration: const Duration(milliseconds: 200),
+                duration: const Duration(milliseconds: 300),
                 child: Center(
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.md,
+                      horizontal: AppSpacing.lg,
                       vertical: AppSpacing.sm,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.6),
+                      color: const Color(0xFF4CAF50).withValues(alpha: 0.9),
                       borderRadius: BorderRadius.circular(24),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
-                    child: Text(
-                      '✓ ${movement.items.length} scanned',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                      ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.check_circle_outline,
+                            color: Colors.white, size: 16),
+                        const SizedBox(width: 6),
+                        Text(
+                          '${movement.items.length} item${movement.items.length == 1 ? '' : 's'} scanned',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
