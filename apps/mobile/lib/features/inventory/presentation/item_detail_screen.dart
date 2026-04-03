@@ -366,6 +366,15 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
     }
   }
 
+  void _showDryCleaningHistory(BuildContext context, String itemId) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => DryCleaningHistorySheet(itemId: itemId),
+    );
+  }
+
   void _showEditSheet(BuildContext context, ItemModel item) {
     showModalBottomSheet<bool>(
       context: context,
