@@ -218,24 +218,27 @@ vaulted/
 
 ### Backend modules (apps/api/src/modules/)
 ```
-auth/          # JWT, refresh tokens, MFA, sessions
-users/         # User management (PostgreSQL)
-tenants/       # Client/family management (PostgreSQL)
-properties/    # Properties and rooms (MongoDB)
-inventory/     # Items and item history (MongoDB)
-wardrobe/      # Wardrobe extension of inventory (MongoDB)
-media/         # File upload to GCP Storage
-insurance/     # Policies and warranties (PostgreSQL)
-audit/         # Immutable audit logs (PostgreSQL)
-notifications/ # Push (FCM) and email (SendGrid/Resend)
-reports/       # PDF and Excel report generation
-ai/            # AI features: vision, chat/RAG, valuation, maintenance, insurance
-  vision/      #   Claude Vision → auto-catalog items from photos
-  chat/        #   RAG assistant (embeddings + vector search + Claude)
-  valuation/   #   Dynamic market price estimation via web search + Claude
-  maintenance/ #   Predictive maintenance risk scoring (nightly batch)
-  insurance/   #   PDF policy extraction + coverage gap analysis
-  shared/      #   Shared Claude client, prompt templates, cost logger
+auth/          # JWT, refresh tokens, MFA, sessions           ✅ DONE
+users/         # User management (PostgreSQL)                 ✅ DONE
+tenants/       # Client/family management (PostgreSQL)        ✅ DONE
+properties/    # Properties and rooms (MongoDB)               ✅ DONE
+inventory/     # Items and item history (MongoDB)             ✅ DONE
+movements/     # Item transfers, loans, repairs (MongoDB)     ✅ DONE
+maintenance/   # Scheduled maintenance records (MongoDB)      ✅ DONE
+dashboard/     # Aggregated metrics, Redis cache              ✅ DONE
+wardrobe/      # Outfits + dry cleaning history (MongoDB)     ✅ DONE
+  outfits      #   CRUD outfits, add/remove items
+  dry-cleaning #   Tintorería history, mark returned, auto cleaningStatus
+  stats        #   Closet stats with Redis cache (5 min TTL)
+media/         # File upload to GCP Storage                   ✅ DONE
+audit/         # Immutable audit logs (PostgreSQL)            ✅ DONE
+ai/            # AI features                                  ✅ PARTIAL
+  chat/        #   RAG chat with Gemini embeddings + vector search
+  maintenance/ #   AI maintenance risk scoring per item
+  shared/      #   Embedding service, Gemini client, cost logger
+insurance/     # Policies and warranties (PostgreSQL)         ❌ PENDING
+notifications/ # Push (FCM) and email (SendGrid/Resend)       ❌ PENDING
+reports/       # PDF and Excel report generation              ❌ PENDING
 ```
 
 ### Flutter architecture (apps/mobile/lib/)
@@ -249,13 +252,18 @@ core/
   theme/        # Design system, colors, typography, spacing
 
 features/       # Feature-first structure
-  auth/
-  dashboard/
-  properties/
-  inventory/
-  wardrobe/
-  reports/
-  settings/
+  auth/         ✅ login, register, MFA
+  dashboard/    ✅ stats summary, property cards
+  properties/   ✅ list, detail, floors, rooms
+  inventory/    ✅ list, detail, add/edit, QR scan, item history
+  movements/    ✅ draft→active→complete workflow, QR checkin
+  maintenance/  ✅ list, create, update status
+  ai_chat/      ✅ RAG chat UI, conversation history
+  users/        ✅ list, invite, edit role
+  media/        ✅ image picker, upload progress
+  wardrobe/     ✅ closet grid, outfit builder, dry cleaning history, stats bar
+  reports/      ❌ stub only (no backend)
+  settings/     ✅ basic
 
 shared/
   widgets/      # Reusable premium UI components
@@ -572,19 +580,24 @@ flutter create . --org com.vaulted --project-name vaulted
 
 ---
 
-### PHASE 9 — Wardrobe Module
+### PHASE 9 — Wardrobe Module ✅ DONE
 **Goal: wardrobe items have specific attributes and closet view**
 **Dependency: Phase 4 complete**
 
-#### Backend
-1. `wardrobe` module extends inventory — adds garment-specific attributes
-2. Outfit creation — link multiple wardrobe items
-3. Dry cleaning / repair status tracking
-4. ✅ Done when: garment CRUD works with wardrobe-specific fields
+#### Backend (implemented)
+- `wardrobe` module — dedicated NestJS module, reuses `category: 'wardrobe'` items from inventory
+- Outfit CRUD: `POST/GET/PUT/DELETE /wardrobe/outfits` + add/remove items per outfit
+- Dry cleaning history: `POST /wardrobe/dry-cleaning/:itemId`, mark returned → auto-updates `cleaningStatus`
+- Stats endpoint: `GET /wardrobe/stats` — totals by type, cleaning status, season + outfits count (Redis cache 5 min)
+- All mutations logged to AuditService, all queries scoped by tenantId
 
-#### Flutter
-1. `features/wardrobe/` — closet view, outfit builder
-2. ✅ Done when: user sees wardrobe items in visual closet layout
+#### Flutter (implemented)
+- `features/wardrobe/` — closet grid with 3 filter rows (type + cleaning + season)
+- Stats bar at top: total items, needs cleaning, at dry cleaner, outfits count
+- Outfit builder: list screen, detail screen, create screen (multi-select items)
+- Dry Cleaning History sheet on item detail (wardrobe items only)
+- Models: `OutfitModel`, `DryCleaningModel` — Freezed + json_serializable
+- Routes: `/wardrobe/outfits`, `/wardrobe/outfits/new`, `/wardrobe/outfits/:id`
 
 ---
 
@@ -617,27 +630,34 @@ flutter create . --org com.vaulted --project-name vaulted
 
 #### How it works
 1. User takes a photo in the app (camera or gallery)
-2. Photo uploaded to GCP Storage via `/media/upload`
+2. Photo uploaded via `/media/upload`
 3. App calls `POST /ai/vision/analyze` with the media URL
-4. Backend sends image to Claude Vision API with structured prompt
+4. Backend resolves the URL to a local file path (`/app/uploads/{tenantId}/{uuid}.jpg`),
+   reads the buffer, converts to base64 and sends to Claude Vision API
 5. Claude returns JSON: `{ name, category, subcategory, brand, estimatedValue, attributes }`
 6. Flutter pre-fills the Add Item form — user reviews, edits, confirms
 7. Item saved to DB normally (AI only assists, never auto-saves)
 
+> **Storage note**: Photos are stored locally on the Docker volume (`/app/uploads/`),
+> NOT in GCP Cloud Storage (GCP bucket is not configured in the current testing environment).
+> The Vision service must read the file from disk and send it as base64 — NOT as a public URL.
+> When GCP Storage is enabled in the future, switch to sending the signed URL directly.
+
 #### Backend
-1. `ai/` module — `AiVisionService`, `AiVisionController`
+1. `ai/vision/` module — `AiVisionService`, `AiVisionController`
 2. `POST /ai/vision/analyze` — accepts `{ mediaUrl }`, returns pre-filled item JSON
-3. Claude Vision prompt:
+3. Service resolves `mediaUrl` → local path via `APP_URL` prefix stripping → reads file as base64
+4. Claude Vision prompt:
    ```
    Analyze this image of a household item. Return ONLY valid JSON with:
    { "name": string, "category": "furniture|art|technology|wardrobe|vehicles|wine|sports|other",
      "subcategory": string, "brand": string|null, "estimatedValue": number|null,
      "attributes": object, "confidence": number (0-1) }
    ```
-4. BullMQ queue for bulk processing — max 5 concurrent Vision workers
-5. Rate limit: 10 photos/minute per tenant
-6. All AI calls logged to AuditService with token usage
-7. ✅ Done when: photo → JSON returned in <3s, form pre-filled, user confirms to save
+5. BullMQ queue for bulk processing — max 5 concurrent Vision workers
+6. Rate limit: 10 photos/minute per tenant
+7. All AI calls logged to AuditService with token usage
+8. ✅ Done when: photo → JSON returned in <3s, form pre-filled, user confirms to save
 
 #### Flutter
 1. `features/inventory/presentation/ai_scan_screen.dart` — camera UI with AI overlay
