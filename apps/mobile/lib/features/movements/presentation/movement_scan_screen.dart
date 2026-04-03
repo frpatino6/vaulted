@@ -93,6 +93,38 @@ class _MovementScanScreenState extends ConsumerState<MovementScanScreen> {
             feedbackError: _feedbackError,
           ),
 
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 100,
+            child: IgnorePointer(
+              child: AnimatedOpacity(
+                opacity: movement.items.isEmpty ? 0 : 1,
+                duration: const Duration(milliseconds: 200),
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md,
+                      vertical: AppSpacing.sm,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.6),
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: Text(
+                      '✓ ${movement.items.length} scanned',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
           // Top bar
           SafeArea(
             child: Padding(
@@ -206,8 +238,12 @@ class _MovementScanScreenState extends ConsumerState<MovementScanScreen> {
 
       HapticFeedback.mediumImpact();
     } catch (e) {
+      final message = ActiveMovementNotifier.message(e);
+      final normalized = message.toLowerCase();
+      final isDuplicate =
+          normalized.contains('already') || normalized.contains('conflict');
       setState(() {
-        _feedbackError = ActiveMovementNotifier.message(e);
+        _feedbackError = isDuplicate ? 'Already scanned' : message;
         _showFeedback = true;
         _lastScannedName = null;
       });
@@ -355,12 +391,17 @@ class _ScanOverlay extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           // Scan frame
-          Container(
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 600),
             width: 240,
             height: 240,
             decoration: BoxDecoration(
               border: Border.all(
-                color: processingQr ? AppColors.accent : Colors.white,
+                color: processingQr
+                    ? AppColors.accent
+                    : (showFeedback && feedbackError == null)
+                        ? const Color(0xFF4CAF50)
+                        : Colors.white,
                 width: 2,
               ),
               borderRadius: BorderRadius.circular(16),
@@ -526,9 +567,27 @@ class _BottomPanel extends StatelessWidget {
                     itemCount: items.length,
                     itemBuilder: (ctx, i) {
                       final item = items[items.length - 1 - i]; // newest first
-                      return _ScannedItemRow(
-                        item: item,
-                        onRemove: () => onRemove(item.itemId),
+                      return AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 300),
+                        switchInCurve: Curves.easeOut,
+                        transitionBuilder: (child, animation) {
+                          final slideAnimation = Tween<Offset>(
+                            begin: const Offset(0, -0.2),
+                            end: Offset.zero,
+                          ).animate(animation);
+                          return FadeTransition(
+                            opacity: animation,
+                            child: SlideTransition(
+                              position: slideAnimation,
+                              child: child,
+                            ),
+                          );
+                        },
+                        child: _ScannedItemRow(
+                          key: ValueKey(item.itemId),
+                          item: item,
+                          onRemove: () => onRemove(item.itemId),
+                        ),
                       );
                     },
                   ),
@@ -540,7 +599,11 @@ class _BottomPanel extends StatelessWidget {
 }
 
 class _ScannedItemRow extends StatelessWidget {
-  const _ScannedItemRow({required this.item, required this.onRemove});
+  const _ScannedItemRow({
+    super.key,
+    required this.item,
+    required this.onRemove,
+  });
 
   final MovementItemModel item;
   final VoidCallback onRemove;
