@@ -14,13 +14,12 @@ class OutfitItemPreviewModel with _$OutfitItemPreviewModel {
     String? cleaningStatus,
   }) = _OutfitItemPreviewModel;
 
-  factory OutfitItemPreviewModel.fromJson(Map<String, dynamic> json) {
-    final Map<String, dynamic> normalized = Map<String, dynamic>.from(json);
-    if (normalized['id'] == null && normalized['_id'] != null) {
-      normalized['id'] = normalized['_id'].toString();
-    }
-    return _$OutfitItemPreviewModelFromJson(normalized);
-  }
+  factory OutfitItemPreviewModel.fromJson(Map<String, dynamic> json) =>
+      _$OutfitItemPreviewModelFromJson({
+        ...json,
+        if (json['id'] == null && json['_id'] != null)
+          'id': json['_id'].toString(),
+      });
 }
 
 @freezed
@@ -37,11 +36,10 @@ class OutfitModel with _$OutfitModel {
     String? createdAt,
   }) = _OutfitModel;
 
-  factory OutfitModel.fromJson(Map<String, dynamic> json) {
-    final Map<String, dynamic> normalized = Map<String, dynamic>.from(json);
-    if (normalized['id'] == null && normalized['_id'] != null) {
-      normalized['id'] = normalized['_id'].toString();
-    }
-    return _$OutfitModelFromJson(normalized);
-  }
+  factory OutfitModel.fromJson(Map<String, dynamic> json) =>
+      _$OutfitModelFromJson({
+        ...json,
+        if (json['id'] == null && json['_id'] != null)
+          'id': json['_id'].toString(),
+      });
 }

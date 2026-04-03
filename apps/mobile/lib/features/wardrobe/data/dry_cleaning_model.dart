@@ -17,11 +17,10 @@ class DryCleaningModel with _$DryCleaningModel {
     String? createdAt,
   }) = _DryCleaningModel;
 
-  factory DryCleaningModel.fromJson(Map<String, dynamic> json) {
-    final Map<String, dynamic> normalized = Map<String, dynamic>.from(json);
-    if (normalized['id'] == null && normalized['_id'] != null) {
-      normalized['id'] = normalized['_id'].toString();
-    }
-    return _$DryCleaningModelFromJson(normalized);
-  }
+  factory DryCleaningModel.fromJson(Map<String, dynamic> json) =>
+      _$DryCleaningModelFromJson({
+        ...json,
+        if (json['id'] == null && json['_id'] != null)
+          'id': json['_id'].toString(),
+      });
 }
