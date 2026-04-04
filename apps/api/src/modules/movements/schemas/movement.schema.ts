@@ -97,6 +97,18 @@ export class Movement {
   @Prop({ default: '' })
   destination!: string;
 
+  @Prop({ default: '' })
+  destinationPropertyId!: string;
+
+  @Prop({ default: '' })
+  destinationRoomId!: string;
+
+  @Prop({ default: '' })
+  destinationPropertyName!: string;
+
+  @Prop({ default: '' })
+  destinationRoomName!: string;
+
   @Prop({ type: [MovementItemSchema], default: [] })
   items!: MovementItem[];
 

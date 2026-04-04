@@ -62,12 +62,8 @@ export class MovementsController {
   }
 
   @Get('draft')
-  async getActiveDraft(@CurrentUser() user: JwtPayload) {
-    const draft = await this.movementsService.findActiveDraft(
-      user.sub,
-      user.tenantId,
-    );
-    return draft ?? null;
+  async getActiveDrafts(@CurrentUser() user: JwtPayload) {
+    return this.movementsService.findActiveDrafts(user.sub, user.tenantId);
   }
 
   @Get(':id')

@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../properties/data/models/floor_model.dart';
+import '../../properties/data/models/property_model.dart';
+import '../../properties/data/models/room_model.dart';
+import '../../properties/domain/properties_notifier.dart';
 import '../data/models/movement_model.dart';
 import '../domain/active_movement_notifier.dart';
 
@@ -23,6 +27,11 @@ class _NewMovementSheetState extends ConsumerState<NewMovementSheet> {
   bool _loading = false;
   String? _error;
 
+  // Transfer destination selection
+  PropertyModel? _destProperty;
+  FloorModel? _destFloor;
+  RoomModel? _destRoom;
+
   @override
   void dispose() {
     _titleCtrl.dispose();
@@ -31,9 +40,22 @@ class _NewMovementSheetState extends ConsumerState<NewMovementSheet> {
     super.dispose();
   }
 
+  bool get _isTransfer => _selectedType == 'transfer';
+
+  bool get _canSubmit {
+    if (_selectedType == null || _loading) return false;
+    if (_titleCtrl.text.trim().isEmpty) return false;
+    if (_isTransfer && (_destProperty == null || _destRoom == null)) {
+      return false;
+    }
+    return true;
+  }
+
   @override
   Widget build(BuildContext context) {
     final bottom = MediaQuery.of(context).viewInsets.bottom;
+    final propertiesState = ref.watch(propertiesNotifierProvider);
+    final properties = propertiesState.value ?? [];
 
     return Container(
       decoration: const BoxDecoration(
@@ -91,11 +113,18 @@ class _NewMovementSheetState extends ConsumerState<NewMovementSheet> {
               mainAxisSpacing: AppSpacing.sm,
               crossAxisSpacing: AppSpacing.sm,
               childAspectRatio: 2.6,
-              children: _types.map((t) => _TypeCard(
-                type: t,
-                selected: _selectedType == t.id,
-                onTap: () => setState(() => _selectedType = t.id),
-              )).toList(),
+              children: _types
+                  .map((t) => _TypeCard(
+                        type: t,
+                        selected: _selectedType == t.id,
+                        onTap: () => setState(() {
+                          _selectedType = t.id;
+                          _destProperty = null;
+                          _destFloor = null;
+                          _destRoom = null;
+                        }),
+                      ))
+                  .toList(),
             ),
 
             if (_selectedType != null) ...[
@@ -116,25 +145,55 @@ class _NewMovementSheetState extends ConsumerState<NewMovementSheet> {
                 controller: _titleCtrl,
                 hint: _hintForType(_selectedType!),
                 maxLength: 80,
+                onChanged: (_) => setState(() {}),
               ),
 
               const SizedBox(height: AppSpacing.md),
 
-              // Destination / recipient
-              Text(
-                _destinationLabel(_selectedType!),
-                style: TextStyle(
-                  color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
-                  fontSize: 11,
-                  letterSpacing: 1.5,
-                  fontWeight: FontWeight.w600,
+              // Destination — structured selector for Transfer, text field for others
+              if (_isTransfer) ...[
+                Text(
+                  'DESTINATION',
+                  style: TextStyle(
+                    color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
+                    fontSize: 11,
+                    letterSpacing: 1.5,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              _Field(
-                controller: _destinationCtrl,
-                hint: _destinationHint(_selectedType!),
-              ),
+                const SizedBox(height: AppSpacing.xs),
+                _DestinationSelector(
+                  properties: properties,
+                  selectedProperty: _destProperty,
+                  selectedFloor: _destFloor,
+                  selectedRoom: _destRoom,
+                  onPropertyChanged: (p) => setState(() {
+                    _destProperty = p;
+                    _destFloor = null;
+                    _destRoom = null;
+                  }),
+                  onFloorChanged: (f) => setState(() {
+                    _destFloor = f;
+                    _destRoom = null;
+                  }),
+                  onRoomChanged: (r) => setState(() => _destRoom = r),
+                ),
+              ] else ...[
+                Text(
+                  _destinationLabel(_selectedType!),
+                  style: TextStyle(
+                    color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
+                    fontSize: 11,
+                    letterSpacing: 1.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                _Field(
+                  controller: _destinationCtrl,
+                  hint: _destinationHint(_selectedType!),
+                ),
+              ],
 
               const SizedBox(height: AppSpacing.md),
 
@@ -159,8 +218,8 @@ class _NewMovementSheetState extends ConsumerState<NewMovementSheet> {
                       color: AppColors.surface,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                          color:
-                              AppColors.onSurfaceVariant.withValues(alpha: 0.15)),
+                          color: AppColors.onSurfaceVariant
+                              .withValues(alpha: 0.15)),
                     ),
                     child: Row(
                       children: [
@@ -224,13 +283,13 @@ class _NewMovementSheetState extends ConsumerState<NewMovementSheet> {
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.error_outline,
-                        color: AppColors.error, size: 16),
+                    Icon(Icons.error_outline, color: AppColors.error, size: 16),
                     const SizedBox(width: AppSpacing.xs),
                     Expanded(
                       child: Text(
                         _error!,
-                        style: TextStyle(color: AppColors.error, fontSize: 12),
+                        style:
+                            TextStyle(color: AppColors.error, fontSize: 12),
                       ),
                     ),
                   ],
@@ -245,7 +304,7 @@ class _NewMovementSheetState extends ConsumerState<NewMovementSheet> {
               width: double.infinity,
               height: 52,
               child: ElevatedButton.icon(
-                onPressed: (_selectedType == null || _loading) ? null : _submit,
+                onPressed: _canSubmit ? _submit : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.accent,
                   foregroundColor: Colors.black,
@@ -301,6 +360,10 @@ class _NewMovementSheetState extends ConsumerState<NewMovementSheet> {
       setState(() => _error = 'Please enter a title');
       return;
     }
+    if (_isTransfer && (_destProperty == null || _destRoom == null)) {
+      setState(() => _error = 'Please select a destination property and room');
+      return;
+    }
 
     setState(() {
       _loading = true;
@@ -308,15 +371,23 @@ class _NewMovementSheetState extends ConsumerState<NewMovementSheet> {
     });
 
     try {
-      final movement = await ref
-          .read(activeMovementNotifierProvider.notifier)
-          .startMovement(
-            operationType: _selectedType!,
-            title: title,
-            destination: _destinationCtrl.text.trim(),
-            notes: _notesCtrl.text.trim(),
-            dueDate: _dueDate?.toIso8601String(),
-          );
+      final movement =
+          await ref.read(activeMovementNotifierProvider.notifier).startMovement(
+                operationType: _selectedType!,
+                title: title,
+                destination: _isTransfer
+                    ? '${_destProperty!.name} / ${_destRoom!.name}'
+                    : _destinationCtrl.text.trim(),
+                destinationPropertyId:
+                    _isTransfer ? _destProperty!.id : '',
+                destinationRoomId: _isTransfer ? _destRoom!.roomId : '',
+                destinationPropertyName:
+                    _isTransfer ? _destProperty!.name : '',
+                destinationRoomName:
+                    _isTransfer ? _destRoom!.name : '',
+                notes: _notesCtrl.text.trim(),
+                dueDate: _dueDate?.toIso8601String(),
+              );
 
       if (mounted) {
         Navigator.of(context).pop();
@@ -328,6 +399,186 @@ class _NewMovementSheetState extends ConsumerState<NewMovementSheet> {
         _error = ActiveMovementNotifier.message(e);
       });
     }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Destination selector for Transfer type
+// ---------------------------------------------------------------------------
+
+class _DestinationSelector extends StatelessWidget {
+  const _DestinationSelector({
+    required this.properties,
+    required this.selectedProperty,
+    required this.selectedFloor,
+    required this.selectedRoom,
+    required this.onPropertyChanged,
+    required this.onFloorChanged,
+    required this.onRoomChanged,
+  });
+
+  final List<PropertyModel> properties;
+  final PropertyModel? selectedProperty;
+  final FloorModel? selectedFloor;
+  final RoomModel? selectedRoom;
+  final void Function(PropertyModel?) onPropertyChanged;
+  final void Function(FloorModel?) onFloorChanged;
+  final void Function(RoomModel?) onRoomChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    if (properties.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+              color: AppColors.onSurfaceVariant.withValues(alpha: 0.15)),
+        ),
+        child: Text(
+          'No properties available',
+          style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 14),
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        // Property dropdown
+        _DropdownField<PropertyModel>(
+          value: selectedProperty,
+          hint: 'Select property',
+          icon: Icons.home_outlined,
+          items: properties,
+          label: (p) => p.name,
+          onChanged: onPropertyChanged,
+        ),
+
+        if (selectedProperty != null) ...[
+          const SizedBox(height: AppSpacing.sm),
+
+          // Floor dropdown
+          _DropdownField<FloorModel>(
+            value: selectedFloor,
+            hint: 'Select floor',
+            icon: Icons.layers_outlined,
+            items: selectedProperty!.floors,
+            label: (f) => f.name,
+            onChanged: onFloorChanged,
+          ),
+
+          if (selectedFloor != null) ...[
+            const SizedBox(height: AppSpacing.sm),
+
+            // Room dropdown
+            _DropdownField<RoomModel>(
+              value: selectedRoom,
+              hint: 'Select room',
+              icon: Icons.room_outlined,
+              items: selectedFloor!.rooms,
+              label: (r) => r.name,
+              onChanged: onRoomChanged,
+            ),
+          ],
+        ],
+
+        if (selectedProperty != null && selectedRoom != null) ...[
+          const SizedBox(height: AppSpacing.sm),
+          Container(
+            padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+            decoration: BoxDecoration(
+              color: const Color(0xFF2196F3).withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                  color: const Color(0xFF2196F3).withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.check_circle_outline,
+                    color: Color(0xFF2196F3), size: 16),
+                const SizedBox(width: AppSpacing.xs),
+                Expanded(
+                  child: Text(
+                    '${selectedProperty!.name} · ${selectedFloor?.name ?? ''} · ${selectedRoom!.name}',
+                    style: const TextStyle(
+                        color: Color(0xFF2196F3),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _DropdownField<T> extends StatelessWidget {
+  const _DropdownField({
+    required this.value,
+    required this.hint,
+    required this.icon,
+    required this.items,
+    required this.label,
+    required this.onChanged,
+  });
+
+  final T? value;
+  final String hint;
+  final IconData icon;
+  final List<T> items;
+  final String Function(T) label;
+  final void Function(T?) onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+            color: value != null
+                ? const Color(0xFF2196F3).withValues(alpha: 0.5)
+                : AppColors.onSurfaceVariant.withValues(alpha: 0.15)),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<T>(
+          value: value,
+          hint: Row(
+            children: [
+              Icon(icon, size: 16, color: AppColors.onSurfaceVariant),
+              const SizedBox(width: AppSpacing.sm),
+              Text(hint,
+                  style: TextStyle(
+                      color: AppColors.onSurfaceVariant, fontSize: 14)),
+            ],
+          ),
+          isExpanded: true,
+          dropdownColor: AppColors.surfaceVariant,
+          style: TextStyle(color: AppColors.onBackground, fontSize: 14),
+          icon: Icon(Icons.keyboard_arrow_down_rounded,
+              color: AppColors.onSurfaceVariant, size: 20),
+          items: items
+              .map(
+                (item) => DropdownMenuItem<T>(
+                  value: item,
+                  child: Text(label(item),
+                      style: TextStyle(
+                          color: AppColors.onBackground, fontSize: 14)),
+                ),
+              )
+              .toList(),
+          onChanged: onChanged,
+        ),
+      ),
+    );
   }
 }
 
@@ -404,12 +655,14 @@ class _Field extends StatelessWidget {
     required this.hint,
     this.maxLines = 1,
     this.maxLength,
+    this.onChanged,
   });
 
   final TextEditingController controller;
   final String hint;
   final int maxLines;
   final int? maxLength;
+  final void Function(String)? onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -417,12 +670,14 @@ class _Field extends StatelessWidget {
       controller: controller,
       maxLines: maxLines,
       maxLength: maxLength,
+      onChanged: onChanged,
       style: TextStyle(color: AppColors.onBackground, fontSize: 14),
       decoration: InputDecoration(
         hintText: hint,
         hintStyle:
             TextStyle(color: AppColors.onSurfaceVariant, fontSize: 14),
-        counterStyle: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 11),
+        counterStyle:
+            TextStyle(color: AppColors.onSurfaceVariant, fontSize: 11),
         filled: true,
         fillColor: AppColors.surface,
         contentPadding: const EdgeInsets.symmetric(
@@ -500,7 +755,7 @@ String _hintForType(String type) => switch (type) {
       'loan' => 'e.g. Weekend loan to John',
       'repair' => 'e.g. Repair at ABC Service',
       'disposal' => 'e.g. Donate to charity',
-      _ => 'e.g. Move to storage unit',
+      _ => 'e.g. Vacation to Aspen house',
     };
 
 String _destinationLabel(String type) => switch (type) {

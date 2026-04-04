@@ -4,76 +4,105 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/models/movement_model.dart';
 import '../data/movement_repository_provider.dart';
 
-/// Manages the in-progress movement draft for the current user.
-/// Persists to the backend on every action so state is recoverable
-/// if the app closes mid-operation.
-class ActiveMovementNotifier extends AsyncNotifier<MovementModel?> {
+/// Manages all in-progress draft movements for the current user.
+/// Multiple drafts can exist simultaneously.
+/// State is backed by the server — recoverable if the app restarts.
+class ActiveMovementNotifier extends AsyncNotifier<List<MovementModel>> {
   @override
-  Future<MovementModel?> build() async {
+  Future<List<MovementModel>> build() async {
     try {
-      return await ref.read(movementRepositoryProvider).getActiveDraft();
+      return await ref.read(movementRepositoryProvider).getActiveDrafts();
     } catch (_) {
-      return null;
+      return [];
     }
   }
 
-  /// Creates a new draft movement. Throws if one already exists.
+  /// Creates a new draft movement and adds it to the list.
   Future<MovementModel> startMovement({
     required String operationType,
     required String title,
     String description = '',
     String destination = '',
+    String destinationPropertyId = '',
+    String destinationRoomId = '',
+    String destinationPropertyName = '',
+    String destinationRoomName = '',
     String? dueDate,
     String notes = '',
     String? propertyId,
   }) async {
-    state = const AsyncLoading();
     final movement = await ref.read(movementRepositoryProvider).createMovement(
           operationType: operationType,
           title: title,
           description: description,
           destination: destination,
+          destinationPropertyId: destinationPropertyId,
+          destinationRoomId: destinationRoomId,
+          destinationPropertyName: destinationPropertyName,
+          destinationRoomName: destinationRoomName,
           dueDate: dueDate,
           notes: notes,
           propertyId: propertyId,
         );
-    state = AsyncData(movement);
+    final current = state.value ?? [];
+    state = AsyncData([movement, ...current]);
     return movement;
   }
 
-  /// Adds an item by its ID and immediately persists. Returns updated movement.
+  /// Adds an item to the given movement and updates the list.
   Future<MovementModel> addItem(String movementId, String itemId) async {
     final movement =
         await ref.read(movementRepositoryProvider).addItem(movementId, itemId);
-    state = AsyncData(movement);
+    _replace(movement);
     return movement;
   }
 
-  /// Removes an item from the draft.
+  /// Removes an item from the given movement and updates the list.
   Future<void> removeItem(String movementId, String itemId) async {
     final movement = await ref
         .read(movementRepositoryProvider)
         .removeItem(movementId, itemId);
-    state = AsyncData(movement);
+    _replace(movement);
   }
 
-  /// Activates the draft → status becomes 'active' (or 'completed' for disposal).
+  /// Activates a draft → removes it from drafts list (it transitions to active/completed).
   Future<MovementModel> activate(String movementId) async {
     final movement =
         await ref.read(movementRepositoryProvider).activate(movementId);
-    // After activation the draft is gone; clear state
-    state = const AsyncData(null);
+    _remove(movementId);
     return movement;
   }
 
-  /// Cancels the movement and restores item statuses.
+  /// Cancels a movement and removes it from the drafts list.
   Future<void> cancel(String movementId) async {
     await ref.read(movementRepositoryProvider).cancel(movementId);
-    state = const AsyncData(null);
+    _remove(movementId);
   }
 
-  /// Clears local state (e.g. after navigating away).
-  void clear() => state = const AsyncData(null);
+  /// Refreshes the drafts list from the server.
+  Future<void> refresh() async {
+    try {
+      final drafts =
+          await ref.read(movementRepositoryProvider).getActiveDrafts();
+      state = AsyncData(drafts);
+    } catch (_) {
+      // keep existing state on error
+    }
+  }
+
+  void _replace(MovementModel updated) {
+    final current = state.value ?? [];
+    state = AsyncData(
+      current
+          .map((m) => m.id == updated.id ? updated : m)
+          .toList(),
+    );
+  }
+
+  void _remove(String movementId) {
+    final current = state.value ?? [];
+    state = AsyncData(current.where((m) => m.id != movementId).toList());
+  }
 
   static String message(Object e) {
     if (e is DioException) {
@@ -89,6 +118,6 @@ class ActiveMovementNotifier extends AsyncNotifier<MovementModel?> {
 }
 
 final activeMovementNotifierProvider =
-    AsyncNotifierProvider<ActiveMovementNotifier, MovementModel?>(
+    AsyncNotifierProvider<ActiveMovementNotifier, List<MovementModel>>(
   ActiveMovementNotifier.new,
 );

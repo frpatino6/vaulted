@@ -27,7 +27,7 @@ class _MovementsScreenState extends ConsumerState<MovementsScreen>
     _tabs = TabController(length: 2, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(movementListNotifierProvider.notifier).load();
-      ref.read(activeMovementNotifierProvider.notifier).build();
+      ref.read(activeMovementNotifierProvider.notifier).refresh();
     });
   }
 
@@ -77,12 +77,11 @@ class _MovementsScreenState extends ConsumerState<MovementsScreen>
       ),
       body: Column(
         children: [
-          // Draft recovery banner
-          if (draftState.value != null)
-            _DraftBanner(
-              movement: draftState.value!,
-              onResume: () =>
-                  context.push('/movements/${draftState.value!.id}/scan'),
+          // Draft recovery banners — show one banner per active draft
+          if (draftState.value != null && draftState.value!.isNotEmpty)
+            _DraftBannerList(
+              drafts: draftState.value!,
+              onResume: (m) => context.push('/movements/${m.id}/scan'),
             ),
           Expanded(
             child: listState.when(
@@ -163,37 +162,6 @@ class _MovementsScreenState extends ConsumerState<MovementsScreen>
   }
 
   void _startNewMovement(BuildContext context) {
-    final draft = ref.read(activeMovementNotifierProvider).value;
-    if (draft != null) {
-      showDialog<void>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          backgroundColor: AppColors.surfaceVariant,
-          title: Text('Operation in progress',
-              style: TextStyle(color: AppColors.onBackground)),
-          content: Text(
-            'You already have a draft: "${draft.title}". Resume it or cancel it first.',
-            style: TextStyle(color: AppColors.onSurfaceVariant),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(ctx).pop();
-                context.push('/movements/${draft.id}/scan');
-              },
-              child: Text('Resume', style: TextStyle(color: AppColors.accent)),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: Text('Close',
-                  style: TextStyle(color: AppColors.onSurfaceVariant)),
-            ),
-          ],
-        ),
-      );
-      return;
-    }
-
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -211,63 +179,70 @@ class _MovementsScreenState extends ConsumerState<MovementsScreen>
 
 // ---------------------------------------------------------------------------
 
-class _DraftBanner extends StatelessWidget {
-  const _DraftBanner({required this.movement, required this.onResume});
+class _DraftBannerList extends StatelessWidget {
+  const _DraftBannerList({required this.drafts, required this.onResume});
 
-  final MovementModel movement;
-  final VoidCallback onResume;
+  final List<MovementModel> drafts;
+  final void Function(MovementModel) onResume;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onResume,
-      child: Container(
-        margin: const EdgeInsets.fromLTRB(
-            AppSpacing.md, AppSpacing.sm, AppSpacing.md, 0),
-        padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md, vertical: AppSpacing.sm),
-        decoration: BoxDecoration(
-          color: AppColors.accent.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.accent.withValues(alpha: 0.4)),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.pending_rounded,
-                color: AppColors.accent, size: 18),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Draft in progress',
-                    style: TextStyle(
-                      color: AppColors.accent,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
+    return Column(
+      children: drafts
+          .map(
+            (m) => GestureDetector(
+              onTap: () => onResume(m),
+              child: Container(
+                margin: const EdgeInsets.fromLTRB(
+                    AppSpacing.md, AppSpacing.sm, AppSpacing.md, 0),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                decoration: BoxDecoration(
+                  color: AppColors.accent.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                      color: AppColors.accent.withValues(alpha: 0.4)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.pending_rounded,
+                        color: AppColors.accent, size: 18),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Draft in progress',
+                            style: TextStyle(
+                              color: AppColors.accent,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Text(
+                            m.title,
+                            style: TextStyle(
+                                color: AppColors.onBackground, fontSize: 13),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  Text(
-                    movement.title,
-                    style: TextStyle(
-                        color: AppColors.onBackground, fontSize: 13),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+                    Text(
+                      'Resume →',
+                      style: TextStyle(
+                          color: AppColors.accent,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
               ),
             ),
-            Text(
-              'Resume →',
-              style: TextStyle(
-                  color: AppColors.accent,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600),
-            ),
-          ],
-        ),
-      ),
+          )
+          .toList(),
     );
   }
 }
