@@ -43,17 +43,6 @@ export class MovementsService {
     dto: CreateMovementDto,
     user: JwtPayload,
   ): Promise<MovementDocument> {
-    const existingDraft = await this.movementModel.findOne({
-      tenantId: user.tenantId,
-      createdBy: user.sub,
-      status: MovementStatus.DRAFT,
-    });
-    if (existingDraft) {
-      throw new ConflictException(
-        'You already have a movement in progress. Complete or cancel it first.',
-      );
-    }
-
     const movement = new this.movementModel({
       tenantId: user.tenantId,
       propertyId: dto.propertyId ?? '',
@@ -61,6 +50,10 @@ export class MovementsService {
       title: dto.title,
       description: dto.description ?? '',
       destination: dto.destination ?? '',
+      destinationPropertyId: dto.destinationPropertyId ?? '',
+      destinationRoomId: dto.destinationRoomId ?? '',
+      destinationPropertyName: dto.destinationPropertyName ?? '',
+      destinationRoomName: dto.destinationRoomName ?? '',
       dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
       notes: dto.notes ?? '',
       createdBy: user.sub,
@@ -87,15 +80,13 @@ export class MovementsService {
     return movement;
   }
 
-  async findActiveDraft(
+  async findActiveDrafts(
     userId: string,
     tenantId: string,
-  ): Promise<MovementDocument | null> {
-    return this.movementModel.findOne({
-      tenantId,
-      createdBy: userId,
-      status: MovementStatus.DRAFT,
-    });
+  ): Promise<MovementDocument[]> {
+    return this.movementModel
+      .find({ tenantId, createdBy: userId, status: MovementStatus.DRAFT })
+      .sort({ createdAt: -1 });
   }
 
   async update(
@@ -226,6 +217,53 @@ export class MovementsService {
       );
     }
 
+    const isTransfer = movement.operationType === MovementType.TRANSFER;
+    const isDisposal = movement.operationType === MovementType.DISPOSAL;
+
+    if (isTransfer) {
+      // Transfer: move items to destination immediately and complete
+      const destPropertyId = movement.destinationPropertyId;
+      const destRoomId = movement.destinationRoomId;
+      if (!destPropertyId || !destRoomId) {
+        throw new BadRequestException(
+          'Transfer requires a destination property and room',
+        );
+      }
+
+      await Promise.all(
+        movement.items.map((mi) =>
+          this.itemModel.updateOne(
+            { _id: mi.itemId, tenantId: user.tenantId },
+            {
+              $set: {
+                status: 'active',
+                propertyId: destPropertyId,
+                roomId: destRoomId,
+              },
+            },
+          ),
+        ),
+      );
+
+      await Promise.all(
+        movement.items.map((mi) =>
+          this.itemHistoryModel.create({
+            itemId: mi.itemId,
+            tenantId: user.tenantId,
+            action: 'moved',
+            performedBy: user.sub,
+            notes: `[Transfer] ${movement.title} → ${movement.destinationPropertyName}${movement.destinationRoomName ? ` / ${movement.destinationRoomName}` : ''}`,
+            timestamp: new Date(),
+          }),
+        ),
+      );
+
+      movement.status = MovementStatus.COMPLETED;
+      movement.activatedAt = new Date();
+      movement.completedAt = new Date();
+      return movement.save();
+    }
+
     const itemStatus = this.operationTypeToItemStatus(
       movement.operationType as MovementType,
     );
@@ -255,7 +293,7 @@ export class MovementsService {
       ),
     );
 
-    if (movement.operationType === MovementType.DISPOSAL) {
+    if (isDisposal) {
       movement.status = MovementStatus.COMPLETED;
       movement.completedAt = new Date();
     } else {
@@ -380,9 +418,8 @@ export class MovementsService {
         return 'repair';
       case MovementType.DISPOSAL:
         return 'disposed';
-      case MovementType.TRANSFER:
       default:
-        return 'storage';
+        return 'active';
     }
   }
 

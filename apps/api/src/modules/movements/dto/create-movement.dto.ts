@@ -28,6 +28,24 @@ export class CreateMovementDto {
   destination?: string;
 
   @IsOptional()
+  @IsString()
+  destinationPropertyId?: string;
+
+  @IsOptional()
+  @IsString()
+  destinationRoomId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  destinationPropertyName?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  destinationRoomName?: string;
+
+  @IsOptional()
   @IsDateString()
   dueDate?: string;
 

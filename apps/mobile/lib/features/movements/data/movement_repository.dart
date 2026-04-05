@@ -11,6 +11,10 @@ class MovementRepository {
     required String title,
     String description = '',
     String destination = '',
+    String destinationPropertyId = '',
+    String destinationRoomId = '',
+    String destinationPropertyName = '',
+    String destinationRoomName = '',
     String? dueDate,
     String notes = '',
     String? propertyId,
@@ -20,6 +24,10 @@ class MovementRepository {
         title: title,
         description: description,
         destination: destination,
+        destinationPropertyId: destinationPropertyId,
+        destinationRoomId: destinationRoomId,
+        destinationPropertyName: destinationPropertyName,
+        destinationRoomName: destinationRoomName,
         dueDate: dueDate,
         notes: notes,
         propertyId: propertyId,
@@ -28,7 +36,7 @@ class MovementRepository {
   Future<List<MovementModel>> getMovements({String? status}) =>
       _remote.getMovements(status: status);
 
-  Future<MovementModel?> getActiveDraft() => _remote.getActiveDraft();
+  Future<List<MovementModel>> getActiveDrafts() => _remote.getActiveDrafts();
 
   Future<MovementModel> getMovement(String id) => _remote.getMovement(id);
 

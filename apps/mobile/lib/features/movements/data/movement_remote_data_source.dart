@@ -14,6 +14,10 @@ class MovementRemoteDataSource {
     required String title,
     String description = '',
     String destination = '',
+    String destinationPropertyId = '',
+    String destinationRoomId = '',
+    String destinationPropertyName = '',
+    String destinationRoomName = '',
     String? dueDate,
     String notes = '',
     String? propertyId,
@@ -25,6 +29,13 @@ class MovementRemoteDataSource {
         'title': title,
         if (description.isNotEmpty) 'description': description,
         if (destination.isNotEmpty) 'destination': destination,
+        if (destinationPropertyId.isNotEmpty)
+          'destinationPropertyId': destinationPropertyId,
+        if (destinationRoomId.isNotEmpty) 'destinationRoomId': destinationRoomId,
+        if (destinationPropertyName.isNotEmpty)
+          'destinationPropertyName': destinationPropertyName,
+        if (destinationRoomName.isNotEmpty)
+          'destinationRoomName': destinationRoomName,
         if (dueDate != null) 'dueDate': dueDate,
         if (notes.isNotEmpty) 'notes': notes,
         if (propertyId != null && propertyId.isNotEmpty)
@@ -50,12 +61,19 @@ class MovementRemoteDataSource {
         .toList();
   }
 
-  Future<MovementModel?> getActiveDraft() async {
+  Future<List<MovementModel>> getActiveDrafts() async {
     final response =
         await _dio.get<Map<String, dynamic>>('$_path/draft');
     final data = _unwrap(response);
-    if (data == null) return null;
-    return MovementModel.fromJson(_normalize(Map<String, dynamic>.from(data as Map)));
+    if (data == null) return [];
+    if (data is! List) return [];
+    return data
+        .map(
+          (e) => MovementModel.fromJson(
+            _normalize(Map<String, dynamic>.from(e as Map)),
+          ),
+        )
+        .toList();
   }
 
   Future<MovementModel> getMovement(String id) async {

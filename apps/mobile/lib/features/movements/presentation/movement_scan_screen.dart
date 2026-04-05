@@ -45,9 +45,13 @@ class _MovementScanScreenState extends ConsumerState<MovementScanScreen> {
     final movementAsync = ref.watch(activeMovementNotifierProvider);
 
     return movementAsync.when(
-      data: (movement) {
+      data: (drafts) {
+        final movement = drafts.cast<MovementModel?>().firstWhere(
+              (m) => m?.id == widget.movementId,
+              orElse: () => null,
+            );
         if (movement == null) {
-          // Draft was cleared externally
+          // Draft was activated/cancelled — leave the scan screen
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) context.pop();
           });
@@ -302,6 +306,7 @@ class _MovementScanScreenState extends ConsumerState<MovementScanScreen> {
     }
 
     final isDisposal = movement.operationType == 'disposal';
+    final isTransfer = movement.operationType == 'transfer';
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -313,7 +318,9 @@ class _MovementScanScreenState extends ConsumerState<MovementScanScreen> {
         content: Text(
           isDisposal
               ? '${movement.items.length} item(s) will be marked as disposed. This cannot be undone.'
-              : 'Activate "${movement.title}" with ${movement.items.length} item(s)?',
+              : isTransfer
+                  ? '${movement.items.length} item(s) will be moved to ${movement.destinationPropertyName.isNotEmpty ? movement.destinationPropertyName : 'destination'}. Location will update immediately.'
+                  : 'Activate "${movement.title}" with ${movement.items.length} item(s)?',
           style: TextStyle(color: AppColors.onSurfaceVariant),
         ),
         actions: [
@@ -329,7 +336,11 @@ class _MovementScanScreenState extends ConsumerState<MovementScanScreen> {
               foregroundColor: Colors.black,
             ),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(isDisposal ? 'Dispose' : 'Activate'),
+            child: Text(isDisposal
+                ? 'Dispose'
+                : isTransfer
+                    ? 'Transfer'
+                    : 'Activate'),
           ),
         ],
       ),
@@ -500,6 +511,7 @@ class _BottomPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final items = movement.items;
     final isDisposal = movement.operationType == 'disposal';
+    final isTransfer = movement.operationType == 'transfer';
 
     return Container(
       decoration: const BoxDecoration(
@@ -541,8 +553,10 @@ class _BottomPanel extends StatelessWidget {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: isDisposal
                               ? AppColors.error
-                              : AppColors.accent,
-                          foregroundColor: Colors.black,
+                              : isTransfer
+                                  ? const Color(0xFF2196F3)
+                                  : AppColors.accent,
+                          foregroundColor: Colors.white,
                           disabledBackgroundColor:
                               AppColors.onSurfaceVariant.withValues(alpha: 0.2),
                           shape: RoundedRectangleBorder(
@@ -553,11 +567,17 @@ class _BottomPanel extends StatelessWidget {
                         icon: Icon(
                           isDisposal
                               ? Icons.delete_outline_rounded
-                              : Icons.check_rounded,
+                              : isTransfer
+                                  ? Icons.swap_horiz_rounded
+                                  : Icons.check_rounded,
                           size: 16,
                         ),
                         label: Text(
-                          isDisposal ? 'Dispose' : 'Activate',
+                          isDisposal
+                              ? 'Dispose'
+                              : isTransfer
+                                  ? 'Transfer'
+                                  : 'Activate',
                           style: const TextStyle(
                               fontSize: 13, fontWeight: FontWeight.w700),
                         ),
