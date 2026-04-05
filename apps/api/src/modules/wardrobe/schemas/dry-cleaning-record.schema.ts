@@ -17,7 +17,7 @@ export class DryCleaningRecord {
   @Prop({ required: true })
   sentDate!: Date;
 
-  @Prop({ default: null })
+  @Prop({ type: Date, default: null })
   returnedDate?: Date | null;
 
   @Prop({ trim: true })
