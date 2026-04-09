@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 
+import 'models/item_history_model.dart';
 import 'models/item_model.dart';
 
 /// Remote data source for inventory/items API.
@@ -75,6 +76,21 @@ class ItemRemoteDataSource {
   /// DELETE /items/:id
   Future<void> deleteItem(String id) async {
     await _dio.delete<Map<String, dynamic>>('$_path/$id');
+  }
+
+  /// GET /items/:id/history
+  Future<List<ItemHistoryModel>> getItemHistory(String itemId) async {
+    final response =
+        await _dio.get<Map<String, dynamic>>('$_path/$itemId/history');
+    final list = _unwrapData(response);
+    if (list is! List) return [];
+    return list
+        .map(
+          (e) => ItemHistoryModel.fromJson(
+            Map<String, dynamic>.from(e as Map<String, dynamic>),
+          ),
+        )
+        .toList();
   }
 
   dynamic _unwrapData(Response<Map<String, dynamic>> response) {

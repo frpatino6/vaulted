@@ -17,6 +17,7 @@ import '../../maintenance/data/models/maintenance_model.dart';
 import '../../maintenance/domain/maintenance_notifier.dart';
 import '../../maintenance/presentation/add_maintenance_sheet.dart';
 import '../data/item_repository_provider.dart';
+import '../data/models/item_history_model.dart';
 import '../data/models/item_model.dart';
 import '../domain/item_detail_notifier.dart';
 import 'edit_item_sheet.dart';
@@ -60,6 +61,14 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
     final canEdit = role == 'owner' || role == 'manager' || role == 'staff';
     final canSeeValues = role == 'owner' || role == 'auditor';
     final state = ref.watch(itemDetailNotifierProvider);
+    final historyEntries = ref
+            .watch(itemHistoryProvider(widget.itemId))
+            .valueOrNull
+            ?.map(
+              (h) => _HistoryEntry(date: h.formattedDate, label: h.actionLabel),
+            )
+            .toList() ??
+        const [];
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -211,7 +220,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                       const SizedBox(height: AppSpacing.lg),
                       _HistorySectionLabel(),
                       const SizedBox(height: AppSpacing.sm),
-                      _HistorySection(historyEntries: []),
+                      _HistorySection(historyEntries: historyEntries),
                       const SizedBox(height: AppSpacing.xxl),
                     ],
                   ),
