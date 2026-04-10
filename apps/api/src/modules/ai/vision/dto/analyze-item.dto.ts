@@ -1,20 +1,20 @@
-import { IsString, IsOptional, IsArray, ValidateNested, IsUrl } from 'class-validator';
+import { IsString, IsOptional, IsArray, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class PropertyRoomDto {
   @IsString()
-  roomId: string;
+  roomId!: string;
 
   @IsString()
-  name: string;
+  name!: string;
 
   @IsString()
-  type: string;
+  type!: string;
 }
 
 export class AnalyzeItemDto {
   @IsString()
-  productImageUrl: string;
+  productImageUrl!: string;
 
   @IsOptional()
   @IsString()
