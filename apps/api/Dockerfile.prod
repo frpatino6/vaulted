@@ -10,7 +10,7 @@ RUN npm config set fetch-retry-mintimeout 20000 \
  && npm config set prefer-offline false
 
 COPY package*.json ./
-RUN npm ci --legacy-peer-deps
+RUN npm install --legacy-peer-deps
 
 COPY . .
 RUN npm run build
@@ -28,7 +28,7 @@ RUN npm config set fetch-retry-mintimeout 20000 \
  && npm config set fetch-retries 5
 
 COPY package*.json ./
-RUN npm ci --omit=dev --legacy-peer-deps
+RUN npm install --omit=dev --legacy-peer-deps
 
 COPY --from=builder /app/dist ./dist
 
