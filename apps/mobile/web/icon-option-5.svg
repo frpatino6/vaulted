@@ -1,0 +1,126 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg5" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0A0A0A"/>
+      <stop offset="100%" style="stop-color:#18151A"/>
+    </linearGradient>
+    <linearGradient id="gold5" x1="0%" y1="0%" x2="70%" y2="100%">
+      <stop offset="0%" style="stop-color:#F9ECA0"/>
+      <stop offset="35%" style="stop-color:#D4A843"/>
+      <stop offset="100%" style="stop-color:#8B6010"/>
+    </linearGradient>
+    <linearGradient id="goldShield" x1="0%" y1="0%" x2="60%" y2="100%">
+      <stop offset="0%" style="stop-color:#F0DC80"/>
+      <stop offset="40%" style="stop-color:#C49028"/>
+      <stop offset="100%" style="stop-color:#7A5008"/>
+    </linearGradient>
+    <linearGradient id="keyGold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFF0A8"/>
+      <stop offset="50%" style="stop-color:#E0B840"/>
+      <stop offset="100%" style="stop-color:#9A7018"/>
+    </linearGradient>
+    <radialGradient id="glow5" cx="50%" cy="45%" r="50%">
+      <stop offset="0%" style="stop-color:#C49028;stop-opacity:0.15"/>
+      <stop offset="100%" style="stop-color:#C49028;stop-opacity:0"/>
+    </radialGradient>
+    <filter id="drop5">
+      <feDropShadow dx="0" dy="6" stdDeviation="14" flood-color="#C49028" flood-opacity="0.4"/>
+    </filter>
+    <filter id="keyShadow">
+      <feDropShadow dx="2" dy="4" stdDeviation="6" flood-color="#000" flood-opacity="0.7"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" rx="112" ry="112" fill="url(#bg5)"/>
+  <rect width="512" height="512" rx="112" ry="112" fill="url(#glow5)"/>
+
+  <!-- ===================================== -->
+  <!-- HERALDIC SHIELD  +  SKELETON KEY     -->
+  <!-- ===================================== -->
+
+  <!-- Shield shape (filled) -->
+  <path d="M 256 430
+           C 175 378, 100 326, 88 232
+           L 88 128
+           C 88 116, 98 106, 110 106
+           L 402 106
+           C 414 106, 424 116, 424 128
+           L 424 232
+           C 412 326, 337 378, 256 430 Z"
+        fill="#0D0D14" stroke="url(#goldShield)" stroke-width="5" filter="url(#drop5)"/>
+
+  <!-- Shield inner double border -->
+  <path d="M 256 416
+           C 182 367, 114 318, 103 232
+           L 103 136
+           C 103 126, 111 118, 121 118
+           L 391 118
+           C 401 118, 409 126, 409 136
+           L 409 232
+           C 398 318, 330 367, 256 416 Z"
+        fill="none" stroke="url(#gold5)" stroke-width="2" opacity="0.4"/>
+
+  <!-- ---- TOP BAND (horizontal divider) ---- -->
+  <path d="M 100 168 L 412 168" stroke="url(#gold5)" stroke-width="1.5" opacity="0.4"/>
+  <path d="M 103 175 L 409 175" stroke="url(#gold5)" stroke-width="0.8" opacity="0.2"/>
+
+  <!-- Crown in top section of shield -->
+  <!-- Crown base bar -->
+  <rect x="210" y="120" width="92" height="20" rx="5" fill="url(#gold5)"/>
+  <!-- Crown points (5 points) -->
+  <polygon points="215,120 221,100 227,120" fill="url(#gold5)"/>
+  <polygon points="235,120 242,96 249,120" fill="url(#gold5)"/>
+  <polygon points="253,120 256,92 259,120" fill="url(#gold5)"/>
+  <polygon points="263,120 270,96 277,120" fill="url(#gold5)"/>
+  <polygon points="285,120 291,100 297,120" fill="url(#gold5)"/>
+  <!-- Crown jewels -->
+  <circle cx="221" cy="109" r="4" fill="#F0DC80"/>
+  <circle cx="242" cy="105" r="4.5" fill="#F9ECA0"/>
+  <circle cx="256" cy="102" r="5.5" fill="#FFFFFF" opacity="0.9"/>
+  <circle cx="270" cy="105" r="4.5" fill="#F9ECA0"/>
+  <circle cx="291" cy="109" r="4" fill="#F0DC80"/>
+
+  <!-- ============================= -->
+  <!-- SKELETON KEY — main element  -->
+  <!-- ============================= -->
+
+  <!-- Key bow (the ornate ring at top of key) -->
+  <!-- Outer bow ring -->
+  <circle cx="256" cy="240" r="68" fill="none" stroke="url(#keyGold)" stroke-width="14"
+          filter="url(#keyShadow)"/>
+  <!-- Inner bow ring (hollow) -->
+  <circle cx="256" cy="240" r="44" fill="none" stroke="url(#keyGold)" stroke-width="8"/>
+  <!-- Bow fill to make it look like a ring -->
+  <circle cx="256" cy="240" r="40" fill="#0D0D14"/>
+
+  <!-- Bow decorative cross/star inside -->
+  <g stroke="url(#gold5)" stroke-width="3" stroke-linecap="round" opacity="0.7">
+    <line x1="256" y1="206" x2="256" y2="274"/>
+    <line x1="222" y1="240" x2="290" y2="240"/>
+    <line x1="232" y1="216" x2="280" y2="264"/>
+    <line x1="280" y1="216" x2="232" y2="264"/>
+  </g>
+  <!-- Center circle of bow -->
+  <circle cx="256" cy="240" r="12" fill="url(#gold5)"/>
+  <circle cx="256" cy="240" r="7" fill="#0D0D14"/>
+
+  <!-- KEY SHAFT (the long part going down) -->
+  <rect x="243" y="300" width="26" height="110" rx="5" fill="url(#keyGold)" filter="url(#keyShadow)"/>
+  <!-- Shaft highlight -->
+  <rect x="247" y="304" width="8" height="100" rx="3" fill="#FFF0A8" opacity="0.35"/>
+
+  <!-- KEY BITS (the teeth cut into the key) -->
+  <!-- Bit 1 (left side, from bottom) -->
+  <rect x="218" y="376" width="25" height="16" rx="4" fill="url(#keyGold)"/>
+  <!-- Bit 2 -->
+  <rect x="218" y="350" width="25" height="14" rx="4" fill="url(#keyGold)"/>
+  <!-- Bit 3 (smaller) -->
+  <rect x="218" y="328" width="18" height="12" rx="3" fill="url(#keyGold)"/>
+
+  <!-- Key tip -->
+  <rect x="243" y="404" width="26" height="12" rx="6" fill="url(#gold5)"/>
+
+  <!-- Decorative notch on shaft -->
+  <rect x="238" y="310" width="5" height="30" rx="2" fill="url(#gold5)" opacity="0.5"/>
+</svg>

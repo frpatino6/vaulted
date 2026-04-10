@@ -41,6 +41,7 @@ logs/
 !apps/api/tsconfig.build.json
 !apps/api/nest-cli.json
 !apps/mobile/pubspec.lock
+!apps/mobile/web/manifest.json
 !apps/mobile/firebase.json
 !apps/mobile/.firebaserc
 !packages/shared-types/package.json
