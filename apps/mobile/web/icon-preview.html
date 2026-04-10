@@ -7,32 +7,60 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      background: #0A0A0A;
+      background: #080808;
       color: #F0E8D0;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      padding: 48px 24px;
+      padding: 48px 24px 64px;
       min-height: 100vh;
     }
     h1 {
       text-align: center;
-      font-size: 28px;
+      font-size: 26px;
       font-weight: 300;
-      letter-spacing: 6px;
+      letter-spacing: 8px;
       text-transform: uppercase;
       color: #C9A84C;
       margin-bottom: 8px;
     }
     .subtitle {
       text-align: center;
-      font-size: 13px;
-      letter-spacing: 3px;
-      color: #666;
+      font-size: 11px;
+      letter-spacing: 4px;
+      color: #555;
       text-transform: uppercase;
-      margin-bottom: 56px;
+      margin-bottom: 52px;
+    }
+    .section-label {
+      text-align: center;
+      font-size: 10px;
+      letter-spacing: 5px;
+      text-transform: uppercase;
+      color: #C9A84C;
+      opacity: 0.6;
+      margin: 0 auto 32px;
+      position: relative;
+    }
+    .section-label::before,
+    .section-label::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      width: 80px;
+      height: 1px;
+      background: linear-gradient(to right, transparent, #C9A84C40);
+    }
+    .section-label::before { right: calc(50% + 90px); background: linear-gradient(to left, transparent, #C9A84C40); }
+    .section-label::after  { left:  calc(50% + 90px); }
+
+    .section-divider {
+      width: 60%;
+      height: 1px;
+      background: linear-gradient(to right, transparent, #333, transparent);
+      margin: 48px auto;
     }
     .options-grid {
       display: flex;
-      gap: 40px;
+      gap: 32px;
       justify-content: center;
       flex-wrap: wrap;
       max-width: 1100px;
@@ -42,24 +70,22 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 24px;
-    }
-    .option-label {
-      font-size: 11px;
-      letter-spacing: 4px;
-      text-transform: uppercase;
-      color: #888;
-    }
-    .icon-sizes {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
       gap: 20px;
+      padding: 28px 20px;
+      background: #101010;
+      border: 1px solid #222;
+      border-radius: 16px;
+      transition: border-color 0.2s;
+      width: 280px;
+    }
+    .option-card:hover {
+      border-color: #C9A84C55;
     }
     .size-row {
       display: flex;
       align-items: flex-end;
-      gap: 16px;
+      gap: 14px;
+      justify-content: center;
     }
     .icon-wrap {
       display: flex;
@@ -68,8 +94,8 @@
       gap: 6px;
     }
     .icon-wrap span {
-      font-size: 10px;
-      color: #555;
+      font-size: 9px;
+      color: #444;
       letter-spacing: 1px;
     }
     .icon-wrap img {
@@ -77,141 +103,188 @@
       border-radius: 22%;
     }
     .icon-wrap img.favicon {
-      border-radius: 4px;
+      border-radius: 3px;
+    }
+    .option-number {
+      font-size: 10px;
+      letter-spacing: 3px;
+      color: #555;
+      text-transform: uppercase;
     }
     .option-name {
-      font-size: 16px;
-      font-weight: 400;
+      font-size: 15px;
+      font-weight: 500;
       letter-spacing: 2px;
       color: #C9A84C;
       text-transform: uppercase;
+      text-align: center;
+    }
+    .option-tags {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .tag {
+      font-size: 9px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #888;
+      border: 1px solid #2A2A2A;
+      padding: 3px 8px;
+      border-radius: 20px;
     }
     .option-desc {
-      font-size: 13px;
-      color: #888;
+      font-size: 12px;
+      color: #666;
       text-align: center;
-      max-width: 220px;
-      line-height: 1.6;
+      line-height: 1.7;
     }
-    .divider {
-      width: 1px;
-      height: 400px;
-      background: linear-gradient(to bottom, transparent, #333, transparent);
+    .security-badge {
+      font-size: 9px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #C9A84C;
+      border: 1px solid #C9A84C44;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: #C9A84C0A;
     }
-    @media (max-width: 768px) {
-      .divider { display: none; }
+    footer {
+      text-align: center;
+      margin-top: 64px;
+      font-size: 10px;
+      letter-spacing: 3px;
+      color: #333;
+      text-transform: uppercase;
     }
   </style>
 </head>
 <body>
 
   <h1>Vaulted</h1>
-  <p class="subtitle">Selección de Icono — 3 Opciones</p>
+  <p class="subtitle">Selección de Icono — 6 Opciones</p>
 
+  <!-- PRIMERA TANDA -->
+  <div class="section-label">Primera selección — Identidad visual</div>
   <div class="options-grid">
 
-    <!-- OPCIÓN 1 -->
     <div class="option-card">
-      <div class="icon-sizes">
-        <div class="size-row">
-          <div class="icon-wrap">
-            <img src="icon-option-1.svg" width="192" height="192" alt="Opción 1 grande"/>
-            <span>192px</span>
-          </div>
-        </div>
-        <div class="size-row">
-          <div class="icon-wrap">
-            <img src="icon-option-1.svg" width="96" height="96" alt="Opción 1 mediana"/>
-            <span>96px</span>
-          </div>
-          <div class="icon-wrap">
-            <img src="icon-option-1.svg" width="48" height="48" alt="Opción 1 pequeña"/>
-            <span>48px</span>
-          </div>
-          <div class="icon-wrap">
-            <img src="icon-option-1.svg" class="favicon" width="16" height="16" alt="Favicon 1"/>
-            <span>16px</span>
-          </div>
-        </div>
+      <div class="icon-wrap"><img src="icon-option-1.svg" width="160" height="160" alt="Opción 1"/></div>
+      <div class="size-row">
+        <div class="icon-wrap"><img src="icon-option-1.svg" width="72" height="72"/><span>72px</span></div>
+        <div class="icon-wrap"><img src="icon-option-1.svg" width="40" height="40"/><span>40px</span></div>
+        <div class="icon-wrap"><img src="icon-option-1.svg" class="favicon" width="16" height="16"/><span>fav</span></div>
       </div>
-      <div class="option-name">Opción 1 — La Bóveda</div>
-      <div class="option-desc">
-        Puerta de caja fuerte con dial de combinación. Fondo azul marino profundo, detalles dorados. Transmite seguridad y exclusividad bancaria.
+      <div class="option-number">Opción 1</div>
+      <div class="option-name">La Bóveda</div>
+      <div class="option-desc">Puerta de caja fuerte con dial de combinación y pernos. Azul marino profundo y dorado metálico.</div>
+      <div class="option-tags">
+        <span class="tag">Clásico</span>
+        <span class="tag">Bancario</span>
+        <span class="tag">Institucional</span>
       </div>
-      <div class="option-label">Clásico · Seguro · Bancario</div>
     </div>
 
-    <div class="divider"></div>
-
-    <!-- OPCIÓN 2 -->
     <div class="option-card">
-      <div class="icon-sizes">
-        <div class="size-row">
-          <div class="icon-wrap">
-            <img src="icon-option-2.svg" width="192" height="192" alt="Opción 2 grande"/>
-            <span>192px</span>
-          </div>
-        </div>
-        <div class="size-row">
-          <div class="icon-wrap">
-            <img src="icon-option-2.svg" width="96" height="96" alt="Opción 2 mediana"/>
-            <span>96px</span>
-          </div>
-          <div class="icon-wrap">
-            <img src="icon-option-2.svg" width="48" height="48" alt="Opción 2 pequeña"/>
-            <span>48px</span>
-          </div>
-          <div class="icon-wrap">
-            <img src="icon-option-2.svg" class="favicon" width="16" height="16" alt="Favicon 2"/>
-            <span>16px</span>
-          </div>
-        </div>
+      <div class="icon-wrap"><img src="icon-option-2.svg" width="160" height="160" alt="Opción 2"/></div>
+      <div class="size-row">
+        <div class="icon-wrap"><img src="icon-option-2.svg" width="72" height="72"/><span>72px</span></div>
+        <div class="icon-wrap"><img src="icon-option-2.svg" width="40" height="40"/><span>40px</span></div>
+        <div class="icon-wrap"><img src="icon-option-2.svg" class="favicon" width="16" height="16"/><span>fav</span></div>
       </div>
-      <div class="option-name">Opción 2 — El Escudo</div>
-      <div class="option-desc">
-        Escudo heráldico con monograma "V" y corona. Fondo negro, dorado metálico. Evoca linaje, patrimonio familiar y distinción.
+      <div class="option-number">Opción 2</div>
+      <div class="option-name">El Escudo</div>
+      <div class="option-desc">Escudo heráldico con corona y monograma "V". Negro absoluto y dorado brillante.</div>
+      <div class="option-tags">
+        <span class="tag">Heráldico</span>
+        <span class="tag">Familiar</span>
+        <span class="tag">Aristocrático</span>
       </div>
-      <div class="option-label">Heráldico · Elegante · Familiar</div>
     </div>
 
-    <div class="divider"></div>
-
-    <!-- OPCIÓN 3 -->
     <div class="option-card">
-      <div class="icon-sizes">
-        <div class="size-row">
-          <div class="icon-wrap">
-            <img src="icon-option-3.svg" width="192" height="192" alt="Opción 3 grande"/>
-            <span>192px</span>
-          </div>
-        </div>
-        <div class="size-row">
-          <div class="icon-wrap">
-            <img src="icon-option-3.svg" width="96" height="96" alt="Opción 3 mediana"/>
-            <span>96px</span>
-          </div>
-          <div class="icon-wrap">
-            <img src="icon-option-3.svg" width="48" height="48" alt="Opción 3 pequeña"/>
-            <span>48px</span>
-          </div>
-          <div class="icon-wrap">
-            <img src="icon-option-3.svg" class="favicon" width="16" height="16" alt="Favicon 3"/>
-            <span>16px</span>
-          </div>
-        </div>
+      <div class="icon-wrap"><img src="icon-option-3.svg" width="160" height="160" alt="Opción 3"/></div>
+      <div class="size-row">
+        <div class="icon-wrap"><img src="icon-option-3.svg" width="72" height="72"/><span>72px</span></div>
+        <div class="icon-wrap"><img src="icon-option-3.svg" width="40" height="40"/><span>40px</span></div>
+        <div class="icon-wrap"><img src="icon-option-3.svg" class="favicon" width="16" height="16"/><span>fav</span></div>
       </div>
-      <div class="option-name">Opción 3 — La Gema</div>
-      <div class="option-desc">
-        Diamante facetado en corte brillante. Fondo negro carbón, facetas doradas con destellos blancos. Representa el valor del patrimonio.
+      <div class="option-number">Opción 3</div>
+      <div class="option-name">La Gema</div>
+      <div class="option-desc">Diamante facetado en corte brillante con destellos. Negro carbón y facetas doradas.</div>
+      <div class="option-tags">
+        <span class="tag">Moderno</span>
+        <span class="tag">Premium</span>
+        <span class="tag">Contemporáneo</span>
       </div>
-      <div class="option-label">Moderno · Valioso · Premium</div>
     </div>
 
   </div>
 
-  <p style="text-align:center; margin-top: 56px; font-size: 11px; letter-spacing: 3px; color: #444; text-transform: uppercase;">
-    Todos los iconos son SVG escalables — se generarán PNG para todas las plataformas
-  </p>
+  <div class="section-divider"></div>
+
+  <!-- SEGUNDA TANDA -->
+  <div class="section-label">Segunda selección — Seguridad + identidad</div>
+  <div class="options-grid">
+
+    <div class="option-card">
+      <div class="icon-wrap"><img src="icon-option-4.svg" width="160" height="160" alt="Opción 4"/></div>
+      <div class="size-row">
+        <div class="icon-wrap"><img src="icon-option-4.svg" width="72" height="72"/><span>72px</span></div>
+        <div class="icon-wrap"><img src="icon-option-4.svg" width="40" height="40"/><span>40px</span></div>
+        <div class="icon-wrap"><img src="icon-option-4.svg" class="favicon" width="16" height="16"/><span>fav</span></div>
+      </div>
+      <div class="option-number">Opción 4</div>
+      <div class="option-name">El Candado</div>
+      <div class="option-desc">Candado ornamental con arco en forma de corona, cerradura central y "V" grabada. Dorado sobre azul marino.</div>
+      <div class="option-tags">
+        <span class="tag">Seguro</span>
+        <span class="tag">Clásico</span>
+        <span class="tag">Ornamental</span>
+      </div>
+      <div class="security-badge">Seguridad explícita</div>
+    </div>
+
+    <div class="option-card">
+      <div class="icon-wrap"><img src="icon-option-5.svg" width="160" height="160" alt="Opción 5"/></div>
+      <div class="size-row">
+        <div class="icon-wrap"><img src="icon-option-5.svg" width="72" height="72"/><span>72px</span></div>
+        <div class="icon-wrap"><img src="icon-option-5.svg" width="40" height="40"/><span>40px</span></div>
+        <div class="icon-wrap"><img src="icon-option-5.svg" class="favicon" width="16" height="16"/><span>fav</span></div>
+      </div>
+      <div class="option-number">Opción 5</div>
+      <div class="option-name">La Llave Heráldica</div>
+      <div class="option-desc">Escudo con corona de 5 puntas y una llave esqueleto ornamental. Negro y dorado. Acceso exclusivo y linaje.</div>
+      <div class="option-tags">
+        <span class="tag">Acceso</span>
+        <span class="tag">Heráldico</span>
+        <span class="tag">Exclusivo</span>
+      </div>
+      <div class="security-badge">Seguridad explícita</div>
+    </div>
+
+    <div class="option-card">
+      <div class="icon-wrap"><img src="icon-option-6.svg" width="160" height="160" alt="Opción 6"/></div>
+      <div class="size-row">
+        <div class="icon-wrap"><img src="icon-option-6.svg" width="72" height="72"/><span>72px</span></div>
+        <div class="icon-wrap"><img src="icon-option-6.svg" width="40" height="40"/><span>40px</span></div>
+        <div class="icon-wrap"><img src="icon-option-6.svg" class="favicon" width="16" height="16"/><span>fav</span></div>
+      </div>
+      <div class="option-number">Opción 6</div>
+      <div class="option-name">La Huella Digital</div>
+      <div class="option-desc">Huella dactilar con candado biométrico en el centro. Líneas doradas sobre negro. Ultra-moderno, seguridad personal máxima.</div>
+      <div class="option-tags">
+        <span class="tag">Biométrico</span>
+        <span class="tag">Tech</span>
+        <span class="tag">Ultra-moderno</span>
+      </div>
+      <div class="security-badge">Seguridad explícita</div>
+    </div>
+
+  </div>
+
+  <footer>Todos los iconos son SVG escalables — se generarán PNG en todos los tamaños requeridos</footer>
 
 </body>
 </html>
