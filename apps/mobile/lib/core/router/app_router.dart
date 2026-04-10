@@ -23,6 +23,10 @@ import '../../features/maintenance/presentation/maintenance_list_screen.dart';
 import '../../features/movements/presentation/movements_screen.dart';
 import '../../features/movements/presentation/movement_scan_screen.dart';
 import '../../features/movements/presentation/movement_detail_screen.dart';
+import '../../features/ai_scan/data/models/ai_scan_result_model.dart';
+import '../../features/ai_scan/presentation/ai_scan_screen.dart';
+import '../../features/ai_scan/presentation/ai_item_review_screen.dart';
+import '../../features/properties/data/models/floor_model.dart';
 
 GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
   return GoRouter(
@@ -161,6 +165,29 @@ GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
         builder: (context, state) {
           final id = state.pathParameters['id'] ?? '';
           return MovementScanScreen(movementId: id);
+        },
+      ),
+      // ── AI Scan routes ─────────────────────────────────────────────────────
+      GoRoute(
+        path: '/properties/:propertyId/ai-scan',
+        builder: (context, state) {
+          final propertyId = state.pathParameters['propertyId'] ?? '';
+          final floors = (state.extra as List<FloorModel>?) ?? [];
+          return AiScanScreen(propertyId: propertyId, floors: floors);
+        },
+      ),
+      GoRoute(
+        path: '/properties/:propertyId/ai-scan/review',
+        builder: (context, state) {
+          final propertyId = state.pathParameters['propertyId'] ?? '';
+          final extra = state.extra as Map<String, dynamic>?;
+          final result = extra?['result'] as AiScanResult;
+          final floors = (extra?['floors'] as List<FloorModel>?) ?? [];
+          return AiItemReviewScreen(
+            propertyId: propertyId,
+            result: result,
+            floors: floors,
+          );
         },
       ),
       GoRoute(

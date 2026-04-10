@@ -16,6 +16,9 @@ import '../domain/property_detail_notifier.dart';
 import 'add_floor_sheet.dart';
 import 'add_room_sheet.dart';
 
+// Speed dial state
+enum _SpeedDialState { closed, open }
+
 class PropertyDetailScreen extends ConsumerStatefulWidget {
   const PropertyDetailScreen({super.key, required this.propertyId});
 
@@ -27,6 +30,8 @@ class PropertyDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
+  _SpeedDialState _dialState = _SpeedDialState.closed;
+
   @override
   void initState() {
     super.initState();
@@ -35,15 +40,47 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
     });
   }
 
+  void _toggleDial() =>
+      setState(() => _dialState = _dialState == _SpeedDialState.closed
+          ? _SpeedDialState.open
+          : _SpeedDialState.closed);
+
+  void _closeDial() =>
+      setState(() => _dialState = _SpeedDialState.closed);
+
   @override
   Widget build(BuildContext context) {
     final role = currentUserRole() ?? 'guest';
     final canManageProperties = role == 'owner' || role == 'manager';
     final state = ref.watch(propertyDetailNotifierProvider);
+    final isDialOpen = _dialState == _SpeedDialState.open;
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: state.when(
+      // Speed dial backdrop — tap to close
+      floatingActionButton: state.whenOrNull(
+        data: (property) {
+          if (property == null || !canManageProperties) return null;
+          return _SpeedDial(
+            isOpen: isDialOpen,
+            onToggle: _toggleDial,
+            onAddFloor: () {
+              _closeDial();
+              _showAddFloor(context);
+            },
+            onAiScan: () {
+              _closeDial();
+              context.push(
+                '/properties/${widget.propertyId}/ai-scan',
+                extra: property.floors,
+              );
+            },
+          );
+        },
+      ),
+      body: Stack(
+        children: [
+          state.when(
         data: (property) {
           if (property == null) {
             return _NotFoundView();
@@ -90,6 +127,16 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
               .read(propertyDetailNotifierProvider.notifier)
               .load(widget.propertyId),
         ),
+      ),
+          // Backdrop when dial is open
+          if (isDialOpen)
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: _closeDial,
+                child: Container(color: Colors.black54),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -631,6 +678,132 @@ class _NotFoundView extends StatelessWidget {
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Speed Dial FAB
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _SpeedDial extends StatelessWidget {
+  const _SpeedDial({
+    required this.isOpen,
+    required this.onToggle,
+    required this.onAddFloor,
+    required this.onAiScan,
+  });
+
+  final bool isOpen;
+  final VoidCallback onToggle;
+  final VoidCallback onAddFloor;
+  final VoidCallback onAiScan;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        // ── Options (visible when open) ──────────────────────
+        if (isOpen) ...[
+          _DialItem(
+            label: 'Agregar planta',
+            icon: Icons.villa_outlined,
+            onTap: onAddFloor,
+            isAi: false,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          _DialItem(
+            label: 'Agregar ítem con IA',
+            icon: Icons.auto_awesome,
+            onTap: onAiScan,
+            isAi: true,
+          ),
+          const SizedBox(height: AppSpacing.md),
+        ],
+        // ── Main FAB ─────────────────────────────────────────
+        FloatingActionButton(
+          onPressed: onToggle,
+          backgroundColor: isOpen ? AppColors.surface : AppColors.accent,
+          foregroundColor: isOpen ? AppColors.accent : Colors.black,
+          shape: const CircleBorder(),
+          child: AnimatedRotation(
+            turns: isOpen ? 0.125 : 0,
+            duration: const Duration(milliseconds: 200),
+            child: Icon(isOpen ? Icons.close : Icons.add, size: 28),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DialItem extends StatelessWidget {
+  const _DialItem({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+    required this.isAi,
+  });
+
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool isAi;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Label chip
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.sm,
+            ),
+            decoration: BoxDecoration(
+              color: isAi
+                  ? AppColors.accent.withValues(alpha: 0.12)
+                  : AppColors.surface,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: isAi
+                    ? AppColors.accent.withValues(alpha: 0.4)
+                    : Colors.white12,
+              ),
+            ),
+            child: Text(
+              label,
+              style: TextStyle(
+                color: isAi ? AppColors.accent : AppColors.onBackground,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          // Mini FAB
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isAi ? AppColors.accent : AppColors.surfaceVariant,
+            ),
+            child: Icon(
+              icon,
+              size: 18,
+              color: isAi ? Colors.black : AppColors.onBackground,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _ErrorView extends StatelessWidget {
   const _ErrorView({required this.message, required this.onRetry});
