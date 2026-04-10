@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Vaulted — Wireframe FAB AI</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #111;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      padding: 32px 16px 64px;
+      color: #fff;
+    }
+
+    h2 {
+      text-align: center;
+      font-size: 11px;
+      letter-spacing: 5px;
+      text-transform: uppercase;
+      color: #C9A84C;
+      margin-bottom: 40px;
+    }
+
+    /* ── layout ─────────────────────────── */
+    .row {
+      display: flex;
+      gap: 40px;
+      justify-content: center;
+      flex-wrap: wrap;
+      align-items: flex-start;
+    }
+
+    .col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .col-label {
+      font-size: 10px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: #555;
+    }
+
+    /* ── phone frame ─────────────────────── */
+    .phone {
+      width: 320px;
+      height: 620px;
+      background: #0E0E14;
+      border-radius: 36px;
+      border: 2px solid #2a2a2a;
+      overflow: hidden;
+      position: relative;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+    }
+
+    /* status bar */
+    .status-bar {
+      height: 28px;
+      background: rgba(0,0,0,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 18px;
+      font-size: 9px;
+      color: rgba(255,255,255,0.6);
+      position: relative;
+      z-index: 10;
+    }
+
+    /* hero image area */
+    .hero {
+      height: 200px;
+      background: linear-gradient(160deg, #1A1A24, #0E0E14);
+      position: relative;
+      overflow: hidden;
+      margin-top: -28px;
+    }
+    .hero-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0.55;
+    }
+    .hero-gradient {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom,
+        transparent 30%,
+        rgba(0,0,0,0.5) 60%,
+        rgba(14,14,20,0.95) 100%);
+    }
+    .hero-back {
+      position: absolute;
+      top: 36px;
+      left: 14px;
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: rgba(0,0,0,0.4);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+    }
+    .hero-cam {
+      position: absolute;
+      bottom: 16px;
+      right: 14px;
+      width: 26px; height: 26px;
+      border-radius: 50%;
+      background: rgba(0,0,0,0.5);
+      border: 1px solid rgba(255,255,255,0.2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px;
+    }
+    .hero-title {
+      position: absolute;
+      bottom: 14px;
+      left: 16px;
+      font-size: 18px;
+      font-weight: 600;
+      color: #fff;
+      letter-spacing: 0.5px;
+    }
+
+    /* scrollable content */
+    .content {
+      padding: 12px 14px;
+      overflow-y: auto;
+      height: calc(620px - 200px);
+    }
+
+    .prop-type {
+      font-size: 9px;
+      letter-spacing: 2px;
+      color: #C9A84C;
+      text-transform: uppercase;
+    }
+    .prop-address {
+      font-size: 10px;
+      color: rgba(255,255,255,0.5);
+      margin-top: 3px;
+      margin-bottom: 16px;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .section-title {
+      font-size: 9px;
+      letter-spacing: 2.5px;
+      color: #C9A84C;
+      text-transform: uppercase;
+    }
+    .btn-add-floor {
+      font-size: 9px;
+      color: #C9A84C;
+      border: 1px solid #C9A84C;
+      border-radius: 6px;
+      padding: 3px 8px;
+      letter-spacing: 0.5px;
+    }
+
+    /* floor tile */
+    .floor-tile {
+      background: rgba(255,255,255,0.06);
+      border-radius: 12px;
+      padding: 10px 12px;
+      margin-bottom: 8px;
+    }
+    .floor-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .floor-icon { font-size: 13px; color: #FFD700; }
+    .floor-name { font-size: 12px; font-weight: 500; color: #fff; flex: 1; }
+    .floor-count { font-size: 9px; color: rgba(255,255,255,0.4); }
+    .floor-chevron { font-size: 12px; color: rgba(255,255,255,0.3); }
+
+    .room-list { margin-top: 8px; padding-left: 20px; }
+    .room-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .room-item:last-child { border: none; }
+    .room-icon { font-size: 12px; color: rgba(255,255,255,0.4); }
+    .room-info { flex: 1; }
+    .room-name { font-size: 11px; color: #fff; }
+    .room-type { font-size: 9px; color: rgba(255,255,255,0.35); }
+    .room-arrow { font-size: 10px; color: rgba(255,255,255,0.2); }
+
+    /* ── FAB ─────────────────────────────── */
+    .fab-container {
+      position: absolute;
+      bottom: 20px;
+      right: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 10px;
+    }
+
+    /* FAB closed state — single button */
+    .fab-main {
+      width: 48px; height: 48px;
+      border-radius: 50%;
+      background: #C9A84C;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      box-shadow: 0 4px 16px rgba(201,168,76,0.45);
+      cursor: pointer;
+      color: #000;
+      font-weight: 700;
+    }
+
+    /* FAB open — speed dial items appear */
+    .speed-dial-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+    .sd-label {
+      background: rgba(20,20,28,0.92);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 10px;
+      color: #fff;
+      white-space: nowrap;
+      backdrop-filter: blur(4px);
+    }
+    .sd-btn {
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+      flex-shrink: 0;
+    }
+    .sd-btn.normal {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: #fff;
+      font-size: 14px;
+    }
+    .sd-btn.ai {
+      background: linear-gradient(135deg, #D4A843, #8B6010);
+      color: #fff;
+      font-size: 15px;
+    }
+
+    /* ── callout arrows ───────────────────── */
+    .annotation {
+      position: absolute;
+      background: rgba(201,168,76,0.1);
+      border: 1.5px dashed #C9A84C;
+      border-radius: 8px;
+      padding: 4px 8px;
+      font-size: 9px;
+      color: #C9A84C;
+      letter-spacing: 1px;
+      white-space: nowrap;
+    }
+
+    /* ── section divider ─────────────────── */
+    .section-divider {
+      width: 1px;
+      height: 620px;
+      background: linear-gradient(to bottom, transparent, #333 30%, #333 70%, transparent);
+      margin-top: 32px;
+    }
+
+    /* ── legend ──────────────────────────── */
+    .legend {
+      max-width: 740px;
+      margin: 48px auto 0;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid #222;
+      border-radius: 16px;
+      padding: 24px 28px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px 40px;
+    }
+    .legend h3 {
+      font-size: 9px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: #C9A84C;
+      margin-bottom: 12px;
+      grid-column: 1/-1;
+    }
+    .legend-item {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+    .legend-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      margin-top: 3px;
+      flex-shrink: 0;
+    }
+    .legend-dot.gold { background: #C9A84C; }
+    .legend-dot.white { background: rgba(255,255,255,0.3); }
+    .legend-dot.new { background: #4CAF50; }
+    .legend-text { font-size: 11px; color: #888; line-height: 1.5; }
+    .legend-text strong { color: #ccc; }
+
+    /* bottom nav placeholder */
+    .bottom-nav {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 0px;
+      background: rgba(14,14,20,0.95);
+      border-top: 1px solid rgba(255,255,255,0.07);
+    }
+
+    /* flow arrow between phones */
+    .flow-arrow {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin-top: 80px;
+      color: #444;
+    }
+    .flow-arrow .arrow-line {
+      width: 2px;
+      height: 40px;
+      background: linear-gradient(to bottom, #C9A84C44, #C9A84C);
+    }
+    .flow-arrow .arrow-head {
+      font-size: 16px;
+      color: #C9A84C;
+    }
+    .flow-arrow .arrow-label {
+      font-size: 9px;
+      letter-spacing: 2px;
+      color: #C9A84C;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Vaulted — Ubicación del botón "Agregar ítem con IA"</h2>
+
+<div class="row">
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- PHONE 1: FAB CERRADO (estado normal)   -->
+  <!-- ═══════════════════════════════════════ -->
+  <div class="col">
+    <div class="phone">
+      <div class="status-bar">
+        <span>9:41</span>
+        <span>●●●</span>
+      </div>
+
+      <!-- Hero -->
+      <div class="hero">
+        <div style="width:100%;height:100%;background:linear-gradient(135deg,#1e2a3a,#0d1520);"></div>
+        <div class="hero-gradient"></div>
+        <div class="hero-back">←</div>
+        <div class="hero-cam">📷</div>
+        <div class="hero-title">Miami Residence</div>
+      </div>
+
+      <!-- Content -->
+      <div class="content">
+        <div class="prop-type">PRIMARY RESIDENCE</div>
+        <div class="prop-address">100 S Biscayne Blvd, Miami, FL 33131</div>
+
+        <div class="section-header">
+          <span class="section-title">FLOORS &amp; ROOMS</span>
+          <span class="btn-add-floor">+ Add floor</span>
+        </div>
+
+        <!-- Floor 1 expanded -->
+        <div class="floor-tile">
+          <div class="floor-header">
+            <span class="floor-icon">🏠</span>
+            <span class="floor-name">Ground Floor</span>
+            <span class="floor-count">3 rooms</span>
+            <span class="floor-chevron">∨</span>
+          </div>
+          <div class="room-list">
+            <div class="room-item">
+              <span class="room-icon">🚪</span>
+              <div class="room-info">
+                <div class="room-name">Living Room</div>
+                <div class="room-type">living_room</div>
+              </div>
+              <span class="room-arrow">›</span>
+            </div>
+            <div class="room-item">
+              <span class="room-icon">🚪</span>
+              <div class="room-info">
+                <div class="room-name">Kitchen</div>
+                <div class="room-type">kitchen</div>
+              </div>
+              <span class="room-arrow">›</span>
+            </div>
+            <div class="room-item">
+              <span class="room-icon">🚪</span>
+              <div class="room-info">
+                <div class="room-name">Dining Room</div>
+                <div class="room-type">dining_room</div>
+              </div>
+              <span class="room-arrow">›</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Floor 2 collapsed -->
+        <div class="floor-tile">
+          <div class="floor-header">
+            <span class="floor-icon">🏠</span>
+            <span class="floor-name">Second Floor</span>
+            <span class="floor-count">4 rooms</span>
+            <span class="floor-chevron">›</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- FAB — ESTADO CERRADO -->
+      <div class="fab-container">
+        <div class="fab-main">＋</div>
+      </div>
+
+      <div class="bottom-nav"></div>
+    </div>
+    <div class="col-label">Estado normal — FAB cerrado</div>
+  </div>
+
+  <!-- flecha -->
+  <div class="flow-arrow">
+    <div class="arrow-label">tap</div>
+    <div class="arrow-line"></div>
+    <div class="arrow-head">▶</div>
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- PHONE 2: SPEED DIAL ABIERTO            -->
+  <!-- ═══════════════════════════════════════ -->
+  <div class="col">
+    <div class="phone" style="position:relative">
+      <!-- Backdrop overlay -->
+      <div style="position:absolute;inset:0;background:rgba(10,10,16,0.7);z-index:5;border-radius:34px;"></div>
+
+      <div class="status-bar" style="position:relative;z-index:10;">
+        <span>9:41</span>
+        <span>●●●</span>
+      </div>
+
+      <div class="hero">
+        <div style="width:100%;height:100%;background:linear-gradient(135deg,#1e2a3a,#0d1520);"></div>
+        <div class="hero-gradient"></div>
+        <div class="hero-title">Miami Residence</div>
+      </div>
+
+      <div class="content" style="opacity:0.2;"></div>
+
+      <!-- SPEED DIAL — ABIERTO (z-index sobre el overlay) -->
+      <div class="fab-container" style="z-index:20;">
+
+        <!-- Opción 1: Add floor (existente) -->
+        <div class="speed-dial-item">
+          <span class="sd-label">Add floor</span>
+          <div class="sd-btn normal">🏠</div>
+        </div>
+
+        <!-- Opción 2: Add item with AI (NUEVO) -->
+        <div class="speed-dial-item">
+          <span class="sd-label" style="color:#C9A84C;border-color:#C9A84C44;background:rgba(201,168,76,0.1);">
+            ✦ Add item with AI
+          </span>
+          <div class="sd-btn ai">✦</div>
+        </div>
+
+        <!-- FAB principal (modo cierre: X) -->
+        <div class="fab-main" style="background:#1a1a24;border:1px solid #C9A84C;color:#C9A84C;">✕</div>
+      </div>
+
+      <div class="bottom-nav" style="z-index:10;"></div>
+    </div>
+    <div class="col-label">Speed dial abierto</div>
+  </div>
+
+  <!-- flecha -->
+  <div class="flow-arrow">
+    <div class="arrow-label">tap ✦</div>
+    <div class="arrow-line"></div>
+    <div class="arrow-head">▶</div>
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- PHONE 3: AI SCAN SCREEN               -->
+  <!-- ═══════════════════════════════════════ -->
+  <div class="col">
+    <div class="phone">
+      <div class="status-bar">
+        <span>9:41</span>
+        <span>●●●</span>
+      </div>
+
+      <!-- Camera viewfinder -->
+      <div style="
+        height:340px;
+        background:#000;
+        position:relative;
+        overflow:hidden;
+      ">
+        <!-- fake camera image -->
+        <div style="width:100%;height:100%;background:linear-gradient(180deg,#111 0%,#1a1a1a 100%);display:flex;align-items:center;justify-content:center;">
+          <div style="color:rgba(255,255,255,0.08);font-size:48px;">📷</div>
+        </div>
+
+        <!-- Corner guides -->
+        <div style="position:absolute;top:50px;left:40px;width:50px;height:50px;border-top:2px solid #C9A84C;border-left:2px solid #C9A84C;border-radius:4px 0 0 0;"></div>
+        <div style="position:absolute;top:50px;right:40px;width:50px;height:50px;border-top:2px solid #C9A84C;border-right:2px solid #C9A84C;border-radius:0 4px 0 0;"></div>
+        <div style="position:absolute;bottom:80px;left:40px;width:50px;height:50px;border-bottom:2px solid #C9A84C;border-left:2px solid #C9A84C;border-radius:0 0 0 4px;"></div>
+        <div style="position:absolute;bottom:80px;right:40px;width:50px;height:50px;border-bottom:2px solid #C9A84C;border-right:2px solid #C9A84C;border-radius:0 0 4px 0;"></div>
+
+        <!-- Instruction label -->
+        <div style="
+          position:absolute;
+          bottom:60px;
+          left:50%;
+          transform:translateX(-50%);
+          font-size:9px;
+          letter-spacing:2px;
+          color:rgba(255,255,255,0.6);
+          text-transform:uppercase;
+          white-space:nowrap;
+        ">Enfoca el producto</div>
+
+        <!-- Back button -->
+        <div style="position:absolute;top:14px;left:14px;font-size:13px;color:rgba(255,255,255,0.7);">←</div>
+      </div>
+
+      <!-- Bottom panel -->
+      <div style="padding:16px 14px;">
+        <!-- Step indicator -->
+        <div style="display:flex;gap:8px;align-items:center;justify-content:center;margin-bottom:14px;">
+          <div style="height:3px;width:60px;background:#C9A84C;border-radius:2px;"></div>
+          <div style="height:3px;width:60px;background:rgba(255,255,255,0.15);border-radius:2px;"></div>
+          <div style="font-size:9px;color:rgba(255,255,255,0.4);letter-spacing:1px;margin-left:4px;">PASO 1 DE 2</div>
+        </div>
+        <div style="text-align:center;font-size:12px;color:#fff;font-weight:500;margin-bottom:4px;">Foto del producto</div>
+        <div style="text-align:center;font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:18px;">La IA identificará el ítem automáticamente</div>
+
+        <!-- Capture button -->
+        <div style="
+          width:58px;height:58px;
+          border-radius:50%;
+          background:transparent;
+          border:3px solid #C9A84C;
+          margin:0 auto;
+          display:flex;align-items:center;justify-content:center;
+        ">
+          <div style="width:46px;height:46px;border-radius:50%;background:#C9A84C;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-label">AiScanScreen — Paso 1</div>
+  </div>
+
+</div><!-- /row -->
+
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- SEGUNDA FILA: foto factura → análisis → resultado  -->
+<!-- ═══════════════════════════════════════════════════ -->
+<div class="row" style="margin-top:48px;">
+
+  <!-- PASO 2: FACTURA -->
+  <div class="col">
+    <div class="phone">
+      <div class="status-bar"><span>9:41</span><span>●●●</span></div>
+      <div style="height:340px;background:#000;position:relative;overflow:hidden;">
+        <div style="width:100%;height:100%;background:linear-gradient(180deg,#111,#1a1a1a);display:flex;align-items:center;justify-content:center;">
+          <div style="color:rgba(255,255,255,0.08);font-size:48px;">🧾</div>
+        </div>
+        <div style="position:absolute;top:50px;left:40px;width:50px;height:50px;border-top:2px solid rgba(201,168,76,0.5);border-left:2px solid rgba(201,168,76,0.5);border-radius:4px 0 0 0;"></div>
+        <div style="position:absolute;top:50px;right:40px;width:50px;height:50px;border-top:2px solid rgba(201,168,76,0.5);border-right:2px solid rgba(201,168,76,0.5);border-radius:0 4px 0 0;"></div>
+        <div style="position:absolute;bottom:80px;left:40px;width:50px;height:50px;border-bottom:2px solid rgba(201,168,76,0.5);border-left:2px solid rgba(201,168,76,0.5);border-radius:0 0 0 4px;"></div>
+        <div style="position:absolute;bottom:80px;right:40px;width:50px;height:50px;border-bottom:2px solid rgba(201,168,76,0.5);border-right:2px solid rgba(201,168,76,0.5);border-radius:0 0 4px 0;"></div>
+        <div style="position:absolute;bottom:60px;left:50%;transform:translateX(-50%);font-size:9px;letter-spacing:2px;color:rgba(255,255,255,0.5);text-transform:uppercase;white-space:nowrap;">Enfoca la factura</div>
+        <div style="position:absolute;top:14px;left:14px;font-size:13px;color:rgba(255,255,255,0.7);">←</div>
+      </div>
+      <div style="padding:16px 14px;">
+        <div style="display:flex;gap:8px;align-items:center;justify-content:center;margin-bottom:14px;">
+          <div style="height:3px;width:60px;background:#C9A84C;border-radius:2px;"></div>
+          <div style="height:3px;width:60px;background:#C9A84C;border-radius:2px;"></div>
+          <div style="font-size:9px;color:rgba(255,255,255,0.4);letter-spacing:1px;margin-left:4px;">PASO 2 DE 2</div>
+        </div>
+        <div style="text-align:center;font-size:12px;color:#fff;font-weight:500;margin-bottom:4px;">Foto de la factura</div>
+        <div style="text-align:center;font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:14px;">Precio, fecha y garantía se extraen solos</div>
+        <div style="width:58px;height:58px;border-radius:50%;background:transparent;border:3px solid #C9A84C;margin:0 auto 10px;display:flex;align-items:center;justify-content:center;">
+          <div style="width:46px;height:46px;border-radius:50%;background:#C9A84C;"></div>
+        </div>
+        <!-- Skip button -->
+        <div style="text-align:center;font-size:10px;color:#C9A84C;letter-spacing:1px;text-decoration:underline;text-underline-offset:3px;">Saltar este paso →</div>
+      </div>
+    </div>
+    <div class="col-label">AiScanScreen — Paso 2</div>
+  </div>
+
+  <!-- flecha -->
+  <div class="flow-arrow">
+    <div class="arrow-label">analizando</div>
+    <div class="arrow-line" style="height:60px;"></div>
+    <div class="arrow-head">▶</div>
+  </div>
+
+  <!-- ANALYZING STATE -->
+  <div class="col">
+    <div class="phone">
+      <div class="status-bar"><span>9:41</span><span>●●●</span></div>
+      <div style="
+        height:592px;
+        background:#0E0E14;
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+        justify-content:center;
+        gap:20px;
+        padding:24px;
+      ">
+        <!-- Spinning ring -->
+        <div style="
+          width:72px;height:72px;
+          border-radius:50%;
+          border:2px solid rgba(201,168,76,0.15);
+          border-top:2px solid #C9A84C;
+          margin-bottom:4px;
+          animation: none;
+          position:relative;
+          display:flex;align-items:center;justify-content:center;
+        ">
+          <div style="font-size:24px;">✦</div>
+          <!-- fake arc indicator -->
+          <svg width="72" height="72" style="position:absolute;top:0;left:0;">
+            <circle cx="36" cy="36" r="34"
+              stroke="#C9A84C" stroke-width="2"
+              fill="none"
+              stroke-dasharray="60 154"
+              stroke-linecap="round"
+              transform="rotate(-90 36 36)"
+              opacity="0.8"/>
+          </svg>
+        </div>
+        <div style="font-size:13px;color:#fff;font-weight:500;letter-spacing:0.5px;">Analizando imágenes...</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.4);text-align:center;line-height:1.6;">
+          La IA está identificando el ítem<br>y extrayendo datos de la factura
+        </div>
+        <!-- Progress steps -->
+        <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px;width:100%;max-width:200px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="width:14px;height:14px;border-radius:50%;background:#C9A84C;display:flex;align-items:center;justify-content:center;font-size:8px;color:#000;font-weight:700;">✓</div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.5);">Foto del producto recibida</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="width:14px;height:14px;border-radius:50%;background:#C9A84C;display:flex;align-items:center;justify-content:center;font-size:8px;color:#000;font-weight:700;">✓</div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.5);">Factura recibida</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="width:14px;height:14px;border-radius:50%;background:rgba(201,168,76,0.2);border:1.5px solid #C9A84C;"></div>
+            <div style="font-size:10px;color:#C9A84C;">Procesando con IA...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-label">Procesando</div>
+  </div>
+
+  <!-- flecha -->
+  <div class="flow-arrow">
+    <div class="arrow-label">resultado</div>
+    <div class="arrow-line" style="height:60px;"></div>
+    <div class="arrow-head">▶</div>
+  </div>
+
+  <!-- REVIEW SCREEN -->
+  <div class="col">
+    <div class="phone">
+      <div class="status-bar"><span>9:41</span><span>●●●</span></div>
+      <div style="background:#0E0E14;height:592px;overflow-y:auto;">
+        <!-- Header -->
+        <div style="padding:14px 14px 10px;border-bottom:1px solid rgba(255,255,255,0.07);">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:13px;color:#fff;font-weight:500;">Revisar ítem</span>
+            <!-- AI badge -->
+            <div style="
+              background:rgba(201,168,76,0.12);
+              border:1px solid rgba(201,168,76,0.3);
+              border-radius:20px;
+              padding:3px 8px;
+              font-size:8px;
+              color:#C9A84C;
+              letter-spacing:1px;
+            ">✦ IA · 93%</div>
+          </div>
+          <!-- Thumbnail strip -->
+          <div style="display:flex;gap:6px;margin-top:10px;">
+            <div style="width:44px;height:44px;border-radius:6px;background:rgba(201,168,76,0.15);border:1px solid #C9A84C;display:flex;align-items:center;justify-content:center;font-size:16px;">📦</div>
+            <div style="width:44px;height:44px;border-radius:6px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;font-size:16px;">🧾</div>
+          </div>
+        </div>
+
+        <!-- Form fields pre-filled -->
+        <div style="padding:12px 14px;display:flex;flex-direction:column;gap:10px;">
+
+          <!-- Name -->
+          <div>
+            <div style="font-size:8px;letter-spacing:1.5px;color:#C9A84C;text-transform:uppercase;margin-bottom:3px;">Nombre ✦</div>
+            <div style="background:rgba(201,168,76,0.07);border:1px solid rgba(201,168,76,0.2);border-radius:8px;padding:7px 10px;font-size:11px;color:#fff;">Rolex Submariner Date</div>
+          </div>
+
+          <!-- Category + Subcategory -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <div>
+              <div style="font-size:8px;letter-spacing:1.5px;color:#C9A84C;text-transform:uppercase;margin-bottom:3px;">Categoría ✦</div>
+              <div style="background:rgba(201,168,76,0.07);border:1px solid rgba(201,168,76,0.2);border-radius:8px;padding:7px 10px;font-size:10px;color:#fff;">Wardrobe</div>
+            </div>
+            <div>
+              <div style="font-size:8px;letter-spacing:1.5px;color:#C9A84C;text-transform:uppercase;margin-bottom:3px;">Subcategoría ✦</div>
+              <div style="background:rgba(201,168,76,0.07);border:1px solid rgba(201,168,76,0.2);border-radius:8px;padding:7px 10px;font-size:10px;color:#fff;">Watches</div>
+            </div>
+          </div>
+
+          <!-- Room suggested -->
+          <div>
+            <div style="font-size:8px;letter-spacing:1.5px;color:#C9A84C;text-transform:uppercase;margin-bottom:3px;">Habitación sugerida ✦</div>
+            <div style="background:rgba(201,168,76,0.07);border:1px solid rgba(201,168,76,0.2);border-radius:8px;padding:7px 10px;font-size:11px;color:#fff;display:flex;justify-content:space-between;align-items:center;">
+              <span>Master Bedroom</span>
+              <span style="font-size:9px;color:rgba(255,255,255,0.3);">∨</span>
+            </div>
+          </div>
+
+          <!-- Price + Serial -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <div>
+              <div style="font-size:8px;letter-spacing:1.5px;color:#C9A84C;text-transform:uppercase;margin-bottom:3px;">Precio ✦</div>
+              <div style="background:rgba(201,168,76,0.07);border:1px solid rgba(201,168,76,0.2);border-radius:8px;padding:7px 10px;font-size:10px;color:#fff;">$12,500</div>
+            </div>
+            <div>
+              <div style="font-size:8px;letter-spacing:1.5px;color:#C9A84C;text-transform:uppercase;margin-bottom:3px;">Serie ✦</div>
+              <div style="background:rgba(201,168,76,0.07);border:1px solid rgba(201,168,76,0.2);border-radius:8px;padding:7px 10px;font-size:10px;color:#fff;">G24T1234</div>
+            </div>
+          </div>
+
+          <!-- Save button -->
+          <div style="
+            background:linear-gradient(135deg,#D4A843,#8B6010);
+            border-radius:10px;
+            padding:12px;
+            text-align:center;
+            font-size:12px;
+            font-weight:600;
+            color:#000;
+            letter-spacing:0.5px;
+            margin-top:4px;
+          ">Guardar ítem</div>
+
+          <div style="text-align:center;font-size:9px;color:rgba(255,255,255,0.3);letter-spacing:1px;">Los campos ✦ fueron sugeridos por IA</div>
+
+        </div>
+      </div>
+    </div>
+    <div class="col-label">AiItemReviewScreen</div>
+  </div>
+
+</div><!-- /row -->
+
+<!-- ── Leyenda ─────────────────────── -->
+<div class="legend">
+  <h3>Notas de diseño</h3>
+
+  <div class="legend-item">
+    <div class="legend-dot gold"></div>
+    <div class="legend-text">
+      <strong>FAB dorado ＋</strong><br>
+      Reemplaza al FAB actual (que no existe — la pantalla hoy no tiene FAB). Se convierte en Speed Dial con 2 opciones.
+    </div>
+  </div>
+
+  <div class="legend-item">
+    <div class="legend-dot new"></div>
+    <div class="legend-text">
+      <strong>Opción "✦ Add item with AI"</strong><br>
+      Nueva entrada en el speed dial. El ✦ es el ícono de IA que ya usa la app en el chat assistant.
+    </div>
+  </div>
+
+  <div class="legend-item">
+    <div class="legend-dot gold"></div>
+    <div class="legend-text">
+      <strong>Campos ✦ en la review screen</strong><br>
+      Fondo ámbar suave + borde dorado indican que ese campo fue sugerido por IA. El usuario puede editar todos.
+    </div>
+  </div>
+
+  <div class="legend-item">
+    <div class="legend-dot white"></div>
+    <div class="legend-text">
+      <strong>Paso 2 (factura) es opcional</strong><br>
+      "Saltar este paso →" visible y prominente. Sin factura, los campos de precio/serie/fecha quedan vacíos.
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
