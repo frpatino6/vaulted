@@ -1202,6 +1202,20 @@ All three files are derived from the same decisions — single source of truth.
 - The Linux machine is where actual development will happen
 - GCP VM setup will come after local dev environment is working
 
+---
+
+## Technical Debt
+
+### App Icon — Android & iOS not updated
+- **Date**: 2026-04-10
+- **Branch**: `claude/update-app-icon-fAqxy`
+- **Context**: The Vaulted app icon was redesigned (Option 2 — El Escudo: heraldic shield with V monogram and crown). The new icon was applied to the **web** platform only.
+- **Pending**:
+  - Android: `apps/mobile/android/app/src/main/res/mipmap-*/ic_launcher.png` (5 sizes: mdpi/hdpi/xhdpi/xxhdpi/xxxhdpi)
+  - iOS: `apps/mobile/ios/Runner/Assets.xcassets/AppIcon.appiconset/` (15 files, up to 1024×1024)
+- **How to implement**: The source SVG is at `apps/mobile/web/icon-option-2.svg`. Use `cairosvg` (already installed) or `flutter_launcher_icons` package to generate all sizes from that SVG.
+- **Priority**: Low — only relevant before publishing to App Store / Google Play.
+
 
 
 
