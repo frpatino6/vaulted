@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vaulted — Opciones de Icono</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0A0A0A;
+      color: #F0E8D0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      padding: 48px 24px;
+      min-height: 100vh;
+    }
+    h1 {
+      text-align: center;
+      font-size: 28px;
+      font-weight: 300;
+      letter-spacing: 6px;
+      text-transform: uppercase;
+      color: #C9A84C;
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      text-align: center;
+      font-size: 13px;
+      letter-spacing: 3px;
+      color: #666;
+      text-transform: uppercase;
+      margin-bottom: 56px;
+    }
+    .options-grid {
+      display: flex;
+      gap: 40px;
+      justify-content: center;
+      flex-wrap: wrap;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .option-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+    }
+    .option-label {
+      font-size: 11px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: #888;
+    }
+    .icon-sizes {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+    .size-row {
+      display: flex;
+      align-items: flex-end;
+      gap: 16px;
+    }
+    .icon-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .icon-wrap span {
+      font-size: 10px;
+      color: #555;
+      letter-spacing: 1px;
+    }
+    .icon-wrap img {
+      display: block;
+      border-radius: 22%;
+    }
+    .icon-wrap img.favicon {
+      border-radius: 4px;
+    }
+    .option-name {
+      font-size: 16px;
+      font-weight: 400;
+      letter-spacing: 2px;
+      color: #C9A84C;
+      text-transform: uppercase;
+    }
+    .option-desc {
+      font-size: 13px;
+      color: #888;
+      text-align: center;
+      max-width: 220px;
+      line-height: 1.6;
+    }
+    .divider {
+      width: 1px;
+      height: 400px;
+      background: linear-gradient(to bottom, transparent, #333, transparent);
+    }
+    @media (max-width: 768px) {
+      .divider { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Vaulted</h1>
+  <p class="subtitle">Selección de Icono — 3 Opciones</p>
+
+  <div class="options-grid">
+
+    <!-- OPCIÓN 1 -->
+    <div class="option-card">
+      <div class="icon-sizes">
+        <div class="size-row">
+          <div class="icon-wrap">
+            <img src="icon-option-1.svg" width="192" height="192" alt="Opción 1 grande"/>
+            <span>192px</span>
+          </div>
+        </div>
+        <div class="size-row">
+          <div class="icon-wrap">
+            <img src="icon-option-1.svg" width="96" height="96" alt="Opción 1 mediana"/>
+            <span>96px</span>
+          </div>
+          <div class="icon-wrap">
+            <img src="icon-option-1.svg" width="48" height="48" alt="Opción 1 pequeña"/>
+            <span>48px</span>
+          </div>
+          <div class="icon-wrap">
+            <img src="icon-option-1.svg" class="favicon" width="16" height="16" alt="Favicon 1"/>
+            <span>16px</span>
+          </div>
+        </div>
+      </div>
+      <div class="option-name">Opción 1 — La Bóveda</div>
+      <div class="option-desc">
+        Puerta de caja fuerte con dial de combinación. Fondo azul marino profundo, detalles dorados. Transmite seguridad y exclusividad bancaria.
+      </div>
+      <div class="option-label">Clásico · Seguro · Bancario</div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- OPCIÓN 2 -->
+    <div class="option-card">
+      <div class="icon-sizes">
+        <div class="size-row">
+          <div class="icon-wrap">
+            <img src="icon-option-2.svg" width="192" height="192" alt="Opción 2 grande"/>
+            <span>192px</span>
+          </div>
+        </div>
+        <div class="size-row">
+          <div class="icon-wrap">
+            <img src="icon-option-2.svg" width="96" height="96" alt="Opción 2 mediana"/>
+            <span>96px</span>
+          </div>
+          <div class="icon-wrap">
+            <img src="icon-option-2.svg" width="48" height="48" alt="Opción 2 pequeña"/>
+            <span>48px</span>
+          </div>
+          <div class="icon-wrap">
+            <img src="icon-option-2.svg" class="favicon" width="16" height="16" alt="Favicon 2"/>
+            <span>16px</span>
+          </div>
+        </div>
+      </div>
+      <div class="option-name">Opción 2 — El Escudo</div>
+      <div class="option-desc">
+        Escudo heráldico con monograma "V" y corona. Fondo negro, dorado metálico. Evoca linaje, patrimonio familiar y distinción.
+      </div>
+      <div class="option-label">Heráldico · Elegante · Familiar</div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- OPCIÓN 3 -->
+    <div class="option-card">
+      <div class="icon-sizes">
+        <div class="size-row">
+          <div class="icon-wrap">
+            <img src="icon-option-3.svg" width="192" height="192" alt="Opción 3 grande"/>
+            <span>192px</span>
+          </div>
+        </div>
+        <div class="size-row">
+          <div class="icon-wrap">
+            <img src="icon-option-3.svg" width="96" height="96" alt="Opción 3 mediana"/>
+            <span>96px</span>
+          </div>
+          <div class="icon-wrap">
+            <img src="icon-option-3.svg" width="48" height="48" alt="Opción 3 pequeña"/>
+            <span>48px</span>
+          </div>
+          <div class="icon-wrap">
+            <img src="icon-option-3.svg" class="favicon" width="16" height="16" alt="Favicon 3"/>
+            <span>16px</span>
+          </div>
+        </div>
+      </div>
+      <div class="option-name">Opción 3 — La Gema</div>
+      <div class="option-desc">
+        Diamante facetado en corte brillante. Fondo negro carbón, facetas doradas con destellos blancos. Representa el valor del patrimonio.
+      </div>
+      <div class="option-label">Moderno · Valioso · Premium</div>
+    </div>
+
+  </div>
+
+  <p style="text-align:center; margin-top: 56px; font-size: 11px; letter-spacing: 3px; color: #444; text-transform: uppercase;">
+    Todos los iconos son SVG escalables — se generarán PNG para todas las plataformas
+  </p>
+
+</body>
+</html>
