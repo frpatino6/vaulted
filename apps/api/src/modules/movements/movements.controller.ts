@@ -50,6 +50,7 @@ export class MovementsController {
   }
 
   @Get()
+  @Roles(Role.OWNER, Role.MANAGER, Role.STAFF)
   async findAll(
     @CurrentUser() user: JwtPayload,
     @Query('status') status?: string,
@@ -62,11 +63,13 @@ export class MovementsController {
   }
 
   @Get('draft')
+  @Roles(Role.OWNER, Role.MANAGER, Role.STAFF)
   async getActiveDrafts(@CurrentUser() user: JwtPayload) {
     return this.movementsService.findActiveDrafts(user.sub, user.tenantId);
   }
 
   @Get(':id')
+  @Roles(Role.OWNER, Role.MANAGER, Role.STAFF)
   async findOne(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
     return this.movementsService.findOne(id, user.tenantId);
   }
@@ -123,7 +126,7 @@ export class MovementsController {
     return movement;
   }
 
-  @Roles(Role.OWNER, Role.MANAGER)
+  @Roles(Role.OWNER, Role.MANAGER, Role.STAFF)
   @Post(':id/checkin')
   @HttpCode(HttpStatus.OK)
   async checkinItem(
@@ -134,7 +137,7 @@ export class MovementsController {
     return this.movementsService.checkinItem(movementId, body.itemId, user);
   }
 
-  @Roles(Role.OWNER, Role.MANAGER)
+  @Roles(Role.OWNER, Role.MANAGER, Role.STAFF)
   @Post(':id/complete')
   @HttpCode(HttpStatus.OK)
   async complete(

@@ -5,6 +5,8 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { v4 as uuidv4 } from 'uuid';
+import { Role } from '../../common/enums/role.enum';
+import { AccessControlService } from '../../common/services/access-control.service';
 import { AddFloorDto } from './dto/add-floor.dto';
 import { AddRoomDto } from './dto/add-room.dto';
 import { CreatePropertyDto } from './dto/create-property.dto';
@@ -16,6 +18,7 @@ export class PropertiesService {
   constructor(
     @InjectModel(Property.name)
     private readonly propertyModel: Model<PropertyDocument>,
+    private readonly accessControl: AccessControlService,
   ) {}
 
   async create(tenantId: string, dto: CreatePropertyDto): Promise<Property> {
@@ -32,12 +35,25 @@ export class PropertiesService {
     return property;
   }
 
-  async findAll(tenantId: string): Promise<Property[]> {
+  async findAll(tenantId: string, role: Role, userId: string): Promise<Property[]> {
+    const allowedPropertyIds = await this.accessControl.getAllowedPropertyIds(userId, role);
+    if (allowedPropertyIds !== null) {
+      if (allowedPropertyIds.length === 0) return [];
+      return this.propertyModel
+        .find({ tenantId, _id: { $in: allowedPropertyIds } })
+        .sort({ createdAt: -1 })
+        .exec();
+    }
     return this.propertyModel.find({ tenantId }).sort({ createdAt: -1 }).exec();
   }
 
-  async findById(tenantId: string, propertyId: string): Promise<Property> {
-    return this.findOwnedPropertyOrThrow(tenantId, propertyId);
+  async findById(tenantId: string, propertyId: string, role: Role, userId: string): Promise<Property> {
+    const property = await this.findOwnedPropertyOrThrow(tenantId, propertyId);
+    const allowedPropertyIds = await this.accessControl.getAllowedPropertyIds(userId, role);
+    if (allowedPropertyIds !== null && !allowedPropertyIds.includes(propertyId)) {
+      throw new NotFoundException('Property not found');
+    }
+    return property;
   }
 
   async update(
