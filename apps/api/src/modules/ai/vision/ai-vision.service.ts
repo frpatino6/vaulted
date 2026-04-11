@@ -60,7 +60,11 @@ export class AiVisionService {
       ? this.resolveImageToPart(dto.invoiceImageUrl)
       : null;
 
-    const prompt = this.buildPrompt(dto.propertyRooms ?? [], !!invoicePart);
+    // Map rooms to simple indices so Gemini doesn't have to copy MongoDB ObjectIDs
+    const rooms = dto.propertyRooms ?? [];
+    const indexedRooms = rooms.map((r, i) => ({ ...r, index: `room_${i}` }));
+
+    const prompt = this.buildPrompt(indexedRooms, !!invoicePart);
     const parts: Part[] = [productPart];
     if (invoicePart) parts.push(invoicePart);
     parts.push({ text: prompt });
@@ -82,7 +86,7 @@ export class AiVisionService {
     });
 
     const raw = response.text();
-    return this.parseResponse(raw, dto.propertyRooms ?? []);
+    return this.parseResponse(raw, rooms, indexedRooms);
   }
 
   private resolveImageToPart(imageUrl: string): Part {
@@ -105,10 +109,13 @@ export class AiVisionService {
     };
   }
 
-  private buildPrompt(rooms: PropertyRoomDto[], hasInvoice: boolean): string {
+  private buildPrompt(
+    indexedRooms: Array<PropertyRoomDto & { index: string }>,
+    hasInvoice: boolean,
+  ): string {
     const roomList =
-      rooms.length > 0
-        ? `\nAvailable rooms in this property:\n${rooms.map((r) => `- roomId="${r.roomId}" name="${r.name}" type="${r.type}"`).join('\n')}`
+      indexedRooms.length > 0
+        ? `\nAvailable rooms in this property:\n${indexedRooms.map((r) => `- id="${r.index}" name="${r.name}" type="${r.type}"`).join('\n')}`
         : '';
 
     const invoiceInstruction = hasInvoice
@@ -138,12 +145,16 @@ JSON schema:
 }
 
 Rules:
-- suggestedRoomId must be one of the roomId values listed above, or null if no rooms provided.
+- suggestedRoomId must be one of the id values listed above (e.g. "room_0"), or null if no rooms provided.
 - If no invoice image, set invoiceData to null.
 - Return ONLY the JSON object, no explanation.`;
   }
 
-  private parseResponse(raw: string, rooms: PropertyRoomDto[]): AnalyzeItemResult {
+  private parseResponse(
+    raw: string,
+    rooms: PropertyRoomDto[],
+    indexedRooms: Array<PropertyRoomDto & { index: string }>,
+  ): AnalyzeItemResult {
     let parsed: Record<string, unknown>;
     try {
       const clean = raw.replace(/```json|```/g, '').trim();
@@ -153,8 +164,12 @@ Rules:
       throw new BadRequestException('AI returned an invalid response. Please try again.');
     }
 
-    const suggestedRoomId = parsed['suggestedRoomId'] as string | null;
-    const matchedRoom = rooms.find((r) => r.roomId === suggestedRoomId) ?? null;
+    // Map the simple index back to the real roomId
+    const suggestedIndex = parsed['suggestedRoomId'] as string | null;
+    const indexedMatch = indexedRooms.find((r) => r.index === suggestedIndex) ?? null;
+    const matchedRoom = indexedMatch
+      ? (rooms.find((r) => r.roomId === indexedMatch.roomId) ?? null)
+      : null;
 
     return {
       name: (parsed['name'] as string) ?? 'Unknown item',

@@ -39,7 +39,9 @@ class _AiScanScreenState extends ConsumerState<AiScanScreen> {
         context.push(
           '/properties/${widget.propertyId}/ai-scan/review',
           extra: {'result': next.result, 'floors': widget.floors},
-        );
+        ).then((_) {
+          if (mounted) ref.read(aiScanNotifierProvider.notifier).reset();
+        });
       }
     });
 
@@ -121,6 +123,8 @@ class _CaptureStep extends StatelessWidget {
   final VoidCallback onCapture;
   final VoidCallback? onSkip;
 
+  static const _tapHint = 'Toca aquí o el botón para fotografiar';
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -182,21 +186,39 @@ class _CaptureStep extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.lg),
 
-          // Viewfinder
+          // Viewfinder — tappable
           Expanded(
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Container(color: const Color(0xFF0A0A0A)),
-                ..._buildCornerGuides(),
-                Icon(
-                  step == 1
-                      ? Icons.inventory_2_outlined
-                      : Icons.receipt_long_outlined,
-                  size: 64,
-                  color: Colors.white10,
-                ),
-              ],
+            child: GestureDetector(
+              onTap: onCapture,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Container(color: const Color(0xFF0A0A0A)),
+                  ..._buildCornerGuides(),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        step == 1
+                            ? Icons.inventory_2_outlined
+                            : Icons.receipt_long_outlined,
+                        size: 64,
+                        color: Colors.white10,
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        _tapHint,
+                        style: TextStyle(
+                          color: Colors.white24,
+                          fontSize: 12,
+                          letterSpacing: 0.3,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
 
