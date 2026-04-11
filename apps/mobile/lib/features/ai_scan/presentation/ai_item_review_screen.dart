@@ -303,16 +303,19 @@ class _AiItemReviewScreenState extends ConsumerState<AiItemReviewScreen> {
   }
 
   Widget _categoryDropdown() {
-    return DropdownButtonHideUnderline(
-      child: DropdownButton<String>(
-        value: _category,
-        isExpanded: true,
-        dropdownColor: AppColors.surface,
-        style: const TextStyle(color: AppColors.onBackground, fontSize: 14),
-        onChanged: (v) => setState(() => _category = v ?? _category),
-        items: _categories
-            .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-            .toList(),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: _category,
+          isExpanded: true,
+          dropdownColor: AppColors.surface,
+          style: const TextStyle(color: AppColors.onBackground, fontSize: 14),
+          onChanged: (v) => setState(() => _category = v ?? _category),
+          items: _categories
+              .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+              .toList(),
+        ),
       ),
     );
   }
@@ -329,25 +332,28 @@ class _AiItemReviewScreenState extends ConsumerState<AiItemReviewScreen> {
       );
     }
 
-    return DropdownButtonHideUnderline(
-      child: DropdownButton<RoomModel>(
-        value: _selectedRoom,
-        isExpanded: true,
-        hint: const Text(
-          'Selecciona una habitación',
-          style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 14),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<RoomModel>(
+          value: _selectedRoom,
+          isExpanded: true,
+          hint: const Text(
+            'Selecciona una habitación',
+            style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 14),
+          ),
+          dropdownColor: AppColors.surface,
+          style: const TextStyle(color: AppColors.onBackground, fontSize: 14),
+          onChanged: (v) => setState(() => _selectedRoom = v),
+          items: rooms
+              .map(
+                (r) => DropdownMenuItem(
+                  value: r,
+                  child: Text(r.name),
+                ),
+              )
+              .toList(),
         ),
-        dropdownColor: AppColors.surface,
-        style: const TextStyle(color: AppColors.onBackground, fontSize: 14),
-        onChanged: (v) => setState(() => _selectedRoom = v),
-        items: rooms
-            .map(
-              (r) => DropdownMenuItem(
-                value: r,
-                child: Text(r.name),
-              ),
-            )
-            .toList(),
       ),
     );
   }
