@@ -54,6 +54,7 @@ class _AiScanScreenState extends ConsumerState<AiScanScreen> {
             subtitle: 'La IA identificará el ítem automáticamente',
             canSkip: false,
             onCapture: _captureProduct,
+            onGallery: _pickProductFromGallery,
             onSkip: null,
           ),
         AiScanCaptureInvoice() => _CaptureStep(
@@ -62,6 +63,7 @@ class _AiScanScreenState extends ConsumerState<AiScanScreen> {
             subtitle: 'Extrae precio, fecha y número de serie',
             canSkip: true,
             onCapture: _captureInvoice,
+            onGallery: _pickInvoiceFromGallery,
             onSkip: _skipInvoice,
           ),
         AiScanAnalyzing() => const _AnalyzingView(),
@@ -83,9 +85,29 @@ class _AiScanScreenState extends ConsumerState<AiScanScreen> {
     ref.read(aiScanNotifierProvider.notifier).onProductPhotoCaptured(photo);
   }
 
+  Future<void> _pickProductFromGallery() async {
+    final photo = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+    );
+    if (photo == null || !mounted) return;
+    ref.read(aiScanNotifierProvider.notifier).onProductPhotoCaptured(photo);
+  }
+
   Future<void> _captureInvoice() async {
     final photo = await _picker.pickImage(
       source: ImageSource.camera,
+      imageQuality: 85,
+    );
+    if (photo == null || !mounted) return;
+    await ref
+        .read(aiScanNotifierProvider.notifier)
+        .onInvoicePhotoCaptured(photo, propertyRooms: _propertyRooms);
+  }
+
+  Future<void> _pickInvoiceFromGallery() async {
+    final photo = await _picker.pickImage(
+      source: ImageSource.gallery,
       imageQuality: 85,
     );
     if (photo == null || !mounted) return;
@@ -112,6 +134,7 @@ class _CaptureStep extends StatelessWidget {
     required this.subtitle,
     required this.canSkip,
     required this.onCapture,
+    required this.onGallery,
     required this.onSkip,
   });
 
@@ -120,6 +143,7 @@ class _CaptureStep extends StatelessWidget {
   final String subtitle;
   final bool canSkip;
   final VoidCallback onCapture;
+  final VoidCallback onGallery;
   final VoidCallback? onSkip;
 
   static const _tapHint = 'Toca aquí o el botón para fotografiar';
@@ -247,26 +271,56 @@ class _CaptureStep extends StatelessWidget {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: AppSpacing.xl),
-                GestureDetector(
-                  onTap: onCapture,
-                  child: Container(
-                    width: 72,
-                    height: 72,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.accent, width: 3),
-                    ),
-                    child: Center(
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Gallery button
+                    GestureDetector(
+                      onTap: onGallery,
                       child: Container(
-                        width: 56,
-                        height: 56,
-                        decoration: const BoxDecoration(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: AppColors.accent,
+                          border: Border.all(
+                            color: Colors.white24,
+                            width: 1.5,
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.photo_library_outlined,
+                          color: Colors.white54,
+                          size: 22,
                         ),
                       ),
                     ),
-                  ),
+                    const SizedBox(width: AppSpacing.xl),
+                    // Shutter button
+                    GestureDetector(
+                      onTap: onCapture,
+                      child: Container(
+                        width: 72,
+                        height: 72,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: AppColors.accent, width: 3),
+                        ),
+                        child: Center(
+                          child: Container(
+                            width: 56,
+                            height: 56,
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: AppColors.accent,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Spacer para centrar el shutter
+                    const SizedBox(width: AppSpacing.xl),
+                    const SizedBox(width: 48),
+                  ],
                 ),
                 if (canSkip) ...[
                   const SizedBox(height: AppSpacing.lg),
