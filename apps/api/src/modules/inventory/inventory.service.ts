@@ -97,14 +97,14 @@ export class InventoryService {
 
     if (allowedPropertyIds !== null) {
       if (allowedPropertyIds.length === 0) return [];
-      query.propertyId = { $in: allowedPropertyIds };
-      if (filters.propertyId && !allowedPropertyIds.includes(filters.propertyId)) {
-        return [];
+      if (filters.propertyId) {
+        if (!allowedPropertyIds.includes(filters.propertyId)) return [];
+        query.propertyId = filters.propertyId;
+      } else {
+        query.propertyId = { $in: allowedPropertyIds };
       }
-    }
-
-    if (filters.propertyId && allowedPropertyIds === null) {
-      query.propertyId = filters.propertyId;
+    } else {
+      if (filters.propertyId) query.propertyId = filters.propertyId;
     }
 
     if (filters.roomId) {
