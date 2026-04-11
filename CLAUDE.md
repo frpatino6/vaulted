@@ -216,59 +216,67 @@ vaulted/
 └── CLAUDE.md
 ```
 
-### Backend modules (apps/api/src/modules/)
+### Backend modules (apps/api/src/modules/) — **estado auditado (2026-04-11)**
 ```
-auth/          # JWT, refresh tokens, MFA, sessions           ✅ DONE
-users/         # User management (PostgreSQL)                 ✅ DONE
-tenants/       # Client/family management (PostgreSQL)        ✅ DONE
-properties/    # Properties and rooms (MongoDB)               ✅ DONE
-inventory/     # Items and item history (MongoDB)             ✅ DONE
-movements/     # Item transfers, loans, repairs (MongoDB)     ✅ DONE
-maintenance/   # Scheduled maintenance records (MongoDB)      ✅ DONE
-dashboard/     # Aggregated metrics, Redis cache              ✅ DONE
-wardrobe/      # Outfits + dry cleaning history (MongoDB)     ✅ DONE
-  outfits      #   CRUD outfits, add/remove items
-  dry-cleaning #   Tintorería history, mark returned, auto cleaningStatus
-  stats        #   Closet stats with Redis cache (5 min TTL)
-media/         # File upload to GCP Storage                   ✅ DONE
-audit/         # Immutable audit logs (PostgreSQL)            ✅ DONE
-ai/            # AI features                                  ✅ PARTIAL
-  chat/        #   RAG chat with Gemini embeddings + vector search
-  maintenance/ #   AI maintenance risk scoring per item
-  shared/      #   Embedding service, Gemini client, cost logger
-insurance/     # Policies and warranties (PostgreSQL)         ❌ PENDING
-notifications/ # Push (FCM) and email (SendGrid/Resend)       ❌ PENDING
-reports/       # PDF and Excel report generation              ❌ PENDING
+auth/          # JWT, refresh tokens, MFA, sessions                         ✅ IMPLEMENTADO
+users/         # User management (PostgreSQL)                               ✅ IMPLEMENTADO
+tenants/       # Client/family management (PostgreSQL service/entity)       ✅ IMPLEMENTADO (sin controller público)
+properties/    # Properties + floors + rooms (MongoDB)                      ✅ IMPLEMENTADO
+inventory/     # Items + item history + search + QR                         ✅ IMPLEMENTADO
+movements/     # Item transfers, loans, repairs (MongoDB)                   ✅ IMPLEMENTADO
+maintenance/   # Scheduled maintenance records (MongoDB)                    ✅ IMPLEMENTADO
+dashboard/     # Aggregated metrics                                          ✅ IMPLEMENTADO
+wardrobe/      # Outfits + dry cleaning history + closet stats              ✅ IMPLEMENTADO
+media/         # Upload/delete media (multer/local en esta etapa)           ✅ IMPLEMENTADO
+audit/         # Immutable audit logs (PostgreSQL write-focused service)    ✅ IMPLEMENTADO
+ai/            # AI features                                                 ✅/🟡 PARCIAL AVANZADO
+  chat/        # Chat con contexto de inventario                            ✅ IMPLEMENTADO
+  maintenance/ # Scoring/risk helper para mantenimiento                      ✅ IMPLEMENTADO
+  vision/      # Análisis de item desde imagen (nuevo vs versión previa)    ✅ IMPLEMENTADO
+  shared/      # Gemini client, embeddings, cost logger                      ✅ IMPLEMENTADO
+insurance/     # Policies and warranties                                     ❌ NO IMPLEMENTADO
+notifications/ # Push/email + scheduled jobs                                 ❌ NO IMPLEMENTADO
+reports/       # PDF/Excel generation backend                                ❌ NO IMPLEMENTADO
 ```
 
-### Flutter architecture (apps/mobile/lib/)
+#### Hallazgos backend adicionales
+- `AppModule` registra módulos globales de seguridad (throttling + JWT + MFA + roles + expiración de invitados), reforzando que no todo está “stub”.
+- No hay módulos `insurance`, `notifications` ni `reports` en `apps/api/src/modules/` y tampoco están importados en `AppModule`.
+- El módulo de `ai/vision` existe y ya expone controller + service + DTO; esto no estaba reflejado en el estado anterior.
+
+### Flutter architecture (apps/mobile/lib/) — **estado auditado (2026-04-11)**
 ```
 core/
   config/       # App config, flavors (dev/staging/prod)
   network/      # Dio + interceptors + certificate pinning
-  storage/      # flutter_secure_storage (tokens), Hive (offline cache)
-  security/     # Jailbreak detector, screenshot guard
-  router/       # GoRouter + auth guard + role guard
+  storage/      # secure storage + cache local
+  security/     # Guardas y utilidades de seguridad
+  router/       # GoRouter + auth redirects + rutas por feature
   theme/        # Design system, colors, typography, spacing
 
 features/       # Feature-first structure
-  auth/         ✅ login, register, MFA
-  dashboard/    ✅ stats summary, property cards
-  properties/   ✅ list, detail, floors, rooms
-  inventory/    ✅ list, detail, add/edit, QR scan, item history
-  movements/    ✅ draft→active→complete workflow, QR checkin
-  maintenance/  ✅ list, create, update status
-  ai_chat/      ✅ RAG chat UI, conversation history
-  users/        ✅ list, invite, edit role
-  media/        ✅ image picker, upload progress
-  wardrobe/     ✅ closet grid, outfit builder, dry cleaning history, stats bar
-  reports/      ❌ stub only (no backend)
-  settings/     ✅ basic
+  auth/         ✅ login + MFA
+  dashboard/    ✅ summary + métricas
+  properties/   ✅ list + detail + floors + rooms
+  inventory/    ✅ list + detail + add/edit + QR + search/history
+  movements/    ✅ flujo draft→active→complete + scan/check-in
+  maintenance/  ✅ list + create/update status
+  ai_chat/      ✅ UI + estado de conversaciones
+  ai_scan/      ✅ capturar + analizar imagen + pantalla de revisión (NUEVO)
+  users/        ✅ list + invite + role updates
+  media/        ✅ integración de upload
+  wardrobe/     ✅ closet + outfits + dry cleaning + stats
+  reports/      🟡 IMPLEMENTADO SOLO EN FRONTEND (pantalla analítica + botón PDF "coming soon")
+  settings/     ✅ básico
 
 shared/
   widgets/      # Reusable premium UI components
   extensions/   # Dart extensions
 ```
+
+#### Hallazgos mobile adicionales
+- La app ya define rutas activas para `reports`, `ai_chat`, `ai_scan`, `movements`, `maintenance`, `wardrobe` y gestión de usuarios.
+- `reports` no es stub vacío: muestra métricas reales del dashboard, pero el export PDF sigue pendiente por backend.
 
 ### Flutter key packages
 ```yaml
