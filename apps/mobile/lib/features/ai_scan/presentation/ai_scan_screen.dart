@@ -48,7 +48,7 @@ class _AiScanScreenState extends ConsumerState<AiScanScreen> {
     return Scaffold(
       backgroundColor: Colors.black,
       body: switch (state) {
-        AiScanCaptureProduct() => _CaptureStep(
+        AiScanCaptureProduct() || AiScanResultState() => _CaptureStep(
             step: 1,
             title: 'Foto del producto',
             subtitle: 'La IA identificará el ítem automáticamente',
@@ -65,7 +65,6 @@ class _AiScanScreenState extends ConsumerState<AiScanScreen> {
             onSkip: _skipInvoice,
           ),
         AiScanAnalyzing() => const _AnalyzingView(),
-        AiScanResultState() => const _AnalyzingView(),
         AiScanError(:final message) => _ErrorView(
             message: message,
             onRetry: () =>
