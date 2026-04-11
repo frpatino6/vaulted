@@ -1,6 +1,6 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenerativeAI, Part } from '@google/generative-ai';
 import * as fs from 'fs';
 import * as path from 'path';
 import { AiCostLoggerService } from '../shared/ai-cost-logger.service';
@@ -35,7 +35,7 @@ export interface AnalyzeItemResult {
 @Injectable()
 export class AiVisionService {
   private readonly logger = new Logger(AiVisionService.name);
-  private readonly client: Anthropic;
+  private readonly genAI: GoogleGenerativeAI;
   private readonly model: string;
   private readonly appUrl: string;
 
@@ -43,10 +43,10 @@ export class AiVisionService {
     private readonly config: ConfigService,
     private readonly costLogger: AiCostLoggerService,
   ) {
-    this.client = new Anthropic({
-      apiKey: config.getOrThrow<string>('ANTHROPIC_API_KEY'),
-    });
-    this.model = config.get<string>('AI_VISION_MODEL') ?? 'claude-opus-4-5';
+    this.genAI = new GoogleGenerativeAI(
+      config.getOrThrow<string>('GOOGLE_GENAI_API_KEY'),
+    );
+    this.model = config.get<string>('AI_VISION_MODEL') ?? 'gemini-2.5-flash';
     this.appUrl = config.get<string>('APP_URL') ?? 'http://localhost:3000';
   }
 
@@ -55,50 +55,54 @@ export class AiVisionService {
     userId: string,
     dto: AnalyzeItemDto,
   ): Promise<AnalyzeItemResult> {
-    const productBase64 = this.resolveImageToBase64(dto.productImageUrl);
-    const invoiceBase64 = dto.invoiceImageUrl
-      ? this.resolveImageToBase64(dto.invoiceImageUrl)
+    const productPart = this.resolveImageToPart(dto.productImageUrl);
+    const invoicePart = dto.invoiceImageUrl
+      ? this.resolveImageToPart(dto.invoiceImageUrl)
       : null;
 
-    const prompt = this.buildPrompt(dto.propertyRooms ?? [], !!invoiceBase64);
-    const messages = this.buildMessages(productBase64, invoiceBase64, prompt);
+    const prompt = this.buildPrompt(dto.propertyRooms ?? [], !!invoicePart);
+    const parts: Part[] = [productPart];
+    if (invoicePart) parts.push(invoicePart);
+    parts.push({ text: prompt });
 
     this.logger.log(`Analyzing item for tenant=${tenantId}`);
 
-    const response = await this.client.messages.create({
-      model: this.model,
-      max_tokens: 1024,
-      messages,
-    });
+    const geminiModel = this.genAI.getGenerativeModel({ model: this.model });
+    const result = await geminiModel.generateContent(parts);
+    const response = result.response;
+    const usage = response.usageMetadata;
 
-    const usage = response.usage;
     await this.costLogger.log({
       tenantId,
       userId,
       feature: 'ai_vision',
       model: this.model,
-      inputTokens: usage.input_tokens,
-      outputTokens: usage.output_tokens,
+      inputTokens: usage?.promptTokenCount ?? 0,
+      outputTokens: usage?.candidatesTokenCount ?? 0,
     });
 
-    const raw = (response.content[0] as { type: string; text: string }).text;
+    const raw = response.text();
     return this.parseResponse(raw, dto.propertyRooms ?? []);
   }
 
-  private resolveImageToBase64(imageUrl: string): string {
-    // Strip the APP_URL prefix to get local file path
+  private resolveImageToPart(imageUrl: string): Part {
     const localPath = imageUrl.startsWith(this.appUrl)
       ? imageUrl.replace(this.appUrl, '')
       : imageUrl;
 
-    // Map URL path to filesystem path
     const filePath = path.join('/app', localPath);
 
     if (!fs.existsSync(filePath)) {
       throw new BadRequestException(`Image not found: ${localPath}`);
     }
 
-    return fs.readFileSync(filePath).toString('base64');
+    const data = fs.readFileSync(filePath).toString('base64');
+    return {
+      inlineData: {
+        mimeType: 'image/jpeg',
+        data,
+      },
+    };
   }
 
   private buildPrompt(rooms: PropertyRoomDto[], hasInvoice: boolean): string {
@@ -137,30 +141,6 @@ Rules:
 - suggestedRoomId must be one of the roomId values listed above, or null if no rooms provided.
 - If no invoice image, set invoiceData to null.
 - Return ONLY the JSON object, no explanation.`;
-  }
-
-  private buildMessages(
-    productBase64: string,
-    invoiceBase64: string | null,
-    prompt: string,
-  ): Anthropic.MessageParam[] {
-    const content: Anthropic.ContentBlockParam[] = [
-      {
-        type: 'image',
-        source: { type: 'base64', media_type: 'image/jpeg', data: productBase64 },
-      },
-    ];
-
-    if (invoiceBase64) {
-      content.push({
-        type: 'image',
-        source: { type: 'base64', media_type: 'image/jpeg', data: invoiceBase64 },
-      });
-    }
-
-    content.push({ type: 'text', text: prompt });
-
-    return [{ role: 'user', content }];
   }
 
   private parseResponse(raw: string, rooms: PropertyRoomDto[]): AnalyzeItemResult {
