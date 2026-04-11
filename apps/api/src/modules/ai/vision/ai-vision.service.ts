@@ -134,7 +134,7 @@ JSON schema:
   "estimatedValue": number,
   "attributes": object,
   "confidence": number (0-1),
-  "tags": string[] (1-3 short descriptive tags),
+  "tags": string[],
   "suggestedRoomId": string | null,
   "suggestedRoomReasoning": string | null,
   "invoiceData": {
@@ -148,7 +148,7 @@ JSON schema:
 
 Rules:
 - estimatedValue: always provide a conservative USD market value estimate based on the item's category, visible brand, condition, and approximate age. Never return null — if uncertain, provide a reasonable range midpoint for that item category.
-- tags: 1 to 3 short lowercase tags describing the item (e.g. ["samsung", "4k", "smart-tv"]). Use brand, material, style, or key feature as tags.
+- tags: REQUIRED. Always return a JSON array with 3 to 5 short lowercase tags (e.g. ["samsung", "4k", "smart-tv", "television", "electronics"]). Use brand, material, style, color, or key feature as tags. Never return an empty array.
 - suggestedRoomId must be one of the id values listed above (e.g. "room_0"), or null if no rooms provided.
 - If no invoice image, set invoiceData to null.
 - Return ONLY the JSON object, no explanation.`;
@@ -183,7 +183,13 @@ Rules:
       estimatedValue: (parsed['estimatedValue'] as number) ?? null,
       attributes: (parsed['attributes'] as Record<string, unknown>) ?? {},
       confidence: (parsed['confidence'] as number) ?? 0.5,
-      tags: Array.isArray(parsed['tags']) ? (parsed['tags'] as string[]).slice(0, 3) : [],
+      tags: (() => {
+        const raw = parsed['tags'];
+        if (Array.isArray(raw)) return (raw as string[]).slice(0, 5);
+        if (typeof raw === 'string' && raw.trim())
+          return raw.split(',').map((t) => t.trim()).filter(Boolean).slice(0, 5);
+        return [];
+      })(),
       suggestedRoom: matchedRoom
         ? {
             roomId: matchedRoom.roomId,
