@@ -50,6 +50,7 @@ class AiScanResult {
     this.estimatedValue,
     this.attributes = const {},
     this.confidence = 0.0,
+    this.tags = const [],
     this.suggestedRoom,
     this.invoiceData,
     this.capturedPhotoUrls = const [],
@@ -62,6 +63,7 @@ class AiScanResult {
   final int? estimatedValue;
   final Map<String, dynamic> attributes;
   final double confidence;
+  final List<String> tags;
   final AiRoomSuggestion? suggestedRoom;
   final AiInvoiceData? invoiceData;
   final List<String> capturedPhotoUrls;
@@ -69,6 +71,7 @@ class AiScanResult {
   factory AiScanResult.fromJson(Map<String, dynamic> json) {
     final roomJson = json['suggestedRoom'] as Map<String, dynamic>?;
     final invoiceJson = json['invoiceData'] as Map<String, dynamic>?;
+    final rawTags = json['tags'] as List<dynamic>?;
 
     return AiScanResult(
       name: json['name'] as String? ?? 'Unknown item',
@@ -78,6 +81,7 @@ class AiScanResult {
       estimatedValue: (json['estimatedValue'] as num?)?.toInt(),
       attributes: (json['attributes'] as Map<String, dynamic>?) ?? {},
       confidence: (json['confidence'] as num?)?.toDouble() ?? 0.0,
+      tags: rawTags?.map((t) => t.toString()).toList() ?? [],
       suggestedRoom:
           roomJson != null ? AiRoomSuggestion.fromJson(roomJson) : null,
       invoiceData:
@@ -93,6 +97,7 @@ class AiScanResult {
     int? estimatedValue,
     Map<String, dynamic>? attributes,
     double? confidence,
+    List<String>? tags,
     AiRoomSuggestion? suggestedRoom,
     AiInvoiceData? invoiceData,
     List<String>? capturedPhotoUrls,
@@ -105,6 +110,7 @@ class AiScanResult {
         estimatedValue: estimatedValue ?? this.estimatedValue,
         attributes: attributes ?? this.attributes,
         confidence: confidence ?? this.confidence,
+        tags: tags ?? this.tags,
         suggestedRoom: suggestedRoom ?? this.suggestedRoom,
         invoiceData: invoiceData ?? this.invoiceData,
         capturedPhotoUrls: capturedPhotoUrls ?? this.capturedPhotoUrls,
