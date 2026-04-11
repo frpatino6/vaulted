@@ -77,6 +77,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @UseGuards(AuthGuard('jwt-refresh'))
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
@@ -129,7 +130,6 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    console.log('[MFA VERIFY] code:', dto.code, 'user:', user?.sub ?? 'NO USER');
     const ip = req.ip ?? 'unknown';
     const { accessToken, refreshToken } = await this.authService.verifyMfa(
       user.sub,

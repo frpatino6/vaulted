@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { join } from 'node:path';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import helmet from 'helmet';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const cookieParser = require('cookie-parser') as () => unknown;
 import { AppModule } from './app.module';
@@ -22,10 +23,18 @@ async function bootstrap(): Promise<void> {
     'http://localhost:8080',
     'https://vaulted-prod-2026.web.app',
     'https://vaulted-prod-2026.firebaseapp.com',
-    // Always allow the canonical API domain so CachedNetworkImage on Flutter
-    // Web (CanvasKit) can fetch /uploads/* from the same host.
+    // Allow the canonical API domain so Flutter Web (CanvasKit) can fetch
+    // /uploads/* when the web app and API share the same hostname.
     'https://api-vaulted.casacam.net',
   ].filter(Boolean);
+
+  // Security headers — must be registered before CORS and routes.
+  // crossOriginResourcePolicy is set to same-site so uploaded media files
+  // can be fetched by the Flutter Web app (same eTLD+1: casacam.net).
+  app.use(helmet({
+    crossOriginResourcePolicy: { policy: 'same-site' },
+    contentSecurityPolicy: false, // API-only server, no HTML served
+  }));
 
   app.enableCors({
     origin: allowedOrigins,
@@ -36,19 +45,25 @@ async function bootstrap(): Promise<void> {
 
   app.use(cookieParser());
 
-  // Serve uploaded files at /uploads/* — must be registered after setGlobalPrefix
-  // so NestJS routing does not intercept these paths.
-  // The cors() middleware registered above runs before this handler, so all
-  // /uploads responses include the correct Access-Control-Allow-Origin header,
-  // which is required by Flutter Web (CanvasKit fetch API).
+  // Serve uploaded files at /uploads/*.
+  // CORS for /uploads is handled per-request: only set the header when
+  // the request Origin is in the allowedOrigins list. This prevents any
+  // third-party site from fetching private inventory media.
+  app.use('/uploads', (
+    req: import('express').Request,
+    res: import('express').Response,
+    next: import('express').NextFunction,
+  ) => {
+    const origin = req.headers['origin'] as string | undefined;
+    if (origin && (allowedOrigins as string[]).includes(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Vary', 'Origin');
+    }
+    next();
+  });
+
   app.useStaticAssets(join(process.cwd(), 'uploads'), {
     prefix: '/uploads',
-    setHeaders: (res) => {
-      // Belt-and-suspenders: explicitly set CORS headers on every static
-      // file response so CanvasKit fetch() does not get blocked.
-      res.setHeader('Access-Control-Allow-Origin', '*');
-      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-    },
   });
 
   app.useGlobalPipes(
