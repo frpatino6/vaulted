@@ -35,19 +35,29 @@ export interface AnalyzeItemResult {
 @Injectable()
 export class AiVisionService {
   private readonly logger = new Logger(AiVisionService.name);
-  private readonly client: Anthropic;
   private readonly model: string;
   private readonly appUrl: string;
+  private _client: Anthropic | null = null;
 
   constructor(
     private readonly config: ConfigService,
     private readonly costLogger: AiCostLoggerService,
   ) {
-    this.client = new Anthropic({
-      apiKey: config.getOrThrow<string>('ANTHROPIC_API_KEY'),
-    });
-    this.model = config.get<string>('AI_VISION_MODEL') ?? 'claude-opus-4-5';
+    this.model = config.get<string>('AI_VISION_MODEL') ?? 'claude-sonnet-4-6';
     this.appUrl = config.get<string>('APP_URL') ?? 'http://localhost:3000';
+  }
+
+  private get client(): Anthropic {
+    if (!this._client) {
+      const apiKey = this.config.get<string>('ANTHROPIC_API_KEY');
+      if (!apiKey) {
+        throw new BadRequestException(
+          'AI Vision is not configured. Set ANTHROPIC_API_KEY in environment.',
+        );
+      }
+      this._client = new Anthropic({ apiKey });
+    }
+    return this._client;
   }
 
   async analyzeItem(
