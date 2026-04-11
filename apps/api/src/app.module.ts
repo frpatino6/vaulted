@@ -24,6 +24,7 @@ import { WardrobeModule } from './modules/wardrobe/wardrobe.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { MfaVerifiedGuard } from './common/guards/mfa-verified.guard';
+import { GuestExpirationGuard } from './common/guards/guest-expiration.guard';
 import { Tenant } from './modules/tenants/entities/tenant.entity';
 import { User } from './modules/users/entities/user.entity';
 import { AuditLog } from './modules/audit/entities/audit-log.entity';
@@ -80,6 +81,7 @@ import { AuditLog } from './modules/audit/entities/audit-log.entity';
         };
       },
     }),
+    TypeOrmModule.forFeature([User]),
 
     RedisModule,
     CommonModule,
@@ -98,11 +100,12 @@ import { AuditLog } from './modules/audit/entities/audit-log.entity';
     WardrobeModule,
   ],
   providers: [
-    // Order matters: Throttler → JWT → MFA → Roles
+    // Order matters: Throttler → JWT → MFA → Roles → Guest Expiration
     { provide: APP_GUARD, useClass: AppThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: MfaVerifiedGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
+    { provide: APP_GUARD, useClass: GuestExpirationGuard },
   ],
 })
 export class AppModule {}

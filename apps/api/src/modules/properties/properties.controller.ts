@@ -46,13 +46,15 @@ export class PropertiesController {
   }
 
   @Get()
+  @Roles(Role.OWNER, Role.MANAGER, Role.STAFF, Role.AUDITOR)
   findAll(@CurrentUser() user: JwtPayload) {
-    return this.propertiesService.findAll(user.tenantId);
+    return this.propertiesService.findAll(user.tenantId, user.role, user.sub);
   }
 
   @Get(':id')
+  @Roles(Role.OWNER, Role.MANAGER, Role.STAFF, Role.AUDITOR)
   findById(@CurrentUser() user: JwtPayload, @Param('id') propertyId: string) {
-    return this.propertiesService.findById(user.tenantId, propertyId);
+    return this.propertiesService.findById(user.tenantId, propertyId, user.role, user.sub);
   }
 
   @Roles(Role.OWNER, Role.MANAGER)

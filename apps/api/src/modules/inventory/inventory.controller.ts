@@ -52,6 +52,7 @@ export class InventoryController {
   }
 
   @Get()
+  @Roles(Role.OWNER, Role.MANAGER, Role.STAFF, Role.AUDITOR)
   findAll(
     @CurrentUser() user: JwtPayload,
     @Query('propertyId') propertyId?: string,
@@ -59,15 +60,21 @@ export class InventoryController {
     @Query('category') category?: string,
     @Query('status') status?: string,
   ) {
-    return this.inventoryService.findAll(user.tenantId, {
-      propertyId,
-      roomId,
-      category,
-      status,
-    });
+    return this.inventoryService.findAll(
+      user.tenantId,
+      {
+        propertyId,
+        roomId,
+        category,
+        status,
+      },
+      user.role,
+      user.sub,
+    );
   }
 
   @Get('search')
+  @Roles(Role.OWNER, Role.MANAGER, Role.STAFF, Role.AUDITOR)
   search(
     @CurrentUser() user: JwtPayload,
     @Query('q') query?: string,
@@ -77,19 +84,25 @@ export class InventoryController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
-    return this.inventoryService.search(user.tenantId, {
-      query,
-      category,
-      propertyId,
-      status,
-      page: page ? Number(page) : undefined,
-      limit: limit ? Number(limit) : undefined,
-    });
+    return this.inventoryService.search(
+      user.tenantId,
+      {
+        query,
+        category,
+        propertyId,
+        status,
+        page: page ? Number(page) : undefined,
+        limit: limit ? Number(limit) : undefined,
+      },
+      user.role,
+      user.sub,
+    );
   }
 
   @Get(':id')
+  @Roles(Role.OWNER, Role.MANAGER, Role.STAFF, Role.AUDITOR)
   findById(@CurrentUser() user: JwtPayload, @Param('id') itemId: string) {
-    return this.inventoryService.findById(user.tenantId, itemId);
+    return this.inventoryService.findById(user.tenantId, itemId, user.role, user.sub);
   }
 
   @Roles(Role.OWNER, Role.MANAGER)
@@ -189,6 +202,7 @@ export class InventoryController {
   }
 
   @Get(':id/history')
+  @Roles(Role.OWNER, Role.MANAGER, Role.STAFF, Role.AUDITOR)
   getHistory(@CurrentUser() user: JwtPayload, @Param('id') itemId: string) {
     return this.inventoryService.getHistory(user.tenantId, itemId);
   }

@@ -6,6 +6,7 @@ import { InventoryService } from './inventory.service';
 import { Item, ItemSchema } from './schemas/item.schema';
 import { ItemHistory, ItemHistorySchema } from './schemas/item-history.schema';
 import { Property, PropertySchema } from '../properties/schemas/property.schema';
+import { CommonModule } from '../../common/common.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { Property, PropertySchema } from '../properties/schemas/property.schema'
       { name: Property.name, schema: PropertySchema },
     ]),
     TypeOrmModule.forFeature([]),
+    CommonModule,
   ],
   controllers: [InventoryController],
   providers: [InventoryService],

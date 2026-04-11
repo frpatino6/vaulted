@@ -55,11 +55,13 @@ export class WardrobeController {
   }
 
   @Get('outfits')
+  @Roles(Role.OWNER, Role.MANAGER)
   listOutfits(@CurrentUser() user: JwtPayload) {
     return this.wardrobeService.listOutfits(user.tenantId);
   }
 
   @Get('outfits/:id')
+  @Roles(Role.OWNER, Role.MANAGER)
   getOutfit(@CurrentUser() user: JwtPayload, @Param('id') outfitId: string) {
     return this.wardrobeService.getOutfitWithItems(user.tenantId, outfitId);
   }
@@ -198,6 +200,7 @@ export class WardrobeController {
   }
 
   @Get('dry-cleaning/:itemId')
+  @Roles(Role.OWNER, Role.MANAGER)
   listDryCleaningHistory(
     @CurrentUser() user: JwtPayload,
     @Param('itemId') itemId: string,
