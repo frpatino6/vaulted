@@ -62,7 +62,9 @@ class _AiItemReviewScreenState extends ConsumerState<AiItemReviewScreen> {
     _currentValueCtrl = TextEditingController(
       text: r.estimatedValue != null ? r.estimatedValue.toString() : '',
     );
-    _tagsCtrl = TextEditingController();
+    _tagsCtrl = TextEditingController(
+      text: r.tags.join(', '),
+    );
     _category = _categories.contains(r.category) ? r.category : 'other';
 
     // Pre-select suggested room
@@ -222,7 +224,7 @@ class _AiItemReviewScreenState extends ConsumerState<AiItemReviewScreen> {
             // ── Tags ──────────────────────────────────────────
             _AiField(
               label: 'ETIQUETAS',
-              aiSuggested: false,
+              aiSuggested: widget.result.tags.isNotEmpty,
               child: _textField(_tagsCtrl, hint: 'tag1, tag2, ...'),
             ),
             const SizedBox(height: AppSpacing.xxl),
