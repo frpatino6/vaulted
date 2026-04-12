@@ -712,7 +712,7 @@ class _SpeedDial extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.sm),
           _DialItem(
-            label: 'Agregar ítem con IA',
+            label: 'Add item with AI',
             icon: Icons.auto_awesome,
             onTap: onAiScan,
             isAi: true,
