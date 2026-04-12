@@ -705,7 +705,7 @@ class _SpeedDial extends StatelessWidget {
         // ── Options (visible when open) ──────────────────────
         if (isOpen) ...[
           _DialItem(
-            label: 'Agregar planta',
+            label: 'Add floor',
             icon: Icons.villa_outlined,
             onTap: onAddFloor,
             isAi: false,
