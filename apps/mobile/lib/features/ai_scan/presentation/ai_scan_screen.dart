@@ -50,8 +50,8 @@ class _AiScanScreenState extends ConsumerState<AiScanScreen> {
       body: switch (state) {
         AiScanCaptureProduct() || AiScanResultState() => _CaptureStep(
             step: 1,
-            title: 'Foto del producto',
-            subtitle: 'La IA identificará el ítem automáticamente',
+            title: 'Product photo',
+            subtitle: 'AI will identify the item automatically',
             canSkip: false,
             onCapture: _captureProduct,
             onGallery: _pickProductFromGallery,
@@ -59,8 +59,8 @@ class _AiScanScreenState extends ConsumerState<AiScanScreen> {
           ),
         AiScanCaptureInvoice() => _CaptureStep(
             step: 2,
-            title: 'Foto de la factura',
-            subtitle: 'Extrae precio, fecha y número de serie',
+            title: 'Receipt photo',
+            subtitle: 'Extracts price, date and serial number',
             canSkip: true,
             onCapture: _captureInvoice,
             onGallery: _pickInvoiceFromGallery,
@@ -146,7 +146,7 @@ class _CaptureStep extends StatelessWidget {
   final VoidCallback onGallery;
   final VoidCallback? onSkip;
 
-  static const _tapHint = 'Toca aquí o el botón para fotografiar';
+  static const _tapHint = 'Tap here or the button to take a photo';
 
   @override
   Widget build(BuildContext context) {
@@ -167,7 +167,7 @@ class _CaptureStep extends StatelessWidget {
                 ),
                 const Spacer(),
                 Text(
-                  'PASO $step DE 2',
+                  'STEP $step OF 2',
                   style: const TextStyle(
                     color: AppColors.accent,
                     fontSize: 11,
@@ -317,7 +317,7 @@ class _CaptureStep extends StatelessWidget {
                         ),
                       ),
                     ),
-                    // Spacer para centrar el shutter
+                    // Spacer to center the shutter button
                     const SizedBox(width: AppSpacing.xl),
                     const SizedBox(width: 48),
                   ],
@@ -327,7 +327,7 @@ class _CaptureStep extends StatelessWidget {
                   GestureDetector(
                     onTap: onSkip,
                     child: const Text(
-                      'Saltar este paso  →',
+                      'Skip this step  →',
                       style: TextStyle(
                         color: AppColors.accent,
                         fontSize: 13,
@@ -425,7 +425,7 @@ class _AnalyzingView extends StatelessWidget {
                 ),
                 SizedBox(height: AppSpacing.xl),
                 Text(
-                  'Analizando imágenes...',
+                  'Analyzing images...',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 18,
@@ -434,7 +434,7 @@ class _AnalyzingView extends StatelessWidget {
                 ),
                 SizedBox(height: AppSpacing.sm),
                 Text(
-                  'La IA está identificando el ítem\ny extrayendo datos de la factura',
+                  'AI is identifying the item\nand extracting receipt data',
                   style: TextStyle(color: Colors.white54, fontSize: 13),
                   textAlign: TextAlign.center,
                 ),
@@ -462,7 +462,7 @@ class _ErrorView extends StatelessWidget {
                     color: AppColors.error, size: 48),
                 const SizedBox(height: AppSpacing.md),
                 const Text(
-                  'El análisis falló',
+                  'Analysis failed',
                   style: TextStyle(
                       color: Colors.white,
                       fontSize: 18,
@@ -482,12 +482,12 @@ class _ErrorView extends StatelessWidget {
                     backgroundColor: AppColors.accent,
                     foregroundColor: Colors.black,
                   ),
-                  child: const Text('Intentar de nuevo'),
+                  child: const Text('Try again'),
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Cancelar',
+                  child: const Text('Cancel',
                       style: TextStyle(color: Colors.white54)),
                 ),
               ],

@@ -99,7 +99,7 @@ class _AiItemReviewScreenState extends ConsumerState<AiItemReviewScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.background,
         foregroundColor: AppColors.onBackground,
-        title: const Text('Revisar ítem'),
+        title: const Text('Review item'),
         actions: [
           // Confidence badge
           Padding(
@@ -125,9 +125,9 @@ class _AiItemReviewScreenState extends ConsumerState<AiItemReviewScreen> {
 
             // ── Name ──────────────────────────────────────────
             _AiField(
-              label: 'NOMBRE',
+              label: 'NAME',
               aiSuggested: true,
-              child: _textField(_nameCtrl, hint: 'Nombre del ítem'),
+              child: _textField(_nameCtrl, hint: 'Item name'),
             ),
             const SizedBox(height: AppSpacing.md),
 
@@ -136,7 +136,7 @@ class _AiItemReviewScreenState extends ConsumerState<AiItemReviewScreen> {
               children: [
                 Expanded(
                   child: _AiField(
-                    label: 'CATEGORÍA',
+                    label: 'CATEGORY',
                     aiSuggested: true,
                     child: _categoryDropdown(),
                   ),
@@ -144,7 +144,7 @@ class _AiItemReviewScreenState extends ConsumerState<AiItemReviewScreen> {
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: _AiField(
-                    label: 'SUBCATEGORÍA',
+                    label: 'SUBCATEGORY',
                     aiSuggested: widget.result.subcategory.isNotEmpty,
                     child: _textField(_subcategoryCtrl, hint: 'Opcional'),
                   ),
@@ -155,7 +155,7 @@ class _AiItemReviewScreenState extends ConsumerState<AiItemReviewScreen> {
 
             // ── Brand ─────────────────────────────────────────
             _AiField(
-              label: 'MARCA',
+              label: 'BRAND',
               aiSuggested: widget.result.brand != null,
               child: _textField(_brandCtrl, hint: 'Opcional'),
             ),
@@ -163,7 +163,7 @@ class _AiItemReviewScreenState extends ConsumerState<AiItemReviewScreen> {
 
             // ── Room selector ─────────────────────────────────
             _AiField(
-              label: 'HABITACIÓN',
+              label: 'ROOM',
               aiSuggested: widget.result.suggestedRoom != null,
               child: _roomDropdown(),
             ),
@@ -188,7 +188,7 @@ class _AiItemReviewScreenState extends ConsumerState<AiItemReviewScreen> {
               children: [
                 Expanded(
                   child: _AiField(
-                    label: 'PRECIO DE COMPRA',
+                    label: 'PURCHASE PRICE',
                     aiSuggested: widget.result.invoiceData?.purchasePrice != null,
                     child: _textField(
                       _purchasePriceCtrl,
@@ -200,7 +200,7 @@ class _AiItemReviewScreenState extends ConsumerState<AiItemReviewScreen> {
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: _AiField(
-                    label: 'VALOR ESTIMADO',
+                    label: 'ESTIMATED VALUE',
                     aiSuggested: widget.result.estimatedValue != null,
                     child: _textField(
                       _currentValueCtrl,
@@ -215,7 +215,7 @@ class _AiItemReviewScreenState extends ConsumerState<AiItemReviewScreen> {
 
             // ── Serial number ─────────────────────────────────
             _AiField(
-              label: 'NÚMERO DE SERIE',
+              label: 'SERIAL NUMBER',
               aiSuggested: widget.result.invoiceData?.serialNumber != null,
               child: _textField(_serialCtrl, hint: 'Opcional'),
             ),
@@ -223,7 +223,7 @@ class _AiItemReviewScreenState extends ConsumerState<AiItemReviewScreen> {
 
             // ── Tags ──────────────────────────────────────────
             _AiField(
-              label: 'ETIQUETAS',
+              label: 'TAGS',
               aiSuggested: widget.result.tags.isNotEmpty,
               child: _textField(_tagsCtrl, hint: 'tag1, tag2, ...'),
             ),
@@ -252,7 +252,7 @@ class _AiItemReviewScreenState extends ConsumerState<AiItemReviewScreen> {
                         ),
                       )
                     : const Text(
-                        'Guardar ítem',
+                        'Save item',
                         style: TextStyle(
                           fontWeight: FontWeight.w700,
                           fontSize: 15,
@@ -263,7 +263,7 @@ class _AiItemReviewScreenState extends ConsumerState<AiItemReviewScreen> {
             const SizedBox(height: AppSpacing.sm),
             Center(
               child: Text(
-                'Los campos ✦ fueron sugeridos por IA — revisa antes de guardar',
+                'Fields marked ✦ were suggested by AI — review before saving',
                 style: TextStyle(
                   fontSize: 11,
                   color: AppColors.onSurfaceVariant,
@@ -309,6 +309,7 @@ class _AiItemReviewScreenState extends ConsumerState<AiItemReviewScreen> {
         child: DropdownButton<String>(
           value: _category,
           isExpanded: true,
+          isDense: true,
           dropdownColor: AppColors.surface,
           style: const TextStyle(color: AppColors.onBackground, fontSize: 14),
           onChanged: (v) => setState(() => _category = v ?? _category),
@@ -326,7 +327,7 @@ class _AiItemReviewScreenState extends ConsumerState<AiItemReviewScreen> {
       return const Padding(
         padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         child: Text(
-          'Sin habitaciones disponibles',
+          'No rooms available',
           style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 14),
         ),
       );
@@ -338,8 +339,9 @@ class _AiItemReviewScreenState extends ConsumerState<AiItemReviewScreen> {
         child: DropdownButton<RoomModel>(
           value: _selectedRoom,
           isExpanded: true,
+          isDense: true,
           hint: const Text(
-            'Selecciona una habitación',
+            'Select a room',
             style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 14),
           ),
           dropdownColor: AppColors.surface,
@@ -361,13 +363,13 @@ class _AiItemReviewScreenState extends ConsumerState<AiItemReviewScreen> {
   Future<void> _save() async {
     if (_nameCtrl.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('El nombre es obligatorio')),
+        const SnackBar(content: Text('Name is required')),
       );
       return;
     }
     if (_selectedRoom == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Selecciona una habitación')),
+        const SnackBar(content: Text('Please select a room')),
       );
       return;
     }
@@ -420,7 +422,7 @@ class _AiItemReviewScreenState extends ConsumerState<AiItemReviewScreen> {
       setState(() => _saving = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error al guardar: $e'),
+          content: Text('Error saving item: $e'),
           backgroundColor: AppColors.error,
         ),
       );
@@ -482,8 +484,8 @@ class _AiBanner extends StatelessWidget {
           Expanded(
             child: Text(
               hasInvoice
-                  ? 'La IA analizó el producto y la factura. Revisa los campos antes de guardar.'
-                  : 'La IA analizó el producto. Puedes completar los campos adicionales manualmente.',
+                  ? 'AI analyzed the product and receipt. Review the fields before saving.'
+                  : 'AI analyzed the product. You can fill in additional fields manually.',
               style: const TextStyle(
                 color: AppColors.accent,
                 fontSize: 12,
