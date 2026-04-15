@@ -23,6 +23,10 @@ import '../../features/maintenance/presentation/maintenance_list_screen.dart';
 import '../../features/movements/presentation/movements_screen.dart';
 import '../../features/movements/presentation/movement_scan_screen.dart';
 import '../../features/movements/presentation/movement_detail_screen.dart';
+import '../../features/insurance/presentation/insurance_list_screen.dart';
+import '../../features/insurance/presentation/insurance_detail_screen.dart';
+import '../../features/insurance/presentation/insurance_form_screen.dart';
+import '../../features/insurance/presentation/coverage_gaps_screen.dart';
 
 GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
   return GoRouter(
@@ -161,6 +165,36 @@ GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
         builder: (context, state) {
           final id = state.pathParameters['id'] ?? '';
           return MovementScanScreen(movementId: id);
+        },
+      ),
+      GoRoute(
+        path: '/insurance',
+        builder: (context, state) => const InsuranceListScreen(),
+      ),
+      GoRoute(
+        path: '/insurance/new',
+        builder: (context, state) => const InsuranceFormScreen(),
+      ),
+      GoRoute(
+        path: '/insurance/:id',
+        builder: (context, state) {
+          final id = state.pathParameters['id'] ?? '';
+          return InsuranceDetailScreen(policyId: id);
+        },
+      ),
+      GoRoute(
+        path: '/insurance/:id/edit',
+        builder: (context, state) {
+          // Policy passed via GoRouter extra
+          final policy = state.extra as dynamic;
+          return InsuranceFormScreen(policy: policy);
+        },
+      ),
+      GoRoute(
+        path: '/insurance/:id/gaps',
+        builder: (context, state) {
+          final id = state.pathParameters['id'] ?? '';
+          return CoverageGapsScreen(policyId: id);
         },
       ),
       GoRoute(
