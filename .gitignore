@@ -45,3 +45,4 @@ logs/
 !apps/mobile/firebase.json
 !apps/mobile/.firebaserc
 !packages/shared-types/package.json
+!.claude/settings.json

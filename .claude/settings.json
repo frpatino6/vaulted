@@ -1,0 +1,21 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "file=$(jq -r '.tool_input.file_path'); echo \"$file\" | grep -q '\\.dart$' && command -v flutter > /dev/null 2>&1 && cd apps/mobile && flutter analyze --no-fatal-warnings 2>&1 | tail -10 || true",
+            "statusMessage": "Analizando Dart..."
+          },
+          {
+            "type": "command",
+            "command": "file=$(jq -r '.tool_input.file_path'); echo \"$file\" | grep -qE 'apps/api/src/.*\\.ts$' && cd apps/api && npx eslint --max-warnings=0 \"$file\" 2>&1 | tail -15 || true",
+            "statusMessage": "Analizando TypeScript..."
+          }
+        ]
+      }
+    ]
+  }
+}

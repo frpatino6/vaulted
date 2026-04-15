@@ -90,23 +90,36 @@ export class AiVisionService {
     return this.parseResponse(raw, rooms, indexedRooms);
   }
 
+  private readonly ALLOWED_UPLOAD_DIR = path.resolve('/app/uploads');
+
   private resolveImageToPart(imageUrl: string): Part {
     const localPath = imageUrl.startsWith(this.appUrl)
       ? imageUrl.replace(this.appUrl, '')
       : imageUrl;
 
-    const filePath = path.join('/app', localPath);
+    // Resolve to absolute path and verify it stays within the uploads directory
+    const filePath = path.resolve('/app', localPath.replace(/^\/+/, ''));
+    if (!filePath.startsWith(this.ALLOWED_UPLOAD_DIR + path.sep) &&
+        filePath !== this.ALLOWED_UPLOAD_DIR) {
+      throw new BadRequestException('Invalid image path.');
+    }
 
     if (!fs.existsSync(filePath)) {
-      throw new BadRequestException(`Image not found: ${localPath}`);
+      throw new BadRequestException('Image not found.');
     }
+
+    const ext = path.extname(filePath).toLowerCase();
+    const mimeMap: Record<string, string> = {
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.png': 'image/png',
+      '.webp': 'image/webp',
+    };
+    const mimeType = mimeMap[ext] ?? 'image/jpeg';
 
     const data = fs.readFileSync(filePath).toString('base64');
     return {
-      inlineData: {
-        mimeType: 'image/jpeg',
-        data,
-      },
+      inlineData: { mimeType, data },
     };
   }
 
