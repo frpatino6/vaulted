@@ -32,6 +32,13 @@ const REFRESH_COOKIE_OPTIONS = {
   path: '/api/auth/refresh',
 };
 
+const CLEAR_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env['NODE_ENV'] === 'production',
+  sameSite: (process.env['NODE_ENV'] === 'production' ? 'none' : 'lax') as 'none' | 'lax',
+  path: '/api/auth/refresh',
+};
+
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -100,16 +107,32 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const token = req.headers.authorization?.replace('Bearer ', '') ?? '';
+    const accessToken = req.headers.authorization?.replace('Bearer ', '') ?? '';
+    const refreshCookie = req.cookies?.['refresh_token'] as string | undefined;
     const ip = req.ip ?? 'unknown';
 
-    // Extract refreshTokenId from cookie token if possible
-    const refreshTokenId = (payload as JwtRefreshPayload).refreshTokenId;
+    await this.authService.logout(accessToken, payload, refreshCookie, ip);
 
-    await this.authService.logout(token, payload, refreshTokenId, ip);
-
-    res.clearCookie('refresh_token', { path: '/api/auth/refresh' });
+    res.clearCookie('refresh_token', CLEAR_COOKIE_OPTIONS);
     return { message: 'Logged out successfully' };
+  }
+
+  @SkipMfa()
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Post('logout-all')
+  @HttpCode(HttpStatus.OK)
+  async logoutAll(
+    @CurrentUser() payload: JwtPayload,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const accessToken = req.headers.authorization?.replace('Bearer ', '') ?? '';
+    const ip = req.ip ?? 'unknown';
+
+    await this.authService.logoutAll(payload.sub, payload.tenantId, accessToken, ip);
+
+    res.clearCookie('refresh_token', CLEAR_COOKIE_OPTIONS);
+    return { message: 'All sessions have been terminated' };
   }
 
   @SkipMfa()
@@ -129,7 +152,6 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    console.log('[MFA VERIFY] code:', dto.code, 'user:', user?.sub ?? 'NO USER');
     const ip = req.ip ?? 'unknown';
     const { accessToken, refreshToken } = await this.authService.verifyMfa(
       user.sub,
