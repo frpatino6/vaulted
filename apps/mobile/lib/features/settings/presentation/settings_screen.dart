@@ -120,6 +120,20 @@ class SettingsScreen extends ConsumerWidget {
             ),
             onTap: () => context.push('/wardrobe'),
           ),
+          ListTile(
+            leading: Icon(Icons.shield_outlined, color: AppColors.accent),
+            title: Text(
+              'Insurance',
+              style: Theme.of(
+                context,
+              ).textTheme.bodyLarge?.copyWith(color: AppColors.onBackground),
+            ),
+            trailing: const Icon(
+              Icons.chevron_right,
+              color: AppColors.onSurfaceVariant,
+            ),
+            onTap: () => context.push('/insurance'),
+          ),
           const SizedBox(height: AppSpacing.xl),
           Text(
             'Account',

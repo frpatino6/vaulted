@@ -21,6 +21,7 @@ import { AiModule } from './modules/ai/ai.module';
 import { MaintenanceModule } from './modules/maintenance/maintenance.module';
 import { MovementsModule } from './modules/movements/movements.module';
 import { WardrobeModule } from './modules/wardrobe/wardrobe.module';
+import { InsuranceModule } from './modules/insurance/insurance.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { MfaVerifiedGuard } from './common/guards/mfa-verified.guard';
@@ -28,6 +29,8 @@ import { GuestExpirationGuard } from './common/guards/guest-expiration.guard';
 import { Tenant } from './modules/tenants/entities/tenant.entity';
 import { User } from './modules/users/entities/user.entity';
 import { AuditLog } from './modules/audit/entities/audit-log.entity';
+import { InsurancePolicy } from './modules/insurance/entities/insurance-policy.entity';
+import { InsuredItem } from './modules/insurance/entities/insured-item.entity';
 
 @Module({
   imports: [
@@ -60,7 +63,7 @@ import { AuditLog } from './modules/audit/entities/audit-log.entity';
         const isProd = config.get<string>('NODE_ENV') === 'production';
         const base = {
           type: 'postgres' as const,
-          entities: [Tenant, User, AuditLog],
+          entities: [Tenant, User, AuditLog, InsurancePolicy, InsuredItem],
           synchronize: config.get<string>('TYPEORM_SYNC') === 'true' || !isProd,
           logging: !isProd,
         };
@@ -98,6 +101,7 @@ import { AuditLog } from './modules/audit/entities/audit-log.entity';
     MaintenanceModule,
     MovementsModule,
     WardrobeModule,
+    InsuranceModule,
   ],
   providers: [
     // Order matters: Throttler → JWT → MFA → Roles → Guest Expiration

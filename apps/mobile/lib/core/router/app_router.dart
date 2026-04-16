@@ -27,6 +27,11 @@ import '../../features/ai_scan/data/models/ai_scan_result_model.dart';
 import '../../features/ai_scan/presentation/ai_scan_screen.dart';
 import '../../features/ai_scan/presentation/ai_item_review_screen.dart';
 import '../../features/properties/data/models/floor_model.dart';
+import '../../features/insurance/presentation/insurance_list_screen.dart';
+import '../../features/insurance/presentation/insurance_detail_screen.dart';
+import '../../features/insurance/presentation/insurance_form_screen.dart';
+import '../../features/insurance/presentation/coverage_gaps_screen.dart';
+import '../../features/insurance/presentation/claim_draft_screen.dart';
 
 GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
   return GoRouter(
@@ -117,7 +122,6 @@ GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
         path: '/wardrobe',
         builder: (context, state) => const WardrobeScreen(),
       ),
-
       GoRoute(
         path: '/wardrobe/outfits',
         builder: (context, state) => const OutfitListScreen(),
@@ -188,6 +192,43 @@ GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
             result: result,
             floors: floors,
           );
+        },
+      ),
+      // ── Insurance routes ───────────────────────────────────────────────────
+      GoRoute(
+        path: '/insurance',
+        builder: (context, state) => const InsuranceListScreen(),
+      ),
+      GoRoute(
+        path: '/insurance/new',
+        builder: (context, state) => const InsuranceFormScreen(),
+      ),
+      GoRoute(
+        path: '/insurance/:id',
+        builder: (context, state) {
+          final id = state.pathParameters['id'] ?? '';
+          return InsuranceDetailScreen(policyId: id);
+        },
+      ),
+      GoRoute(
+        path: '/insurance/:id/edit',
+        builder: (context, state) {
+          final policy = state.extra as dynamic;
+          return InsuranceFormScreen(policy: policy);
+        },
+      ),
+      GoRoute(
+        path: '/insurance/:id/gaps',
+        builder: (context, state) {
+          final id = state.pathParameters['id'] ?? '';
+          return CoverageGapsScreen(policyId: id);
+        },
+      ),
+      GoRoute(
+        path: '/insurance/:id/claim-draft',
+        builder: (context, state) {
+          final id = state.pathParameters['id'] ?? '';
+          return ClaimDraftScreen(policyId: id);
         },
       ),
       GoRoute(
