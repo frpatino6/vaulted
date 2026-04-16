@@ -29,7 +29,7 @@ export class Item {
   @Prop({ required: true, index: true })
   propertyId!: string;
 
-  @Prop({ required: false, default: null, index: true })
+  @Prop({ type: String, required: false, default: null, index: true })
   roomId?: string | null;
 
   @Prop({ required: true, trim: true })
