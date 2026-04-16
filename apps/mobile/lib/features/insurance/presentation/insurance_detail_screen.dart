@@ -81,7 +81,7 @@ class _InsuranceDetailScreenState
               icon: const Icon(Icons.edit_outlined),
               color: AppColors.accent,
               onPressed: () async {
-                await context.push('/insurance/${policy.id}/edit');
+                await context.push('/insurance/${policy.id}/edit', extra: policy);
                 if (context.mounted) {
                   ref
                       .read(insuranceDetailNotifierProvider.notifier)
