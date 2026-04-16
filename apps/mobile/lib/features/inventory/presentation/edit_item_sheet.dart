@@ -5,18 +5,29 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/item_photo_picker.dart';
 import '../../media/data/media_repository_provider.dart';
+import '../../properties/data/models/floor_model.dart';
+import '../../properties/data/models/room_model.dart';
 import '../../wardrobe/data/models/wardrobe_attributes.dart';
 import '../data/item_repository_provider.dart';
 import '../data/models/item_model.dart';
 import '../domain/item_list_notifier.dart';
 import '../domain/item_detail_notifier.dart';
 import '../../dashboard/domain/dashboard_notifier.dart';
+import 'assign_location_sheet.dart';
 
 class EditItemSheet extends ConsumerStatefulWidget {
-  const EditItemSheet({super.key, required this.item, required this.onUpdated});
+  const EditItemSheet({
+    super.key,
+    required this.item,
+    required this.onUpdated,
+    this.floors,
+  });
 
   final ItemModel item;
   final VoidCallback onUpdated;
+
+  /// When provided, the user can change the item's room via a structured picker.
+  final List<FloorModel>? floors;
 
   static const List<String> _categories = [
     'furniture',
@@ -51,6 +62,9 @@ class _EditItemSheetState extends ConsumerState<EditItemSheet> {
   late String _category;
   bool _submitting = false;
 
+  String? _selectedRoomId;
+  String? _selectedRoomName;
+
   @override
   void initState() {
     super.initState();
@@ -78,6 +92,43 @@ class _EditItemSheetState extends ConsumerState<EditItemSheet> {
     _category = EditItemSheet._categories.contains(item.category)
         ? item.category
         : 'other';
+
+    _selectedRoomId = item.roomId;
+    _selectedRoomName = _resolveRoomName(item.roomId);
+  }
+
+  String? _resolveRoomName(String? roomId) {
+    if (roomId == null) return null;
+    // Try to find the room name from floors if available
+    final floors = widget.floors;
+    if (floors == null) return widget.item.roomName ?? roomId;
+    for (final floor in floors) {
+      for (final room in floor.rooms) {
+        if (room.roomId == roomId) return room.name;
+      }
+    }
+    return widget.item.roomName ?? roomId;
+  }
+
+  Future<void> _openRoomPicker() async {
+    final floors = widget.floors;
+    if (floors == null || floors.isEmpty) return;
+    final picked = await showModalBottomSheet<RoomModel>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => AssignLocationSheet(
+        floors: floors,
+        initialRoomId: _selectedRoomId,
+        title: 'Change room',
+      ),
+    );
+    if (picked != null && mounted) {
+      setState(() {
+        _selectedRoomId = picked.roomId;
+        _selectedRoomName = picked.name;
+      });
+    }
   }
 
   @override
@@ -147,6 +198,7 @@ class _EditItemSheetState extends ConsumerState<EditItemSheet> {
         name: name,
         category: _category,
         subcategory: _subcategoryController.text.trim(),
+        roomId: _selectedRoomId != widget.item.roomId ? _selectedRoomId : null,
         serialNumber: serialNum.isEmpty ? null : serialNum,
         locationDetail: locationDet.isEmpty ? null : locationDet,
         valuation: {
@@ -324,11 +376,17 @@ class _EditItemSheetState extends ConsumerState<EditItemSheet> {
                     ),
                   ),
                   const SizedBox(height: AppSpacing.md),
+                  _RoomPickerField(
+                    roomName: _selectedRoomName,
+                    canChange: (widget.floors?.isNotEmpty) ?? false,
+                    onTap: _openRoomPicker,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
                   TextFormField(
                     controller: _locationDetailController,
                     decoration: const InputDecoration(
-                      labelText: 'Location / Section (optional)',
-                      hintText: 'e.g. Cabinet 3, Section A',
+                      labelText: 'Within room (optional)',
+                      hintText: 'e.g. Left shelf, Cabinet 3',
                     ),
                   ),
                   const SizedBox(height: AppSpacing.md),
@@ -402,6 +460,93 @@ class _EditItemSheetState extends ConsumerState<EditItemSheet> {
     );
   }
 }
+
+// ── Room picker field ──────────────────────────────────────────────────────
+
+class _RoomPickerField extends StatelessWidget {
+  const _RoomPickerField({
+    required this.roomName,
+    required this.canChange,
+    required this.onTap,
+  });
+
+  final String? roomName;
+  final bool canChange;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'LOCATION',
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
+            letterSpacing: 1.5,
+            fontSize: 10,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        GestureDetector(
+          onTap: canChange ? onTap : null,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.sm,
+            ),
+            decoration: BoxDecoration(
+              color: roomName != null
+                  ? AppColors.accent.withValues(alpha: 0.12)
+                  : AppColors.onSurfaceVariant.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: roomName != null
+                    ? AppColors.accent.withValues(alpha: 0.4)
+                    : AppColors.onSurfaceVariant.withValues(alpha: 0.2),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  roomName != null
+                      ? Icons.meeting_room_outlined
+                      : Icons.location_off_outlined,
+                  size: 18,
+                  color: roomName != null
+                      ? AppColors.accent
+                      : AppColors.onSurfaceVariant.withValues(alpha: 0.5),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    roomName ?? 'No location assigned',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: roomName != null
+                          ? AppColors.accent
+                          : AppColors.onSurfaceVariant.withValues(alpha: 0.5),
+                    ),
+                  ),
+                ),
+                if (canChange)
+                  Icon(
+                    Icons.edit_outlined,
+                    size: 16,
+                    color: roomName != null
+                        ? AppColors.accent
+                        : AppColors.onSurfaceVariant.withValues(alpha: 0.4),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Wardrobe fields ────────────────────────────────────────────────────────
 
 class _WardrobeFieldsSection extends StatefulWidget {
   const _WardrobeFieldsSection({super.key, required this.initialValue});

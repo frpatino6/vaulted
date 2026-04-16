@@ -6,6 +6,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../inventory/data/item_repository_provider.dart';
+import '../../inventory/presentation/assign_location_sheet.dart';
 import '../../media/data/media_repository_provider.dart';
 import '../../users/domain/current_user_jwt.dart';
 import '../data/models/address_model.dart';
@@ -97,6 +99,11 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
             onChangePhoto: canManageProperties
                 ? () => _changePropertyPhoto(context, ref, property)
                 : null,
+            onAssignLocation: (itemId) => _showAssignLocation(
+              context,
+              itemId,
+              property.floors,
+            ),
           );
         },
         loading: () => Center(
@@ -139,6 +146,25 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
         ],
       ),
     );
+  }
+
+  void _showAssignLocation(
+    BuildContext context,
+    String itemId,
+    List<FloorModel> floors,
+  ) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => AssignLocationSheet(
+        floors: floors,
+        itemId: itemId,
+      ),
+    ).then((_) {
+      // Refresh unlocated count after assignment
+      ref.invalidate(unlocatedItemsProvider(widget.propertyId));
+    });
   }
 
   void _showAddFloor(BuildContext context) {
@@ -220,13 +246,14 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
   }
 }
 
-class _PropertyDetailBody extends StatelessWidget {
+class _PropertyDetailBody extends ConsumerWidget {
   const _PropertyDetailBody({
     required this.property,
     required this.canManageProperties,
     required this.onRefresh,
     this.onAddFloor,
     this.onChangePhoto,
+    this.onAssignLocation,
   });
 
   final PropertyModel property;
@@ -234,6 +261,7 @@ class _PropertyDetailBody extends StatelessWidget {
   final VoidCallback onRefresh;
   final VoidCallback? onAddFloor;
   final VoidCallback? onChangePhoto;
+  final void Function(String itemId)? onAssignLocation;
 
   static const double _appBarExpandedHeight = 280;
 
@@ -242,7 +270,7 @@ class _PropertyDetailBody extends StatelessWidget {
       'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800';
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final hasHeroImage = property.photos.isNotEmpty;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final surfaceOverlay = isDark
@@ -379,7 +407,13 @@ class _PropertyDetailBody extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: AppSpacing.xxl),
+                const SizedBox(height: AppSpacing.lg),
+                _UnlocatedItemsBanner(
+                  propertyId: property.id,
+                  floors: property.floors,
+                  onAssignLocation: onAssignLocation,
+                ),
+                const SizedBox(height: AppSpacing.lg),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -494,6 +528,123 @@ class _PropertyDetailBody extends StatelessWidget {
     );
   }
 }
+
+// ── Unlocated items banner ─────────────────────────────────────────────────
+
+class _UnlocatedItemsBanner extends ConsumerWidget {
+  const _UnlocatedItemsBanner({
+    required this.propertyId,
+    required this.floors,
+    this.onAssignLocation,
+  });
+
+  final String propertyId;
+  final List<FloorModel> floors;
+  final void Function(String itemId)? onAssignLocation;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(unlocatedItemsProvider(propertyId));
+
+    return async.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (items) {
+        if (items.isEmpty) return const SizedBox.shrink();
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.orange.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: Colors.orange.withValues(alpha: 0.35),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.md,
+                  AppSpacing.md,
+                  AppSpacing.md,
+                  AppSpacing.sm,
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.location_off_outlined,
+                      size: 18,
+                      color: Colors.orange,
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Text(
+                        '${items.length} item${items.length == 1 ? '' : 's'} pending location',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Colors.orange,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.md,
+                  0,
+                  AppSpacing.md,
+                  AppSpacing.md,
+                ),
+                itemCount: items.length,
+                separatorBuilder: (_, __) =>
+                    const SizedBox(height: AppSpacing.xs),
+                itemBuilder: (context, index) {
+                  final item = items[index];
+                  return Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          item.name,
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(
+                                color: AppColors.onBackground
+                                    .withValues(alpha: 0.8),
+                              ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (onAssignLocation != null)
+                        TextButton(
+                          onPressed: () => onAssignLocation!(item.id),
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.orange,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.sm,
+                            ),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          child: const Text('Assign'),
+                        ),
+                    ],
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ── Luxury gradient background ─────────────────────────────────────────────
 
 class _LuxuryGradientBackground extends StatelessWidget {
   @override

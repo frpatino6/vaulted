@@ -8,6 +8,7 @@ import {
   IsObject,
   IsOptional,
   IsString,
+  IsUrl,
   MaxLength,
   ValidateNested,
 } from 'class-validator';
@@ -62,8 +63,9 @@ export class CreateItemDto {
   @IsString()
   propertyId!: string;
 
+  @IsOptional()
   @IsString()
-  roomId!: string;
+  roomId?: string;
 
   @IsString()
   @MaxLength(255)
@@ -93,7 +95,7 @@ export class CreateItemDto {
   @IsOptional()
   @IsArray()
   @ArrayMaxSize(20)
-  @IsString({ each: true })
+  @IsUrl({ require_tld: false }, { each: true })
   photos?: string[];
 
   @IsOptional()

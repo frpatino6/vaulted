@@ -630,6 +630,7 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
       builder: (ctx) => AddItemSheet(
         propertyId: widget.propertyId,
         roomId: widget.roomId,
+        roomName: widget.roomName,
         onAdded: () {
           ref.read(itemListNotifierProvider.notifier).load(widget.propertyId, widget.roomId);
         },
