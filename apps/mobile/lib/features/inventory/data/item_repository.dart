@@ -1,3 +1,4 @@
+import 'models/item_history_model.dart';
 import 'models/item_model.dart';
 import 'item_remote_data_source.dart';
 
@@ -91,4 +92,7 @@ class ItemRepository {
   }
 
   Future<void> deleteItem(String id) => _remote.deleteItem(id);
+
+  Future<List<ItemHistoryModel>> getItemHistory(String itemId) =>
+      _remote.getItemHistory(itemId);
 }

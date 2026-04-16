@@ -20,6 +20,7 @@ export class MaintenanceRecord {
   description?: string;
 
   @Prop({
+    type: String,
     enum: ['pending', 'completed', 'overdue', 'cancelled'],
     default: 'pending',
     index: true,

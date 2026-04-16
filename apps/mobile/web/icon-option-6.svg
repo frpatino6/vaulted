@@ -1,0 +1,124 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg6" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0E0E0E"/>
+      <stop offset="100%" style="stop-color:#1A1A1A"/>
+    </linearGradient>
+    <linearGradient id="gold6a" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F9ECA0"/>
+      <stop offset="50%" style="stop-color:#D4A843"/>
+      <stop offset="100%" style="stop-color:#8B6010"/>
+    </linearGradient>
+    <linearGradient id="gold6b" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#8B6010"/>
+      <stop offset="50%" style="stop-color:#E0C050"/>
+      <stop offset="100%" style="stop-color:#F9ECA0"/>
+    </linearGradient>
+    <radialGradient id="fpGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#D4A030;stop-opacity:0.2"/>
+      <stop offset="70%" style="stop-color:#D4A030;stop-opacity:0.06"/>
+      <stop offset="100%" style="stop-color:#D4A030;stop-opacity:0"/>
+    </radialGradient>
+    <radialGradient id="lockGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#1E3A5A;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#0A0A0A;stop-opacity:1"/>
+    </radialGradient>
+    <filter id="lineglow">
+      <feGaussianBlur stdDeviation="1.8" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+    <filter id="drop6">
+      <feDropShadow dx="0" dy="0" stdDeviation="10" flood-color="#D4A030" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" rx="112" ry="112" fill="url(#bg6)"/>
+  <!-- Ambient warm glow -->
+  <rect width="512" height="512" rx="112" ry="112" fill="url(#fpGlow)"/>
+
+  <!-- ============================================== -->
+  <!-- FINGERPRINT — ridges shaped into a diamond/V  -->
+  <!-- Modern biometric security + premium gem feel  -->
+  <!-- ============================================== -->
+
+  <!-- Fingerprint is centered at 256,264, radius ~175 -->
+  <!-- Ridges drawn as open arcs that follow fingerprint topology -->
+  <!-- The core center has a diamond/V shape cut out -->
+
+  <!-- Outer ridges (full arcs) — decreasing opacity outward -->
+  <g fill="none" stroke-linecap="round" filter="url(#lineglow)">
+
+    <!-- Ridge 12 (outermost) -->
+    <path d="M 104 310 Q 98 250, 130 196 Q 166 138, 256 118 Q 346 138, 382 196 Q 414 250, 408 310 Q 395 375, 348 414 Q 304 448, 256 455 Q 208 448, 164 414 Q 117 375, 104 310 Z"
+          stroke="url(#gold6a)" stroke-width="2.5" opacity="0.22"/>
+
+    <!-- Ridge 11 -->
+    <path d="M 116 308 Q 111 252, 140 200 Q 174 146, 256 128 Q 338 146, 372 200 Q 401 252, 396 308 Q 384 370, 340 407 Q 298 440, 256 446 Q 214 440, 172 407 Q 128 370, 116 308 Z"
+          stroke="url(#gold6a)" stroke-width="2.5" opacity="0.28"/>
+
+    <!-- Ridge 10 -->
+    <path d="M 128 306 Q 124 254, 151 206 Q 183 156, 256 138 Q 329 156, 361 206 Q 388 254, 384 306 Q 373 364, 332 399 Q 292 430, 256 436 Q 220 430, 180 399 Q 139 364, 128 306 Z"
+          stroke="url(#gold6a)" stroke-width="2.5" opacity="0.34"/>
+
+    <!-- Ridge 9 -->
+    <path d="M 140 304 Q 137 256, 162 212 Q 192 166, 256 149 Q 320 166, 350 212 Q 375 256, 372 304 Q 362 358, 324 391 Q 286 420, 256 426 Q 226 420, 188 391 Q 150 358, 140 304 Z"
+          stroke="url(#gold6b)" stroke-width="2.5" opacity="0.40"/>
+
+    <!-- Ridge 8 -->
+    <path d="M 153 302 Q 151 258, 174 218 Q 202 176, 256 160 Q 310 176, 338 218 Q 361 258, 359 302 Q 350 352, 315 382 Q 280 410, 256 415 Q 232 410, 197 382 Q 162 352, 153 302 Z"
+          stroke="url(#gold6b)" stroke-width="3" opacity="0.48"/>
+
+    <!-- Ridge 7 -->
+    <path d="M 167 300 Q 166 260, 187 224 Q 213 187, 256 172 Q 299 187, 325 224 Q 346 260, 345 300 Q 337 346, 306 374 Q 274 399, 256 404 Q 238 399, 206 374 Q 175 346, 167 300 Z"
+          stroke="url(#gold6a)" stroke-width="3" opacity="0.55"/>
+
+    <!-- Ridge 6 -->
+    <path d="M 181 298 Q 181 262, 200 230 Q 224 197, 256 184 Q 288 197, 312 230 Q 331 262, 331 298 Q 324 340, 297 365 Q 268 388, 256 392 Q 244 388, 215 365 Q 188 340, 181 298 Z"
+          stroke="url(#gold6a)" stroke-width="3" opacity="0.62"/>
+
+    <!-- Ridge 5 -->
+    <path d="M 196 296 Q 197 265, 214 237 Q 236 208, 256 197 Q 276 208, 298 237 Q 315 265, 315 296 Q 310 334, 287 356 Q 263 378, 256 381 Q 249 378, 225 356 Q 202 334, 196 296 Z"
+          stroke="url(#gold6b)" stroke-width="3.5" opacity="0.70"/>
+
+    <!-- Ridge 4 -->
+    <path d="M 212 294 Q 214 268, 229 244 Q 248 220, 256 210 Q 264 220, 283 244 Q 298 268, 300 294 Q 296 328, 277 348 Q 260 365, 256 368 Q 252 365, 235 348 Q 216 328, 212 294 Z"
+          stroke="url(#gold6b)" stroke-width="3.5" opacity="0.78"/>
+
+    <!-- Ridge 3 -->
+    <path d="M 228 292 Q 231 272, 244 252 Q 256 236, 268 252 Q 281 272, 284 292 Q 281 320, 266 338 Q 256 350, 256 352 Q 256 350, 246 338 Q 231 320, 228 292 Z"
+          stroke="url(#gold6a)" stroke-width="4" opacity="0.86"/>
+
+    <!-- Ridge 2 -->
+    <path d="M 241 284 Q 245 270, 256 258 Q 267 270, 271 284 Q 270 306, 260 320 Q 256 328, 256 330 Q 256 328, 252 320 Q 242 306, 241 284 Z"
+          stroke="url(#gold6a)" stroke-width="4" opacity="0.92"/>
+
+  </g>
+
+  <!-- ========================= -->
+  <!-- CENTER: Diamond lock icon -->
+  <!-- where the fingerprint core would be -->
+  <!-- ========================= -->
+
+  <!-- Dark circle clearing the center for the lock -->
+  <circle cx="256" cy="256" r="52" fill="#0E0E0E"/>
+  <circle cx="256" cy="256" r="48" fill="url(#lockGlow)"/>
+
+  <!-- Mini shield/lock shape in center -->
+  <!-- Padlock shackle (small) -->
+  <path d="M 234 258 L 234 240 A 22 22 0 0 1 278 240 L 278 258"
+        fill="none" stroke="url(#gold6a)" stroke-width="8" stroke-linecap="round"
+        filter="url(#drop6)"/>
+
+  <!-- Padlock body -->
+  <rect x="222" y="256" width="68" height="50" rx="10" fill="url(#gold6a)" filter="url(#drop6)"/>
+  <rect x="232" y="264" width="48" height="34" rx="6" fill="#0A1A2E"/>
+
+  <!-- Keyhole in mini lock -->
+  <circle cx="256" cy="274" r="9" fill="url(#gold6a)"/>
+  <circle cx="256" cy="274" r="6" fill="#07121F"/>
+  <rect x="253" y="279" width="6" height="12" rx="3" fill="#07121F"/>
+
+  <!-- Outer ring framing the center lock -->
+  <circle cx="256" cy="256" r="54" fill="none" stroke="url(#gold6a)" stroke-width="1.5" opacity="0.5" filter="url(#drop6)"/>
+</svg>

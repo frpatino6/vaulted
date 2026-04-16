@@ -1,0 +1,131 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Background: deep charcoal with warm undertone -->
+    <linearGradient id="bgGrad3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#12100E;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1C1A18;stop-opacity:1" />
+    </linearGradient>
+    <!-- Primary gold gradient -->
+    <linearGradient id="goldMain" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F9ECA0;stop-opacity:1" />
+      <stop offset="25%" style="stop-color:#E0C060;stop-opacity:1" />
+      <stop offset="60%" style="stop-color:#C09030;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8B6010;stop-opacity:1" />
+    </linearGradient>
+    <!-- Secondary gold (darker face) -->
+    <linearGradient id="goldDark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#C09030;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#7A5010;stop-opacity:1" />
+    </linearGradient>
+    <!-- Light face of gem -->
+    <linearGradient id="gemLight" x1="0%" y1="0%" x2="100%" y2="80%">
+      <stop offset="0%" style="stop-color:#FFF8D0;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#F0D870;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#C09030;stop-opacity:1" />
+    </linearGradient>
+    <!-- Gem medium face -->
+    <linearGradient id="gemMid" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#E8C050;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#906820;stop-opacity:1" />
+    </linearGradient>
+    <!-- Ambient glow -->
+    <radialGradient id="gemGlow" cx="50%" cy="45%" r="45%">
+      <stop offset="0%" style="stop-color:#D4A030;stop-opacity:0.25" />
+      <stop offset="100%" style="stop-color:#D4A030;stop-opacity:0" />
+    </radialGradient>
+    <filter id="gemShadow">
+      <feDropShadow dx="0" dy="8" stdDeviation="16" flood-color="#C09030" flood-opacity="0.5"/>
+    </filter>
+    <filter id="bgBlur">
+      <feGaussianBlur stdDeviation="2"/>
+    </filter>
+  </defs>
+
+  <!-- Background rounded square -->
+  <rect width="512" height="512" rx="112" ry="112" fill="url(#bgGrad3)"/>
+  <!-- Ambient glow overlay -->
+  <rect width="512" height="512" rx="112" ry="112" fill="url(#gemGlow)"/>
+
+  <!-- ============================================ -->
+  <!-- GEOMETRIC DIAMOND / GEM SHAPE               -->
+  <!-- A cut gemstone (like a brilliant cut diamond) -->
+  <!-- viewed from top — octagonal crown              -->
+  <!-- ============================================ -->
+
+  <!-- Shadow/glow layer behind gem -->
+  <ellipse cx="256" cy="295" rx="130" ry="30" fill="#C09030" opacity="0.15" filter="url(#bgBlur)"/>
+
+  <!-- GEM CROWN (top portion) — octagonal shape -->
+  <!-- Main crown face (top flat) -->
+  <polygon points="256,88 340,140 370,230 340,280 256,300 172,280 142,230 172,140"
+           fill="url(#gemLight)" filter="url(#gemShadow)"/>
+
+  <!-- Left upper crown facet -->
+  <polygon points="256,88 172,140 142,230 256,185"
+           fill="url(#goldDark)" opacity="0.85"/>
+
+  <!-- Right upper crown facet -->
+  <polygon points="256,88 340,140 370,230 256,185"
+           fill="url(#gemMid)" opacity="0.9"/>
+
+  <!-- Bottom left crown facet -->
+  <polygon points="142,230 172,280 256,300 256,185"
+           fill="url(#goldMain)" opacity="0.7"/>
+
+  <!-- Bottom right crown facet -->
+  <polygon points="370,230 340,280 256,300 256,185"
+           fill="url(#goldDark)" opacity="0.75"/>
+
+  <!-- Center table facet (the top flat octagon of the gem) -->
+  <polygon points="256,120 316,152 338,220 316,266 256,278 196,266 174,220 196,152"
+           fill="url(#gemLight)" opacity="0.6"/>
+
+  <!-- Bright highlight streak on gem -->
+  <polygon points="196,152 256,120 256,175 210,188"
+           fill="white" opacity="0.2"/>
+
+  <!-- GEM PAVILION (bottom pointed portion) -->
+  <!-- Main pavilion coming to a point -->
+  <polygon points="172,280 256,300 256,424"
+           fill="url(#goldDark)"/>
+  <polygon points="340,280 256,300 256,424"
+           fill="url(#goldMain)" opacity="0.8"/>
+  <polygon points="172,280 256,300 340,280"
+           fill="url(#goldMain)" opacity="0.5"/>
+
+  <!-- Pavilion lower facets -->
+  <polygon points="142,230 172,280 256,424"
+           fill="url(#goldDark)" opacity="0.6"/>
+  <polygon points="370,230 340,280 256,424"
+           fill="url(#gemMid)" opacity="0.65"/>
+
+  <!-- Edge lines for facets (thin gold lines) -->
+  <g stroke="#F9ECA0" stroke-width="1" opacity="0.4" fill="none">
+    <line x1="256" y1="88" x2="256" y2="185"/>
+    <line x1="256" y1="185" x2="142" y2="230"/>
+    <line x1="256" y1="185" x2="370" y2="230"/>
+    <line x1="256" y1="185" x2="256" y2="300"/>
+    <line x1="256" y1="300" x2="256" y2="424"/>
+    <line x1="172" y1="140" x2="256" y2="185"/>
+    <line x1="340" y1="140" x2="256" y2="185"/>
+    <line x1="172" y1="280" x2="256" y2="185"/>
+    <line x1="340" y1="280" x2="256" y2="185"/>
+  </g>
+
+  <!-- Outer edge of crown -->
+  <polygon points="256,88 340,140 370,230 340,280 256,300 172,280 142,230 172,140"
+           fill="none" stroke="url(#goldMain)" stroke-width="2" opacity="0.7"/>
+
+  <!-- Bottom point highlight -->
+  <circle cx="256" cy="424" r="4" fill="#F9ECA0" opacity="0.6"/>
+
+  <!-- Top crown sparkle -->
+  <!-- 4-point star sparkle at top -->
+  <g transform="translate(256, 88)" opacity="0.9">
+    <line x1="0" y1="-14" x2="0" y2="14" stroke="#FFF8D0" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-14" y1="0" x2="14" y2="0" stroke="#FFF8D0" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-8" y1="-8" x2="8" y2="8" stroke="#FFF8D0" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+    <line x1="8" y1="-8" x2="-8" y2="8" stroke="#FFF8D0" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+    <circle cx="0" cy="0" r="3" fill="white"/>
+  </g>
+</svg>
