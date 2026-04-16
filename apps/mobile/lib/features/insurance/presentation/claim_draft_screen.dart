@@ -290,7 +290,7 @@ class _ResultPhase extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppColors.surface,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.onSurfaceVariant.withOpacity(0.2)),
+              border: Border.all(color: AppColors.onSurfaceVariant.withValues(alpha: 0.2)),
             ),
             child: SelectableText(
               draft.body,
@@ -350,7 +350,7 @@ class _ResultPhase extends StatelessWidget {
                       alignment: Alignment.center,
                       margin: const EdgeInsets.only(right: AppSpacing.sm, top: 1),
                       decoration: BoxDecoration(
-                        color: AppColors.accent.withOpacity(0.2),
+                        color: AppColors.accent.withValues(alpha: 0.2),
                         shape: BoxShape.circle,
                       ),
                       child: Text(
@@ -403,7 +403,7 @@ class _ResultPhase extends StatelessWidget {
                   onPressed: onReset,
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.onSurface,
-                    side: BorderSide(color: AppColors.onSurfaceVariant.withOpacity(0.4)),
+                    side: BorderSide(color: AppColors.onSurfaceVariant.withValues(alpha: 0.4)),
                     padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
