@@ -20,6 +20,7 @@ import '../data/item_repository_provider.dart';
 import '../data/models/item_history_model.dart';
 import '../data/models/item_model.dart';
 import '../domain/item_detail_notifier.dart';
+import '../../properties/domain/property_detail_notifier.dart';
 import 'edit_item_sheet.dart';
 import '../../../shared/widgets/item_card.dart';
 import '../../../shared/widgets/status_badge.dart';
@@ -385,12 +386,14 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
   }
 
   void _showEditSheet(BuildContext context, ItemModel item) {
+    final property = ref.read(propertyDetailNotifierProvider).valueOrNull;
     showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => EditItemSheet(
         item: item,
+        floors: property?.floors,
         onUpdated: () =>
             ref.read(itemDetailNotifierProvider.notifier).load(item.id),
       ),

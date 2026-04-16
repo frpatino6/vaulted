@@ -59,6 +59,7 @@ export class InventoryController {
     @Query('roomId') roomId?: string,
     @Query('category') category?: string,
     @Query('status') status?: string,
+    @Query('unlocated') unlocated?: string,
   ) {
     return this.inventoryService.findAll(
       user.tenantId,
@@ -67,6 +68,7 @@ export class InventoryController {
         roomId,
         category,
         status,
+        unlocated: unlocated === 'true',
       },
       user.role,
       user.sub,

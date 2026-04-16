@@ -20,6 +20,7 @@ interface InventoryFilters {
   roomId?: string;
   category?: string;
   status?: string;
+  unlocated?: boolean;
 }
 
 interface InventorySearchFilters {
@@ -107,7 +108,9 @@ export class InventoryService {
       if (filters.propertyId) query.propertyId = filters.propertyId;
     }
 
-    if (filters.roomId) {
+    if (filters.unlocated) {
+      query.roomId = { $in: [null, ''] };
+    } else if (filters.roomId) {
       query.roomId = filters.roomId;
     }
 
@@ -234,7 +237,7 @@ export class InventoryService {
       action: 'moved',
       fromPropertyId: item.propertyId,
       toPropertyId: dto.toPropertyId,
-      fromRoomId: item.roomId,
+      fromRoomId: item.roomId ?? undefined,
       toRoomId: dto.toRoomId,
       performedBy: userId,
       notes: dto.notes,
@@ -282,7 +285,7 @@ export class InventoryService {
       tenantId,
       action: 'loaned',
       fromPropertyId: item.propertyId,
-      fromRoomId: item.roomId,
+      fromRoomId: item.roomId ?? undefined,
       performedBy: userId,
       notes: dto.notes,
     });

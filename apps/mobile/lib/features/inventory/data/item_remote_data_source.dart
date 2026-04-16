@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 
+import '../../../core/config/app_config.dart';
 import 'models/item_history_model.dart';
 import 'models/item_model.dart';
 
@@ -11,18 +12,20 @@ class ItemRemoteDataSource {
 
   static const String _path = 'items';
 
-  /// GET /items?propertyId=&roomId=&category=&status=
+  /// GET /items?propertyId=&roomId=&category=&status=&unlocated=true
   Future<List<ItemModel>> getItems({
     String? propertyId,
     String? roomId,
     String? category,
     String? status,
+    bool unlocated = false,
   }) async {
     final queryParams = <String, dynamic>{};
     if (propertyId != null && propertyId.isNotEmpty) queryParams['propertyId'] = propertyId;
     if (roomId != null && roomId.isNotEmpty) queryParams['roomId'] = roomId;
     if (category != null && category.isNotEmpty) queryParams['category'] = category;
     if (status != null && status.isNotEmpty) queryParams['status'] = status;
+    if (unlocated) queryParams['unlocated'] = 'true';
 
     final response = await _dio.get<Map<String, dynamic>>(
       _path,
@@ -51,6 +54,17 @@ class ItemRemoteDataSource {
   static Map<String, dynamic> _normalizeItemJson(Map<String, dynamic> json) {
     final id = json['id'] ?? json['_id'];
     if (id != null) json['id'] = id is String ? id : id.toString();
+
+    final rawPhotos = json['photos'];
+    if (rawPhotos is List) {
+      final apiHost = Uri.tryParse(AppConfig.apiBaseUrl)?.host ?? '';
+      json['photos'] = rawPhotos.whereType<String>().where((url) {
+        if (url.startsWith('/')) return true;
+        final uri = Uri.tryParse(url);
+        return uri != null && uri.host == apiHost;
+      }).toList();
+    }
+
     return json;
   }
 
