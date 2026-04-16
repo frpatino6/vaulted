@@ -347,14 +347,24 @@ class _AiItemReviewScreenState extends ConsumerState<AiItemReviewScreen> {
           dropdownColor: AppColors.surface,
           style: const TextStyle(color: AppColors.onBackground, fontSize: 14),
           onChanged: (v) => setState(() => _selectedRoom = v),
-          items: rooms
-              .map(
-                (r) => DropdownMenuItem(
-                  value: r,
-                  child: Text(r.name),
+          items: [
+            const DropdownMenuItem<RoomModel>(
+              value: null,
+              child: Text(
+                'No room — assign later',
+                style: TextStyle(
+                  color: AppColors.onSurfaceVariant,
+                  fontSize: 14,
                 ),
-              )
-              .toList(),
+              ),
+            ),
+            ...rooms.map(
+              (r) => DropdownMenuItem(
+                value: r,
+                child: Text(r.name),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -367,20 +377,13 @@ class _AiItemReviewScreenState extends ConsumerState<AiItemReviewScreen> {
       );
       return;
     }
-    if (_selectedRoom == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a room')),
-      );
-      return;
-    }
-
     setState(() => _saving = true);
 
     try {
       final repo = ref.read(itemRepositoryProvider);
       await repo.createItem(
         propertyId: widget.propertyId,
-        roomId: _selectedRoom!.roomId,
+        roomId: _selectedRoom?.roomId,
         name: _nameCtrl.text.trim(),
         category: _category,
         subcategory: _subcategoryCtrl.text.trim(),
@@ -411,12 +414,19 @@ class _AiItemReviewScreenState extends ConsumerState<AiItemReviewScreen> {
 
       // Refresh the room's item list if provider is available
       ref.invalidate(itemListNotifierProvider);
+      if (_selectedRoom == null) {
+        ref.invalidate(unlocatedItemsProvider(widget.propertyId));
+      }
 
-      // Navigate to the room where the item was saved
-      context.go(
-        '/properties/${widget.propertyId}/rooms/${_selectedRoom!.roomId}'
-        '?name=${Uri.encodeComponent(_selectedRoom!.name)}',
-      );
+      // Navigate to the room where the item was saved, or to the property
+      if (_selectedRoom != null) {
+        context.go(
+          '/properties/${widget.propertyId}/rooms/${_selectedRoom!.roomId}'
+          '?name=${Uri.encodeComponent(_selectedRoom!.name)}',
+        );
+      } else {
+        context.go('/properties/${widget.propertyId}');
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
