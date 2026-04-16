@@ -8,13 +8,14 @@ class InsuranceRemoteDataSource {
 
   final Dio _dio;
 
-  static const String _path = 'insurance';
+  static const String _base = 'insurance';
+  static const String _policies = '$_base/policies';
 
   // ─── Policies ─────────────────────────────────────────────────────────────
 
-  /// GET /insurance
+  /// GET /insurance/policies
   Future<List<InsurancePolicyModel>> getPolicies() async {
-    final response = await _dio.get<Map<String, dynamic>>(_path);
+    final response = await _dio.get<Map<String, dynamic>>(_policies);
     final list = _unwrapData(response);
     if (list is! List) return [];
     return list
@@ -24,48 +25,48 @@ class InsuranceRemoteDataSource {
         .toList();
   }
 
-  /// GET /insurance/:id
+  /// GET /insurance/policies/:id
   Future<InsurancePolicyModel> getPolicy(String id) async {
-    final response = await _dio.get<Map<String, dynamic>>('$_path/$id');
+    final response = await _dio.get<Map<String, dynamic>>('$_policies/$id');
     final data = _unwrapData(response);
     return InsurancePolicyModel.fromJson(
       Map<String, dynamic>.from(data is Map ? data : {}),
     );
   }
 
-  /// POST /insurance
+  /// POST /insurance/policies
   Future<InsurancePolicyModel> createPolicy(Map<String, dynamic> body) async {
     final response =
-        await _dio.post<Map<String, dynamic>>(_path, data: body);
+        await _dio.post<Map<String, dynamic>>(_policies, data: body);
     final data = _unwrapData(response);
     return InsurancePolicyModel.fromJson(
       Map<String, dynamic>.from(data is Map ? data : {}),
     );
   }
 
-  /// PATCH /insurance/:id
+  /// PUT /insurance/policies/:id
   Future<InsurancePolicyModel> updatePolicy(
       String id, Map<String, dynamic> body) async {
     final response =
-        await _dio.patch<Map<String, dynamic>>('$_path/$id', data: body);
+        await _dio.put<Map<String, dynamic>>('$_policies/$id', data: body);
     final data = _unwrapData(response);
     return InsurancePolicyModel.fromJson(
       Map<String, dynamic>.from(data is Map ? data : {}),
     );
   }
 
-  /// DELETE /insurance/:id  →  {success: true}  (no data key)
+  /// DELETE /insurance/policies/:id
   Future<void> deletePolicy(String id) async {
-    await _dio.delete<Map<String, dynamic>>('$_path/$id');
+    await _dio.delete<Map<String, dynamic>>('$_policies/$id');
   }
 
   // ─── Insured Items ─────────────────────────────────────────────────────────
 
-  /// POST /insurance/:id/items
+  /// POST /insurance/policies/:id/items
   Future<InsurancePolicyModel> attachItem(
       String policyId, Map<String, dynamic> body) async {
     final response = await _dio.post<Map<String, dynamic>>(
-      '$_path/$policyId/items',
+      '$_policies/$policyId/items',
       data: body,
     );
     final data = _unwrapData(response);
@@ -74,11 +75,11 @@ class InsuranceRemoteDataSource {
     );
   }
 
-  /// DELETE /insurance/:id/items/:itemId
+  /// DELETE /insurance/policies/:id/items/:itemId
   Future<InsurancePolicyModel> detachItem(
       String policyId, String itemId) async {
     final response = await _dio.delete<Map<String, dynamic>>(
-      '$_path/$policyId/items/$itemId',
+      '$_policies/$policyId/items/$itemId',
     );
     final data = _unwrapData(response);
     return InsurancePolicyModel.fromJson(
@@ -88,10 +89,10 @@ class InsuranceRemoteDataSource {
 
   // ─── Coverage Gaps ─────────────────────────────────────────────────────────
 
-  /// GET /insurance/:id/coverage-gaps
+  /// GET /insurance/coverage-gaps
   Future<CoverageGapReportModel> getCoverageGaps(String policyId) async {
     final response = await _dio.get<Map<String, dynamic>>(
-      '$_path/$policyId/coverage-gaps',
+      '$_base/coverage-gaps',
     );
     final data = _unwrapData(response);
     return CoverageGapReportModel.fromJson(
