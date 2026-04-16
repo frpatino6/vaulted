@@ -7,6 +7,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../inventory/data/item_repository_provider.dart';
+import '../../inventory/domain/item_list_notifier.dart';
+import '../../inventory/presentation/add_item_sheet.dart';
 import '../../inventory/presentation/assign_location_sheet.dart';
 import '../../media/data/media_repository_provider.dart';
 import '../../users/domain/current_user_jwt.dart';
@@ -69,6 +71,10 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
             onAddFloor: () {
               _closeDial();
               _showAddFloor(context);
+            },
+            onAddItem: () {
+              _closeDial();
+              _showAddItem(context, property);
             },
             onAiScan: () {
               _closeDial();
@@ -165,6 +171,27 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
       // Refresh unlocated count after assignment
       ref.invalidate(unlocatedItemsProvider(widget.propertyId));
     });
+  }
+
+  void _showAddItem(BuildContext context, PropertyModel property) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => AddItemSheet(
+        propertyId: property.id,
+        floors: property.floors,
+        onAdded: () {
+          ref.invalidate(unlocatedItemsProvider(property.id));
+          ref.invalidate(itemListNotifierProvider);
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Item saved')),
+            );
+          }
+        },
+      ),
+    );
   }
 
   void _showAddFloor(BuildContext context) {
@@ -839,12 +866,14 @@ class _SpeedDial extends StatelessWidget {
     required this.isOpen,
     required this.onToggle,
     required this.onAddFloor,
+    required this.onAddItem,
     required this.onAiScan,
   });
 
   final bool isOpen;
   final VoidCallback onToggle;
   final VoidCallback onAddFloor;
+  final VoidCallback onAddItem;
   final VoidCallback onAiScan;
 
   @override
@@ -859,6 +888,13 @@ class _SpeedDial extends StatelessWidget {
             label: 'Add floor',
             icon: Icons.villa_outlined,
             onTap: onAddFloor,
+            isAi: false,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          _DialItem(
+            label: 'Add item',
+            icon: Icons.inventory_2_outlined,
+            onTap: onAddItem,
             isAi: false,
           ),
           const SizedBox(height: AppSpacing.sm),

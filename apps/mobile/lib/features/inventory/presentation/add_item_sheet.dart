@@ -192,9 +192,8 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
             : null,
       );
       if (mounted) {
-        widget.onAdded();
         Navigator.of(context).pop(true);
-        _showSnackBar(_selectedRoomId != null ? 'Item added' : 'Item saved — location pending');
+        widget.onAdded();
       }
     } catch (e) {
       if (mounted) {
