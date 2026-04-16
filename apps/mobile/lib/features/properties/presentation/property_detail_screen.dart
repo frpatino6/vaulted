@@ -686,11 +686,19 @@ class _UnlocatedItemsBanner extends ConsumerWidget {
                             ),
                           );
                           if (confirmed == true) {
-                            await ref
-                                .read(itemRepositoryProvider)
-                                .deleteItem(item.id);
-                            ref.invalidate(
-                                unlocatedItemsProvider(propertyId));
+                            try {
+                              await ref
+                                  .read(itemRepositoryProvider)
+                                  .deleteItem(item.id);
+                              ref.invalidate(
+                                  unlocatedItemsProvider(propertyId));
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Error: $e')),
+                                );
+                              }
+                            }
                           }
                         },
                         icon: const Icon(
