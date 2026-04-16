@@ -27,6 +27,7 @@ import '../../features/insurance/presentation/insurance_list_screen.dart';
 import '../../features/insurance/presentation/insurance_detail_screen.dart';
 import '../../features/insurance/presentation/insurance_form_screen.dart';
 import '../../features/insurance/presentation/coverage_gaps_screen.dart';
+import '../../features/insurance/presentation/claim_draft_screen.dart';
 
 GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
   return GoRouter(
@@ -195,6 +196,13 @@ GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
         builder: (context, state) {
           final id = state.pathParameters['id'] ?? '';
           return CoverageGapsScreen(policyId: id);
+        },
+      ),
+      GoRoute(
+        path: '/insurance/:id/claim-draft',
+        builder: (context, state) {
+          final id = state.pathParameters['id'] ?? '';
+          return ClaimDraftScreen(policyId: id);
         },
       ),
       GoRoute(

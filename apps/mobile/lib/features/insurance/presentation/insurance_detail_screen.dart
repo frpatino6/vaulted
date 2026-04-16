@@ -8,6 +8,7 @@ import '../data/models/insurance_policy_model.dart';
 import '../domain/insurance_detail_notifier.dart';
 import '../domain/insurance_list_notifier.dart';
 import 'attach_item_sheet.dart';
+import 'coverage_ai_analysis_sheet.dart';
 
 class InsuranceDetailScreen extends ConsumerStatefulWidget {
   const InsuranceDetailScreen({super.key, required this.policyId});
@@ -70,6 +71,12 @@ class _InsuranceDetailScreenState
             ),
           ),
           actions: [
+            IconButton(
+              icon: const Icon(Icons.auto_awesome_outlined),
+              color: AppColors.accentLight,
+              tooltip: 'AI Analysis',
+              onPressed: () => _showAiAnalysisSheet(context, policy.id),
+            ),
             IconButton(
               icon: const Icon(Icons.edit_outlined),
               color: AppColors.accent,
@@ -242,6 +249,18 @@ class _InsuranceDetailScreenState
               );
         },
       ),
+    );
+  }
+
+  void _showAiAnalysisSheet(BuildContext context, String policyId) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => CoverageAiAnalysisSheet(policyId: policyId),
     );
   }
 
