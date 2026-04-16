@@ -1,31 +1,23 @@
-# Stage 1 — build
+# Stage 1 — build + install
 FROM node:20-alpine AS builder
 
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm install --legacy-peer-deps \
-      --fetch-retries=5 \
-      --fetch-retry-mintimeout=10000 \
-      --fetch-retry-maxtimeout=60000
-
+RUN npm install --legacy-peer-deps
 COPY . .
-RUN npm run build
+RUN npm run build && npm prune --omit=dev
 
-# Stage 2 — production
+# Stage 2 — production (no npm install needed)
 FROM node:20-alpine AS runner
 
 WORKDIR /app
 
 ENV NODE_ENV=production
 
-COPY package*.json ./
-RUN npm install --omit=dev --legacy-peer-deps \
-      --fetch-retries=5 \
-      --fetch-retry-mintimeout=10000 \
-      --fetch-retry-maxtimeout=60000
-
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
+COPY package*.json ./
 
 EXPOSE 3000
 
