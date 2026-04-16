@@ -110,6 +110,7 @@ export class InventoryService {
 
     if (filters.unlocated) {
       query.roomId = { $in: [null, ''] };
+      query.status = { $ne: 'disposed' };
     } else if (filters.roomId) {
       query.roomId = filters.roomId;
     }
