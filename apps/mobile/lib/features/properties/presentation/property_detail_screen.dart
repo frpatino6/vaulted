@@ -659,6 +659,49 @@ class _UnlocatedItemsBanner extends ConsumerWidget {
                           ),
                           child: const Text('Assign'),
                         ),
+                      IconButton(
+                        onPressed: () async {
+                          final confirmed = await showDialog<bool>(
+                            context: context,
+                            builder: (_) => AlertDialog(
+                              title: const Text('Delete item'),
+                              content: Text(
+                                'Delete "${item.name}"? This cannot be undone.',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () =>
+                                      Navigator.pop(context, false),
+                                  child: const Text('Cancel'),
+                                ),
+                                TextButton(
+                                  onPressed: () =>
+                                      Navigator.pop(context, true),
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: Colors.red,
+                                  ),
+                                  child: const Text('Delete'),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (confirmed == true) {
+                            await ref
+                                .read(itemRepositoryProvider)
+                                .deleteItem(item.id);
+                            ref.invalidate(
+                                unlocatedItemsProvider(propertyId));
+                          }
+                        },
+                        icon: const Icon(
+                          Icons.delete_outline,
+                          size: 18,
+                          color: Colors.red,
+                        ),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        visualDensity: VisualDensity.compact,
+                      ),
                     ],
                   );
                 },
