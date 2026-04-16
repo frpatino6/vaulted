@@ -341,7 +341,7 @@ class _AiItemReviewScreenState extends ConsumerState<AiItemReviewScreen> {
           isExpanded: true,
           isDense: true,
           hint: const Text(
-            'Select a room',
+            'No room — assign later',
             style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 14),
           ),
           dropdownColor: AppColors.surface,
