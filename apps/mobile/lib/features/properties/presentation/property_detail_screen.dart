@@ -14,6 +14,7 @@ import '../../media/data/media_repository_provider.dart';
 import '../../users/domain/current_user_jwt.dart';
 import '../data/models/address_model.dart';
 import '../data/models/floor_model.dart';
+import '../data/models/room_model.dart';
 import '../data/models/property_model.dart';
 import '../domain/properties_notifier.dart';
 import '../domain/property_detail_notifier.dart';
@@ -569,6 +570,63 @@ class _UnlocatedItemsBanner extends ConsumerWidget {
   final List<FloorModel> floors;
   final void Function(String itemId)? onAssignLocation;
 
+  static const int _maxInline = 3;
+
+  void _openSheet(BuildContext context, WidgetRef ref, List<dynamic> items) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _UnlocatedItemsSheet(
+        propertyId: propertyId,
+        floors: floors,
+      ),
+    ).then((_) {
+      // ignore: unused_result
+      ref.refresh(unlocatedItemsProvider(propertyId));
+    });
+  }
+
+  Future<void> _deleteBannerItem(
+    BuildContext context,
+    WidgetRef ref,
+    dynamic item,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: const Text('Delete item'),
+        content: Text('Delete "${item.name}"? This cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      try {
+        await ref.read(itemRepositoryProvider).deleteItem(item.id);
+        if (context.mounted) {
+          // ignore: unused_result
+          ref.refresh(unlocatedItemsProvider(propertyId));
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Error: $e')));
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(unlocatedItemsProvider(propertyId));
@@ -578,22 +636,25 @@ class _UnlocatedItemsBanner extends ConsumerWidget {
       error: (_, __) => const SizedBox.shrink(),
       data: (items) {
         if (items.isEmpty) return const SizedBox.shrink();
+
+        final inlineItems = items.take(_maxInline).toList();
+        final overflow = items.length - _maxInline;
+
         return Container(
           decoration: BoxDecoration(
             color: Colors.orange.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: Colors.orange.withValues(alpha: 0.35),
-            ),
+            border: Border.all(color: Colors.orange.withValues(alpha: 0.35)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // ── Header row ──────────────────────────────────────────────
               Padding(
                 padding: const EdgeInsets.fromLTRB(
                   AppSpacing.md,
                   AppSpacing.md,
-                  AppSpacing.md,
+                  AppSpacing.xs,
                   AppSpacing.sm,
                 ),
                 child: Row(
@@ -613,9 +674,25 @@ class _UnlocatedItemsBanner extends ConsumerWidget {
                         ),
                       ),
                     ),
+                    TextButton(
+                      onPressed: () => _openSheet(context, ref, items),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.orange,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.sm,
+                        ),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: const Text(
+                        'Manage \u2192',
+                        style: TextStyle(fontSize: 13),
+                      ),
+                    ),
                   ],
                 ),
               ),
+              // ── Inline item rows (max 3) ─────────────────────────────────
               ListView.separated(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
@@ -623,25 +700,21 @@ class _UnlocatedItemsBanner extends ConsumerWidget {
                   AppSpacing.md,
                   0,
                   AppSpacing.md,
-                  AppSpacing.md,
+                  AppSpacing.sm,
                 ),
-                itemCount: items.length,
+                itemCount: inlineItems.length,
                 separatorBuilder: (_, __) =>
                     const SizedBox(height: AppSpacing.xs),
                 itemBuilder: (context, index) {
-                  final item = items[index];
+                  final item = inlineItems[index];
                   return Row(
                     children: [
                       Expanded(
                         child: Text(
                           item.name,
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodySmall
-                              ?.copyWith(
-                                color: AppColors.onBackground
-                                    .withValues(alpha: 0.8),
-                              ),
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: AppColors.onBackground.withValues(alpha: 0.8),
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -660,47 +733,8 @@ class _UnlocatedItemsBanner extends ConsumerWidget {
                           child: const Text('Assign'),
                         ),
                       IconButton(
-                        onPressed: () async {
-                          final confirmed = await showDialog<bool>(
-                            context: context,
-                            builder: (dialogCtx) => AlertDialog(
-                              title: const Text('Delete item'),
-                              content: Text(
-                                'Delete "${item.name}"? This cannot be undone.',
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () =>
-                                      Navigator.pop(dialogCtx, false),
-                                  child: const Text('Cancel'),
-                                ),
-                                TextButton(
-                                  onPressed: () =>
-                                      Navigator.pop(dialogCtx, true),
-                                  style: TextButton.styleFrom(
-                                    foregroundColor: Colors.red,
-                                  ),
-                                  child: const Text('Delete'),
-                                ),
-                              ],
-                            ),
-                          );
-                          if (confirmed == true) {
-                            try {
-                              await ref
-                                  .read(itemRepositoryProvider)
-                                  .deleteItem(item.id);
-                              ref.invalidate(
-                                  unlocatedItemsProvider(propertyId));
-                            } catch (e) {
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Error: $e')),
-                                );
-                              }
-                            }
-                          }
-                        },
+                        onPressed: () =>
+                            _deleteBannerItem(context, ref, item),
                         icon: const Icon(
                           Icons.delete_outline,
                           size: 18,
@@ -714,10 +748,505 @@ class _UnlocatedItemsBanner extends ConsumerWidget {
                   );
                 },
               ),
+              // ── "+N more" chip ───────────────────────────────────────────
+              if (overflow > 0)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.md,
+                    0,
+                    AppSpacing.md,
+                    AppSpacing.md,
+                  ),
+                  child: GestureDetector(
+                    onTap: () => _openSheet(context, ref, items),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm,
+                        vertical: AppSpacing.xs,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: Colors.orange.withValues(alpha: 0.4),
+                        ),
+                      ),
+                      child: Text(
+                        '+$overflow more',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: Colors.orange,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                )
+              else
+                const SizedBox(height: AppSpacing.xs),
             ],
           ),
         );
       },
+    );
+  }
+}
+
+// ── Unlocated items bottom sheet ───────────────────────────────────────────
+
+class _UnlocatedItemsSheet extends ConsumerStatefulWidget {
+  const _UnlocatedItemsSheet({
+    required this.propertyId,
+    required this.floors,
+  });
+
+  final String propertyId;
+  final List<FloorModel> floors;
+
+  @override
+  ConsumerState<_UnlocatedItemsSheet> createState() =>
+      _UnlocatedItemsSheetState();
+}
+
+class _UnlocatedItemsSheetState extends ConsumerState<_UnlocatedItemsSheet> {
+  final Set<String> _selected = {};
+  bool _assigning = false;
+
+  void _toggleAll(List<dynamic> items) {
+    setState(() {
+      if (_selected.length == items.length) {
+        _selected.clear();
+      } else {
+        _selected
+          ..clear()
+          ..addAll(items.map<String>((i) => i.id as String));
+      }
+    });
+  }
+
+  void _toggleItem(String id) {
+    setState(() {
+      if (_selected.contains(id)) {
+        _selected.remove(id);
+      } else {
+        _selected.add(id);
+      }
+    });
+  }
+
+  Future<void> _deleteItem(BuildContext context, dynamic item) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: const Text('Delete item'),
+        content: Text('Delete "${item.name}"? This cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      try {
+        await ref.read(itemRepositoryProvider).deleteItem(item.id as String);
+        if (mounted) {
+          setState(() => _selected.remove(item.id));
+          // ignore: unused_result
+          ref.refresh(unlocatedItemsProvider(widget.propertyId));
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Error: $e')));
+        }
+      }
+    }
+  }
+
+  Future<void> _batchAssign(BuildContext context, List<dynamic> items) async {
+    final selectedIds = List<String>.from(_selected);
+    if (selectedIds.isEmpty) return;
+
+    final room = await showModalBottomSheet<RoomModel>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => AssignLocationSheet(floors: widget.floors),
+    );
+
+    if (room == null || !context.mounted) return;
+
+    setState(() => _assigning = true);
+    int assigned = 0;
+    Object? assignError;
+
+    for (final id in selectedIds) {
+      try {
+        await ref
+            .read(itemRepositoryProvider)
+            .assignLocation(id, roomId: room.roomId);
+        if (mounted) setState(() => _selected.remove(id));
+        assigned++;
+      } catch (e) {
+        assignError = e;
+        break;
+      }
+    }
+
+    if (mounted) {
+      setState(() => _assigning = false);
+      // ignore: unused_result
+      ref.refresh(unlocatedItemsProvider(widget.propertyId));
+    }
+
+    if (!context.mounted) return;
+
+    if (assignError != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '$assigned of ${selectedIds.length} items assigned. Some failed.',
+          ),
+        ),
+      );
+    } else {
+      Navigator.of(context).pop();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final async = ref.watch(unlocatedItemsProvider(widget.propertyId));
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.75,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: (context, scrollController) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(24),
+              topRight: Radius.circular(24),
+            ),
+          ),
+          child: async.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, __) => Center(child: Text('Error: $e')),
+            data: (items) {
+              // Sort items by category for grouping
+              final sorted = [...items]
+                ..sort((a, b) => a.category.compareTo(b.category));
+
+              final allSelected = _selected.length == items.length &&
+                  items.isNotEmpty;
+
+              return Column(
+                children: [
+                  // ── Drag handle ─────────────────────────────────────────
+                  Padding(
+                    padding: const EdgeInsets.only(top: AppSpacing.sm),
+                    child: Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: AppColors.onSurfaceVariant
+                              .withValues(alpha: 0.4),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                  ),
+                  // ── Header ───────────────────────────────────────────────
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.md,
+                      AppSpacing.md,
+                      AppSpacing.md,
+                      AppSpacing.xs,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Text(
+                              '\u{1F4E6}',
+                              style: TextStyle(fontSize: 20),
+                            ),
+                            const SizedBox(width: AppSpacing.sm),
+                            Text(
+                              '${items.length} item${items.length == 1 ? '' : 's'} pending location',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleMedium
+                                  ?.copyWith(
+                                    color: AppColors.onBackground,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          'Select items to assign them to a room',
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(color: AppColors.onSurfaceVariant),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // ── Select all / Deselect all ────────────────────────────
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md,
+                      vertical: AppSpacing.xs,
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            allSelected
+                                ? 'All selected'
+                                : _selected.isEmpty
+                                    ? 'None selected'
+                                    : '${_selected.length} selected',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(
+                                  color: AppColors.onSurfaceVariant,
+                                ),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: items.isEmpty
+                              ? null
+                              : () => _toggleAll(items),
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.orange,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.sm,
+                            ),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          child: Text(
+                            allSelected ? 'Deselect all' : 'Select all',
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  // ── Item list ────────────────────────────────────────────
+                  Expanded(
+                    child: items.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.check_circle_outline,
+                                  size: 48,
+                                  color: AppColors.onSurfaceVariant
+                                      .withValues(alpha: 0.5),
+                                ),
+                                const SizedBox(height: AppSpacing.md),
+                                Text(
+                                  'All items have been assigned',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodyMedium
+                                      ?.copyWith(
+                                        color: AppColors.onSurfaceVariant,
+                                      ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : ListView.builder(
+                            controller: scrollController,
+                            padding: const EdgeInsets.only(
+                              bottom: AppSpacing.xxl,
+                            ),
+                            itemCount: sorted.length,
+                            itemBuilder: (context, index) {
+                              final item = sorted[index];
+                              final prevItem =
+                                  index > 0 ? sorted[index - 1] : null;
+                              final showCategoryHeader = prevItem == null ||
+                                  prevItem.category != item.category;
+
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (showCategoryHeader)
+                                    Padding(
+                                      padding: const EdgeInsets.fromLTRB(
+                                        AppSpacing.md,
+                                        AppSpacing.md,
+                                        AppSpacing.md,
+                                        AppSpacing.xs,
+                                      ),
+                                      child: Text(
+                                        item.category.toUpperCase(),
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .labelSmall
+                                            ?.copyWith(
+                                              color: AppColors.onSurfaceVariant,
+                                              letterSpacing: 1.5,
+                                              fontSize: 10,
+                                            ),
+                                      ),
+                                    ),
+                                  CheckboxListTile(
+                                    value: _selected.contains(item.id),
+                                    onChanged: (_) => _toggleItem(item.id),
+                                    activeColor: Colors.orange,
+                                    checkColor: Colors.white,
+                                    contentPadding:
+                                        const EdgeInsets.symmetric(
+                                      horizontal: AppSpacing.md,
+                                    ),
+                                    title: Text(
+                                      item.name,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium
+                                          ?.copyWith(
+                                            color: AppColors.onBackground,
+                                          ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    subtitle: item.subcategory.isNotEmpty
+                                        ? _CategoryChip(
+                                            label: item.subcategory,
+                                          )
+                                        : null,
+                                    secondary: IconButton(
+                                      onPressed: () =>
+                                          _deleteItem(context, item),
+                                      icon: const Icon(
+                                        Icons.delete_outline,
+                                        size: 20,
+                                        color: Colors.red,
+                                      ),
+                                      visualDensity: VisualDensity.compact,
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                  ),
+                  // ── Sticky action bar ────────────────────────────────────
+                  if (_selected.isNotEmpty)
+                    SafeArea(
+                      top: false,
+                      child: Container(
+                        padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.md,
+                          AppSpacing.sm,
+                          AppSpacing.md,
+                          AppSpacing.md,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          border: Border(
+                            top: BorderSide(
+                              color: AppColors.onSurfaceVariant
+                                  .withValues(alpha: 0.15),
+                            ),
+                          ),
+                        ),
+                        child: SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: FilledButton(
+                            onPressed: _assigning
+                                ? null
+                                : () => _batchAssign(context, items),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: Colors.orange,
+                              foregroundColor: Colors.white,
+                              disabledBackgroundColor:
+                                  Colors.orange.withValues(alpha: 0.4),
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            child: _assigning
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : Text(
+                                    'Assign ${_selected.length} item${_selected.length == 1 ? '' : 's'} \u2192',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _CategoryChip extends StatelessWidget {
+  const _CategoryChip({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.xs),
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: 2,
+        ),
+        decoration: BoxDecoration(
+          color: AppColors.onSurfaceVariant.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Text(
+          label,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: AppColors.onSurfaceVariant,
+            fontSize: 10,
+          ),
+        ),
+      ),
     );
   }
 }
