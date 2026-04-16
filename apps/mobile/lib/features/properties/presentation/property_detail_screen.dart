@@ -690,8 +690,8 @@ class _UnlocatedItemsBanner extends ConsumerWidget {
                               await ref
                                   .read(itemRepositoryProvider)
                                   .deleteItem(item.id);
-                              ref.invalidate(
-                                  unlocatedItemsProvider(propertyId));
+                              // ignore: unused_result
+                              ref.refresh(unlocatedItemsProvider(propertyId));
                             } catch (e) {
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
