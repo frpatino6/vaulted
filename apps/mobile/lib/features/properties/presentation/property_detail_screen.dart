@@ -663,7 +663,7 @@ class _UnlocatedItemsBanner extends ConsumerWidget {
                         onPressed: () async {
                           final confirmed = await showDialog<bool>(
                             context: context,
-                            builder: (_) => AlertDialog(
+                            builder: (dialogCtx) => AlertDialog(
                               title: const Text('Delete item'),
                               content: Text(
                                 'Delete "${item.name}"? This cannot be undone.',
@@ -671,12 +671,12 @@ class _UnlocatedItemsBanner extends ConsumerWidget {
                               actions: [
                                 TextButton(
                                   onPressed: () =>
-                                      Navigator.pop(context, false),
+                                      Navigator.pop(dialogCtx, false),
                                   child: const Text('Cancel'),
                                 ),
                                 TextButton(
                                   onPressed: () =>
-                                      Navigator.pop(context, true),
+                                      Navigator.pop(dialogCtx, true),
                                   style: TextButton.styleFrom(
                                     foregroundColor: Colors.red,
                                   ),
