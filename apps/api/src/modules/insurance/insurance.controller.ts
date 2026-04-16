@@ -16,6 +16,7 @@ import { Role } from '../../common/enums/role.enum';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { AttachItemDto } from './dto/attach-item.dto';
 import { CreatePolicyDto } from './dto/create-policy.dto';
+import { DetachItemParamDto } from './dto/detach-item-param.dto';
 import { UpdatePolicyDto } from './dto/update-policy.dto';
 import { InsuranceService } from './insurance.service';
 import { PolicyStatus } from './entities/insurance-policy.entity';
@@ -91,9 +92,9 @@ export class InsuranceController {
   detachItem(
     @CurrentUser() user: JwtPayload,
     @Param('id') policyId: string,
-    @Param('itemId') itemId: string,
+    @Param() params: DetachItemParamDto,
   ) {
-    return this.insuranceService.detachItem(user.tenantId, policyId, itemId, user.sub);
+    return this.insuranceService.detachItem(user.tenantId, policyId, params.itemId, user.sub);
   }
 
   // ─── Coverage analysis ────────────────────────────────────────────────────────

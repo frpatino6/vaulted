@@ -1,4 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -82,7 +83,15 @@ class _AttachItemSheetState extends ConsumerState<AttachItemSheet> {
       await widget.onAttached(item.id, coveredValue, _currency);
       if (mounted) Navigator.pop(context);
     } catch (e) {
-      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+      String msg = 'Could not attach item. Please try again.';
+      if (e is DioException) {
+        final data = e.response?.data;
+        if (data is Map) {
+          final m = data['error']?['message'];
+          if (m is String && m.isNotEmpty) msg = m;
+        }
+      }
+      setState(() => _error = msg);
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
