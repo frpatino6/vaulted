@@ -20,6 +20,7 @@ import '../data/models/dashboard_model.dart';
 import '../domain/dashboard_notifier.dart';
 import '../../movements/data/models/movement_model.dart';
 import '../../movements/domain/movement_list_notifier.dart';
+import '../../../shared/widgets/loading_skeleton.dart';
 
 /// Dashboard: clean welcome header, Quick Actions grid, recent property cards.
 class DashboardScreen extends ConsumerWidget {
@@ -154,19 +155,20 @@ class DashboardScreen extends ConsumerWidget {
                           children: [
                             Text(
                               'YOUR PROPERTIES',
-                              style: Theme.of(context).textTheme.titleSmall
-                                  ?.copyWith(
-                                    color: AppColors.onSurfaceVariant.withValues(
-                                      alpha: 0.6,
-                                    ),
-                                    fontSize: 12.0,
-                                    letterSpacing: 1.5,
-                                  ),
+                              style: Theme.of(
+                                context,
+                              ).textTheme.titleSmall?.copyWith(
+                                color: AppColors.onSurfaceVariant.withValues(
+                                  alpha: 0.6,
+                                ),
+                                fontSize: 12.0,
+                                letterSpacing: 1.5,
+                              ),
                             ),
                             if (canManageProperties)
                               TextButton.icon(
-                                onPressed: () =>
-                                    _showAddPropertySheet(context, ref),
+                                onPressed:
+                                    () => _showAddPropertySheet(context, ref),
                                 icon: Icon(
                                   Icons.add,
                                   size: 18,
@@ -185,7 +187,9 @@ class DashboardScreen extends ConsumerWidget {
                         const SizedBox(height: AppSpacing.sm),
                         ...list.map(
                           (p) => Padding(
-                            padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                            padding: const EdgeInsets.only(
+                              bottom: AppSpacing.md,
+                            ),
                             child: DashboardPropertyCard(
                               property: p,
                               itemCount: null,
@@ -197,29 +201,41 @@ class DashboardScreen extends ConsumerWidget {
                   ),
                 );
               },
-              loading: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
-              error: (_, _) => SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  child: Center(
-                    child: Column(
-                      children: [
-                        Text(
-                          'Could not load properties',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppColors.onSurfaceVariant,
-                          ),
-                        ),
-                        TextButton(
-                          onPressed: () =>
-                              ref.read(propertiesNotifierProvider.notifier).load(),
-                          child: const Text('Retry'),
-                        ),
-                      ],
+              loading:
+                  () => const SliverToBoxAdapter(
+                    child: AppScreenSkeleton(
+                      showHeader: false,
+                      scrollable: false,
+                      cardCount: 2,
                     ),
                   ),
-                ),
-              ),
+              error:
+                  (_, _) => SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      child: Center(
+                        child: Column(
+                          children: [
+                            Text(
+                              'Could not load properties',
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: AppColors.onSurfaceVariant),
+                            ),
+                            TextButton(
+                              onPressed:
+                                  () =>
+                                      ref
+                                          .read(
+                                            propertiesNotifierProvider.notifier,
+                                          )
+                                          .load(),
+                              child: const Text('Retry'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
             ),
             const SliverToBoxAdapter(
               child: Padding(
@@ -326,14 +342,16 @@ class _DashboardHeader extends ConsumerWidget {
     final email = _emailFromJwt() ?? 'Guest';
     final role = currentUserRole() ?? 'guest';
     final hour = DateTime.now().hour;
-    final greeting = hour < 12
-        ? 'Good morning,'
-        : hour < 18
-        ? 'Good afternoon,'
-        : 'Good evening,';
+    final greeting =
+        hour < 12
+            ? 'Good morning,'
+            : hour < 18
+            ? 'Good afternoon,'
+            : 'Good evening,';
 
     // D4: try name claim from JWT first, fall back to capitalized email prefix
-    final firstName = _firstNameFromJwt() ??
+    final firstName =
+        _firstNameFromJwt() ??
         () {
           final prefix = email.split('@').first;
           if (prefix.isEmpty) return 'Guest';
@@ -456,126 +474,128 @@ class _DashboardHeader extends ConsumerWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (ctx) => SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.md,
-            AppSpacing.lg,
-            AppSpacing.md,
-            AppSpacing.md,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.onSurfaceVariant.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(2),
-                ),
+      builder:
+          (ctx) => SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                AppSpacing.lg,
+                AppSpacing.md,
+                AppSpacing.md,
               ),
-              const SizedBox(height: AppSpacing.lg),
-              Row(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    width: 48,
-                    height: 48,
+                    width: 40,
+                    height: 4,
                     decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.accent.withValues(alpha: 0.15),
-                      border: Border.all(
-                        color: AppColors.accent.withValues(alpha: 0.4),
-                      ),
-                    ),
-                    child: Center(
-                      child: Text(
-                        email.isNotEmpty ? email[0].toUpperCase() : '?',
-                        style: TextStyle(
-                          color: AppColors.accent,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 20,
-                        ),
-                      ),
+                      color: AppColors.onSurfaceVariant.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          email,
-                          style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
-                            color: AppColors.onBackground,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          role[0].toUpperCase() + role.substring(1),
-                          style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
-                            color: AppColors.accent,
+                  const SizedBox(height: AppSpacing.lg),
+                  Row(
+                    children: [
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.accent.withValues(alpha: 0.15),
+                          border: Border.all(
+                            color: AppColors.accent.withValues(alpha: 0.4),
                           ),
                         ),
-                      ],
+                        child: Center(
+                          child: Text(
+                            email.isNotEmpty ? email[0].toUpperCase() : '?',
+                            style: TextStyle(
+                              color: AppColors.accent,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 20,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              email,
+                              style: Theme.of(
+                                ctx,
+                              ).textTheme.bodyMedium?.copyWith(
+                                color: AppColors.onBackground,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              role[0].toUpperCase() + role.substring(1),
+                              style: Theme.of(ctx).textTheme.bodySmall
+                                  ?.copyWith(color: AppColors.accent),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  const Divider(color: Colors.white10),
+                  ListTile(
+                    leading: Icon(
+                      Icons.build_circle_outlined,
+                      color: AppColors.onSurfaceVariant,
                     ),
+                    title: Text(
+                      'Maintenance',
+                      style: Theme.of(ctx).textTheme.bodyLarge?.copyWith(
+                        color: AppColors.onBackground,
+                      ),
+                    ),
+                    onTap: () {
+                      Navigator.of(ctx).pop();
+                      context.push('/maintenance');
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(
+                      Icons.settings_outlined,
+                      color: AppColors.onSurfaceVariant,
+                    ),
+                    title: Text(
+                      'Settings',
+                      style: Theme.of(ctx).textTheme.bodyLarge?.copyWith(
+                        color: AppColors.onBackground,
+                      ),
+                    ),
+                    onTap: () {
+                      Navigator.of(ctx).pop();
+                      context.push('/settings');
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.logout, color: AppColors.error),
+                    title: Text(
+                      'Sign out',
+                      style: Theme.of(
+                        ctx,
+                      ).textTheme.bodyLarge?.copyWith(color: AppColors.error),
+                    ),
+                    onTap: () async {
+                      Navigator.of(ctx).pop();
+                      await ref.read(authNotifierProvider.notifier).logout();
+                    },
                   ),
                 ],
               ),
-              const SizedBox(height: AppSpacing.lg),
-              const Divider(color: Colors.white10),
-              ListTile(
-                leading: Icon(
-                  Icons.build_circle_outlined,
-                  color: AppColors.onSurfaceVariant,
-                ),
-                title: Text(
-                  'Maintenance',
-                  style: Theme.of(ctx).textTheme.bodyLarge?.copyWith(
-                    color: AppColors.onBackground,
-                  ),
-                ),
-                onTap: () {
-                  Navigator.of(ctx).pop();
-                  context.push('/maintenance');
-                },
-              ),
-              ListTile(
-                leading: Icon(
-                  Icons.settings_outlined,
-                  color: AppColors.onSurfaceVariant,
-                ),
-                title: Text(
-                  'Settings',
-                  style: Theme.of(ctx).textTheme.bodyLarge?.copyWith(
-                    color: AppColors.onBackground,
-                  ),
-                ),
-                onTap: () {
-                  Navigator.of(ctx).pop();
-                  context.push('/settings');
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.logout, color: AppColors.error),
-                title: Text(
-                  'Sign out',
-                  style: Theme.of(
-                    ctx,
-                  ).textTheme.bodyLarge?.copyWith(color: AppColors.error),
-                ),
-                onTap: () async {
-                  Navigator.of(ctx).pop();
-                  await ref.read(authNotifierProvider.notifier).logout();
-                },
-              ),
-            ],
+            ),
           ),
-        ),
-      ),
     );
   }
 }
@@ -731,7 +751,8 @@ class DashboardPropertyCard extends StatelessWidget {
     final imageUrl = hasImage ? property.photos.first : null;
 
     // D8: show badge for primary, vacation, and rental
-    final showBadge = property.type == 'primary' ||
+    final showBadge =
+        property.type == 'primary' ||
         property.type == 'vacation' ||
         property.type == 'rental';
 
@@ -829,24 +850,26 @@ class DashboardPropertyCard extends StatelessWidget {
                           children: [
                             Text(
                               property.name,
-                              style: Theme.of(context).textTheme.titleLarge
-                                  ?.copyWith(
-                                    fontSize: 18.0,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.onBackground,
-                                  ),
+                              style: Theme.of(
+                                context,
+                              ).textTheme.titleLarge?.copyWith(
+                                fontSize: 18.0,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.onBackground,
+                              ),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                             ),
                             const SizedBox(height: 4),
                             Text(
                               _location,
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w500,
-                                    fontSize: 13,
-                                  ),
+                              style: Theme.of(
+                                context,
+                              ).textTheme.bodySmall?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w500,
+                                fontSize: 13,
+                              ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -859,12 +882,13 @@ class DashboardPropertyCard extends StatelessWidget {
                           padding: const EdgeInsets.only(bottom: 2),
                           child: Text(
                             '$itemCount items',
-                            style: Theme.of(context).textTheme.labelSmall
-                                ?.copyWith(
-                                  color: Colors.white,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w500,
-                                ),
+                            style: Theme.of(
+                              context,
+                            ).textTheme.labelSmall?.copyWith(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
                       ],
@@ -977,9 +1001,10 @@ class _StatCard extends StatelessWidget {
         color: AppColors.surfaceVariant,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: highlight
-              ? AppColors.accent.withValues(alpha: 0.3)
-              : AppColors.onSurfaceVariant.withValues(alpha: 0.1),
+          color:
+              highlight
+                  ? AppColors.accent.withValues(alpha: 0.3)
+                  : AppColors.onSurfaceVariant.withValues(alpha: 0.1),
         ),
       ),
       child: Column(
@@ -1047,27 +1072,31 @@ class _StatusRow extends StatelessWidget {
       child: Wrap(
         spacing: AppSpacing.md,
         runSpacing: AppSpacing.xs,
-        children: entries.map((e) {
-          final color = _statusColors[e.key] ?? AppColors.onSurfaceVariant;
-          return Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 6,
-                height: 6,
-                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-              ),
-              const SizedBox(width: 4),
-              Text(
-                '${e.value} ${e.key}',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: AppColors.onSurface,
-                  fontSize: 11,
-                ),
-              ),
-            ],
-          );
-        }).toList(),
+        children:
+            entries.map((e) {
+              final color = _statusColors[e.key] ?? AppColors.onSurfaceVariant;
+              return Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: color,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${e.value} ${e.key}',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: AppColors.onSurface,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              );
+            }).toList(),
       ),
     );
   }
@@ -1130,7 +1159,9 @@ class _MaintenanceAlertCardState extends ConsumerState<_MaintenanceAlertCard> {
                     Text(
                       'MAINTENANCE ALERTS',
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
+                        color: AppColors.onSurfaceVariant.withValues(
+                          alpha: 0.6,
+                        ),
                         fontSize: 10,
                         letterSpacing: 2.0,
                       ),
@@ -1182,7 +1213,11 @@ class _MaintenanceAlertCardState extends ConsumerState<_MaintenanceAlertCard> {
           ),
         );
       },
-      loading: () => const SizedBox.shrink(),
+      loading:
+          () => const Padding(
+            padding: EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            child: AppSkeletonBox(height: 78, radius: 18),
+          ),
       error: (_, _) => const SizedBox.shrink(),
     );
   }
@@ -1200,8 +1235,7 @@ class _ActiveOperationsCard extends ConsumerStatefulWidget {
       _ActiveOperationsCardState();
 }
 
-class _ActiveOperationsCardState
-    extends ConsumerState<_ActiveOperationsCard> {
+class _ActiveOperationsCardState extends ConsumerState<_ActiveOperationsCard> {
   @override
   void initState() {
     super.initState();
@@ -1216,21 +1250,24 @@ class _ActiveOperationsCardState
 
     return state.when(
       data: (movements) {
-        final active = movements
-            .where((m) => m.isDraft || m.isActive)
-            .toList();
+        final active = movements.where((m) => m.isDraft || m.isActive).toList();
         if (active.isEmpty) return const SizedBox.shrink();
 
         return Padding(
           padding: const EdgeInsets.fromLTRB(
-              AppSpacing.md, AppSpacing.lg, AppSpacing.md, 0),
+            AppSpacing.md,
+            AppSpacing.lg,
+            AppSpacing.md,
+            0,
+          ),
           child: Container(
             padding: const EdgeInsets.all(AppSpacing.md),
             decoration: BoxDecoration(
               color: AppColors.surfaceVariant,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                  color: const Color(0xFF2196F3).withValues(alpha: 0.3)),
+                color: const Color(0xFF2196F3).withValues(alpha: 0.3),
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1241,11 +1278,12 @@ class _ActiveOperationsCardState
                     Text(
                       'ACTIVE OPERATIONS',
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: AppColors.onSurfaceVariant
-                                .withValues(alpha: 0.6),
-                            fontSize: 10,
-                            letterSpacing: 2.0,
-                          ),
+                        color: AppColors.onSurfaceVariant.withValues(
+                          alpha: 0.6,
+                        ),
+                        fontSize: 10,
+                        letterSpacing: 2.0,
+                      ),
                     ),
                     // D6: TextButton replaces GestureDetector
                     TextButton(
@@ -1274,7 +1312,9 @@ class _ActiveOperationsCardState
                     child: Text(
                       '+${active.length - 2} more',
                       style: TextStyle(
-                          color: AppColors.onSurfaceVariant, fontSize: 11),
+                        color: AppColors.onSurfaceVariant,
+                        fontSize: 11,
+                      ),
                     ),
                   ),
               ],
@@ -1282,7 +1322,11 @@ class _ActiveOperationsCardState
           ),
         );
       },
-      loading: () => const SizedBox.shrink(),
+      loading:
+          () => const Padding(
+            padding: EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            child: AppSkeletonBox(height: 96, radius: 18),
+          ),
       error: (_, _) => const SizedBox.shrink(),
     );
   }
@@ -1300,8 +1344,12 @@ class _OperationRow extends StatelessWidget {
     final isDraft = movement.isDraft;
 
     return GestureDetector(
-      onTap: () => context.push(
-          isDraft ? '/movements/${movement.id}/scan' : '/movements/${movement.id}'),
+      onTap:
+          () => context.push(
+            isDraft
+                ? '/movements/${movement.id}/scan'
+                : '/movements/${movement.id}',
+          ),
       child: Padding(
         padding: const EdgeInsets.only(bottom: AppSpacing.xs),
         child: Row(
@@ -1323,23 +1371,25 @@ class _OperationRow extends StatelessWidget {
                   Text(
                     movement.title,
                     style: TextStyle(
-                        color: AppColors.onBackground,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500),
+                      color: AppColors.onBackground,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   Text(
                     '${movement.items.length} item${movement.items.length == 1 ? '' : 's'} · ${isDraft ? 'Draft' : '${movement.returnedCount}/${movement.items.length} returned'}',
                     style: TextStyle(
-                        color: AppColors.onSurfaceVariant, fontSize: 11),
+                      color: AppColors.onSurfaceVariant,
+                      fontSize: 11,
+                    ),
                   ),
                 ],
               ),
             ),
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
                 color: (isDraft
                         ? const Color(0xFF9E9E9E)
@@ -1350,9 +1400,10 @@ class _OperationRow extends StatelessWidget {
               child: Text(
                 isDraft ? 'DRAFT' : 'ACTIVE',
                 style: TextStyle(
-                  color: isDraft
-                      ? const Color(0xFF9E9E9E)
-                      : const Color(0xFF2196F3),
+                  color:
+                      isDraft
+                          ? const Color(0xFF9E9E9E)
+                          : const Color(0xFF2196F3),
                   fontSize: 9,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.4,
@@ -1366,18 +1417,18 @@ class _OperationRow extends StatelessWidget {
   }
 
   IconData _typeIcon(String t) => switch (t) {
-        'loan' => Icons.person_outline_rounded,
-        'repair' => Icons.build_outlined,
-        'disposal' => Icons.delete_outline_rounded,
-        _ => Icons.swap_horiz_rounded,
-      };
+    'loan' => Icons.person_outline_rounded,
+    'repair' => Icons.build_outlined,
+    'disposal' => Icons.delete_outline_rounded,
+    _ => Icons.swap_horiz_rounded,
+  };
 
   Color _typeColor(String t) => switch (t) {
-        'loan' => const Color(0xFF9C27B0),
-        'repair' => const Color(0xFFFF9800),
-        'disposal' => const Color(0xFFCF6679),
-        _ => const Color(0xFF2196F3),
-      };
+    'loan' => const Color(0xFF9C27B0),
+    'repair' => const Color(0xFFFF9800),
+    'disposal' => const Color(0xFFCF6679),
+    _ => const Color(0xFF2196F3),
+  };
 }
 
 // ---------------------------------------------------------------------------

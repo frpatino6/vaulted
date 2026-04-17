@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/room_inventory_asset_card.dart';
 import '../../users/domain/current_user_jwt.dart';
 import '../data/models/item_model.dart';
@@ -102,7 +103,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     final titleText = hasQuery ? 'Search results' : 'Global Search';
 
     bool isCategorySelected(String category) =>
-        category == 'All' ? _selectedCategory == null : _selectedCategory == category;
+        category == 'All'
+            ? _selectedCategory == null
+            : _selectedCategory == category;
 
     return Scaffold(
       backgroundColor: AppColors.backgroundElevated,
@@ -129,16 +132,25 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, 0),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              AppSpacing.sm,
+              AppSpacing.md,
+              0,
+            ),
             child: TextField(
               controller: _controller,
               autofocus: true,
-              style: AppTypography.bodyLarge.copyWith(color: AppColors.onBackground),
+              style: AppTypography.bodyLarge.copyWith(
+                color: AppColors.onBackground,
+              ),
               cursorColor: AppColors.accent,
               textInputAction: TextInputAction.search,
               decoration: InputDecoration(
                 hintText: 'Search items...',
-                hintStyle: AppTypography.bodyLarge.copyWith(color: Colors.white38),
+                hintStyle: AppTypography.bodyLarge.copyWith(
+                  color: Colors.white38,
+                ),
                 filled: true,
                 fillColor: Colors.white.withValues(alpha: 0.05),
                 contentPadding: const EdgeInsets.symmetric(
@@ -168,71 +180,86 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.md, AppSpacing.md, AppSpacing.sm),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              AppSpacing.md,
+              AppSpacing.md,
+              AppSpacing.sm,
+            ),
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
-                  ..._categoryFilters.map(
-                    (category) {
-                      final selected = isCategorySelected(category);
-                      return Padding(
-                        padding: const EdgeInsets.only(right: AppSpacing.sm),
-                        child: FilterChip(
-                          label: Text(category),
-                          selected: selected,
-                          onSelected: (_) => _toggleCategory(category),
-                          showCheckmark: false,
-                          selectedColor: Colors.white.withValues(alpha: 0.1),
-                          backgroundColor: Colors.transparent,
-                          side: BorderSide(
-                            color: selected
-                                ? AppColors.accent
-                                : Colors.white.withValues(alpha: 0.1),
-                            width: 0.5,
-                          ),
-                          labelStyle: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: selected
-                                    ? AppColors.accent
-                                    : AppColors.onBackground.withValues(alpha: 0.8),
-                              ),
+                  ..._categoryFilters.map((category) {
+                    final selected = isCategorySelected(category);
+                    return Padding(
+                      padding: const EdgeInsets.only(right: AppSpacing.sm),
+                      child: FilterChip(
+                        label: Text(category),
+                        selected: selected,
+                        onSelected: (_) => _toggleCategory(category),
+                        showCheckmark: false,
+                        selectedColor: Colors.white.withValues(alpha: 0.1),
+                        backgroundColor: Colors.transparent,
+                        side: BorderSide(
+                          color:
+                              selected
+                                  ? AppColors.accent
+                                  : Colors.white.withValues(alpha: 0.1),
+                          width: 0.5,
                         ),
-                      );
-                    },
-                  ),
+                        labelStyle: Theme.of(
+                          context,
+                        ).textTheme.bodySmall?.copyWith(
+                          color:
+                              selected
+                                  ? AppColors.accent
+                                  : AppColors.onBackground.withValues(
+                                    alpha: 0.8,
+                                  ),
+                        ),
+                      ),
+                    );
+                  }),
                   Container(
                     width: 1,
                     height: 28,
-                    margin: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                    margin: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.sm,
+                    ),
                     color: Colors.white.withValues(alpha: 0.1),
                   ),
-                  ..._statusFilters.map(
-                    (status) {
-                      final selected = _selectedStatus == status;
-                      return Padding(
-                        padding: const EdgeInsets.only(right: AppSpacing.sm),
-                        child: FilterChip(
-                          label: Text(status),
-                          selected: selected,
-                          onSelected: (_) => _toggleStatus(status),
-                          showCheckmark: false,
-                          selectedColor: Colors.white.withValues(alpha: 0.1),
-                          backgroundColor: Colors.transparent,
-                          side: BorderSide(
-                            color: selected
-                                ? AppColors.accent
-                                : Colors.white.withValues(alpha: 0.1),
-                            width: 0.5,
-                          ),
-                          labelStyle: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: selected
-                                    ? AppColors.accent
-                                    : AppColors.onBackground.withValues(alpha: 0.8),
-                              ),
+                  ..._statusFilters.map((status) {
+                    final selected = _selectedStatus == status;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: AppSpacing.sm),
+                      child: FilterChip(
+                        label: Text(status),
+                        selected: selected,
+                        onSelected: (_) => _toggleStatus(status),
+                        showCheckmark: false,
+                        selectedColor: Colors.white.withValues(alpha: 0.1),
+                        backgroundColor: Colors.transparent,
+                        side: BorderSide(
+                          color:
+                              selected
+                                  ? AppColors.accent
+                                  : Colors.white.withValues(alpha: 0.1),
+                          width: 0.5,
                         ),
-                      );
-                    },
-                  ),
+                        labelStyle: Theme.of(
+                          context,
+                        ).textTheme.bodySmall?.copyWith(
+                          color:
+                              selected
+                                  ? AppColors.accent
+                                  : AppColors.onBackground.withValues(
+                                    alpha: 0.8,
+                                  ),
+                        ),
+                      ),
+                    );
+                  }),
                 ],
               ),
             ),
@@ -251,7 +278,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 return ListView.separated(
                   padding: const EdgeInsets.all(AppSpacing.md),
                   itemCount: items.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.md),
+                  separatorBuilder:
+                      (_, _) => const SizedBox(height: AppSpacing.md),
                   itemBuilder: (context, index) {
                     final item = items[index];
                     return _SearchResultCard(
@@ -261,19 +289,22 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   },
                 );
               },
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, _) => Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-                  child: Text(
-                    SearchNotifier.message(error),
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              loading: () => const AppScreenSkeleton(showHeader: false),
+              error:
+                  (error, _) => Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.lg,
+                      ),
+                      child: Text(
+                        SearchNotifier.message(error),
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: AppColors.onBackground,
                         ),
+                      ),
+                    ),
                   ),
-                ),
-              ),
             ),
           ),
         ],
@@ -283,18 +314,17 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 }
 
 class _SearchResultCard extends StatelessWidget {
-  const _SearchResultCard({
-    required this.item,
-    required this.canSeeValues,
-  });
+  const _SearchResultCard({required this.item, required this.canSeeValues});
 
   final ItemModel item;
   final bool canSeeValues;
 
   @override
   Widget build(BuildContext context) {
-    final locationText =
-        [item.propertyName, item.roomName].whereType<String>().join(' › ');
+    final locationText = [
+      item.propertyName,
+      item.roomName,
+    ].whereType<String>().join(' › ');
     final hasLocation = locationText.isNotEmpty;
 
     return Column(
@@ -355,9 +385,9 @@ class _EmptySearchState extends StatelessWidget {
             Text(
               'Search your inventory',
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppColors.onBackground,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(color: AppColors.onBackground),
             ),
           ],
         ),
@@ -379,9 +409,9 @@ class _NoResultsState extends StatelessWidget {
         child: Text(
           "No items found for '$query'",
           textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppColors.onBackground,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(color: AppColors.onBackground),
         ),
       ),
     );

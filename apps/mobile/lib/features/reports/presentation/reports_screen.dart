@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/status_badge.dart';
 import '../../dashboard/data/models/dashboard_model.dart';
 import '../../dashboard/domain/dashboard_notifier.dart';
@@ -76,9 +77,7 @@ class ReportsScreen extends ConsumerWidget {
       body: dashboardState.when(
         data: (data) {
           if (data == null) {
-            return const Center(
-              child: Text('No dashboard data available'),
-            );
+            return const Center(child: Text('No dashboard data available'));
           }
           return CustomScrollView(
             slivers: [
@@ -104,15 +103,16 @@ class ReportsScreen extends ConsumerWidget {
             ],
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(
-          child: Text(
-            'Unable to load reports',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppColors.onBackground,
-                ),
-          ),
-        ),
+        loading: () => const AppScreenSkeleton(showHeader: false),
+        error:
+            (error, _) => Center(
+              child: Text(
+                'Unable to load reports',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: AppColors.onBackground),
+              ),
+            ),
       ),
     );
   }
@@ -142,10 +142,7 @@ Widget _sectionCard({required Widget child}) {
     decoration: BoxDecoration(
       color: AppColors.surfaceVariant,
       borderRadius: BorderRadius.circular(16),
-      border: Border.all(
-        color: Colors.white10,
-        width: 0.5,
-      ),
+      border: Border.all(color: Colors.white10, width: 0.5),
     ),
     child: child,
   );
@@ -156,8 +153,10 @@ class _HeroStatCard extends StatelessWidget {
 
   final DashboardModel data;
 
-  static final _currency =
-      NumberFormat.currency(symbol: r'$', decimalDigits: 0);
+  static final _currency = NumberFormat.currency(
+    symbol: r'$',
+    decimalDigits: 0,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -178,9 +177,9 @@ class _HeroStatCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             '${data.totalItems} items across ${data.totalProperties} properties',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.onSurfaceVariant,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: AppColors.onSurfaceVariant),
           ),
         ],
       ),
@@ -203,10 +202,8 @@ class _CategoryChartCardState extends State<_CategoryChartCard> {
   @override
   Widget build(BuildContext context) {
     final data = widget.data;
-    final entries = data.itemsByCategory
-        .entries
-        .where((e) => e.value > 0)
-        .toList();
+    final entries =
+        data.itemsByCategory.entries.where((e) => e.value > 0).toList();
     final total = data.totalItems;
     final hasData = entries.isNotEmpty && total > 0;
 
@@ -231,25 +228,28 @@ class _CategoryChartCardState extends State<_CategoryChartCard> {
                             pieTouchResponse.touchedSection == null) {
                           _touchedIndex = -1;
                         } else {
-                          _touchedIndex = pieTouchResponse
-                              .touchedSection!.touchedSectionIndex;
+                          _touchedIndex =
+                              pieTouchResponse
+                                  .touchedSection!
+                                  .touchedSectionIndex;
                         }
                       });
                     },
                   ),
-                  sections: entries.asMap().entries.map((entry) {
-                    final i = entry.key;
-                    final e = entry.value;
-                    final color =
-                        _categoryColors[i % _categoryColors.length];
-                    final isTouched = i == _touchedIndex;
-                    return PieChartSectionData(
-                      value: e.value.toDouble(),
-                      color: color,
-                      radius: isTouched ? 52 : 45,
-                      showTitle: false,
-                    );
-                  }).toList(),
+                  sections:
+                      entries.asMap().entries.map((entry) {
+                        final i = entry.key;
+                        final e = entry.value;
+                        final color =
+                            _categoryColors[i % _categoryColors.length];
+                        final isTouched = i == _touchedIndex;
+                        return PieChartSectionData(
+                          value: e.value.toDouble(),
+                          color: color,
+                          radius: isTouched ? 52 : 45,
+                          showTitle: false,
+                        );
+                      }).toList(),
                 ),
               ),
             ),
@@ -273,32 +273,20 @@ class _CategoryChartCardState extends State<_CategoryChartCard> {
                         const SizedBox(width: 8),
                         Text(
                           _capitalize(entries[i].key),
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodySmall
-                              ?.copyWith(
-                                color: AppColors.onBackground,
-                              ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: AppColors.onBackground),
                         ),
                         const Spacer(),
                         Text(
                           '${entries[i].value}',
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodySmall
-                              ?.copyWith(
-                                color: AppColors.onSurfaceVariant,
-                              ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: AppColors.onSurfaceVariant),
                         ),
                         const SizedBox(width: 4),
                         Text(
                           '${total > 0 ? (entries[i].value / total * 100).round() : 0}%',
-                          style: Theme.of(context)
-                              .textTheme
-                              .labelSmall
-                              ?.copyWith(
-                                color: AppColors.onSurfaceVariant,
-                              ),
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(color: AppColors.onSurfaceVariant),
                         ),
                       ],
                     ),
@@ -313,8 +301,8 @@ class _CategoryChartCardState extends State<_CategoryChartCard> {
                 child: Text(
                   'No category data',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.onSurfaceVariant,
-                      ),
+                    color: AppColors.onSurfaceVariant,
+                  ),
                 ),
               ),
             ),
@@ -336,10 +324,8 @@ class _StatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final entries = data.itemsByStatus
-        .entries
-        .where((e) => e.value > 0)
-        .toList();
+    final entries =
+        data.itemsByStatus.entries.where((e) => e.value > 0).toList();
     final total = data.totalItems;
 
     return _sectionCard(
@@ -355,8 +341,8 @@ class _StatusCard extends StatelessWidget {
                 child: Text(
                   'No status data',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.onSurfaceVariant,
-                      ),
+                    color: AppColors.onSurfaceVariant,
+                  ),
                 ),
               ),
             )
@@ -373,9 +359,9 @@ class _StatusCard extends StatelessWidget {
                     Text(
                       '${e.value}',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: AppColors.onBackground,
-                            fontWeight: FontWeight.w500,
-                          ),
+                        color: AppColors.onBackground,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                     const SizedBox(width: AppSpacing.sm),
                     Expanded(
@@ -407,8 +393,10 @@ class _AssetValueCard extends StatelessWidget {
 
   final DashboardModel data;
 
-  static final _currency =
-      NumberFormat.currency(symbol: r'$', decimalDigits: 0);
+  static final _currency = NumberFormat.currency(
+    symbol: r'$',
+    decimalDigits: 0,
+  );
 
   @override
   Widget build(BuildContext context) {

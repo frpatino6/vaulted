@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/loading_skeleton.dart';
 import '../data/models/insurance_ai_model.dart';
 import '../domain/insurance_ai_notifier.dart';
 
@@ -39,15 +40,14 @@ class _ClaimDraftScreenState extends ConsumerState<ClaimDraftScreen> {
       return;
     }
 
-    final itemId = _itemIdCtrl.text.trim().isEmpty ? null : _itemIdCtrl.text.trim();
+    final itemId =
+        _itemIdCtrl.text.trim().isEmpty ? null : _itemIdCtrl.text.trim();
 
     setState(() => _submitted = true);
 
-    await ref.read(claimDraftNotifierProvider.notifier).draft(
-          widget.policyId,
-          itemId,
-          desc,
-        );
+    await ref
+        .read(claimDraftNotifierProvider.notifier)
+        .draft(widget.policyId, itemId, desc);
 
     final state = ref.read(claimDraftNotifierProvider);
     if (state.hasError && mounted) {
@@ -84,27 +84,26 @@ class _ClaimDraftScreenState extends ConsumerState<ClaimDraftScreen> {
         foregroundColor: AppColors.onBackground,
         title: Text(
           'Claim Draft',
-          style: AppTypography.headlineSmall.copyWith(color: AppColors.onBackground),
+          style: AppTypography.headlineSmall.copyWith(
+            color: AppColors.onBackground,
+          ),
         ),
       ),
       body: SafeArea(
-        child: claimState.isLoading
-            ? const Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.accent),
-                ),
-              )
-            : claimState.hasValue && claimState.value != null && _submitted
+        child:
+            claimState.isLoading
+                ? const AppScreenSkeleton(showHeader: false)
+                : claimState.hasValue && claimState.value != null && _submitted
                 ? _ResultPhase(
-                    draft: claimState.value!,
-                    onCopy: () => _copyBody(claimState.value!.body),
-                    onReset: _reset,
-                  )
+                  draft: claimState.value!,
+                  onCopy: () => _copyBody(claimState.value!.body),
+                  onReset: _reset,
+                )
                 : _InputPhase(
-                    descCtrl: _descCtrl,
-                    itemIdCtrl: _itemIdCtrl,
-                    onGenerate: _generate,
-                  ),
+                  descCtrl: _descCtrl,
+                  itemIdCtrl: _itemIdCtrl,
+                  onGenerate: _generate,
+                ),
       ),
     );
   }
@@ -132,12 +131,16 @@ class _InputPhase extends StatelessWidget {
         children: [
           Text(
             'Describe what happened',
-            style: AppTypography.titleMedium.copyWith(color: AppColors.onBackground),
+            style: AppTypography.titleMedium.copyWith(
+              color: AppColors.onBackground,
+            ),
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
             'Provide details about the incident so AI can draft a formal claim letter.',
-            style: AppTypography.bodySmall.copyWith(color: AppColors.onSurfaceVariant),
+            style: AppTypography.bodySmall.copyWith(
+              color: AppColors.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: AppSpacing.md),
 
@@ -149,7 +152,8 @@ class _InputPhase extends StatelessWidget {
             maxLength: 2000,
             decoration: _inputDecoration(
               'Incident description',
-              hint: 'e.g. Water damage caused by a burst pipe in the main bathroom on April 14...',
+              hint:
+                  'e.g. Water damage caused by a burst pipe in the main bathroom on April 14...',
             ),
           ),
           const SizedBox(height: AppSpacing.md),
@@ -157,19 +161,25 @@ class _InputPhase extends StatelessWidget {
           // Optional item ID
           Text(
             'Item ID (optional)',
-            style: AppTypography.titleMedium.copyWith(color: AppColors.onBackground),
+            style: AppTypography.titleMedium.copyWith(
+              color: AppColors.onBackground,
+            ),
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
             'If the claim is for a specific item, enter its 24-character inventory ID.',
-            style: AppTypography.bodySmall.copyWith(color: AppColors.onSurfaceVariant),
+            style: AppTypography.bodySmall.copyWith(
+              color: AppColors.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: AppSpacing.sm),
           TextField(
             controller: itemIdCtrl,
             style: TextStyle(color: AppColors.onBackground),
             maxLength: 24,
-            decoration: _inputDecoration('Item ID (24-char MongoDB ID, optional)'),
+            decoration: _inputDecoration(
+              'Item ID (24-char MongoDB ID, optional)',
+            ),
           ),
           const SizedBox(height: AppSpacing.lg),
 
@@ -188,7 +198,9 @@ class _InputPhase extends StatelessWidget {
               icon: const Icon(Icons.auto_awesome_outlined, size: 18),
               label: Text(
                 'Generate Draft',
-                style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.w600),
+                style: AppTypography.labelLarge.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),
@@ -242,15 +254,17 @@ class _ResultPhase extends StatelessWidget {
           // Subject line (copyable)
           Text(
             'Subject',
-            style: AppTypography.titleMedium.copyWith(color: AppColors.onBackground),
+            style: AppTypography.titleMedium.copyWith(
+              color: AppColors.onBackground,
+            ),
           ),
           const SizedBox(height: AppSpacing.xs),
           InkWell(
             onTap: () {
               Clipboard.setData(ClipboardData(text: draft.subject));
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Subject copied.')),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('Subject copied.')));
             },
             borderRadius: BorderRadius.circular(12),
             child: Container(
@@ -265,13 +279,17 @@ class _ResultPhase extends StatelessWidget {
                   Expanded(
                     child: Text(
                       draft.subject,
-                      style: AppTypography.bodyMedium
-                          .copyWith(color: AppColors.onBackground),
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: AppColors.onBackground,
+                      ),
                     ),
                   ),
                   const SizedBox(width: AppSpacing.sm),
-                  Icon(Icons.copy_outlined,
-                      size: 16, color: AppColors.onSurfaceVariant),
+                  Icon(
+                    Icons.copy_outlined,
+                    size: 16,
+                    color: AppColors.onSurfaceVariant,
+                  ),
                 ],
               ),
             ),
@@ -281,7 +299,9 @@ class _ResultPhase extends StatelessWidget {
           // Letter body
           Text(
             'Letter',
-            style: AppTypography.titleMedium.copyWith(color: AppColors.onBackground),
+            style: AppTypography.titleMedium.copyWith(
+              color: AppColors.onBackground,
+            ),
           ),
           const SizedBox(height: AppSpacing.xs),
           Container(
@@ -290,7 +310,9 @@ class _ResultPhase extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppColors.surface,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.onSurfaceVariant.withValues(alpha: 0.2)),
+              border: Border.all(
+                color: AppColors.onSurfaceVariant.withValues(alpha: 0.2),
+              ),
             ),
             child: SelectableText(
               draft.body,
@@ -306,7 +328,9 @@ class _ResultPhase extends StatelessWidget {
           if (draft.keyPoints.isNotEmpty) ...[
             Text(
               'Key Points',
-              style: AppTypography.titleMedium.copyWith(color: AppColors.onBackground),
+              style: AppTypography.titleMedium.copyWith(
+                color: AppColors.onBackground,
+              ),
             ),
             const SizedBox(height: AppSpacing.xs),
             ...draft.keyPoints.map(
@@ -320,8 +344,9 @@ class _ResultPhase extends StatelessWidget {
                     Expanded(
                       child: Text(
                         pt,
-                        style: AppTypography.bodyMedium
-                            .copyWith(color: AppColors.onSurface),
+                        style: AppTypography.bodyMedium.copyWith(
+                          color: AppColors.onSurface,
+                        ),
                       ),
                     ),
                   ],
@@ -335,7 +360,9 @@ class _ResultPhase extends StatelessWidget {
           if (draft.nextSteps.isNotEmpty) ...[
             Text(
               'Next Steps',
-              style: AppTypography.titleMedium.copyWith(color: AppColors.onBackground),
+              style: AppTypography.titleMedium.copyWith(
+                color: AppColors.onBackground,
+              ),
             ),
             const SizedBox(height: AppSpacing.xs),
             ...draft.nextSteps.asMap().entries.map(
@@ -348,7 +375,10 @@ class _ResultPhase extends StatelessWidget {
                       width: 20,
                       height: 20,
                       alignment: Alignment.center,
-                      margin: const EdgeInsets.only(right: AppSpacing.sm, top: 1),
+                      margin: const EdgeInsets.only(
+                        right: AppSpacing.sm,
+                        top: 1,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.accent.withValues(alpha: 0.2),
                         shape: BoxShape.circle,
@@ -364,8 +394,9 @@ class _ResultPhase extends StatelessWidget {
                     Expanded(
                       child: Text(
                         entry.value,
-                        style: AppTypography.bodyMedium
-                            .copyWith(color: AppColors.onSurface),
+                        style: AppTypography.bodyMedium.copyWith(
+                          color: AppColors.onSurface,
+                        ),
                       ),
                     ),
                   ],
@@ -384,7 +415,9 @@ class _ResultPhase extends StatelessWidget {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.accent,
                     foregroundColor: AppColors.background,
-                    padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: AppSpacing.sm,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -392,8 +425,9 @@ class _ResultPhase extends StatelessWidget {
                   icon: const Icon(Icons.copy_outlined, size: 16),
                   label: Text(
                     'Copy Letter',
-                    style: AppTypography.labelLarge
-                        .copyWith(fontWeight: FontWeight.w600),
+                    style: AppTypography.labelLarge.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),
@@ -403,17 +437,18 @@ class _ResultPhase extends StatelessWidget {
                   onPressed: onReset,
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.onSurface,
-                    side: BorderSide(color: AppColors.onSurfaceVariant.withValues(alpha: 0.4)),
-                    padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                    side: BorderSide(
+                      color: AppColors.onSurfaceVariant.withValues(alpha: 0.4),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: AppSpacing.sm,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
                   icon: const Icon(Icons.refresh_outlined, size: 16),
-                  label: Text(
-                    'Start Over',
-                    style: AppTypography.labelLarge,
-                  ),
+                  label: Text('Start Over', style: AppTypography.labelLarge),
                 ),
               ),
             ],

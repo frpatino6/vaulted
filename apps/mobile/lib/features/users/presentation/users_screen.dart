@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'dart:ui' as ui;
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/loading_skeleton.dart';
 import '../data/models/user_model.dart';
 import '../domain/current_user_jwt.dart';
 import '../domain/users_notifier.dart';
@@ -88,8 +89,8 @@ class UsersScreen extends ConsumerWidget {
                       child: Text(
                         'No team members yet. Invite someone.',
                         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                              color: AppColors.onSurfaceVariant,
-                            ),
+                          color: AppColors.onSurfaceVariant,
+                        ),
                         textAlign: TextAlign.center,
                       ),
                     ),
@@ -99,9 +100,9 @@ class UsersScreen extends ConsumerWidget {
                     child: Text(
                       'Only authorized members can access vault data.',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppColors.onSurfaceVariant,
-                            fontStyle: FontStyle.italic,
-                          ),
+                        color: AppColors.onSurfaceVariant,
+                        fontStyle: FontStyle.italic,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                   ),
@@ -122,18 +123,19 @@ class UsersScreen extends ConsumerWidget {
                       child: Text(
                         'Only authorized members can access vault data.',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: AppColors.onSurfaceVariant.withValues(alpha: 0.8),
-                              fontStyle: FontStyle.italic,
-                            ),
+                          color: AppColors.onSurfaceVariant.withValues(
+                            alpha: 0.8,
+                          ),
+                          fontStyle: FontStyle.italic,
+                        ),
                         textAlign: TextAlign.center,
                       ),
                     ),
                   );
                 }
                 final user = users[index];
-                final initial = user.email.isNotEmpty
-                    ? user.email[0].toUpperCase()
-                    : '?';
+                final initial =
+                    user.email.isNotEmpty ? user.email[0].toUpperCase() : '?';
                 final roleColor = _roleColor(user.role);
                 return _TeamMemberCard(
                   user: user,
@@ -146,59 +148,42 @@ class UsersScreen extends ConsumerWidget {
               },
             );
           },
-          loading: () => Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(
-                  width: 40,
-                  height: 40,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: AppColors.accent,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                Text(
-                  'Loading...',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.onSurfaceVariant,
-                      ),
-                ),
-              ],
-            ),
-          ),
-          error: (err, _) => Center(
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    UsersNotifier.message(err),
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+          loading: () => const AppScreenSkeleton(showHeader: false),
+          error:
+              (err, _) => Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        UsersNotifier.message(err),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: AppColors.error,
                         ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  FilledButton(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.accent,
-                      foregroundColor: AppColors.background,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                        textAlign: TextAlign.center,
                       ),
-                    ),
-                    onPressed: () =>
-                        ref.read(usersNotifierProvider.notifier).refresh(),
-                    child: const Text('Retry'),
+                      const SizedBox(height: AppSpacing.md),
+                      FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.accent,
+                          foregroundColor: AppColors.background,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        onPressed:
+                            () =>
+                                ref
+                                    .read(usersNotifierProvider.notifier)
+                                    .refresh(),
+                        child: const Text('Retry'),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
         ),
       ),
     );
@@ -219,31 +204,32 @@ class UsersScreen extends ConsumerWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       barrierColor: Colors.transparent,
-      builder: (context) => Stack(
-        children: [
-          Positioned.fill(
-            child: GestureDetector(
-              onTap: () => Navigator.of(context).pop(),
-              behavior: HitTestBehavior.opaque,
-              child: BackdropFilter(
-                filter: ui.ImageFilter.blur(sigmaX: 6, sigmaY: 6),
-                child: Container(
-                  color: Colors.black.withValues(alpha: 0.35),
+      builder:
+          (context) => Stack(
+            children: [
+              Positioned.fill(
+                child: GestureDetector(
+                  onTap: () => Navigator.of(context).pop(),
+                  behavior: HitTestBehavior.opaque,
+                  child: BackdropFilter(
+                    filter: ui.ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+                    child: Container(
+                      color: Colors.black.withValues(alpha: 0.35),
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.of(context).size.height * 0.9,
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(context).size.height * 0.9,
+                  ),
+                  child: UserDetailSheet(user: user),
+                ),
               ),
-              child: UserDetailSheet(user: user),
-            ),
+            ],
           ),
-        ],
-      ),
     );
   }
 }
@@ -316,13 +302,12 @@ class _TeamMemberCard extends StatelessWidget {
                           Flexible(
                             child: Text(
                               displayName,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleMedium
-                                  ?.copyWith(
-                                    color: AppColors.onBackground,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                              style: Theme.of(
+                                context,
+                              ).textTheme.titleMedium?.copyWith(
+                                color: AppColors.onBackground,
+                                fontWeight: FontWeight.bold,
+                              ),
                               overflow: TextOverflow.ellipsis,
                               maxLines: 1,
                             ),
@@ -351,9 +336,9 @@ class _TeamMemberCard extends StatelessWidget {
                       Text(
                         user.email,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Colors.white.withValues(alpha: 0.54),
-                              fontSize: 12,
-                            ),
+                          color: Colors.white.withValues(alpha: 0.54),
+                          fontSize: 12,
+                        ),
                         overflow: TextOverflow.ellipsis,
                         maxLines: 1,
                       ),
@@ -361,10 +346,12 @@ class _TeamMemberCard extends StatelessWidget {
                         const SizedBox(height: 4),
                         Text(
                           user.status.toUpperCase(),
-                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                color: AppColors.onSurfaceVariant,
-                                fontSize: 10,
-                              ),
+                          style: Theme.of(
+                            context,
+                          ).textTheme.labelSmall?.copyWith(
+                            color: AppColors.onSurfaceVariant,
+                            fontSize: 10,
+                          ),
                         ),
                       ],
                     ],
@@ -440,10 +427,10 @@ class _TeamMemberCard extends StatelessWidget {
         child: Text(
           'OWNER',
           style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: AppColors.catalogGold,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 1.2,
-              ),
+            color: AppColors.catalogGold,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 1.2,
+          ),
         ),
       );
     }
@@ -459,9 +446,9 @@ class _TeamMemberCard extends StatelessWidget {
       child: Text(
         user.role.toUpperCase(),
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: roleColor,
-              fontWeight: FontWeight.w600,
-            ),
+          color: roleColor,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
