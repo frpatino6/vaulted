@@ -8,17 +8,19 @@ class ItemRepository {
   final ItemRemoteDataSource _remote;
 
   Future<List<ItemModel>> getItems({
-    required String propertyId,
+    String? propertyId,
     String? roomId,
     String? category,
     String? status,
     bool unlocated = false,
+    int? limit,
   }) => _remote.getItems(
     propertyId: propertyId,
     roomId: roomId,
     category: category,
     status: status,
     unlocated: unlocated,
+    limit: limit,
   );
 
   Future<ItemModel> getItem(String id) => _remote.getItem(id);
