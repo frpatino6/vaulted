@@ -160,7 +160,7 @@ class _MaintenanceListScreenState extends ConsumerState<MaintenanceListScreen>
       child: ListView.separated(
         padding: const EdgeInsets.all(AppSpacing.md),
         itemCount: records.length,
-        separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+        separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
         itemBuilder: (context, index) {
           final record = records[index];
           return _MaintenanceCard(
