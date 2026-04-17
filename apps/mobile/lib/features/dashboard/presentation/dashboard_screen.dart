@@ -35,136 +35,200 @@ class DashboardScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.backgroundElevated,
-      body: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(child: _DashboardHeader()),
-          // Stats section — only shown when data is available
-          if (dashboardState.hasValue && dashboardState.value != null)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.md,
-                  AppSpacing.lg,
-                  AppSpacing.md,
-                  0,
-                ),
-                child: _StatsSection(
-                  data: dashboardState.value!,
-                  canSeeValues: canSeeValues,
-                ),
-              ),
-            ),
-          const SliverToBoxAdapter(child: _MaintenanceAlertCard()),
-          const SliverToBoxAdapter(child: _ActiveOperationsCard()),
-          const SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(
-                AppSpacing.md,
-                AppSpacing.lg,
-                AppSpacing.md,
-                AppSpacing.md,
-              ),
-              child: DashboardQuickActions(),
-            ),
-          ),
-          propertiesState.when(
-            data: (list) {
-              if (list.isEmpty) {
-                if (!canManageProperties) {
-                  return SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.md,
-                        0,
-                        AppSpacing.md,
-                        AppSpacing.lg,
-                      ),
-                      child: Center(
-                        child: Text(
-                          'No properties assigned to your account',
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(color: AppColors.onSurfaceVariant),
-                        ),
-                      ),
-                    ),
-                  );
-                }
-                return SliverToBoxAdapter(
-                  child: _EmptyPropertiesCta(
-                    onAddProperty: () => _showAddPropertySheet(context, ref),
-                  ),
-                );
-              }
-              return SliverToBoxAdapter(
+      body: RefreshIndicator(
+        color: AppColors.accent,
+        onRefresh: () async {
+          ref.read(propertiesNotifierProvider.notifier).load();
+          ref.read(dashboardNotifierProvider.notifier).load();
+          ref.read(maintenanceListNotifierProvider.notifier).load();
+          ref.read(movementListNotifierProvider.notifier).load();
+        },
+        child: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(child: _DashboardHeader()),
+            // Stats section — loading skeleton or real data
+            if (dashboardState.isLoading)
+              SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(
                     AppSpacing.md,
-                    0,
-                    AppSpacing.md,
                     AppSpacing.lg,
+                    AppSpacing.md,
+                    0,
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Text(
-                            'RECENT PROPERTIES',
-                            style: Theme.of(context).textTheme.titleSmall
-                                ?.copyWith(
-                                  color: AppColors.onSurfaceVariant.withValues(
-                                    alpha: 0.6,
-                                  ),
-                                  fontSize: 12.0,
-                                  letterSpacing: 1.5,
-                                ),
+                      Expanded(
+                        child: Container(
+                          height: 80,
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceVariant,
+                            borderRadius: BorderRadius.circular(16),
                           ),
-                          if (canManageProperties)
-                            TextButton.icon(
-                              onPressed: () =>
-                                  _showAddPropertySheet(context, ref),
-                              icon: Icon(
-                                Icons.add,
-                                size: 18,
-                                color: AppColors.accent,
-                              ),
-                              label: Text(
-                                'Add',
-                                style: TextStyle(
-                                  color: AppColors.accent,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                        ],
+                        ),
                       ),
-                      const SizedBox(height: AppSpacing.sm),
-                      ...list.map(
-                        (p) => Padding(
-                          padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                          child: DashboardPropertyCard(
-                            property: p,
-                            itemCount: null,
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Container(
+                          height: 80,
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceVariant,
+                            borderRadius: BorderRadius.circular(16),
                           ),
                         ),
                       ),
                     ],
                   ),
                 ),
-              );
-            },
-            loading: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
-            error: (_, _) => const SliverToBoxAdapter(child: SizedBox.shrink()),
-          ),
-          const SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.all(AppSpacing.lg),
-              child: Center(child: _FooterText()),
+              )
+            else if (dashboardState.hasValue && dashboardState.value != null)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.md,
+                    AppSpacing.lg,
+                    AppSpacing.md,
+                    0,
+                  ),
+                  child: _StatsSection(
+                    data: dashboardState.value!,
+                    canSeeValues: canSeeValues,
+                  ),
+                ),
+              ),
+            const SliverToBoxAdapter(child: _MaintenanceAlertCard()),
+            const SliverToBoxAdapter(child: _ActiveOperationsCard()),
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  AppSpacing.md,
+                  AppSpacing.lg,
+                  AppSpacing.md,
+                  AppSpacing.md,
+                ),
+                child: DashboardQuickActions(),
+              ),
             ),
-          ),
-        ],
+            propertiesState.when(
+              data: (list) {
+                if (list.isEmpty) {
+                  if (!canManageProperties) {
+                    return SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.md,
+                          0,
+                          AppSpacing.md,
+                          AppSpacing.lg,
+                        ),
+                        child: Center(
+                          child: Text(
+                            'No properties assigned to your account',
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(color: AppColors.onSurfaceVariant),
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+                  return SliverToBoxAdapter(
+                    child: _EmptyPropertiesCta(
+                      onAddProperty: () => _showAddPropertySheet(context, ref),
+                    ),
+                  );
+                }
+                return SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.md,
+                      0,
+                      AppSpacing.md,
+                      AppSpacing.lg,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Text(
+                              'YOUR PROPERTIES',
+                              style: Theme.of(context).textTheme.titleSmall
+                                  ?.copyWith(
+                                    color: AppColors.onSurfaceVariant.withValues(
+                                      alpha: 0.6,
+                                    ),
+                                    fontSize: 12.0,
+                                    letterSpacing: 1.5,
+                                  ),
+                            ),
+                            if (canManageProperties)
+                              TextButton.icon(
+                                onPressed: () =>
+                                    _showAddPropertySheet(context, ref),
+                                icon: Icon(
+                                  Icons.add,
+                                  size: 18,
+                                  color: AppColors.accent,
+                                ),
+                                label: Text(
+                                  'Add',
+                                  style: TextStyle(
+                                    color: AppColors.accent,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        ...list.map(
+                          (p) => Padding(
+                            padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                            child: DashboardPropertyCard(
+                              property: p,
+                              itemCount: null,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+              loading: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
+              error: (_, _) => SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  child: Center(
+                    child: Column(
+                      children: [
+                        Text(
+                          'Could not load properties',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: AppColors.onSurfaceVariant,
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () =>
+                              ref.read(propertiesNotifierProvider.notifier).load(),
+                          child: const Text('Retry'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.all(AppSpacing.lg),
+                child: Center(child: _FooterText()),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -267,7 +331,14 @@ class _DashboardHeader extends ConsumerWidget {
         : hour < 18
         ? 'Good afternoon,'
         : 'Good evening,';
-    final firstName = email.split('@').first;
+
+    // D4: try name claim from JWT first, fall back to capitalized email prefix
+    final firstName = _firstNameFromJwt() ??
+        () {
+          final prefix = email.split('@').first;
+          if (prefix.isEmpty) return 'Guest';
+          return prefix[0].toUpperCase() + prefix.substring(1);
+        }();
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(
@@ -300,26 +371,33 @@ class _DashboardHeader extends ConsumerWidget {
               ],
             ),
           ),
-          GestureDetector(
-            onTap: () => _showUserMenu(context, ref, email, role),
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white10,
-                border: Border.all(
-                  color: AppColors.accent.withValues(alpha: 0.6),
-                  width: 1,
-                ),
-              ),
-              child: Center(
-                child: Text(
-                  email.isNotEmpty ? email[0].toUpperCase() : '?',
-                  style: TextStyle(
-                    color: AppColors.accentBright,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 16,
+          // D2: 48dp touch target wrapping the 40dp avatar container
+          SizedBox(
+            width: 48,
+            height: 48,
+            child: Center(
+              child: GestureDetector(
+                onTap: () => _showUserMenu(context, ref, email, role),
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white10,
+                    border: Border.all(
+                      color: AppColors.accent.withValues(alpha: 0.6),
+                      width: 1,
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      email.isNotEmpty ? email[0].toUpperCase() : '?',
+                      style: TextStyle(
+                        color: AppColors.accentBright,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -340,6 +418,27 @@ class _DashboardHeader extends ConsumerWidget {
         base64Url.decode(base64Url.normalize(parts[1])),
       );
       return jsonDecode(payload)['email'] as String?;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// D4: extract the name claim from the JWT payload.
+  String? _firstNameFromJwt() {
+    final token = AuthTokenStore.instance.getToken();
+    if (token == null) return null;
+    final parts = token.split('.');
+    if (parts.length != 3) return null;
+    try {
+      final payload = utf8.decode(
+        base64Url.decode(base64Url.normalize(parts[1])),
+      );
+      final decoded = jsonDecode(payload) as Map<String, dynamic>;
+      final name = decoded['name'] as String?;
+      if (name == null || name.trim().isEmpty) return null;
+      final first = name.trim().split(' ').first;
+      if (first.isEmpty) return null;
+      return first[0].toUpperCase() + first.substring(1);
     } catch (_) {
       return null;
     }
@@ -481,7 +580,7 @@ class _DashboardHeader extends ConsumerWidget {
   }
 }
 
-/// Quick Actions: 2x2 grid, luxury look, equal square cards.
+/// Quick Actions: 2-column grid, luxury look, equal square cards.
 class DashboardQuickActions extends ConsumerWidget {
   const DashboardQuickActions({super.key});
 
@@ -499,49 +598,43 @@ class DashboardQuickActions extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 16.0),
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
-            mainAxisSpacing: 16.0,
-            crossAxisSpacing: 16.0,
-            childAspectRatio: 1.0,
-            padding: EdgeInsets.zero,
-            children: [
-              _QuickActionTile(
-                icon: Icons.qr_code_scanner_outlined,
-                label: 'Scan QR',
-                onTap: () => context.push('/scanner'),
-              ),
-              _QuickActionTile(
-                icon: Icons.auto_awesome_outlined,
-                label: 'AI Assistant',
-                onTap: () => context.push('/chat'),
-              ),
-              _QuickActionTile(
-                icon: Icons.swap_horiz_rounded,
-                label: 'Operations',
-                onTap: () => context.push('/movements'),
-              ),
-              _QuickActionTile(
-                icon: Icons.checkroom_outlined,
-                label: 'Wardrobe',
-                onTap: () => context.push('/wardrobe'),
-              ),
-              _QuickActionTile(
-                icon: Icons.build_circle_outlined,
-                label: 'Maintenance',
-                onTap: () => context.push('/maintenance'),
-              ),
-              _QuickActionTile(
-                icon: Icons.picture_as_pdf_outlined,
-                label: 'Reports',
-                onTap: () => context.push('/reports'),
-              ),
-            ],
-          ),
+        // D1: removed wrapping Padding(all:16) — GridView sits flush with parent padding
+        GridView.count(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisCount: 2,
+          mainAxisSpacing: 16.0,
+          crossAxisSpacing: 16.0,
+          childAspectRatio: 1.0,
+          padding: EdgeInsets.zero,
+          children: [
+            _QuickActionTile(
+              icon: Icons.qr_code_scanner_outlined,
+              label: 'Scan QR',
+              onTap: () => context.push('/scanner'),
+            ),
+            _QuickActionTile(
+              icon: Icons.auto_awesome_outlined,
+              label: 'AI Assistant',
+              onTap: () => context.push('/chat'),
+            ),
+            _QuickActionTile(
+              icon: Icons.swap_horiz_rounded,
+              label: 'Operations',
+              onTap: () => context.push('/movements'),
+            ),
+            _QuickActionTile(
+              icon: Icons.checkroom_outlined,
+              label: 'Wardrobe',
+              onTap: () => context.push('/wardrobe'),
+            ),
+            // D11: Reports tile removed (unimplemented stub)
+            _QuickActionTile(
+              icon: Icons.build_circle_outlined,
+              label: 'Maintenance',
+              onTap: () => context.push('/maintenance'),
+            ),
+          ],
         ),
       ],
     );
@@ -571,7 +664,8 @@ class _QuickActionTile extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16.0),
-            color: const Color(0xFF1E1E1E),
+            // D3: replaced const Color(0xFF1E1E1E) → AppColors.surface
+            color: AppColors.surface,
             border: Border.all(color: Colors.white10, width: 0.5),
           ),
           child: Center(
@@ -589,7 +683,8 @@ class _QuickActionTile extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 14.0,
                     fontWeight: FontWeight.w500,
-                    color: Colors.white.withValues(alpha: 0.9),
+                    // D3: replaced Colors.white.withValues(alpha:0.9) → AppColors.onBackground
+                    color: AppColors.onBackground,
                   ),
                 ),
               ],
@@ -602,7 +697,7 @@ class _QuickActionTile extends StatelessWidget {
 }
 
 /// Property card: background image + dark gradient overlay, ClipRRect 20,
-/// name + location at bottom, elegant "Primary" badge with fine gold border.
+/// name + location at bottom, elegant type badge with fine border.
 class DashboardPropertyCard extends StatelessWidget {
   const DashboardPropertyCard({
     super.key,
@@ -621,12 +716,24 @@ class DashboardPropertyCard extends StatelessWidget {
     _ => 'Rental',
   };
 
+  // D8: badge border color per type
+  Color get _typeBadgeBorderColor => switch (property.type) {
+    'primary' => AppColors.accent,
+    'vacation' => const Color(0xFF2196F3),
+    _ => AppColors.onSurfaceVariant,
+  };
+
   String get _location => '${property.address.city}, ${property.address.state}';
 
   @override
   Widget build(BuildContext context) {
     final hasImage = property.photos.isNotEmpty;
     final imageUrl = hasImage ? property.photos.first : null;
+
+    // D8: show badge for primary, vacation, and rental
+    final showBadge = property.type == 'primary' ||
+        property.type == 'vacation' ||
+        property.type == 'rental';
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(20),
@@ -661,7 +768,7 @@ class DashboardPropertyCard extends StatelessWidget {
                   )
                 else
                   _buildPlaceholderGradient(),
-                // Dark gradient overlay for legibility (slightly lighter at bottom so text pops)
+                // Dark gradient overlay for legibility
                 DecoratedBox(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(20),
@@ -677,8 +784,8 @@ class DashboardPropertyCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                // Primary badge (top-right)
-                if (property.type == 'primary')
+                // D8: type badge shown for primary, vacation, and rental
+                if (showBadge)
                   Positioned(
                     top: AppSpacing.md,
                     right: AppSpacing.md,
@@ -691,7 +798,7 @@ class DashboardPropertyCard extends StatelessWidget {
                         color: Colors.black.withValues(alpha: 0.35),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: AppColors.accent.withValues(alpha: 0.8),
+                          color: _typeBadgeBorderColor.withValues(alpha: 0.8),
                           width: 1,
                         ),
                       ),
@@ -1028,8 +1135,14 @@ class _MaintenanceAlertCardState extends ConsumerState<_MaintenanceAlertCard> {
                         letterSpacing: 2.0,
                       ),
                     ),
-                    GestureDetector(
-                      onTap: () => context.push('/maintenance'),
+                    // D6: TextButton replaces GestureDetector
+                    TextButton(
+                      onPressed: () => context.push('/maintenance'),
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.padded,
+                      ),
                       child: Text(
                         'See all →',
                         style: TextStyle(
@@ -1134,8 +1247,14 @@ class _ActiveOperationsCardState
                             letterSpacing: 2.0,
                           ),
                     ),
-                    GestureDetector(
-                      onTap: () => context.push('/movements'),
+                    // D6: TextButton replaces GestureDetector
+                    TextButton(
+                      onPressed: () => context.push('/movements'),
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.padded,
+                      ),
                       child: Text(
                         'See all →',
                         style: TextStyle(
