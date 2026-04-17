@@ -17,7 +17,6 @@ import '../../maintenance/data/models/maintenance_model.dart';
 import '../../maintenance/domain/maintenance_notifier.dart';
 import '../../maintenance/presentation/add_maintenance_sheet.dart';
 import '../data/item_repository_provider.dart';
-import '../data/models/item_history_model.dart';
 import '../data/models/item_model.dart';
 import '../domain/item_detail_notifier.dart';
 import '../../properties/domain/property_detail_notifier.dart';
@@ -48,6 +47,8 @@ class ItemDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
+  bool _historyExpanded = false;
+
   @override
   void initState() {
     super.initState();
@@ -91,14 +92,6 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                actions: [
-                  if (canEdit)
-                    IconButton(
-                      icon: const Icon(Icons.edit_outlined),
-                      onPressed: () => _showEditSheet(context, item),
-                      tooltip: 'Edit',
-                    ),
-                ],
               ),
               SliverToBoxAdapter(
                 child: Padding(
@@ -115,8 +108,8 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                         onAddPhoto: () => _onAddOrChangePhoto(context, item),
                       ),
                       const SizedBox(height: AppSpacing.lg),
-                      if (canSeeValues) _PriceHighlightSection(item: item),
-                      if (canSeeValues) const SizedBox(height: AppSpacing.lg),
+                      if (canSeeValues && (item.valuation?.currentValue ?? 0) > 0) _PriceHighlightSection(item: item),
+                      if (canSeeValues && (item.valuation?.currentValue ?? 0) > 0) const SizedBox(height: AppSpacing.lg),
                       _SpecsGrid(item: item),
                       if (item.isWardrobe && item.hasWardrobeDetails) ...[
                         const SizedBox(height: AppSpacing.lg),
@@ -133,16 +126,6 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                                 : null,
                           ),
                           label: const Text('Dry Cleaning History'),
-                        ),
-                      ],
-                      if (item.subcategory.isNotEmpty) ...[
-                        const SizedBox(height: AppSpacing.lg),
-                        _SectionLabel('SUBCATEGORY'),
-                        const SizedBox(height: AppSpacing.sm),
-                        Text(
-                          item.subcategory,
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(color: AppColors.onBackground),
                         ),
                       ],
                       if (canSeeValues &&
@@ -179,14 +162,43 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                         const SizedBox(height: AppSpacing.lg),
                         _SectionLabel('DOCUMENTS'),
                         const SizedBox(height: AppSpacing.sm),
-                        Text(
-                          '${item.documents.length} document(s)',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(
-                                color: AppColors.onSurfaceVariant.withValues(
-                                  alpha: 0.8,
+                        Container(
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceVariant,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Column(
+                            children: List.generate(item.documents.length, (index) {
+                              final url = item.documents[index];
+                              final segments = Uri.tryParse(url)?.pathSegments ?? [];
+                              final filename = segments.isNotEmpty && segments.last.isNotEmpty
+                                  ? segments.last
+                                  : 'Document ${index + 1}';
+                              return ListTile(
+                                leading: const Icon(
+                                  Icons.description_outlined,
+                                  color: AppColors.accent,
+                                  size: 18,
                                 ),
-                              ),
+                                title: Text(
+                                  filename,
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: AppColors.onBackground,
+                                  ),
+                                ),
+                                trailing: const Icon(
+                                  Icons.open_in_new,
+                                  size: 14,
+                                  color: AppColors.onSurfaceVariant,
+                                ),
+                                onTap: () {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Opening documents coming soon')),
+                                  );
+                                },
+                              );
+                            }),
+                          ),
                         ),
                       ],
                       if (item.tags.isNotEmpty) ...[
@@ -221,7 +233,11 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                       const SizedBox(height: AppSpacing.lg),
                       _HistorySectionLabel(),
                       const SizedBox(height: AppSpacing.sm),
-                      _HistorySection(historyEntries: historyEntries),
+                      _HistorySection(
+                        historyEntries: historyEntries,
+                        expanded: _historyExpanded,
+                        onExpand: () => setState(() => _historyExpanded = true),
+                      ),
                       const SizedBox(height: AppSpacing.xxl),
                     ],
                   ),
@@ -230,7 +246,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
             ],
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const _ItemDetailSkeleton(),
         error: (err, _) => Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -476,14 +492,14 @@ class _MaintenanceSectionWidgetState
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
+        backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
             Icon(Icons.auto_awesome, color: AppColors.accentLight, size: 20),
             const SizedBox(width: 8),
             const Text('AI Maintenance Analysis',
-                style: TextStyle(fontSize: 16, color: Colors.white)),
+                style: TextStyle(fontSize: 16, color: AppColors.onBackground)),
           ],
         ),
         content: Column(
@@ -495,15 +511,15 @@ class _MaintenanceSectionWidgetState
             if (title.isNotEmpty) ...[
               Text(title,
                   style: const TextStyle(
-                      color: Colors.white,
+                      color: AppColors.onBackground,
                       fontWeight: FontWeight.w600,
                       fontSize: 14)),
               const SizedBox(height: 6),
             ],
             if (reason.isNotEmpty)
               Text(reason,
-                  style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.7), fontSize: 13)),
+                  style: const TextStyle(
+                      color: AppColors.onSurfaceVariant, fontSize: 13)),
             if (action.isNotEmpty) ...[
               const SizedBox(height: 10),
               Text('Recommended action:',
@@ -513,7 +529,7 @@ class _MaintenanceSectionWidgetState
                       letterSpacing: 0.5)),
               const SizedBox(height: 4),
               Text(action,
-                  style: const TextStyle(color: Colors.white, fontSize: 13)),
+                  style: const TextStyle(color: AppColors.onBackground, fontSize: 13)),
             ],
             if (recordCreated) ...[
               const SizedBox(height: 12),
@@ -613,9 +629,9 @@ class _MaintenanceSectionWidgetState
                           color: AppColors.accentLight, fontSize: 12),
                     ),
                     style: TextButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
+                      tapTargetSize: MaterialTapTargetSize.padded,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   TextButton.icon(
@@ -636,9 +652,9 @@ class _MaintenanceSectionWidgetState
                           TextStyle(color: AppColors.accent, fontSize: 12),
                     ),
                     style: TextButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
+                      tapTargetSize: MaterialTapTargetSize.padded,
+                    ),
                   ),
                 ],
               ),
@@ -798,23 +814,6 @@ class _QrSection extends StatelessWidget {
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: AppColors.onSurfaceVariant,
               ),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Center(
-            child: OutlinedButton(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Share coming soon')),
-                );
-              },
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.onSurfaceVariant,
-                side: BorderSide(
-                  color: AppColors.onSurfaceVariant.withValues(alpha: 0.35),
-                ),
-              ),
-              child: const Text('Share QR'),
             ),
           ),
         ],
@@ -1377,14 +1376,6 @@ class _SpecsGrid extends StatelessWidget {
 
   final ItemModel item;
 
-  static TextStyle _labelStyle(BuildContext context) {
-    return Theme.of(context).textTheme.labelSmall!.copyWith(
-      color: Colors.white54,
-      fontSize: 10,
-      letterSpacing: 1.2,
-      fontWeight: FontWeight.w600,
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -1397,40 +1388,72 @@ class _SpecsGrid extends StatelessWidget {
           color: AppColors.onSurfaceVariant.withValues(alpha: 0.2),
         ),
       ),
-      child: GridView.count(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        crossAxisCount: 2,
-        mainAxisSpacing: AppSpacing.md,
-        crossAxisSpacing: AppSpacing.md,
-        childAspectRatio: 2.2,
-        children: [
-          _SpecCell(
-            label: 'CATEGORY',
-            value: item.category,
-            labelStyle: _labelStyle(context),
-          ),
-          _SpecCell(
-            label: 'STATUS',
-            valueWidget: StatusBadge(status: item.status, compact: true),
-            labelStyle: _labelStyle(context),
-          ),
-          _SpecCell(
-            label: 'SERIAL NUMBER',
-            value: item.serialNumber?.isNotEmpty == true
-                ? item.serialNumber!
-                : '—',
-            labelStyle: _labelStyle(context),
-          ),
-          if (item.locationDetail?.isNotEmpty == true)
-            _SpecCell(
-              label: 'SECTION / LOCATION',
-              value: item.locationDetail!,
-              labelStyle: _labelStyle(context),
-            ),
-        ],
-      ),
+      child: _SpecsTable(item: item),
     );
+  }
+}
+
+class _SpecsTable extends StatelessWidget {
+  const _SpecsTable({required this.item});
+
+  final ItemModel item;
+
+  static TextStyle _labelStyle(BuildContext context) {
+    return Theme.of(context).textTheme.labelSmall!.copyWith(
+      color: Colors.white54,
+      fontSize: 10,
+      letterSpacing: 1.2,
+      fontWeight: FontWeight.w600,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ls = _labelStyle(context);
+    final cells = <Widget>[
+      _SpecCell(
+        label: 'ROOM',
+        value: item.roomName?.isNotEmpty == true ? item.roomName! : 'Unassigned',
+        valueColor: item.roomName?.isNotEmpty == true ? null : AppColors.onSurfaceVariant,
+        labelStyle: ls,
+      ),
+      _SpecCell(label: 'CATEGORY', value: item.category, labelStyle: ls),
+      _SpecCell(
+        label: 'STATUS',
+        valueWidget: StatusBadge(status: item.status, compact: true),
+        labelStyle: ls,
+      ),
+      if (item.subcategory.isNotEmpty)
+        _SpecCell(label: 'SUBCATEGORY', value: item.subcategory, labelStyle: ls),
+      _SpecCell(
+        label: 'SERIAL NUMBER',
+        value: item.serialNumber?.isNotEmpty == true ? item.serialNumber! : '—',
+        labelStyle: ls,
+      ),
+      if (item.locationDetail?.isNotEmpty == true)
+        _SpecCell(label: 'SECTION / LOCATION', value: item.locationDetail!, labelStyle: ls),
+    ];
+
+    // Pair cells into rows of 2; last row gets a single cell if count is odd
+    final rows = <Widget>[];
+    for (var i = 0; i < cells.length; i += 2) {
+      final isLast = i + 1 >= cells.length;
+      rows.add(
+        Padding(
+          padding: EdgeInsets.only(bottom: i + 2 < cells.length ? AppSpacing.md : 0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: cells[i]),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(child: isLast ? const SizedBox.shrink() : cells[i + 1]),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Column(children: rows);
   }
 }
 
@@ -1439,12 +1462,14 @@ class _SpecCell extends StatelessWidget {
     required this.label,
     this.value,
     this.valueWidget,
+    this.valueColor,
     required this.labelStyle,
   });
 
   final String label;
   final String? value;
   final Widget? valueWidget;
+  final Color? valueColor;
   final TextStyle labelStyle;
 
   @override
@@ -1460,9 +1485,9 @@ class _SpecCell extends StatelessWidget {
         else
           Text(
             value ?? '—',
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: AppColors.onBackground),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: valueColor ?? AppColors.onBackground,
+            ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
@@ -1472,9 +1497,15 @@ class _SpecCell extends StatelessWidget {
 }
 
 class _HistorySection extends StatelessWidget {
-  const _HistorySection({required this.historyEntries});
+  const _HistorySection({
+    required this.historyEntries,
+    required this.expanded,
+    required this.onExpand,
+  });
 
   final List<_HistoryEntry> historyEntries;
+  final bool expanded;
+  final VoidCallback onExpand;
 
   @override
   Widget build(BuildContext context) {
@@ -1492,7 +1523,23 @@ class _HistorySection extends StatelessWidget {
       );
     }
 
-    return _HistoryTimeline(entries: historyEntries);
+    final showAll = expanded || historyEntries.length <= 5;
+    final visibleEntries = showAll ? historyEntries : historyEntries.take(5).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _HistoryTimeline(entries: visibleEntries),
+        if (!showAll)
+          TextButton(
+            onPressed: onExpand,
+            child: Text(
+              'View all ${historyEntries.length} entries →',
+              style: const TextStyle(color: AppColors.accent),
+            ),
+          ),
+      ],
+    );
   }
 }
 
@@ -1570,6 +1617,65 @@ class _HistoryTimeline extends StatelessWidget {
   }
 }
 
+
+class _ItemDetailSkeleton extends StatelessWidget {
+  const _ItemDetailSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomScrollView(
+      slivers: [
+        SliverAppBar(
+          pinned: true,
+          backgroundColor: AppColors.background,
+          foregroundColor: AppColors.onBackground,
+          title: Container(
+            width: 120,
+            height: 16,
+            decoration: BoxDecoration(
+              color: AppColors.surfaceVariant,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+        ),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: AppSpacing.md),
+                Container(
+                  height: 220,
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceVariant,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Container(
+                  height: 100,
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceVariant,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Container(
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceVariant,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
 
 class _AiRiskBadge extends StatelessWidget {
   const _AiRiskBadge({required this.score});
