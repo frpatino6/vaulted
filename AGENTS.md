@@ -125,6 +125,17 @@ features/feature-name/
 - Tokens stored only in flutter_secure_storage
 - All data models use Freezed for immutability
 
+### Flutter async loading rule (mandatory)
+- For screens that use `AsyncNotifier` and trigger `load()` in `WidgetsBinding.instance.addPostFrameCallback`, do not render empty/not-found states before the first real fetch completes.
+- During first load, always show skeleton UI.
+- Empty states (`No items`, `No data`, `Not found`) are allowed only after first load completion.
+- Required screen pattern:
+  1. Add `bool _initialLoadCompleted = false;`
+  2. In `postFrame`, call `load(...).whenComplete(() { if (mounted) setState(() => _initialLoadCompleted = true); });`
+  3. Build `showInitialSkeleton` from `!_initialLoadCompleted`, `!state.hasError`, and initial empty/null or loading state.
+  4. Use `renderState` (`AsyncLoading` while `showInitialSkeleton` is true) for `.when(...)` rendering.
+- This prevents premature flashes such as `No items`/`Policy not found` before API response arrives.
+
 ---
 
 ## Database Decision Guide
@@ -312,7 +323,7 @@ This project uses three AI tools with defined roles:
 <claude-mem-context>
 # Memory Context
 
-# [vaulted] recent context, 2026-04-16 9:05pm GMT-5
+# [vaulted] recent context, 2026-04-16 9:31pm GMT-5
 
 No previous sessions found.
 </claude-mem-context>

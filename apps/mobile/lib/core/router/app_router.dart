@@ -20,6 +20,8 @@ import '../../features/settings/presentation/settings_screen.dart';
 import '../../features/users/presentation/users_screen.dart';
 import '../../features/ai_chat/presentation/chat_screen.dart';
 import '../../features/maintenance/presentation/maintenance_list_screen.dart';
+import '../../features/maintenance/presentation/maintenance_detail_screen.dart';
+import '../../features/maintenance/data/models/maintenance_model.dart';
 import '../../features/movements/presentation/movements_screen.dart';
 import '../../features/movements/presentation/movement_scan_screen.dart';
 import '../../features/movements/presentation/movement_detail_screen.dart';
@@ -145,13 +147,21 @@ GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
         path: '/settings/users',
         builder: (context, state) => const UsersScreen(),
       ),
-      GoRoute(
-        path: '/chat',
-        builder: (context, state) => const ChatScreen(),
-      ),
+      GoRoute(path: '/chat', builder: (context, state) => const ChatScreen()),
       GoRoute(
         path: '/maintenance',
         builder: (context, state) => const MaintenanceListScreen(),
+      ),
+      GoRoute(
+        path: '/maintenance/:id',
+        builder: (context, state) {
+          final id = state.pathParameters['id'] ?? '';
+          final record = state.extra;
+          return MaintenanceDetailScreen(
+            maintenanceId: id,
+            initialRecord: record is MaintenanceModel ? record : null,
+          );
+        },
       ),
       GoRoute(
         path: '/movements',
@@ -233,14 +243,15 @@ GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
       ),
       GoRoute(
         path: '/unauthorized',
-        builder: (context, state) => Scaffold(
-          body: Center(
-            child: Text(
-              'Unauthorized',
-              style: Theme.of(context).textTheme.titleLarge,
+        builder:
+            (context, state) => Scaffold(
+              body: Center(
+                child: Text(
+                  'Unauthorized',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
             ),
-          ),
-        ),
       ),
     ],
   );
