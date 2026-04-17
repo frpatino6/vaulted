@@ -17,16 +17,34 @@ class CoverageGapsScreen extends ConsumerStatefulWidget {
 }
 
 class _CoverageGapsScreenState extends ConsumerState<CoverageGapsScreen> {
+  bool _initialLoadCompleted = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(coverageGapsNotifierProvider.notifier).load(widget.policyId);
+      ref
+          .read(coverageGapsNotifierProvider.notifier)
+          .load(widget.policyId)
+          .whenComplete(() {
+            if (!mounted) return;
+            setState(() => _initialLoadCompleted = true);
+          });
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final state = ref.watch(coverageGapsNotifierProvider);
+    final showInitialSkeleton =
+        !_initialLoadCompleted &&
+        !state.hasError &&
+        (state.isLoading || state.valueOrNull == null);
+    final renderState =
+        showInitialSkeleton
+            ? const AsyncLoading<CoverageGapReportModel?>()
+            : state;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -40,27 +58,25 @@ class _CoverageGapsScreenState extends ConsumerState<CoverageGapsScreen> {
           ),
         ),
       ),
-      body: ref
-          .watch(coverageGapsNotifierProvider)
-          .when(
-            data:
-                (report) =>
-                    report == null
-                        ? const Center(child: Text('No data'))
-                        : _buildReport(report),
-            loading: () => const AppScreenSkeleton(showHeader: false),
-            error:
-                (e, _) => Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(AppSpacing.lg),
-                    child: Text(
-                      CoverageGapsNotifier.message(e),
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: AppColors.error),
-                    ),
-                  ),
+      body: renderState.when(
+        data:
+            (report) =>
+                report == null
+                    ? const Center(child: Text('No data'))
+                    : _buildReport(report),
+        loading: () => const AppScreenSkeleton(showHeader: false),
+        error:
+            (e, _) => Center(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: Text(
+                  CoverageGapsNotifier.message(e),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppColors.error),
                 ),
-          ),
+              ),
+            ),
+      ),
     );
   }
 

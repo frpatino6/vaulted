@@ -21,13 +21,17 @@ class MovementsScreen extends ConsumerStatefulWidget {
 class _MovementsScreenState extends ConsumerState<MovementsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabs;
+  bool _initialLoadCompleted = false;
 
   @override
   void initState() {
     super.initState();
     _tabs = TabController(length: 2, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(movementListNotifierProvider.notifier).load();
+      ref.read(movementListNotifierProvider.notifier).load().whenComplete(() {
+        if (!mounted) return;
+        setState(() => _initialLoadCompleted = true);
+      });
       ref.read(activeMovementNotifierProvider.notifier).refresh();
     });
   }
@@ -43,6 +47,14 @@ class _MovementsScreenState extends ConsumerState<MovementsScreen>
     final role = currentUserRole() ?? 'guest';
     final canOperate = role == 'owner' || role == 'manager';
     final listState = ref.watch(movementListNotifierProvider);
+    final showInitialSkeleton =
+        !_initialLoadCompleted &&
+        !listState.hasError &&
+        (listState.isLoading || (listState.valueOrNull?.isEmpty ?? true));
+    final renderListState =
+        showInitialSkeleton
+            ? const AsyncLoading<List<MovementModel>>()
+            : listState;
     final draftState = ref.watch(activeMovementNotifierProvider);
 
     return Scaffold(
@@ -87,7 +99,7 @@ class _MovementsScreenState extends ConsumerState<MovementsScreen>
               onResume: (m) => context.push('/movements/${m.id}/scan'),
             ),
           Expanded(
-            child: listState.when(
+            child: renderListState.when(
               data: (all) {
                 final active =
                     all.where((m) => m.isDraft || m.isActive).toList();

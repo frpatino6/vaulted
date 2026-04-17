@@ -22,39 +22,55 @@ class InsuranceDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _InsuranceDetailScreenState extends ConsumerState<InsuranceDetailScreen> {
+  bool _initialLoadCompleted = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(insuranceDetailNotifierProvider.notifier).load(widget.policyId);
+      ref
+          .read(insuranceDetailNotifierProvider.notifier)
+          .load(widget.policyId)
+          .whenComplete(() {
+            if (!mounted) return;
+            setState(() => _initialLoadCompleted = true);
+          });
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final state = ref.watch(insuranceDetailNotifierProvider);
+    final showInitialSkeleton =
+        !_initialLoadCompleted &&
+        !state.hasError &&
+        (state.isLoading || state.valueOrNull == null);
+    final renderState =
+        showInitialSkeleton
+            ? const AsyncLoading<InsurancePolicyModel?>()
+            : state;
+
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: ref
-          .watch(insuranceDetailNotifierProvider)
-          .when(
-            data:
-                (policy) =>
-                    policy == null
-                        ? const Center(child: Text('Policy not found'))
-                        : _buildContent(context, policy),
-            loading: () => const AppScreenSkeleton(showHeader: false),
-            error:
-                (e, _) => Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(AppSpacing.lg),
-                    child: Text(
-                      InsuranceDetailNotifier.message(e),
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: AppColors.error),
-                    ),
-                  ),
+      body: renderState.when(
+        data:
+            (policy) =>
+                policy == null
+                    ? const Center(child: Text('Policy not found'))
+                    : _buildContent(context, policy),
+        loading: () => const AppScreenSkeleton(showHeader: false),
+        error:
+            (e, _) => Center(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: Text(
+                  InsuranceDetailNotifier.message(e),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppColors.error),
                 ),
-          ),
+              ),
+            ),
+      ),
     );
   }
 

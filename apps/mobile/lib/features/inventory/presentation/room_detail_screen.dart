@@ -38,6 +38,7 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
   late String? _activeSection;
+  bool _initialLoadCompleted = false;
 
   @override
   void initState() {
@@ -49,7 +50,11 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref
           .read(itemListNotifierProvider.notifier)
-          .load(widget.propertyId, widget.roomId);
+          .load(widget.propertyId, widget.roomId)
+          .whenComplete(() {
+            if (!mounted) return;
+            setState(() => _initialLoadCompleted = true);
+          });
     });
   }
 
@@ -86,6 +91,14 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
     final canDeleteItem = role == 'owner' || role == 'manager';
     final canSeeValues = role == 'owner' || role == 'auditor';
     final state = ref.watch(itemListNotifierProvider);
+    final showInitialSkeleton =
+        !_initialLoadCompleted &&
+        !state.hasError &&
+        (state.isLoading || (state.valueOrNull?.isEmpty ?? true));
+    final renderState =
+        showInitialSkeleton
+            ? const AsyncLoading<List<ItemModel>>()
+            : state;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -157,7 +170,7 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
                 ),
             ],
           ),
-          state.when(
+          renderState.when(
             data: (items) {
               final totalValue = items.fold<int>(
                 0,
@@ -217,7 +230,7 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
                 ),
             error: (_, _) => const SliverToBoxAdapter(child: SizedBox.shrink()),
           ),
-          state.when(
+          renderState.when(
             data: (items) {
               if (items.isEmpty) {
                 return SliverFillRemaining(
