@@ -18,6 +18,7 @@ import { AddFloorDto } from './dto/add-floor.dto';
 import { AddRoomDto } from './dto/add-room.dto';
 import { CreatePropertyDto } from './dto/create-property.dto';
 import { UpdatePropertyDto } from './dto/update-property.dto';
+import { UpdateRoomDto } from './dto/update-room.dto';
 import { PropertiesService } from './properties.service';
 import { PropertyDocument } from './schemas/property.schema';
 
@@ -132,6 +133,63 @@ export class PropertiesController {
       entityType: 'property',
       entityId: propertyId,
       metadata: { floorId, roomName: dto.name },
+    });
+
+    return property;
+  }
+
+  @Roles(Role.OWNER, Role.MANAGER)
+  @Put(':id/floors/:floorId/rooms/:roomId')
+  async updateRoom(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') propertyId: string,
+    @Param('floorId') floorId: string,
+    @Param('roomId') roomId: string,
+    @Body() dto: UpdateRoomDto,
+  ) {
+    const property = await this.propertiesService.updateRoom(
+      user.tenantId,
+      propertyId,
+      floorId,
+      roomId,
+      dto,
+    );
+
+    await this.auditService.log({
+      tenantId: user.tenantId,
+      userId: user.sub,
+      action: 'property.update_room',
+      entityType: 'property',
+      entityId: propertyId,
+      metadata: { floorId, roomId },
+    });
+
+    return property;
+  }
+
+  @Roles(Role.OWNER, Role.MANAGER)
+  @Delete(':id/floors/:floorId/rooms/:roomId')
+  @HttpCode(HttpStatus.OK)
+  async deleteRoom(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') propertyId: string,
+    @Param('floorId') floorId: string,
+    @Param('roomId') roomId: string,
+  ) {
+    const property = await this.propertiesService.deleteRoom(
+      user.tenantId,
+      propertyId,
+      floorId,
+      roomId,
+    );
+
+    await this.auditService.log({
+      tenantId: user.tenantId,
+      userId: user.sub,
+      action: 'property.delete_room',
+      entityType: 'property',
+      entityId: propertyId,
+      metadata: { floorId, roomId },
     });
 
     return property;
