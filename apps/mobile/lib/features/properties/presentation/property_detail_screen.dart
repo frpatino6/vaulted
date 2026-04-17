@@ -37,12 +37,19 @@ class PropertyDetailScreen extends ConsumerStatefulWidget {
 
 class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
   _SpeedDialState _dialState = _SpeedDialState.closed;
+  bool _initialLoadCompleted = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(propertyDetailNotifierProvider.notifier).load(widget.propertyId);
+      ref
+          .read(propertyDetailNotifierProvider.notifier)
+          .load(widget.propertyId)
+          .whenComplete(() {
+            if (!mounted) return;
+            setState(() => _initialLoadCompleted = true);
+          });
     });
   }
 
@@ -61,12 +68,18 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
     final role = currentUserRole() ?? 'guest';
     final canManageProperties = role == 'owner' || role == 'manager';
     final state = ref.watch(propertyDetailNotifierProvider);
+    final showInitialSkeleton =
+        !_initialLoadCompleted &&
+        !state.hasError &&
+        (state.isLoading || state.valueOrNull == null);
+    final renderState =
+        showInitialSkeleton ? const AsyncLoading<PropertyModel?>() : state;
     final isDialOpen = _dialState == _SpeedDialState.open;
 
     return Scaffold(
       backgroundColor: AppColors.background,
       // Speed dial backdrop — tap to close
-      floatingActionButton: state.whenOrNull(
+      floatingActionButton: renderState.whenOrNull(
         data: (property) {
           if (property == null || !canManageProperties) return null;
           return _SpeedDial(
@@ -92,7 +105,7 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
       ),
       body: Stack(
         children: [
-          state.when(
+          renderState.when(
             data: (property) {
               if (property == null) {
                 return _NotFoundView();

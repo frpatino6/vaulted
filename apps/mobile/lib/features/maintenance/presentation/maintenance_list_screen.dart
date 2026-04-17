@@ -18,6 +18,7 @@ class MaintenanceListScreen extends ConsumerStatefulWidget {
 class _MaintenanceListScreenState extends ConsumerState<MaintenanceListScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
+  bool _initialLoadCompleted = false;
 
   static const _tabs = ['Overdue', 'This Week', 'Upcoming', 'Completed'];
 
@@ -26,7 +27,12 @@ class _MaintenanceListScreenState extends ConsumerState<MaintenanceListScreen>
     super.initState();
     _tabController = TabController(length: _tabs.length, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(maintenanceListNotifierProvider.notifier).load();
+      ref.read(maintenanceListNotifierProvider.notifier).load().whenComplete(
+        () {
+          if (!mounted) return;
+          setState(() => _initialLoadCompleted = true);
+        },
+      );
     });
   }
 
@@ -38,6 +44,16 @@ class _MaintenanceListScreenState extends ConsumerState<MaintenanceListScreen>
 
   @override
   Widget build(BuildContext context) {
+    final state = ref.watch(maintenanceListNotifierProvider);
+    final showInitialSkeleton =
+        !_initialLoadCompleted &&
+        !state.hasError &&
+        (state.isLoading || (state.valueOrNull?.isEmpty ?? true));
+    final renderState =
+        showInitialSkeleton
+            ? const AsyncLoading<List<MaintenanceModel>>()
+            : state;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -60,38 +76,34 @@ class _MaintenanceListScreenState extends ConsumerState<MaintenanceListScreen>
           tabs: _tabs.map((t) => Tab(text: t)).toList(),
         ),
       ),
-      body: ref
-          .watch(maintenanceListNotifierProvider)
-          .when(
-            data:
-                (records) => TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildTab(records.where((r) => r.isOverdue).toList()),
-                    _buildTab(records.where((r) => r.isDueSoon).toList()),
-                    _buildTab(
-                      records
-                          .where(
-                            (r) => r.isPending && !r.isDueSoon && !r.isOverdue,
-                          )
-                          .toList(),
-                    ),
-                    _buildTab(records.where((r) => r.isCompleted).toList()),
-                  ],
+      body: renderState.when(
+        data:
+            (records) => TabBarView(
+              controller: _tabController,
+              children: [
+                _buildTab(records.where((r) => r.isOverdue).toList()),
+                _buildTab(records.where((r) => r.isDueSoon).toList()),
+                _buildTab(
+                  records
+                      .where((r) => r.isPending && !r.isDueSoon && !r.isOverdue)
+                      .toList(),
                 ),
-            loading: () => const AppScreenSkeleton(showHeader: false),
-            error:
-                (e, _) => Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(AppSpacing.lg),
-                    child: Text(
-                      MaintenanceListNotifier.errorMessage(e),
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: AppColors.error),
-                    ),
-                  ),
+                _buildTab(records.where((r) => r.isCompleted).toList()),
+              ],
+            ),
+        loading: () => const AppScreenSkeleton(showHeader: false),
+        error:
+            (e, _) => Center(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: Text(
+                  MaintenanceListNotifier.errorMessage(e),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppColors.error),
                 ),
-          ),
+              ),
+            ),
+      ),
     );
   }
 

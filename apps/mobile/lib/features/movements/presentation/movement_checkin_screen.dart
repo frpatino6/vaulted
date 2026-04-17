@@ -30,12 +30,19 @@ class _MovementCheckinScreenState extends ConsumerState<MovementCheckinScreen> {
   String? _lastScannedName;
   bool _showFeedback = false;
   String? _feedbackError;
+  bool _initialLoadCompleted = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(movementDetailNotifierProvider.notifier).load(widget.movementId);
+      ref
+          .read(movementDetailNotifierProvider.notifier)
+          .load(widget.movementId)
+          .whenComplete(() {
+            if (!mounted) return;
+            setState(() => _initialLoadCompleted = true);
+          });
     });
   }
 
@@ -48,6 +55,12 @@ class _MovementCheckinScreenState extends ConsumerState<MovementCheckinScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(movementDetailNotifierProvider);
+    final showInitialSkeleton =
+        !_initialLoadCompleted &&
+        !state.hasError &&
+        (state.isLoading || state.valueOrNull == null);
+    final renderState =
+        showInitialSkeleton ? const AsyncLoading<MovementModel?>() : state;
 
     return Container(
       height: MediaQuery.of(context).size.height * 0.95,
@@ -56,7 +69,7 @@ class _MovementCheckinScreenState extends ConsumerState<MovementCheckinScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       clipBehavior: Clip.hardEdge,
-      child: state.when(
+      child: renderState.when(
         data: (movement) {
           if (movement == null) {
             return const Center(

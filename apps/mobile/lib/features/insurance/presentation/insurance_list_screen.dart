@@ -17,16 +17,31 @@ class InsuranceListScreen extends ConsumerStatefulWidget {
 }
 
 class _InsuranceListScreenState extends ConsumerState<InsuranceListScreen> {
+  bool _initialLoadCompleted = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(insuranceListNotifierProvider.notifier).load();
+      ref.read(insuranceListNotifierProvider.notifier).load().whenComplete(() {
+        if (!mounted) return;
+        setState(() => _initialLoadCompleted = true);
+      });
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final state = ref.watch(insuranceListNotifierProvider);
+    final showInitialSkeleton =
+        !_initialLoadCompleted &&
+        !state.hasError &&
+        (state.isLoading || (state.valueOrNull?.isEmpty ?? true));
+    final renderState =
+        showInitialSkeleton
+            ? const AsyncLoading<List<InsurancePolicyModel>>()
+            : state;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -52,43 +67,39 @@ class _InsuranceListScreenState extends ConsumerState<InsuranceListScreen> {
           ),
         ],
       ),
-      body: ref
-          .watch(insuranceListNotifierProvider)
-          .when(
-            data:
-                (policies) =>
-                    policies.isEmpty
-                        ? _buildEmpty()
-                        : RefreshIndicator(
-                          onRefresh:
-                              () =>
-                                  ref
-                                      .read(
-                                        insuranceListNotifierProvider.notifier,
-                                      )
-                                      .refresh(),
-                          color: AppColors.accent,
-                          child: ListView.builder(
-                            padding: const EdgeInsets.all(AppSpacing.md),
-                            itemCount: policies.length,
-                            itemBuilder:
-                                (context, index) =>
-                                    _PolicyCard(policy: policies[index]),
-                          ),
-                        ),
-            loading: () => const AppScreenSkeleton(showHeader: false),
-            error:
-                (e, _) => Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(AppSpacing.lg),
-                    child: Text(
-                      InsuranceListNotifier.message(e),
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: AppColors.error),
+      body: renderState.when(
+        data:
+            (policies) =>
+                policies.isEmpty
+                    ? _buildEmpty()
+                    : RefreshIndicator(
+                      onRefresh:
+                          () =>
+                              ref
+                                  .read(insuranceListNotifierProvider.notifier)
+                                  .refresh(),
+                      color: AppColors.accent,
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(AppSpacing.md),
+                        itemCount: policies.length,
+                        itemBuilder:
+                            (context, index) =>
+                                _PolicyCard(policy: policies[index]),
+                      ),
                     ),
-                  ),
+        loading: () => const AppScreenSkeleton(showHeader: false),
+        error:
+            (e, _) => Center(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: Text(
+                  InsuranceListNotifier.message(e),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppColors.error),
                 ),
-          ),
+              ),
+            ),
+      ),
     );
   }
 

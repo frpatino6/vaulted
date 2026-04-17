@@ -23,23 +23,37 @@ class MovementDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _MovementDetailScreenState extends ConsumerState<MovementDetailScreen> {
+  bool _initialLoadCompleted = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(movementDetailNotifierProvider.notifier).load(widget.movementId);
+      ref
+          .read(movementDetailNotifierProvider.notifier)
+          .load(widget.movementId)
+          .whenComplete(() {
+            if (!mounted) return;
+            setState(() => _initialLoadCompleted = true);
+          });
     });
   }
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(movementDetailNotifierProvider);
+    final showInitialSkeleton =
+        !_initialLoadCompleted &&
+        !state.hasError &&
+        (state.isLoading || state.valueOrNull == null);
+    final renderState =
+        showInitialSkeleton ? const AsyncLoading<MovementModel?>() : state;
     final role = currentUserRole() ?? 'guest';
     final canOperate = role == 'owner' || role == 'manager';
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: state.when(
+      body: renderState.when(
         data: (movement) {
           if (movement == null) {
             return Center(
