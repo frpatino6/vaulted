@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
+import '../../../shared/widgets/app_bottom_nav.dart';
 import '../data/models/insurance_policy_model.dart';
 import '../domain/insurance_list_notifier.dart';
 
@@ -44,6 +45,7 @@ class _InsuranceListScreenState extends ConsumerState<InsuranceListScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      bottomNavigationBar: const AppBottomNav(currentTab: AppTab.insurance),
       appBar: AppBar(
         backgroundColor: AppColors.background,
         foregroundColor: AppColors.onBackground,

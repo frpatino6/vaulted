@@ -21,6 +21,7 @@ import '../domain/dashboard_notifier.dart';
 import '../../movements/data/models/movement_model.dart';
 import '../../movements/domain/movement_list_notifier.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
+import '../../../shared/widgets/app_bottom_nav.dart';
 
 /// Dashboard: clean welcome header, Quick Actions grid, recent property cards.
 class DashboardScreen extends ConsumerWidget {
@@ -36,6 +37,7 @@ class DashboardScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.backgroundElevated,
+      bottomNavigationBar: const AppBottomNav(currentTab: AppTab.home),
       body: RefreshIndicator(
         color: AppColors.accent,
         onRefresh: () async {
