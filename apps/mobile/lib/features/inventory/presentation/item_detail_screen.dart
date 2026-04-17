@@ -110,7 +110,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                       const SizedBox(height: AppSpacing.lg),
                       if (canSeeValues && (item.valuation?.currentValue ?? 0) > 0) _PriceHighlightSection(item: item),
                       if (canSeeValues && (item.valuation?.currentValue ?? 0) > 0) const SizedBox(height: AppSpacing.lg),
-                      _SpecsGrid(item: item),
+                      _SpecsGrid(item: item, resolvedRoomName: _resolveRoomName(item.roomId)),
                       if (item.isWardrobe && item.hasWardrobeDetails) ...[
                         const SizedBox(height: AppSpacing.lg),
                         _WardrobeDetailSection(attrs: item.wardrobeAttributes),
@@ -399,6 +399,18 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
       backgroundColor: Colors.transparent,
       builder: (_) => DryCleaningHistorySheet(itemId: itemId),
     );
+  }
+
+  String? _resolveRoomName(String? roomId) {
+    if (roomId == null || roomId.isEmpty) return null;
+    final property = ref.read(propertyDetailNotifierProvider).valueOrNull;
+    if (property == null) return null;
+    for (final floor in property.floors) {
+      for (final room in floor.rooms) {
+        if (room.roomId == roomId) return room.name;
+      }
+    }
+    return null;
   }
 
   void _showEditSheet(BuildContext context, ItemModel item) {
@@ -1372,9 +1384,10 @@ class _ValuationDetailsSection extends StatelessWidget {
 }
 
 class _SpecsGrid extends StatelessWidget {
-  const _SpecsGrid({required this.item});
+  const _SpecsGrid({required this.item, this.resolvedRoomName});
 
   final ItemModel item;
+  final String? resolvedRoomName;
 
 
   @override
@@ -1388,15 +1401,16 @@ class _SpecsGrid extends StatelessWidget {
           color: AppColors.onSurfaceVariant.withValues(alpha: 0.2),
         ),
       ),
-      child: _SpecsTable(item: item),
+      child: _SpecsTable(item: item, resolvedRoomName: resolvedRoomName),
     );
   }
 }
 
 class _SpecsTable extends StatelessWidget {
-  const _SpecsTable({required this.item});
+  const _SpecsTable({required this.item, this.resolvedRoomName});
 
   final ItemModel item;
+  final String? resolvedRoomName;
 
   static TextStyle _labelStyle(BuildContext context) {
     return Theme.of(context).textTheme.labelSmall!.copyWith(
@@ -1413,8 +1427,8 @@ class _SpecsTable extends StatelessWidget {
     final cells = <Widget>[
       _SpecCell(
         label: 'ROOM',
-        value: item.roomName?.isNotEmpty == true ? item.roomName! : 'Unassigned',
-        valueColor: item.roomName?.isNotEmpty == true ? null : AppColors.onSurfaceVariant,
+        value: resolvedRoomName?.isNotEmpty == true ? resolvedRoomName! : 'Unassigned',
+        valueColor: resolvedRoomName?.isNotEmpty == true ? null : AppColors.onSurfaceVariant,
         labelStyle: ls,
       ),
       _SpecCell(label: 'CATEGORY', value: item.category, labelStyle: ls),
