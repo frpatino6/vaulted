@@ -298,6 +298,17 @@ BRAVE_SEARCH_API_KEY · VALUATION_SEARCH_ENGINE=brave
 - Shared widgets only in `shared/widgets/`
 - No business logic in UI widgets
 
+#### First-load skeleton rule (mandatory)
+- If a screen uses `AsyncNotifier` and runs `load()` in `postFrame`, never show empty/not-found states on initial frame.
+- Show skeleton while first fetch is pending, even if notifier starts as `[]` or `null`.
+- Show `No items` / `No data` / `Not found` only after first load has completed.
+- Implementation pattern for presentation screens:
+  1. `bool _initialLoadCompleted = false;`
+  2. `load(...).whenComplete(() { if (mounted) setState(() => _initialLoadCompleted = true); });`
+  3. Compute `showInitialSkeleton` from first-load flag + state.
+  4. Route UI through `renderState` (`AsyncLoading` while first load is unresolved).
+- This avoids incorrect transient UI states when cache is empty and API response is still in-flight.
+
 ---
 
 ## MVP Cost (testing phase — all free tiers)
