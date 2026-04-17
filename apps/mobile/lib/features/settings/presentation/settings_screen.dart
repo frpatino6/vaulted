@@ -7,7 +7,7 @@ import '../../../core/theme/theme_mode_provider.dart';
 import '../../auth/presentation/auth_notifier.dart';
 import '../../users/domain/current_user_jwt.dart';
 
-/// Settings: theme mode (Light / Dark / System) and Team link.
+/// Settings: Team management, Appearance (theme), and Account actions.
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
@@ -19,8 +19,12 @@ class SettingsScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      // S7: flat AppBar matching the rest of the app
       appBar: AppBar(
         backgroundColor: AppColors.background,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        foregroundColor: AppColors.onBackground,
         title: Text(
           'Settings',
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -36,122 +40,155 @@ class SettingsScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.md),
         children: [
-          Text(
-            'Appearance',
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: AppColors.accent,
-              letterSpacing: 1,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          _ThemeModeTile(
-            value: ThemeMode.light,
-            label: 'Light',
-            icon: Icons.light_mode_outlined,
-            current: themeMode,
-            onSelected: () =>
-                ref.read(themeModeProvider.notifier).state = ThemeMode.light,
-          ),
-          _ThemeModeTile(
-            value: ThemeMode.dark,
-            label: 'Dark',
-            icon: Icons.dark_mode_outlined,
-            current: themeMode,
-            onSelected: () =>
-                ref.read(themeModeProvider.notifier).state = ThemeMode.dark,
-          ),
-          _ThemeModeTile(
-            value: ThemeMode.system,
-            label: 'System',
-            icon: Icons.brightness_auto_outlined,
-            current: themeMode,
-            onSelected: () =>
-                ref.read(themeModeProvider.notifier).state = ThemeMode.system,
-          ),
+          // S1: Team section first (most important for this audience)
           if (canManageTeam) ...[
-            const SizedBox(height: AppSpacing.xl),
-            Text(
-              'Team',
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: AppColors.accent,
-                letterSpacing: 1,
-              ),
-            ),
+            _SectionLabel(label: 'Team'),
             const SizedBox(height: AppSpacing.sm),
-            ListTile(
-              leading: Icon(
-                Icons.people_outline,
-                color: AppColors.accent,
-                size: 24,
-              ),
-              title: Text(
-                'Team members',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyLarge?.copyWith(color: AppColors.onBackground),
-              ),
-              trailing: const Icon(
-                Icons.chevron_right,
-                color: AppColors.onSurfaceVariant,
-              ),
-              onTap: () => context.push('/settings/users'),
+            // S3: section wrapped in card container
+            _SectionCard(
+              children: [
+                ListTile(
+                  tileColor: Colors.transparent,
+                  leading: Icon(
+                    Icons.people_outline,
+                    color: AppColors.accent,
+                    size: 24,
+                  ),
+                  title: Text(
+                    'Team members',
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: AppColors.onBackground,
+                    ),
+                  ),
+                  trailing: const Icon(
+                    Icons.chevron_right,
+                    color: AppColors.onSurfaceVariant,
+                  ),
+                  onTap: () => context.push('/settings/users'),
+                ),
+              ],
             ),
+            const SizedBox(height: AppSpacing.lg),
           ],
-          const SizedBox(height: AppSpacing.xl),
-          Text(
-            'Features',
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: AppColors.accent,
-              letterSpacing: 1,
-            ),
-          ),
+
+          // S1: Appearance section second
+          _SectionLabel(label: 'Appearance'),
           const SizedBox(height: AppSpacing.sm),
-          ListTile(
-            leading: Icon(Icons.checkroom_outlined, color: AppColors.accent),
-            title: Text(
-              'Wardrobe',
-              style: Theme.of(
-                context,
-              ).textTheme.bodyLarge?.copyWith(color: AppColors.onBackground),
-            ),
-            trailing: const Icon(
-              Icons.chevron_right,
-              color: AppColors.onSurfaceVariant,
-            ),
-            onTap: () => context.push('/wardrobe'),
+          // S3: appearance tiles in card container
+          _SectionCard(
+            children: [
+              _ThemeModeTile(
+                value: ThemeMode.light,
+                label: 'Light',
+                icon: Icons.light_mode_outlined,
+                current: themeMode,
+                onSelected: () =>
+                    ref.read(themeModeProvider.notifier).state = ThemeMode.light,
+              ),
+              const Divider(color: Colors.white10, height: 1),
+              _ThemeModeTile(
+                value: ThemeMode.dark,
+                label: 'Dark',
+                icon: Icons.dark_mode_outlined,
+                current: themeMode,
+                onSelected: () =>
+                    ref.read(themeModeProvider.notifier).state = ThemeMode.dark,
+              ),
+              const Divider(color: Colors.white10, height: 1),
+              _ThemeModeTile(
+                value: ThemeMode.system,
+                label: 'System',
+                icon: Icons.brightness_auto_outlined,
+                current: themeMode,
+                onSelected: () =>
+                    ref.read(themeModeProvider.notifier).state =
+                        ThemeMode.system,
+              ),
+            ],
           ),
-          ListTile(
-            leading: Icon(Icons.shield_outlined, color: AppColors.accent),
-            title: Text(
-              'Insurance',
-              style: Theme.of(
-                context,
-              ).textTheme.bodyLarge?.copyWith(color: AppColors.onBackground),
-            ),
-            trailing: const Icon(
-              Icons.chevron_right,
-              color: AppColors.onSurfaceVariant,
-            ),
-            onTap: () => context.push('/insurance'),
-          ),
-          const SizedBox(height: AppSpacing.xl),
-          Text(
-            'Account',
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: AppColors.accent,
-              letterSpacing: 1,
-            ),
-          ),
+          const SizedBox(height: AppSpacing.lg),
+
+          // S1: Account section last
+          _SectionLabel(label: 'Account'),
+          // S4: subtle visual separation before the danger card
+          const Divider(color: Colors.white10),
           const SizedBox(height: AppSpacing.sm),
-          ListTile(
-            leading: Icon(Icons.logout, color: AppColors.error, size: 24),
-            title: Text(
-              'Sign out',
-              style: Theme.of(
-                context,
-              ).textTheme.bodyLarge?.copyWith(color: AppColors.error),
+          // S3 + S4: account card with red-tinted border
+          _SectionCard(
+            borderColor: AppColors.error.withValues(alpha: 0.2),
+            children: [
+              // S6: Notifications placeholder
+              ListTile(
+                tileColor: Colors.transparent,
+                leading: Icon(
+                  Icons.notifications_outlined,
+                  color: AppColors.onSurfaceVariant,
+                ),
+                title: Text(
+                  'Notifications',
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: AppColors.onBackground,
+                  ),
+                ),
+                trailing: const Icon(
+                  Icons.chevron_right,
+                  color: AppColors.onSurfaceVariant,
+                ),
+                onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Coming soon')),
+                ),
+              ),
+              const Divider(color: Colors.white10, height: 1),
+              // S6: Support placeholder
+              ListTile(
+                tileColor: Colors.transparent,
+                leading: Icon(
+                  Icons.help_outline,
+                  color: AppColors.onSurfaceVariant,
+                ),
+                title: Text(
+                  'Support',
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: AppColors.onBackground,
+                  ),
+                ),
+                trailing: const Icon(
+                  Icons.chevron_right,
+                  color: AppColors.onSurfaceVariant,
+                ),
+                onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Coming soon')),
+                ),
+              ),
+              const Divider(color: Colors.white10, height: 1),
+              // Sign out
+              ListTile(
+                tileColor: Colors.transparent,
+                leading: Icon(Icons.logout, color: AppColors.error, size: 24),
+                title: Text(
+                  'Sign out',
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: AppColors.error,
+                  ),
+                ),
+                onTap: () => _confirmLogout(context, ref),
+              ),
+            ],
+          ),
+
+          // S5: App version footer
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
+            child: Center(
+              child: Text(
+                'Vaulted · v1.0.0',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: AppColors.onSurfaceVariant.withValues(alpha: 0.4),
+                  fontSize: 11,
+                  letterSpacing: 1.0,
+                ),
+              ),
             ),
-            onTap: () => _confirmLogout(context, ref),
           ),
         ],
       ),
@@ -183,6 +220,56 @@ class SettingsScreen extends ConsumerWidget {
   }
 }
 
+/// Section header label rendered outside the card.
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label,
+      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+        color: AppColors.accent,
+        letterSpacing: 1,
+      ),
+    );
+  }
+}
+
+/// S3: card container wrapping a section's ListTiles.
+class _SectionCard extends StatelessWidget {
+  const _SectionCard({
+    required this.children,
+    this.borderColor,
+  });
+
+  final List<Widget> children;
+  final Color? borderColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariant,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: borderColor ??
+              AppColors.onSurfaceVariant.withValues(alpha: 0.1),
+        ),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: children,
+        ),
+      ),
+    );
+  }
+}
+
 class _ThemeModeTile extends StatelessWidget {
   const _ThemeModeTile({
     required this.value,
@@ -203,6 +290,7 @@ class _ThemeModeTile extends StatelessWidget {
     final isSelected = current == value;
 
     return ListTile(
+      tileColor: Colors.transparent,
       leading: Icon(icon, color: AppColors.accent, size: 24),
       title: Text(
         label,
