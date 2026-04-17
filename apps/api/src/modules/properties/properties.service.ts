@@ -11,6 +11,7 @@ import { AddFloorDto } from './dto/add-floor.dto';
 import { AddRoomDto } from './dto/add-room.dto';
 import { CreatePropertyDto } from './dto/create-property.dto';
 import { UpdatePropertyDto } from './dto/update-property.dto';
+import { UpdateRoomDto } from './dto/update-room.dto';
 import { Property, PropertyDocument } from './schemas/property.schema';
 
 @Injectable()
@@ -158,6 +159,63 @@ export class PropertiesService {
     }
 
     // TODO: audit log
+    return updatedProperty;
+  }
+
+  async updateRoom(
+    tenantId: string,
+    propertyId: string,
+    floorId: string,
+    roomId: string,
+    dto: UpdateRoomDto,
+  ): Promise<Property> {
+    const property = await this.findOwnedPropertyOrThrow(tenantId, propertyId);
+    const floor = property.floors.find((f) => f.floorId === floorId);
+    if (!floor) throw new NotFoundException('Floor not found');
+    const roomExists = floor.rooms.some((r) => r.roomId === roomId);
+    if (!roomExists) throw new NotFoundException('Room not found');
+
+    const setFields: Record<string, string> = {};
+    if (dto.name !== undefined) setFields['floors.$[floor].rooms.$[room].name'] = dto.name;
+    if (dto.type !== undefined) setFields['floors.$[floor].rooms.$[room].type'] = dto.type;
+
+    const updatedProperty = await this.propertyModel
+      .findOneAndUpdate(
+        { _id: propertyId, tenantId },
+        { $set: setFields },
+        {
+          arrayFilters: [{ 'floor.floorId': floorId }, { 'room.roomId': roomId }],
+          new: true,
+          runValidators: true,
+        },
+      )
+      .exec();
+
+    if (!updatedProperty) throw new NotFoundException('Property not found');
+    return updatedProperty;
+  }
+
+  async deleteRoom(
+    tenantId: string,
+    propertyId: string,
+    floorId: string,
+    roomId: string,
+  ): Promise<Property> {
+    const property = await this.findOwnedPropertyOrThrow(tenantId, propertyId);
+    const floor = property.floors.find((f) => f.floorId === floorId);
+    if (!floor) throw new NotFoundException('Floor not found');
+    const roomExists = floor.rooms.some((r) => r.roomId === roomId);
+    if (!roomExists) throw new NotFoundException('Room not found');
+
+    const updatedProperty = await this.propertyModel
+      .findOneAndUpdate(
+        { _id: propertyId, tenantId, 'floors.floorId': floorId },
+        { $pull: { 'floors.$.rooms': { roomId } } },
+        { new: true },
+      )
+      .exec();
+
+    if (!updatedProperty) throw new NotFoundException('Property not found');
     return updatedProperty;
   }
 

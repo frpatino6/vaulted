@@ -54,6 +54,39 @@ class PropertyDetailNotifier extends AsyncNotifier<PropertyModel?> {
     }
   }
 
+  Future<PropertyModel?> updateRoom(
+    String floorId,
+    String roomId,
+    String name,
+    String type,
+  ) async {
+    final id = _propertyId;
+    if (id == null) return null;
+    try {
+      final property = await ref
+          .read(propertyRepositoryProvider)
+          .updateRoom(id, floorId, roomId, name, type);
+      state = AsyncData(property);
+      return property;
+    } catch (_) {
+      rethrow;
+    }
+  }
+
+  Future<PropertyModel?> deleteRoom(String floorId, String roomId) async {
+    final id = _propertyId;
+    if (id == null) return null;
+    try {
+      final property = await ref
+          .read(propertyRepositoryProvider)
+          .deleteRoom(id, floorId, roomId);
+      state = AsyncData(property);
+      return property;
+    } catch (_) {
+      rethrow;
+    }
+  }
+
   static String message(Object e) {
     if (e is DioException) {
       final data = e.response?.data;

@@ -92,6 +92,39 @@ class PropertyRemoteDataSource {
     );
   }
 
+  /// PUT /properties/:id/floors/:floorId/rooms/:roomId
+  Future<PropertyModel> updateRoom(
+    String propertyId,
+    String floorId,
+    String roomId,
+    String name,
+    String type,
+  ) async {
+    final response = await _dio.put<Map<String, dynamic>>(
+      '$_path/$propertyId/floors/$floorId/rooms/$roomId',
+      data: {'name': name, 'type': type},
+    );
+    final data = _unwrapData(response);
+    return PropertyModel.fromJson(
+      Map<String, dynamic>.from(data is Map ? data : {}),
+    );
+  }
+
+  /// DELETE /properties/:id/floors/:floorId/rooms/:roomId
+  Future<PropertyModel> deleteRoom(
+    String propertyId,
+    String floorId,
+    String roomId,
+  ) async {
+    final response = await _dio.delete<Map<String, dynamic>>(
+      '$_path/$propertyId/floors/$floorId/rooms/$roomId',
+    );
+    final data = _unwrapData(response);
+    return PropertyModel.fromJson(
+      Map<String, dynamic>.from(data is Map ? data : {}),
+    );
+  }
+
   dynamic _unwrapData(Response<Map<String, dynamic>> response) {
     final data = response.data;
     if (data == null) {
