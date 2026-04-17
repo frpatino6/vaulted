@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/loading_skeleton.dart';
 import '../data/models/insurance_policy_model.dart';
 import '../domain/insurance_list_notifier.dart';
 
@@ -51,33 +52,42 @@ class _InsuranceListScreenState extends ConsumerState<InsuranceListScreen> {
           ),
         ],
       ),
-      body: ref.watch(insuranceListNotifierProvider).when(
-            data: (policies) => policies.isEmpty
-                ? _buildEmpty()
-                : RefreshIndicator(
-                    onRefresh: () => ref
-                        .read(insuranceListNotifierProvider.notifier)
-                        .refresh(),
-                    color: AppColors.accent,
-                    child: ListView.builder(
-                      padding: const EdgeInsets.all(AppSpacing.md),
-                      itemCount: policies.length,
-                      itemBuilder: (context, index) =>
-                          _PolicyCard(policy: policies[index]),
+      body: ref
+          .watch(insuranceListNotifierProvider)
+          .when(
+            data:
+                (policies) =>
+                    policies.isEmpty
+                        ? _buildEmpty()
+                        : RefreshIndicator(
+                          onRefresh:
+                              () =>
+                                  ref
+                                      .read(
+                                        insuranceListNotifierProvider.notifier,
+                                      )
+                                      .refresh(),
+                          color: AppColors.accent,
+                          child: ListView.builder(
+                            padding: const EdgeInsets.all(AppSpacing.md),
+                            itemCount: policies.length,
+                            itemBuilder:
+                                (context, index) =>
+                                    _PolicyCard(policy: policies[index]),
+                          ),
+                        ),
+            loading: () => const AppScreenSkeleton(showHeader: false),
+            error:
+                (e, _) => Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppSpacing.lg),
+                    child: Text(
+                      InsuranceListNotifier.message(e),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: AppColors.error),
                     ),
                   ),
-            loading: () =>
-                const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Center(
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                child: Text(
-                  InsuranceListNotifier.message(e),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: AppColors.error),
                 ),
-              ),
-            ),
           ),
     );
   }
@@ -89,19 +99,24 @@ class _InsuranceListScreenState extends ConsumerState<InsuranceListScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.shield_outlined,
-                size: 64, color: AppColors.onSurfaceVariant),
+            Icon(
+              Icons.shield_outlined,
+              size: 64,
+              color: AppColors.onSurfaceVariant,
+            ),
             const SizedBox(height: AppSpacing.md),
             Text(
               'No insurance policies',
-              style: AppTypography.titleMedium
-                  .copyWith(color: AppColors.onBackground),
+              style: AppTypography.titleMedium.copyWith(
+                color: AppColors.onBackground,
+              ),
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(
               'Tap + to add your first policy.',
-              style: AppTypography.bodyMedium
-                  .copyWith(color: AppColors.onSurfaceVariant),
+              style: AppTypography.bodyMedium.copyWith(
+                color: AppColors.onSurfaceVariant,
+              ),
             ),
           ],
         ),
@@ -151,8 +166,9 @@ class _PolicyCard extends ConsumerWidget {
                 const SizedBox(height: AppSpacing.xs),
                 Text(
                   policy.policyNumber,
-                  style: AppTypography.bodySmall
-                      .copyWith(color: AppColors.onSurfaceVariant),
+                  style: AppTypography.bodySmall.copyWith(
+                    color: AppColors.onSurfaceVariant,
+                  ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 Row(
@@ -174,22 +190,27 @@ class _PolicyCard extends ConsumerWidget {
                 const SizedBox(height: AppSpacing.xs),
                 Row(
                   children: [
-                    Icon(Icons.calendar_today_outlined,
-                        size: 12, color: AppColors.onSurfaceVariant),
+                    Icon(
+                      Icons.calendar_today_outlined,
+                      size: 12,
+                      color: AppColors.onSurfaceVariant,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       'Expires ${_fmtDate(policy.expiresAt)}',
                       style: AppTypography.bodySmall.copyWith(
-                        color: policy.isExpiringSoon
-                            ? AppColors.error
-                            : AppColors.onSurfaceVariant,
+                        color:
+                            policy.isExpiringSoon
+                                ? AppColors.error
+                                : AppColors.onSurfaceVariant,
                       ),
                     ),
                     const Spacer(),
                     Text(
                       '${policy.insuredItems.length} item${policy.insuredItems.length == 1 ? '' : 's'}',
-                      style: AppTypography.bodySmall
-                          .copyWith(color: AppColors.onSurfaceVariant),
+                      style: AppTypography.bodySmall.copyWith(
+                        color: AppColors.onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ),
@@ -235,8 +256,10 @@ class _StatusBadge extends StatelessWidget {
       ),
       child: Text(
         status[0].toUpperCase() + status.substring(1),
-        style: AppTypography.bodySmall
-            .copyWith(color: color, fontWeight: FontWeight.w600),
+        style: AppTypography.bodySmall.copyWith(
+          color: color,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
@@ -257,8 +280,9 @@ class _InfoChip extends StatelessWidget {
         const SizedBox(width: 4),
         Text(
           label,
-          style: AppTypography.bodySmall
-              .copyWith(color: AppColors.onSurfaceVariant),
+          style: AppTypography.bodySmall.copyWith(
+            color: AppColors.onSurfaceVariant,
+          ),
         ),
       ],
     );

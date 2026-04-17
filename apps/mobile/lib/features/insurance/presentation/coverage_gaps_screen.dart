@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/loading_skeleton.dart';
 import '../data/models/insurance_policy_model.dart';
 import '../domain/coverage_gaps_notifier.dart';
 
@@ -12,8 +13,7 @@ class CoverageGapsScreen extends ConsumerStatefulWidget {
   final String policyId;
 
   @override
-  ConsumerState<CoverageGapsScreen> createState() =>
-      _CoverageGapsScreenState();
+  ConsumerState<CoverageGapsScreen> createState() => _CoverageGapsScreenState();
 }
 
 class _CoverageGapsScreenState extends ConsumerState<CoverageGapsScreen> {
@@ -40,22 +40,26 @@ class _CoverageGapsScreenState extends ConsumerState<CoverageGapsScreen> {
           ),
         ),
       ),
-      body: ref.watch(coverageGapsNotifierProvider).when(
-            data: (report) => report == null
-                ? const Center(child: Text('No data'))
-                : _buildReport(report),
-            loading: () =>
-                const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Center(
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                child: Text(
-                  CoverageGapsNotifier.message(e),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: AppColors.error),
+      body: ref
+          .watch(coverageGapsNotifierProvider)
+          .when(
+            data:
+                (report) =>
+                    report == null
+                        ? const Center(child: Text('No data'))
+                        : _buildReport(report),
+            loading: () => const AppScreenSkeleton(showHeader: false),
+            error:
+                (e, _) => Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppSpacing.lg),
+                    child: Text(
+                      CoverageGapsNotifier.message(e),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: AppColors.error),
+                    ),
+                  ),
                 ),
-              ),
-            ),
           ),
     );
   }
@@ -94,7 +98,8 @@ class _CoverageGapsScreenState extends ConsumerState<CoverageGapsScreen> {
         _SummaryCard(
           label: 'Total Coverage Gap',
           value: currencyFmt.format(report.totalGap),
-          color: report.totalGap > 0 ? AppColors.error : const Color(0xFF4CAF50),
+          color:
+              report.totalGap > 0 ? AppColors.error : const Color(0xFF4CAF50),
           fullWidth: true,
         ),
 
@@ -115,10 +120,9 @@ class _CoverageGapsScreenState extends ConsumerState<CoverageGapsScreen> {
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
-          ...gapItems.map((item) => _GapItemCard(
-                item: item,
-                currencyFmt: currencyFmt,
-              )),
+          ...gapItems.map(
+            (item) => _GapItemCard(item: item, currencyFmt: currencyFmt),
+          ),
         ],
 
         // Fully covered items
@@ -132,11 +136,13 @@ class _CoverageGapsScreenState extends ConsumerState<CoverageGapsScreen> {
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
-          ...coveredItems.map((item) => _GapItemCard(
-                item: item,
-                currencyFmt: currencyFmt,
-                isCovered: true,
-              )),
+          ...coveredItems.map(
+            (item) => _GapItemCard(
+              item: item,
+              currencyFmt: currencyFmt,
+              isCovered: true,
+            ),
+          ),
         ],
 
         const SizedBox(height: AppSpacing.xl),
@@ -145,8 +151,10 @@ class _CoverageGapsScreenState extends ConsumerState<CoverageGapsScreen> {
   }
 
   Widget _buildCoverageBar(CoverageGapReportModel report) {
-    final pct = (report.totalCoveredValue / report.totalInventoryValue)
-        .clamp(0.0, 1.0);
+    final pct = (report.totalCoveredValue / report.totalInventoryValue).clamp(
+      0.0,
+      1.0,
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -155,15 +163,17 @@ class _CoverageGapsScreenState extends ConsumerState<CoverageGapsScreen> {
           children: [
             Text(
               'Coverage',
-              style: AppTypography.bodySmall
-                  .copyWith(color: AppColors.onSurfaceVariant),
+              style: AppTypography.bodySmall.copyWith(
+                color: AppColors.onSurfaceVariant,
+              ),
             ),
             Text(
               '${(pct * 100).toStringAsFixed(1)}%',
               style: AppTypography.bodySmall.copyWith(
-                color: pct >= 0.9
-                    ? const Color(0xFF4CAF50)
-                    : pct >= 0.5
+                color:
+                    pct >= 0.9
+                        ? const Color(0xFF4CAF50)
+                        : pct >= 0.5
                         ? AppColors.accent
                         : AppColors.error,
                 fontWeight: FontWeight.w600,
@@ -182,8 +192,8 @@ class _CoverageGapsScreenState extends ConsumerState<CoverageGapsScreen> {
               pct >= 0.9
                   ? const Color(0xFF4CAF50)
                   : pct >= 0.5
-                      ? AppColors.accent
-                      : AppColors.error,
+                  ? AppColors.accent
+                  : AppColors.error,
             ),
           ),
         ),
@@ -219,8 +229,9 @@ class _SummaryCard extends StatelessWidget {
         children: [
           Text(
             label,
-            style: AppTypography.bodySmall
-                .copyWith(color: AppColors.onSurfaceVariant),
+            style: AppTypography.bodySmall.copyWith(
+              color: AppColors.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
@@ -249,9 +260,10 @@ class _GapItemCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final gapColor = item.fullyUninsured
-        ? AppColors.error
-        : item.gap > 0
+    final gapColor =
+        item.fullyUninsured
+            ? AppColors.error
+            : item.gap > 0
             ? AppColors.accent
             : const Color(0xFF4CAF50);
 
@@ -262,9 +274,10 @@ class _GapItemCard extends StatelessWidget {
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isCovered
-              ? const Color(0xFF4CAF50).withOpacity(0.3)
-              : gapColor.withOpacity(0.3),
+          color:
+              isCovered
+                  ? const Color(0xFF4CAF50).withOpacity(0.3)
+                  : gapColor.withOpacity(0.3),
         ),
       ),
       child: Column(
@@ -328,8 +341,9 @@ class _ValueLabel extends StatelessWidget {
       children: [
         Text(
           label,
-          style: AppTypography.bodySmall
-              .copyWith(color: AppColors.onSurfaceVariant),
+          style: AppTypography.bodySmall.copyWith(
+            color: AppColors.onSurfaceVariant,
+          ),
         ),
         Text(
           value,
@@ -360,8 +374,10 @@ class _Chip extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: AppTypography.bodySmall
-            .copyWith(color: color, fontWeight: FontWeight.w600),
+        style: AppTypography.bodySmall.copyWith(
+          color: color,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }

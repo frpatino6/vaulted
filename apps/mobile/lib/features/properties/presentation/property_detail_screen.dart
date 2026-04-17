@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/loading_skeleton.dart';
 import '../../inventory/data/item_repository_provider.dart';
 import '../../inventory/domain/item_list_notifier.dart';
 import '../../inventory/presentation/add_item_sheet.dart';
@@ -45,13 +46,15 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
     });
   }
 
-  void _toggleDial() =>
-      setState(() => _dialState = _dialState == _SpeedDialState.closed
-          ? _SpeedDialState.open
-          : _SpeedDialState.closed);
+  void _toggleDial() => setState(
+    () =>
+        _dialState =
+            _dialState == _SpeedDialState.closed
+                ? _SpeedDialState.open
+                : _SpeedDialState.closed,
+  );
 
-  void _closeDial() =>
-      setState(() => _dialState = _SpeedDialState.closed);
+  void _closeDial() => setState(() => _dialState = _SpeedDialState.closed);
 
   @override
   Widget build(BuildContext context) {
@@ -90,58 +93,39 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
       body: Stack(
         children: [
           state.when(
-        data: (property) {
-          if (property == null) {
-            return _NotFoundView();
-          }
-          return _PropertyDetailBody(
-            property: property,
-            canManageProperties: canManageProperties,
-            onRefresh: () => ref
-                .read(propertyDetailNotifierProvider.notifier)
-                .load(widget.propertyId),
-            onAddFloor: canManageProperties
-                ? () => _showAddFloor(context)
-                : null,
-            onChangePhoto: canManageProperties
-                ? () => _changePropertyPhoto(context, ref, property)
-                : null,
-            onAssignLocation: (itemId) => _showAssignLocation(
-              context,
-              itemId,
-              property.floors,
-            ),
-          );
-        },
-        loading: () => Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                width: 40,
-                height: 40,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: AppColors.accent,
+            data: (property) {
+              if (property == null) {
+                return _NotFoundView();
+              }
+              return _PropertyDetailBody(
+                property: property,
+                canManageProperties: canManageProperties,
+                onRefresh:
+                    () => ref
+                        .read(propertyDetailNotifierProvider.notifier)
+                        .load(widget.propertyId),
+                onAddFloor:
+                    canManageProperties ? () => _showAddFloor(context) : null,
+                onChangePhoto:
+                    canManageProperties
+                        ? () => _changePropertyPhoto(context, ref, property)
+                        : null,
+                onAssignLocation:
+                    (itemId) =>
+                        _showAssignLocation(context, itemId, property.floors),
+              );
+            },
+            loading:
+                () => const AppScreenSkeleton(showHeader: false, cardCount: 5),
+            error:
+                (err, _) => _ErrorView(
+                  message: PropertyDetailNotifier.message(err),
+                  onRetry:
+                      () => ref
+                          .read(propertyDetailNotifierProvider.notifier)
+                          .load(widget.propertyId),
                 ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              Text(
-                'Loading property...',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppColors.onSurfaceVariant,
-                ),
-              ),
-            ],
           ),
-        ),
-        error: (err, _) => _ErrorView(
-          message: PropertyDetailNotifier.message(err),
-          onRetry: () => ref
-              .read(propertyDetailNotifierProvider.notifier)
-              .load(widget.propertyId),
-        ),
-      ),
           // Backdrop when dial is open
           if (isDialOpen)
             Positioned.fill(
@@ -164,10 +148,7 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => AssignLocationSheet(
-        floors: floors,
-        itemId: itemId,
-      ),
+      builder: (_) => AssignLocationSheet(floors: floors, itemId: itemId),
     ).then((_) {
       // Refresh unlocated count after assignment
       ref.invalidate(unlocatedItemsProvider(widget.propertyId));
@@ -179,19 +160,20 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => AddItemSheet(
-        propertyId: property.id,
-        floors: property.floors,
-        onAdded: () {
-          ref.invalidate(unlocatedItemsProvider(property.id));
-          ref.invalidate(itemListNotifierProvider);
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Item saved')),
-            );
-          }
-        },
-      ),
+      builder:
+          (ctx) => AddItemSheet(
+            propertyId: property.id,
+            floors: property.floors,
+            onAdded: () {
+              ref.invalidate(unlocatedItemsProvider(property.id));
+              ref.invalidate(itemListNotifierProvider);
+              if (context.mounted) {
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(const SnackBar(content: Text('Item saved')));
+              }
+            },
+          ),
     );
   }
 
@@ -200,12 +182,14 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => AddFloorSheet(
-        propertyId: widget.propertyId,
-        onAdded: () => ref
-            .read(propertyDetailNotifierProvider.notifier)
-            .load(widget.propertyId),
-      ),
+      builder:
+          (ctx) => AddFloorSheet(
+            propertyId: widget.propertyId,
+            onAdded:
+                () => ref
+                    .read(propertyDetailNotifierProvider.notifier)
+                    .load(widget.propertyId),
+          ),
     );
   }
 
@@ -217,23 +201,24 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
     final picker = ImagePicker();
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.camera_alt_outlined),
-              title: const Text('Camera'),
-              onTap: () => Navigator.of(ctx).pop(ImageSource.camera),
+      builder:
+          (ctx) => SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.camera_alt_outlined),
+                  title: const Text('Camera'),
+                  onTap: () => Navigator.of(ctx).pop(ImageSource.camera),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.photo_library_outlined),
+                  title: const Text('Gallery'),
+                  onTap: () => Navigator.of(ctx).pop(ImageSource.gallery),
+                ),
+              ],
             ),
-            ListTile(
-              leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('Gallery'),
-              onTap: () => Navigator.of(ctx).pop(ImageSource.gallery),
-            ),
-          ],
-        ),
-      ),
+          ),
     );
     if (source == null || !context.mounted) return;
 
@@ -301,9 +286,10 @@ class _PropertyDetailBody extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final hasHeroImage = property.photos.isNotEmpty;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final surfaceOverlay = isDark
-        ? Colors.white.withValues(alpha: 0.10)
-        : Colors.black.withValues(alpha: 0.04);
+    final surfaceOverlay =
+        isDark
+            ? Colors.white.withValues(alpha: 0.10)
+            : Colors.black.withValues(alpha: 0.04);
 
     return CustomScrollView(
       slivers: [
@@ -333,9 +319,10 @@ class _PropertyDetailBody extends ConsumerWidget {
               fit: StackFit.expand,
               children: [
                 CachedNetworkImage(
-                  imageUrl: hasHeroImage
-                      ? property.photos.first
-                      : _placeholderMansionUrl,
+                  imageUrl:
+                      hasHeroImage
+                          ? property.photos.first
+                          : _placeholderMansionUrl,
                   fit: BoxFit.cover,
                   placeholder: (_, _) => _LuxuryGradientBackground(),
                   errorWidget: (_, _, _) => _LuxuryGradientBackground(),
@@ -515,8 +502,8 @@ class _PropertyDetailBody extends ConsumerWidget {
                     propertyId: property.id,
                     surfaceOverlay: surfaceOverlay,
                     canManageProperties: canManageProperties,
-                    onAddRoom: () =>
-                        _showAddRoom(context, property.floors[index]),
+                    onAddRoom:
+                        () => _showAddRoom(context, property.floors[index]),
                     onRefresh: onRefresh,
                   ),
                 ),
@@ -547,12 +534,13 @@ class _PropertyDetailBody extends ConsumerWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => AddRoomSheet(
-        propertyId: property.id,
-        floorId: floor.floorId,
-        floorName: floor.name,
-        onAdded: onRefresh,
-      ),
+      builder:
+          (ctx) => AddRoomSheet(
+            propertyId: property.id,
+            floorId: floor.floorId,
+            floorName: floor.name,
+            onAdded: onRefresh,
+          ),
     );
   }
 }
@@ -577,10 +565,8 @@ class _UnlocatedItemsBanner extends ConsumerWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _UnlocatedItemsSheet(
-        propertyId: propertyId,
-        floors: floors,
-      ),
+      builder:
+          (_) => _UnlocatedItemsSheet(propertyId: propertyId, floors: floors),
     ).then((_) {
       // ignore: unused_result
       ref.refresh(unlocatedItemsProvider(propertyId));
@@ -594,21 +580,22 @@ class _UnlocatedItemsBanner extends ConsumerWidget {
   ) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (dialogCtx) => AlertDialog(
-        title: const Text('Delete item'),
-        content: Text('Delete "${item.name}"? This cannot be undone.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogCtx, false),
-            child: const Text('Cancel'),
+      builder:
+          (dialogCtx) => AlertDialog(
+            title: const Text('Delete item'),
+            content: Text('Delete "${item.name}"? This cannot be undone.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogCtx, false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(dialogCtx, true),
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                child: const Text('Delete'),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogCtx, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
     );
     if (confirmed == true) {
       try {
@@ -703,8 +690,8 @@ class _UnlocatedItemsBanner extends ConsumerWidget {
                   AppSpacing.sm,
                 ),
                 itemCount: inlineItems.length,
-                separatorBuilder: (_, __) =>
-                    const SizedBox(height: AppSpacing.xs),
+                separatorBuilder:
+                    (_, __) => const SizedBox(height: AppSpacing.xs),
                 itemBuilder: (context, index) {
                   final item = inlineItems[index];
                   return Row(
@@ -712,8 +699,12 @@ class _UnlocatedItemsBanner extends ConsumerWidget {
                       Expanded(
                         child: Text(
                           item.name,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppColors.onBackground.withValues(alpha: 0.8),
+                          style: Theme.of(
+                            context,
+                          ).textTheme.bodySmall?.copyWith(
+                            color: AppColors.onBackground.withValues(
+                              alpha: 0.8,
+                            ),
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -733,8 +724,7 @@ class _UnlocatedItemsBanner extends ConsumerWidget {
                           child: const Text('Assign'),
                         ),
                       IconButton(
-                        onPressed: () =>
-                            _deleteBannerItem(context, ref, item),
+                        onPressed: () => _deleteBannerItem(context, ref, item),
                         icon: const Icon(
                           Icons.delete_outline,
                           size: 18,
@@ -794,10 +784,7 @@ class _UnlocatedItemsBanner extends ConsumerWidget {
 // ── Unlocated items bottom sheet ───────────────────────────────────────────
 
 class _UnlocatedItemsSheet extends ConsumerStatefulWidget {
-  const _UnlocatedItemsSheet({
-    required this.propertyId,
-    required this.floors,
-  });
+  const _UnlocatedItemsSheet({required this.propertyId, required this.floors});
 
   final String propertyId;
   final List<FloorModel> floors;
@@ -836,21 +823,22 @@ class _UnlocatedItemsSheetState extends ConsumerState<_UnlocatedItemsSheet> {
   Future<void> _deleteItem(BuildContext context, dynamic item) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (dialogCtx) => AlertDialog(
-        title: const Text('Delete item'),
-        content: Text('Delete "${item.name}"? This cannot be undone.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogCtx, false),
-            child: const Text('Cancel'),
+      builder:
+          (dialogCtx) => AlertDialog(
+            title: const Text('Delete item'),
+            content: Text('Delete "${item.name}"? This cannot be undone.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogCtx, false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(dialogCtx, true),
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                child: const Text('Delete'),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogCtx, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
     );
     if (confirmed == true) {
       try {
@@ -940,15 +928,16 @@ class _UnlocatedItemsSheetState extends ConsumerState<_UnlocatedItemsSheet> {
             ),
           ),
           child: async.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
+            loading:
+                () => const AppScreenSkeleton(showHeader: false, cardCount: 4),
             error: (e, __) => Center(child: Text('Error: $e')),
             data: (items) {
               // Sort items by category for grouping
               final sorted = [...items]
                 ..sort((a, b) => a.category.compareTo(b.category));
 
-              final allSelected = _selected.length == items.length &&
-                  items.isNotEmpty;
+              final allSelected =
+                  _selected.length == items.length && items.isNotEmpty;
 
               return Column(
                 children: [
@@ -960,8 +949,9 @@ class _UnlocatedItemsSheetState extends ConsumerState<_UnlocatedItemsSheet> {
                         width: 40,
                         height: 4,
                         decoration: BoxDecoration(
-                          color: AppColors.onSurfaceVariant
-                              .withValues(alpha: 0.4),
+                          color: AppColors.onSurfaceVariant.withValues(
+                            alpha: 0.4,
+                          ),
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),
@@ -987,22 +977,19 @@ class _UnlocatedItemsSheetState extends ConsumerState<_UnlocatedItemsSheet> {
                             const SizedBox(width: AppSpacing.sm),
                             Text(
                               '${items.length} item${items.length == 1 ? '' : 's'} pending location',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleMedium
-                                  ?.copyWith(
-                                    color: AppColors.onBackground,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                              style: Theme.of(
+                                context,
+                              ).textTheme.titleMedium?.copyWith(
+                                color: AppColors.onBackground,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ],
                         ),
                         const SizedBox(height: AppSpacing.xs),
                         Text(
                           'Select items to assign them to a room',
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodySmall
+                          style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(color: AppColors.onSurfaceVariant),
                         ),
                       ],
@@ -1021,20 +1008,15 @@ class _UnlocatedItemsSheetState extends ConsumerState<_UnlocatedItemsSheet> {
                             allSelected
                                 ? 'All selected'
                                 : _selected.isEmpty
-                                    ? 'None selected'
-                                    : '${_selected.length} selected',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
-                                ?.copyWith(
-                                  color: AppColors.onSurfaceVariant,
-                                ),
+                                ? 'None selected'
+                                : '${_selected.length} selected',
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: AppColors.onSurfaceVariant),
                           ),
                         ),
                         TextButton(
-                          onPressed: items.isEmpty
-                              ? null
-                              : () => _toggleAll(items),
+                          onPressed:
+                              items.isEmpty ? null : () => _toggleAll(items),
                           style: TextButton.styleFrom(
                             foregroundColor: Colors.orange,
                             padding: const EdgeInsets.symmetric(
@@ -1054,106 +1036,106 @@ class _UnlocatedItemsSheetState extends ConsumerState<_UnlocatedItemsSheet> {
                   const Divider(height: 1),
                   // ── Item list ────────────────────────────────────────────
                   Expanded(
-                    child: items.isEmpty
-                        ? Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.check_circle_outline,
-                                  size: 48,
-                                  color: AppColors.onSurfaceVariant
-                                      .withValues(alpha: 0.5),
-                                ),
-                                const SizedBox(height: AppSpacing.md),
-                                Text(
-                                  'All items have been assigned',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodyMedium
-                                      ?.copyWith(
-                                        color: AppColors.onSurfaceVariant,
-                                      ),
-                                ),
-                              ],
-                            ),
-                          )
-                        : ListView.builder(
-                            controller: scrollController,
-                            padding: const EdgeInsets.only(
-                              bottom: AppSpacing.xxl,
-                            ),
-                            itemCount: sorted.length,
-                            itemBuilder: (context, index) {
-                              final item = sorted[index];
-                              final prevItem =
-                                  index > 0 ? sorted[index - 1] : null;
-                              final showCategoryHeader = prevItem == null ||
-                                  prevItem.category != item.category;
-
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                    child:
+                        items.isEmpty
+                            ? Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  if (showCategoryHeader)
-                                    Padding(
-                                      padding: const EdgeInsets.fromLTRB(
-                                        AppSpacing.md,
-                                        AppSpacing.md,
-                                        AppSpacing.md,
-                                        AppSpacing.xs,
-                                      ),
-                                      child: Text(
-                                        item.category.toUpperCase(),
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .labelSmall
-                                            ?.copyWith(
-                                              color: AppColors.onSurfaceVariant,
-                                              letterSpacing: 1.5,
-                                              fontSize: 10,
-                                            ),
-                                      ),
-                                    ),
-                                  CheckboxListTile(
-                                    value: _selected.contains(item.id),
-                                    onChanged: (_) => _toggleItem(item.id),
-                                    activeColor: Colors.orange,
-                                    checkColor: Colors.white,
-                                    contentPadding:
-                                        const EdgeInsets.symmetric(
-                                      horizontal: AppSpacing.md,
-                                    ),
-                                    title: Text(
-                                      item.name,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodyMedium
-                                          ?.copyWith(
-                                            color: AppColors.onBackground,
-                                          ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    subtitle: item.subcategory.isNotEmpty
-                                        ? _CategoryChip(
-                                            label: item.subcategory,
-                                          )
-                                        : null,
-                                    secondary: IconButton(
-                                      onPressed: () =>
-                                          _deleteItem(context, item),
-                                      icon: const Icon(
-                                        Icons.delete_outline,
-                                        size: 20,
-                                        color: Colors.red,
-                                      ),
-                                      visualDensity: VisualDensity.compact,
+                                  Icon(
+                                    Icons.check_circle_outline,
+                                    size: 48,
+                                    color: AppColors.onSurfaceVariant
+                                        .withValues(alpha: 0.5),
+                                  ),
+                                  const SizedBox(height: AppSpacing.md),
+                                  Text(
+                                    'All items have been assigned',
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.bodyMedium?.copyWith(
+                                      color: AppColors.onSurfaceVariant,
                                     ),
                                   ),
                                 ],
-                              );
-                            },
-                          ),
+                              ),
+                            )
+                            : ListView.builder(
+                              controller: scrollController,
+                              padding: const EdgeInsets.only(
+                                bottom: AppSpacing.xxl,
+                              ),
+                              itemCount: sorted.length,
+                              itemBuilder: (context, index) {
+                                final item = sorted[index];
+                                final prevItem =
+                                    index > 0 ? sorted[index - 1] : null;
+                                final showCategoryHeader =
+                                    prevItem == null ||
+                                    prevItem.category != item.category;
+
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    if (showCategoryHeader)
+                                      Padding(
+                                        padding: const EdgeInsets.fromLTRB(
+                                          AppSpacing.md,
+                                          AppSpacing.md,
+                                          AppSpacing.md,
+                                          AppSpacing.xs,
+                                        ),
+                                        child: Text(
+                                          item.category.toUpperCase(),
+                                          style: Theme.of(
+                                            context,
+                                          ).textTheme.labelSmall?.copyWith(
+                                            color: AppColors.onSurfaceVariant,
+                                            letterSpacing: 1.5,
+                                            fontSize: 10,
+                                          ),
+                                        ),
+                                      ),
+                                    CheckboxListTile(
+                                      value: _selected.contains(item.id),
+                                      onChanged: (_) => _toggleItem(item.id),
+                                      activeColor: Colors.orange,
+                                      checkColor: Colors.white,
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            horizontal: AppSpacing.md,
+                                          ),
+                                      title: Text(
+                                        item.name,
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.bodyMedium?.copyWith(
+                                          color: AppColors.onBackground,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      subtitle:
+                                          item.subcategory.isNotEmpty
+                                              ? _CategoryChip(
+                                                label: item.subcategory,
+                                              )
+                                              : null,
+                                      secondary: IconButton(
+                                        onPressed:
+                                            () => _deleteItem(context, item),
+                                        icon: const Icon(
+                                          Icons.delete_outline,
+                                          size: 20,
+                                          color: Colors.red,
+                                        ),
+                                        visualDensity: VisualDensity.compact,
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
                   ),
                   // ── Sticky action bar ────────────────────────────────────
                   if (_selected.isNotEmpty)
@@ -1170,8 +1152,9 @@ class _UnlocatedItemsSheetState extends ConsumerState<_UnlocatedItemsSheet> {
                           color: AppColors.surface,
                           border: Border(
                             top: BorderSide(
-                              color: AppColors.onSurfaceVariant
-                                  .withValues(alpha: 0.15),
+                              color: AppColors.onSurfaceVariant.withValues(
+                                alpha: 0.15,
+                              ),
                             ),
                           ),
                         ),
@@ -1179,34 +1162,37 @@ class _UnlocatedItemsSheetState extends ConsumerState<_UnlocatedItemsSheet> {
                           width: double.infinity,
                           height: 52,
                           child: FilledButton(
-                            onPressed: _assigning
-                                ? null
-                                : () => _batchAssign(context, items),
+                            onPressed:
+                                _assigning
+                                    ? null
+                                    : () => _batchAssign(context, items),
                             style: FilledButton.styleFrom(
                               backgroundColor: Colors.orange,
                               foregroundColor: Colors.white,
-                              disabledBackgroundColor:
-                                  Colors.orange.withValues(alpha: 0.4),
+                              disabledBackgroundColor: Colors.orange.withValues(
+                                alpha: 0.4,
+                              ),
                               elevation: 0,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(14),
                               ),
                             ),
-                            child: _assigning
-                                ? const SizedBox(
-                                    height: 20,
-                                    width: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
+                            child:
+                                _assigning
+                                    ? const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                    : Text(
+                                      'Assign ${_selected.length} item${_selected.length == 1 ? '' : 's'} \u2192',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
-                                  )
-                                : Text(
-                                    'Assign ${_selected.length} item${_selected.length == 1 ? '' : 's'} \u2192',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
                           ),
                         ),
                       ),
@@ -1530,14 +1516,16 @@ class _DialItem extends StatelessWidget {
               vertical: AppSpacing.sm,
             ),
             decoration: BoxDecoration(
-              color: isAi
-                  ? AppColors.accent.withValues(alpha: 0.12)
-                  : AppColors.surface,
+              color:
+                  isAi
+                      ? AppColors.accent.withValues(alpha: 0.12)
+                      : AppColors.surface,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                color: isAi
-                    ? AppColors.accent.withValues(alpha: 0.4)
-                    : Colors.white12,
+                color:
+                    isAi
+                        ? AppColors.accent.withValues(alpha: 0.4)
+                        : Colors.white12,
               ),
             ),
             child: Text(

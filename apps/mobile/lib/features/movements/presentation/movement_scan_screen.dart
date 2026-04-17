@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/loading_skeleton.dart';
 import '../data/models/movement_model.dart';
 import '../domain/active_movement_notifier.dart';
 
@@ -16,8 +17,7 @@ class MovementScanScreen extends ConsumerStatefulWidget {
   final String movementId;
 
   @override
-  ConsumerState<MovementScanScreen> createState() =>
-      _MovementScanScreenState();
+  ConsumerState<MovementScanScreen> createState() => _MovementScanScreenState();
 }
 
 class _MovementScanScreenState extends ConsumerState<MovementScanScreen> {
@@ -47,9 +47,9 @@ class _MovementScanScreenState extends ConsumerState<MovementScanScreen> {
     return movementAsync.when(
       data: (drafts) {
         final movement = drafts.cast<MovementModel?>().firstWhere(
-              (m) => m?.id == widget.movementId,
-              orElse: () => null,
-            );
+          (m) => m?.id == widget.movementId,
+          orElse: () => null,
+        );
         if (movement == null) {
           // Draft was activated/cancelled — leave the scan screen
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -59,20 +59,21 @@ class _MovementScanScreenState extends ConsumerState<MovementScanScreen> {
         }
         return _buildScanner(context, movement);
       },
-      loading: () => Scaffold(
-        backgroundColor: Colors.black,
-        body: Center(
-          child: CircularProgressIndicator(
-              color: AppColors.accent, strokeWidth: 2),
-        ),
-      ),
-      error: (e, _) => Scaffold(
-        backgroundColor: Colors.black,
-        body: Center(
-          child: Text(ActiveMovementNotifier.message(e),
-              style: const TextStyle(color: Colors.white)),
-        ),
-      ),
+      loading:
+          () => Scaffold(
+            backgroundColor: Colors.black,
+            body: const AppScreenSkeleton(showHeader: false, cardCount: 4),
+          ),
+      error:
+          (e, _) => Scaffold(
+            backgroundColor: Colors.black,
+            body: Center(
+              child: Text(
+                ActiveMovementNotifier.message(e),
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+          ),
     );
   }
 
@@ -129,8 +130,11 @@ class _MovementScanScreenState extends ConsumerState<MovementScanScreen> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.check_circle_outline,
-                            color: Colors.white, size: 16),
+                        const Icon(
+                          Icons.check_circle_outline,
+                          color: Colors.white,
+                          size: 16,
+                        ),
                         const SizedBox(width: 6),
                         Text(
                           '${movement.items.length} item${movement.items.length == 1 ? '' : 's'} scanned',
@@ -152,7 +156,9 @@ class _MovementScanScreenState extends ConsumerState<MovementScanScreen> {
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.sm,
+              ),
               child: Row(
                 children: [
                   // Cancel
@@ -165,12 +171,15 @@ class _MovementScanScreenState extends ConsumerState<MovementScanScreen> {
                   Expanded(
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                        horizontal: AppSpacing.md,
+                        vertical: AppSpacing.sm,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.black.withValues(alpha: 0.55),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.15)),
+                          color: Colors.white.withValues(alpha: 0.15),
+                        ),
                       ),
                       child: Row(
                         children: [
@@ -180,9 +189,10 @@ class _MovementScanScreenState extends ConsumerState<MovementScanScreen> {
                             child: Text(
                               movement.title,
                               style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600),
+                                color: Colors.white,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -210,8 +220,8 @@ class _MovementScanScreenState extends ConsumerState<MovementScanScreen> {
             maxChildSize: 0.65,
             snap: true,
             snapSizes: const [0.12, 0.28, 0.65],
-            builder: (ctx, scrollCtrl) =>
-                _BottomPanel(
+            builder:
+                (ctx, scrollCtrl) => _BottomPanel(
                   movement: movement,
                   scrollController: scrollCtrl,
                   onRemove: (itemId) => _removeItem(movement.id, itemId),
@@ -249,9 +259,10 @@ class _MovementScanScreenState extends ConsumerState<MovementScanScreen> {
           .read(activeMovementNotifierProvider.notifier)
           .addItem(movementId, itemId);
 
-      final addedItem =
-          movement.items.lastWhere((i) => i.itemId == itemId,
-              orElse: () => movement.items.last);
+      final addedItem = movement.items.lastWhere(
+        (i) => i.itemId == itemId,
+        orElse: () => movement.items.last,
+      );
 
       setState(() {
         _lastScannedName = addedItem.itemName;
@@ -287,21 +298,24 @@ class _MovementScanScreenState extends ConsumerState<MovementScanScreen> {
           .removeItem(movementId, itemId);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(ActiveMovementNotifier.message(e)),
-          backgroundColor: AppColors.error,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(ActiveMovementNotifier.message(e)),
+            backgroundColor: AppColors.error,
+          ),
+        );
       }
     }
   }
 
-  Future<void> _activate(
-      BuildContext context, MovementModel movement) async {
+  Future<void> _activate(BuildContext context, MovementModel movement) async {
     if (movement.items.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Scan at least one item before activating'),
-        backgroundColor: Color(0xFFFF9800),
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Scan at least one item before activating'),
+          backgroundColor: Color(0xFFFF9800),
+        ),
+      );
       return;
     }
 
@@ -309,41 +323,46 @@ class _MovementScanScreenState extends ConsumerState<MovementScanScreen> {
     final isTransfer = movement.operationType == 'transfer';
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surfaceVariant,
-        title: Text(
-          isDisposal ? 'Confirm Disposal' : 'Confirm Operation',
-          style: TextStyle(color: AppColors.onBackground),
-        ),
-        content: Text(
-          isDisposal
-              ? '${movement.items.length} item(s) will be marked as disposed. This cannot be undone.'
-              : isTransfer
+      builder:
+          (ctx) => AlertDialog(
+            backgroundColor: AppColors.surfaceVariant,
+            title: Text(
+              isDisposal ? 'Confirm Disposal' : 'Confirm Operation',
+              style: TextStyle(color: AppColors.onBackground),
+            ),
+            content: Text(
+              isDisposal
+                  ? '${movement.items.length} item(s) will be marked as disposed. This cannot be undone.'
+                  : isTransfer
                   ? '${movement.items.length} item(s) will be moved to ${movement.destinationPropertyName.isNotEmpty ? movement.destinationPropertyName : 'destination'}. Location will update immediately.'
                   : 'Activate "${movement.title}" with ${movement.items.length} item(s)?',
-          style: TextStyle(color: AppColors.onSurfaceVariant),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text('Cancel',
-                style: TextStyle(color: AppColors.onSurfaceVariant)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor:
-                  isDisposal ? AppColors.error : AppColors.accent,
-              foregroundColor: Colors.black,
+              style: TextStyle(color: AppColors.onSurfaceVariant),
             ),
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(isDisposal
-                ? 'Dispose'
-                : isTransfer
-                    ? 'Transfer'
-                    : 'Activate'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: Text(
+                  'Cancel',
+                  style: TextStyle(color: AppColors.onSurfaceVariant),
+                ),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor:
+                      isDisposal ? AppColors.error : AppColors.accent,
+                  foregroundColor: Colors.black,
+                ),
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: Text(
+                  isDisposal
+                      ? 'Dispose'
+                      : isTransfer
+                      ? 'Transfer'
+                      : 'Activate',
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
     );
 
     if (confirmed != true || !mounted) return;
@@ -358,10 +377,12 @@ class _MovementScanScreenState extends ConsumerState<MovementScanScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(ActiveMovementNotifier.message(e)),
-          backgroundColor: AppColors.error,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(ActiveMovementNotifier.message(e)),
+            backgroundColor: AppColors.error,
+          ),
+        );
       }
     }
   }
@@ -369,30 +390,37 @@ class _MovementScanScreenState extends ConsumerState<MovementScanScreen> {
   void _confirmCancel(BuildContext context, MovementModel movement) {
     showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surfaceVariant,
-        title: Text('Cancel operation?',
-            style: TextStyle(color: AppColors.onBackground)),
-        content: Text(
-          'The draft will be saved. You can resume it later from the Operations screen.',
-          style: TextStyle(color: AppColors.onSurfaceVariant),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text('Keep scanning',
-                style: TextStyle(color: AppColors.accent)),
+      builder:
+          (ctx) => AlertDialog(
+            backgroundColor: AppColors.surfaceVariant,
+            title: Text(
+              'Cancel operation?',
+              style: TextStyle(color: AppColors.onBackground),
+            ),
+            content: Text(
+              'The draft will be saved. You can resume it later from the Operations screen.',
+              style: TextStyle(color: AppColors.onSurfaceVariant),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: Text(
+                  'Keep scanning',
+                  style: TextStyle(color: AppColors.accent),
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.of(ctx).pop();
+                  context.pop();
+                },
+                child: Text(
+                  'Save & exit',
+                  style: TextStyle(color: AppColors.onSurfaceVariant),
+                ),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              context.pop();
-            },
-            child: Text('Save & exit',
-                style: TextStyle(color: AppColors.onSurfaceVariant)),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -427,20 +455,25 @@ class _ScanOverlay extends StatelessWidget {
             height: 240,
             decoration: BoxDecoration(
               border: Border.all(
-                color: processingQr
-                    ? AppColors.accent
-                    : (showFeedback && feedbackError == null)
+                color:
+                    processingQr
+                        ? AppColors.accent
+                        : (showFeedback && feedbackError == null)
                         ? const Color(0xFF4CAF50)
                         : Colors.white,
                 width: 2,
               ),
               borderRadius: BorderRadius.circular(16),
             ),
-            child: processingQr
-                ? const Center(
-                    child: CircularProgressIndicator(
-                        color: AppColors.accent, strokeWidth: 2))
-                : null,
+            child:
+                processingQr
+                    ? const Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.accent,
+                        strokeWidth: 2,
+                      ),
+                    )
+                    : null,
           ),
           const SizedBox(height: AppSpacing.lg),
           // Feedback toast
@@ -449,11 +482,14 @@ class _ScanOverlay extends StatelessWidget {
             duration: const Duration(milliseconds: 200),
             child: Container(
               padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.sm,
+              ),
               decoration: BoxDecoration(
-                color: feedbackError != null
-                    ? AppColors.error.withValues(alpha: 0.9)
-                    : const Color(0xFF4CAF50).withValues(alpha: 0.9),
+                color:
+                    feedbackError != null
+                        ? AppColors.error.withValues(alpha: 0.9)
+                        : const Color(0xFF4CAF50).withValues(alpha: 0.9),
                 borderRadius: BorderRadius.circular(24),
               ),
               child: Row(
@@ -470,9 +506,10 @@ class _ScanOverlay extends StatelessWidget {
                   Text(
                     feedbackError ?? '${feedbackName ?? 'Item'} added',
                     style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600),
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ],
               ),
@@ -482,7 +519,9 @@ class _ScanOverlay extends StatelessWidget {
           Text(
             'Point camera at an item QR code',
             style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.7), fontSize: 13),
+              color: Colors.white.withValues(alpha: 0.7),
+              fontSize: 13,
+            ),
           ),
         ],
       ),
@@ -522,8 +561,12 @@ class _BottomPanel extends StatelessWidget {
         children: [
           // Handle + header
           Padding(
-            padding:
-                const EdgeInsets.fromLTRB(AppSpacing.md, 12, AppSpacing.md, 0),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              12,
+              AppSpacing.md,
+              0,
+            ),
             child: Column(
               children: [
                 Container(
@@ -551,35 +594,40 @@ class _BottomPanel extends StatelessWidget {
                       child: ElevatedButton.icon(
                         onPressed: items.isEmpty ? null : onActivate,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: isDisposal
-                              ? AppColors.error
-                              : isTransfer
+                          backgroundColor:
+                              isDisposal
+                                  ? AppColors.error
+                                  : isTransfer
                                   ? const Color(0xFF2196F3)
                                   : AppColors.accent,
                           foregroundColor: Colors.white,
-                          disabledBackgroundColor:
-                              AppColors.onSurfaceVariant.withValues(alpha: 0.2),
+                          disabledBackgroundColor: AppColors.onSurfaceVariant
+                              .withValues(alpha: 0.2),
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10)),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                           padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.md),
+                            horizontal: AppSpacing.md,
+                          ),
                         ),
                         icon: Icon(
                           isDisposal
                               ? Icons.delete_outline_rounded
                               : isTransfer
-                                  ? Icons.swap_horiz_rounded
-                                  : Icons.check_rounded,
+                              ? Icons.swap_horiz_rounded
+                              : Icons.check_rounded,
                           size: 16,
                         ),
                         label: Text(
                           isDisposal
                               ? 'Dispose'
                               : isTransfer
-                                  ? 'Transfer'
-                                  : 'Activate',
+                              ? 'Transfer'
+                              : 'Activate',
                           style: const TextStyle(
-                              fontSize: 13, fontWeight: FontWeight.w700),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ),
@@ -591,45 +639,53 @@ class _BottomPanel extends StatelessWidget {
           const Divider(height: 16, color: Colors.white12),
           // Items list
           Expanded(
-            child: items.isEmpty
-                ? Center(
-                    child: Text(
-                      'Scan items to add them here',
-                      style: TextStyle(
-                          color: AppColors.onSurfaceVariant, fontSize: 13),
-                    ),
-                  )
-                : ListView.builder(
-                    controller: scrollController,
-                    padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.md, 0, AppSpacing.md, AppSpacing.lg),
-                    itemCount: items.length,
-                    itemBuilder: (ctx, i) {
-                      final item = items[items.length - 1 - i]; // newest first
-                      return AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 300),
-                        switchInCurve: Curves.easeOut,
-                        transitionBuilder: (child, animation) {
-                          final slideAnimation = Tween<Offset>(
-                            begin: const Offset(0, -0.2),
-                            end: Offset.zero,
-                          ).animate(animation);
-                          return FadeTransition(
-                            opacity: animation,
-                            child: SlideTransition(
-                              position: slideAnimation,
-                              child: child,
-                            ),
-                          );
-                        },
-                        child: _ScannedItemRow(
-                          key: ValueKey(item.itemId),
-                          item: item,
-                          onRemove: () => onRemove(item.itemId),
+            child:
+                items.isEmpty
+                    ? Center(
+                      child: Text(
+                        'Scan items to add them here',
+                        style: TextStyle(
+                          color: AppColors.onSurfaceVariant,
+                          fontSize: 13,
                         ),
-                      );
-                    },
-                  ),
+                      ),
+                    )
+                    : ListView.builder(
+                      controller: scrollController,
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.md,
+                        0,
+                        AppSpacing.md,
+                        AppSpacing.lg,
+                      ),
+                      itemCount: items.length,
+                      itemBuilder: (ctx, i) {
+                        final item =
+                            items[items.length - 1 - i]; // newest first
+                        return AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 300),
+                          switchInCurve: Curves.easeOut,
+                          transitionBuilder: (child, animation) {
+                            final slideAnimation = Tween<Offset>(
+                              begin: const Offset(0, -0.2),
+                              end: Offset.zero,
+                            ).animate(animation);
+                            return FadeTransition(
+                              opacity: animation,
+                              child: SlideTransition(
+                                position: slideAnimation,
+                                child: child,
+                              ),
+                            );
+                          },
+                          child: _ScannedItemRow(
+                            key: ValueKey(item.itemId),
+                            item: item,
+                            onRemove: () => onRemove(item.itemId),
+                          ),
+                        );
+                      },
+                    ),
           ),
         ],
       ),
@@ -656,11 +712,16 @@ class _ScannedItemRow extends StatelessWidget {
           // Thumbnail
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: item.itemPhoto.isNotEmpty
-                ? Image.network(item.itemPhoto,
-                    width: 40, height: 40, fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => _placeholder())
-                : _placeholder(),
+            child:
+                item.itemPhoto.isNotEmpty
+                    ? Image.network(
+                      item.itemPhoto,
+                      width: 40,
+                      height: 40,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => _placeholder(),
+                    )
+                    : _placeholder(),
           ),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
@@ -670,9 +731,10 @@ class _ScannedItemRow extends StatelessWidget {
                 Text(
                   item.itemName,
                   style: TextStyle(
-                      color: AppColors.onBackground,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500),
+                    color: AppColors.onBackground,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -680,7 +742,9 @@ class _ScannedItemRow extends StatelessWidget {
                   Text(
                     '${item.fromPropertyName.isNotEmpty ? '${item.fromPropertyName} · ' : ''}${item.fromRoomName}',
                     style: TextStyle(
-                        color: AppColors.onSurfaceVariant, fontSize: 11),
+                      color: AppColors.onSurfaceVariant,
+                      fontSize: 11,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -688,8 +752,11 @@ class _ScannedItemRow extends StatelessWidget {
             ),
           ),
           IconButton(
-            icon: Icon(Icons.remove_circle_outline,
-                color: AppColors.onSurfaceVariant, size: 20),
+            icon: Icon(
+              Icons.remove_circle_outline,
+              color: AppColors.onSurfaceVariant,
+              size: 20,
+            ),
             onPressed: onRemove,
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
@@ -700,15 +767,18 @@ class _ScannedItemRow extends StatelessWidget {
   }
 
   Widget _placeholder() => Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Icon(Icons.inventory_2_outlined,
-            size: 18, color: AppColors.onSurfaceVariant),
-      );
+    width: 40,
+    height: 40,
+    decoration: BoxDecoration(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Icon(
+      Icons.inventory_2_outlined,
+      size: 18,
+      color: AppColors.onSurfaceVariant,
+    ),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -729,8 +799,7 @@ class _GlassButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.black.withValues(alpha: 0.55),
           shape: BoxShape.circle,
-          border:
-              Border.all(color: Colors.white.withValues(alpha: 0.2)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
         ),
         child: Icon(icon, color: Colors.white, size: 20),
       ),
@@ -742,11 +811,17 @@ class _GlassButton extends StatelessWidget {
 _MovementTypeInfo _movementTypeInfo(String type) {
   return switch (type) {
     'loan' => const _MovementTypeInfo(
-        Icons.person_outline_rounded, Color(0xFF9C27B0)),
-    'repair' =>
-      const _MovementTypeInfo(Icons.build_outlined, Color(0xFFFF9800)),
-    'disposal' =>
-      const _MovementTypeInfo(Icons.delete_outline_rounded, Color(0xFFCF6679)),
+      Icons.person_outline_rounded,
+      Color(0xFF9C27B0),
+    ),
+    'repair' => const _MovementTypeInfo(
+      Icons.build_outlined,
+      Color(0xFFFF9800),
+    ),
+    'disposal' => const _MovementTypeInfo(
+      Icons.delete_outline_rounded,
+      Color(0xFFCF6679),
+    ),
     _ => const _MovementTypeInfo(Icons.swap_horiz_rounded, Color(0xFF2196F3)),
   };
 }

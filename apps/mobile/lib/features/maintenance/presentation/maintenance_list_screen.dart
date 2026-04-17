@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/loading_skeleton.dart';
 import '../data/models/maintenance_model.dart';
 import '../domain/maintenance_notifier.dart';
 
@@ -59,33 +60,37 @@ class _MaintenanceListScreenState extends ConsumerState<MaintenanceListScreen>
           tabs: _tabs.map((t) => Tab(text: t)).toList(),
         ),
       ),
-      body: ref.watch(maintenanceListNotifierProvider).when(
-            data: (records) => TabBarView(
-              controller: _tabController,
-              children: [
-                _buildTab(records.where((r) => r.isOverdue).toList()),
-                _buildTab(records.where((r) => r.isDueSoon).toList()),
-                _buildTab(
-                  records
-                      .where((r) => r.isPending && !r.isDueSoon && !r.isOverdue)
-                      .toList(),
+      body: ref
+          .watch(maintenanceListNotifierProvider)
+          .when(
+            data:
+                (records) => TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildTab(records.where((r) => r.isOverdue).toList()),
+                    _buildTab(records.where((r) => r.isDueSoon).toList()),
+                    _buildTab(
+                      records
+                          .where(
+                            (r) => r.isPending && !r.isDueSoon && !r.isOverdue,
+                          )
+                          .toList(),
+                    ),
+                    _buildTab(records.where((r) => r.isCompleted).toList()),
+                  ],
                 ),
-                _buildTab(records.where((r) => r.isCompleted).toList()),
-              ],
-            ),
-            loading: () => const Center(
-              child: CircularProgressIndicator(),
-            ),
-            error: (e, _) => Center(
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                child: Text(
-                  MaintenanceListNotifier.errorMessage(e),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: AppColors.error),
+            loading: () => const AppScreenSkeleton(showHeader: false),
+            error:
+                (e, _) => Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppSpacing.lg),
+                    child: Text(
+                      MaintenanceListNotifier.errorMessage(e),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: AppColors.error),
+                    ),
+                  ),
                 ),
-              ),
-            ),
           ),
     );
   }
@@ -101,14 +106,14 @@ class _MaintenanceListScreenState extends ConsumerState<MaintenanceListScreen>
     }
     return RefreshIndicator(
       color: AppColors.accent,
-      onRefresh: () =>
-          ref.read(maintenanceListNotifierProvider.notifier).load(),
+      onRefresh:
+          () => ref.read(maintenanceListNotifierProvider.notifier).load(),
       child: ListView.separated(
         padding: const EdgeInsets.all(AppSpacing.md),
         itemCount: records.length,
         separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
-        itemBuilder: (context, index) =>
-            _MaintenanceCard(record: records[index]),
+        itemBuilder:
+            (context, index) => _MaintenanceCard(record: records[index]),
       ),
     );
   }
@@ -157,22 +162,31 @@ class _MaintenanceCard extends ConsumerWidget {
             const SizedBox(height: AppSpacing.xs),
             Row(
               children: [
-                Icon(Icons.calendar_today_outlined,
-                    size: 14, color: AppColors.onSurfaceVariant),
+                Icon(
+                  Icons.calendar_today_outlined,
+                  size: 14,
+                  color: AppColors.onSurfaceVariant,
+                ),
                 const SizedBox(width: 4),
                 Text(
                   dateStr,
-                  style: AppTypography.bodySmall
-                      .copyWith(color: AppColors.onSurfaceVariant),
+                  style: AppTypography.bodySmall.copyWith(
+                    color: AppColors.onSurfaceVariant,
+                  ),
                 ),
                 if (record.isRecurring) ...[
                   const SizedBox(width: AppSpacing.sm),
-                  Icon(Icons.repeat, size: 14, color: AppColors.onSurfaceVariant),
+                  Icon(
+                    Icons.repeat,
+                    size: 14,
+                    color: AppColors.onSurfaceVariant,
+                  ),
                   const SizedBox(width: 4),
                   Text(
                     'Every ${record.recurrenceIntervalDays ?? '?'} days',
-                    style: AppTypography.bodySmall
-                        .copyWith(color: AppColors.onSurfaceVariant),
+                    style: AppTypography.bodySmall.copyWith(
+                      color: AppColors.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ],
@@ -181,13 +195,17 @@ class _MaintenanceCard extends ConsumerWidget {
               const SizedBox(height: AppSpacing.xs),
               Row(
                 children: [
-                  Icon(Icons.auto_awesome,
-                      size: 14, color: AppColors.accentLight),
+                  Icon(
+                    Icons.auto_awesome,
+                    size: 14,
+                    color: AppColors.accentLight,
+                  ),
                   const SizedBox(width: 4),
                   Text(
                     'AI suggested · Risk ${record.aiRiskScore!.toInt()}%',
-                    style: AppTypography.bodySmall
-                        .copyWith(color: AppColors.accentLight),
+                    style: AppTypography.bodySmall.copyWith(
+                      color: AppColors.accentLight,
+                    ),
                   ),
                 ],
               ),
@@ -229,9 +247,9 @@ class _MaintenanceCard extends ConsumerWidget {
         .read(maintenanceListNotifierProvider.notifier)
         .complete(record.id);
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Marked as completed')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Marked as completed')));
     }
   }
 }

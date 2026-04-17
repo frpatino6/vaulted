@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/loading_skeleton.dart';
 import '../data/models/insurance_policy_model.dart';
 import '../domain/insurance_detail_notifier.dart';
 import '../domain/insurance_list_notifier.dart';
@@ -20,8 +21,7 @@ class InsuranceDetailScreen extends ConsumerStatefulWidget {
       _InsuranceDetailScreenState();
 }
 
-class _InsuranceDetailScreenState
-    extends ConsumerState<InsuranceDetailScreen> {
+class _InsuranceDetailScreenState extends ConsumerState<InsuranceDetailScreen> {
   @override
   void initState() {
     super.initState();
@@ -34,22 +34,26 @@ class _InsuranceDetailScreenState
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: ref.watch(insuranceDetailNotifierProvider).when(
-            data: (policy) => policy == null
-                ? const Center(child: Text('Policy not found'))
-                : _buildContent(context, policy),
-            loading: () =>
-                const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Center(
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                child: Text(
-                  InsuranceDetailNotifier.message(e),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: AppColors.error),
+      body: ref
+          .watch(insuranceDetailNotifierProvider)
+          .when(
+            data:
+                (policy) =>
+                    policy == null
+                        ? const Center(child: Text('Policy not found'))
+                        : _buildContent(context, policy),
+            loading: () => const AppScreenSkeleton(showHeader: false),
+            error:
+                (e, _) => Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppSpacing.lg),
+                    child: Text(
+                      InsuranceDetailNotifier.message(e),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: AppColors.error),
+                    ),
+                  ),
                 ),
-              ),
-            ),
           ),
     );
   }
@@ -81,7 +85,10 @@ class _InsuranceDetailScreenState
               icon: const Icon(Icons.edit_outlined),
               color: AppColors.accent,
               onPressed: () async {
-                await context.push('/insurance/${policy.id}/edit', extra: policy);
+                await context.push(
+                  '/insurance/${policy.id}/edit',
+                  extra: policy,
+                );
                 if (context.mounted) {
                   ref
                       .read(insuranceDetailNotifierProvider.notifier)
@@ -121,8 +128,9 @@ class _InsuranceDetailScreenState
                   children: [
                     Text(
                       'Total Coverage',
-                      style: AppTypography.bodySmall
-                          .copyWith(color: AppColors.onSurfaceVariant),
+                      style: AppTypography.bodySmall.copyWith(
+                        color: AppColors.onSurfaceVariant,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -136,8 +144,9 @@ class _InsuranceDetailScreenState
                       const SizedBox(height: 4),
                       Text(
                         'Premium: ${currencyFmt.format(policy.premium!)} / year',
-                        style: AppTypography.bodySmall
-                            .copyWith(color: AppColors.onSurfaceVariant),
+                        style: AppTypography.bodySmall.copyWith(
+                          color: AppColors.onSurfaceVariant,
+                        ),
                       ),
                     ],
                   ],
@@ -156,9 +165,8 @@ class _InsuranceDetailScreenState
                     _DetailRow(
                       'Expires',
                       _fmtDate(policy.expiresAt),
-                      valueColor: policy.isExpiringSoon
-                          ? AppColors.error
-                          : null,
+                      valueColor:
+                          policy.isExpiringSoon ? AppColors.error : null,
                     ),
                     if (policy.notes != null && policy.notes!.isNotEmpty)
                       _DetailRow('Notes', policy.notes!),
@@ -181,14 +189,18 @@ class _InsuranceDetailScreenState
                   Row(
                     children: [
                       TextButton.icon(
-                        onPressed: () =>
-                            context.push('/insurance/${policy.id}/gaps'),
-                        icon: Icon(Icons.analytics_outlined,
-                            size: 16, color: AppColors.accentLight),
+                        onPressed:
+                            () => context.push('/insurance/${policy.id}/gaps'),
+                        icon: Icon(
+                          Icons.analytics_outlined,
+                          size: 16,
+                          color: AppColors.accentLight,
+                        ),
                         label: Text(
                           'Gap Analysis',
-                          style: AppTypography.bodySmall
-                              .copyWith(color: AppColors.accentLight),
+                          style: AppTypography.bodySmall.copyWith(
+                            color: AppColors.accentLight,
+                          ),
                         ),
                       ),
                       IconButton(
@@ -204,13 +216,13 @@ class _InsuranceDetailScreenState
 
               if (policy.insuredItems.isEmpty)
                 Padding(
-                  padding:
-                      const EdgeInsets.symmetric(vertical: AppSpacing.md),
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
                   child: Center(
                     child: Text(
                       'No items attached to this policy.',
-                      style: AppTypography.bodyMedium
-                          .copyWith(color: AppColors.onSurfaceVariant),
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: AppColors.onSurfaceVariant,
+                      ),
                     ),
                   ),
                 )
@@ -238,17 +250,20 @@ class _InsuranceDetailScreenState
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => AttachItemSheet(
-        policyId: policyId,
-        onAttached: (itemId, coveredValue, currency) async {
-          await ref.read(insuranceDetailNotifierProvider.notifier).attachItem(
-                policyId,
-                itemId: itemId,
-                coveredValue: coveredValue,
-                currency: currency,
-              );
-        },
-      ),
+      builder:
+          (_) => AttachItemSheet(
+            policyId: policyId,
+            onAttached: (itemId, coveredValue, currency) async {
+              await ref
+                  .read(insuranceDetailNotifierProvider.notifier)
+                  .attachItem(
+                    policyId,
+                    itemId: itemId,
+                    coveredValue: coveredValue,
+                    currency: currency,
+                  );
+            },
+          ),
     );
   }
 
@@ -267,28 +282,31 @@ class _InsuranceDetailScreenState
   Future<void> _detachItem(String itemId) async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        title: Text(
-          'Remove Item',
-          style: TextStyle(color: AppColors.onBackground),
-        ),
-        content: Text(
-          'Remove this item from the policy?',
-          style: TextStyle(color: AppColors.onSurface),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child:
-                Text('Cancel', style: TextStyle(color: AppColors.onSurface)),
+      builder:
+          (ctx) => AlertDialog(
+            backgroundColor: AppColors.surface,
+            title: Text(
+              'Remove Item',
+              style: TextStyle(color: AppColors.onBackground),
+            ),
+            content: Text(
+              'Remove this item from the policy?',
+              style: TextStyle(color: AppColors.onSurface),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text(
+                  'Cancel',
+                  style: TextStyle(color: AppColors.onSurface),
+                ),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text('Remove', style: TextStyle(color: AppColors.error)),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text('Remove', style: TextStyle(color: AppColors.error)),
-          ),
-        ],
-      ),
     );
     if (confirm != true || !mounted) return;
 
@@ -309,31 +327,36 @@ class _InsuranceDetailScreenState
   }
 
   Future<void> _confirmDelete(
-      BuildContext context, InsurancePolicyModel policy) async {
+    BuildContext context,
+    InsurancePolicyModel policy,
+  ) async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        title: Text(
-          'Delete Policy',
-          style: TextStyle(color: AppColors.onBackground),
-        ),
-        content: Text(
-          'Delete "${policy.provider} – ${policy.policyNumber}"? This cannot be undone.',
-          style: TextStyle(color: AppColors.onSurface),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child:
-                Text('Cancel', style: TextStyle(color: AppColors.onSurface)),
+      builder:
+          (ctx) => AlertDialog(
+            backgroundColor: AppColors.surface,
+            title: Text(
+              'Delete Policy',
+              style: TextStyle(color: AppColors.onBackground),
+            ),
+            content: Text(
+              'Delete "${policy.provider} – ${policy.policyNumber}"? This cannot be undone.',
+              style: TextStyle(color: AppColors.onSurface),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text(
+                  'Cancel',
+                  style: TextStyle(color: AppColors.onSurface),
+                ),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text('Delete', style: TextStyle(color: AppColors.error)),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text('Delete', style: TextStyle(color: AppColors.error)),
-          ),
-        ],
-      ),
     );
     if (confirm != true || !mounted) return;
 
@@ -400,8 +423,9 @@ class _DetailRow extends StatelessWidget {
             width: 120,
             child: Text(
               label,
-              style: AppTypography.bodySmall
-                  .copyWith(color: AppColors.onSurfaceVariant),
+              style: AppTypography.bodySmall.copyWith(
+                color: AppColors.onSurfaceVariant,
+              ),
             ),
           ),
           Expanded(
@@ -432,15 +456,20 @@ class _InsuredItemRow extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.xs),
       padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
       decoration: BoxDecoration(
         color: AppColors.surfaceVariant,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
-          Icon(Icons.inventory_2_outlined,
-              size: 18, color: AppColors.onSurfaceVariant),
+          Icon(
+            Icons.inventory_2_outlined,
+            size: 18,
+            color: AppColors.onSurfaceVariant,
+          ),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(
@@ -499,8 +528,10 @@ class _StatusBadge extends StatelessWidget {
       ),
       child: Text(
         status[0].toUpperCase() + status.substring(1),
-        style: AppTypography.bodySmall
-            .copyWith(color: color, fontWeight: FontWeight.w600),
+        style: AppTypography.bodySmall.copyWith(
+          color: color,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
@@ -521,8 +552,9 @@ class _InfoChip extends StatelessWidget {
         const SizedBox(width: 4),
         Text(
           label,
-          style: AppTypography.bodySmall
-              .copyWith(color: AppColors.onSurfaceVariant),
+          style: AppTypography.bodySmall.copyWith(
+            color: AppColors.onSurfaceVariant,
+          ),
         ),
       ],
     );

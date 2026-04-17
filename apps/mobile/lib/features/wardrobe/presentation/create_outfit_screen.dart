@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/loading_skeleton.dart';
 import '../../inventory/data/models/item_model.dart';
 import '../domain/outfit_notifier.dart';
 import '../domain/wardrobe_notifier.dart';
@@ -24,7 +25,9 @@ class _CreateOutfitScreenState extends ConsumerState<CreateOutfitScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final AsyncValue<List<ItemModel>> wardrobeState = ref.watch(wardrobeNotifierProvider);
+    final AsyncValue<List<ItemModel>> wardrobeState = ref.watch(
+      wardrobeNotifierProvider,
+    );
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -51,11 +54,21 @@ class _CreateOutfitScreenState extends ConsumerState<CreateOutfitScreen> {
               DropdownButtonFormField<String>(
                 initialValue: _selectedSeason,
                 items: const [
-                  DropdownMenuItem(value: 'spring_summer', child: Text('Spring / Summer')),
-                  DropdownMenuItem(value: 'fall_winter', child: Text('Fall / Winter')),
-                  DropdownMenuItem(value: 'all_season', child: Text('All Season')),
+                  DropdownMenuItem(
+                    value: 'spring_summer',
+                    child: Text('Spring / Summer'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'fall_winter',
+                    child: Text('Fall / Winter'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'all_season',
+                    child: Text('All Season'),
+                  ),
                 ],
-                onChanged: (String? value) => setState(() => _selectedSeason = value),
+                onChanged:
+                    (String? value) => setState(() => _selectedSeason = value),
                 decoration: const InputDecoration(labelText: 'Season'),
               ),
               const SizedBox(height: AppSpacing.md),
@@ -75,7 +88,9 @@ class _CreateOutfitScreenState extends ConsumerState<CreateOutfitScreen> {
                   value: selected,
                   activeColor: AppColors.accent,
                   title: Text(item.name),
-                  subtitle: Text(item.wardrobeAttributes.type ?? 'Wardrobe item'),
+                  subtitle: Text(
+                    item.wardrobeAttributes.type ?? 'Wardrobe item',
+                  ),
                   onChanged: (bool? value) {
                     setState(() {
                       if (value == true) {
@@ -95,8 +110,10 @@ class _CreateOutfitScreenState extends ConsumerState<CreateOutfitScreen> {
             ],
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, __) => const Center(child: Text('Unable to load wardrobe items')),
+        loading: () => const AppScreenSkeleton(showHeader: false),
+        error:
+            (_, __) =>
+                const Center(child: Text('Unable to load wardrobe items')),
       ),
     );
   }
@@ -104,13 +121,15 @@ class _CreateOutfitScreenState extends ConsumerState<CreateOutfitScreen> {
   Future<void> _submit() async {
     final String name = _nameController.text.trim();
     if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Name is required')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Name is required')));
       return;
     }
 
-    await ref.read(outfitNotifierProvider.notifier).createOutfit(
+    await ref
+        .read(outfitNotifierProvider.notifier)
+        .createOutfit(
           name: name,
           description: _descriptionController.text.trim(),
           season: _selectedSeason,
