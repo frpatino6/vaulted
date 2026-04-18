@@ -12,7 +12,7 @@ void main() {
       ),
     );
 
-    expect(find.text('Vaulted'), findsOneWidget);
+    expect(find.text('VAULTED'), findsOneWidget);
     expect(find.text('Log in'), findsOneWidget);
   });
 }
