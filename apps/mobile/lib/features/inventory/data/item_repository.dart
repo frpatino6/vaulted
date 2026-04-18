@@ -34,6 +34,7 @@ class ItemRepository {
     String status = 'active',
     String? serialNumber,
     String? locationDetail,
+    String? sectionId,
     int purchasePrice = 0,
     int currentValue = 0,
     String currency = 'USD',
@@ -53,6 +54,7 @@ class ItemRepository {
         'serialNumber': serialNumber,
       if (locationDetail != null && locationDetail.isNotEmpty)
         'locationDetail': locationDetail,
+      if (sectionId != null && sectionId.isNotEmpty) 'sectionId': sectionId,
       'valuation': {
         'purchasePrice': purchasePrice,
         'currentValue': currentValue,

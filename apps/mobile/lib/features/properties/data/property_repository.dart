@@ -1,4 +1,5 @@
 import 'models/property_model.dart';
+import 'models/room_section_model.dart';
 import 'property_remote_data_source.dart';
 
 class PropertyRepository {
@@ -81,4 +82,60 @@ class PropertyRepository {
     String floorId,
     String roomId,
   ) => _remote.deleteRoom(propertyId, floorId, roomId);
+
+  // ── Sections ──────────────────────────────────────────────────────────────
+
+  Future<List<RoomSectionModel>> getSections(
+    String propertyId,
+    String floorId,
+    String roomId,
+  ) => _remote.getSections(propertyId, floorId, roomId);
+
+  Future<PropertyModel> addSection(
+    String propertyId,
+    String floorId,
+    String roomId, {
+    required String code,
+    required String name,
+    required String type,
+    String? notes,
+  }) => _remote.addSection(propertyId, floorId, roomId, {
+    'code': code,
+    'name': name,
+    'type': type,
+    if (notes != null) 'notes': notes,
+  });
+
+  Future<PropertyModel> addSectionsBulk(
+    String propertyId,
+    String floorId,
+    String roomId,
+    List<Map<String, dynamic>> sections,
+  ) => _remote.addSectionsBulk(propertyId, floorId, roomId, sections);
+
+  Future<PropertyModel> updateSection(
+    String propertyId,
+    String floorId,
+    String roomId,
+    String sectionId, {
+    String? code,
+    String? name,
+    String? type,
+    String? notes,
+  }) => _remote.updateSection(propertyId, floorId, roomId, sectionId, {
+    if (code != null) 'code': code,
+    if (name != null) 'name': name,
+    if (type != null) 'type': type,
+    if (notes != null) 'notes': notes,
+  });
+
+  Future<PropertyModel> deleteSection(
+    String propertyId,
+    String floorId,
+    String roomId,
+    String sectionId,
+  ) => _remote.deleteSection(propertyId, floorId, roomId, sectionId);
+
+  Future<Map<String, dynamic>> analyzeSections(String imageUrl) =>
+      _remote.analyzeSections(imageUrl);
 }

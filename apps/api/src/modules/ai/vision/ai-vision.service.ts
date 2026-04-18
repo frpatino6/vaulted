@@ -5,6 +5,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { AiCostLoggerService } from '../shared/ai-cost-logger.service';
 import { AnalyzeItemDto, PropertyRoomDto } from './dto/analyze-item.dto';
+import { AnalyzeSectionsDto, AnalyzeSectionsResult } from './dto/analyze-sections.dto';
 
 export interface RoomSuggestion {
   roomId: string;
@@ -88,6 +89,95 @@ export class AiVisionService {
 
     const raw = response.text();
     return this.parseResponse(raw, rooms, indexedRooms);
+  }
+
+  async analyzeSections(
+    tenantId: string,
+    userId: string,
+    dto: AnalyzeSectionsDto,
+  ): Promise<AnalyzeSectionsResult> {
+    const imagePart = this.resolveImageToPart(dto.imageUrl);
+    const prompt = this.buildSectionsPrompt();
+    const parts: Part[] = [imagePart, { text: prompt }];
+
+    this.logger.log(`Analyzing sections for tenant=${tenantId}`);
+
+    const geminiModel = this.genAI.getGenerativeModel({ model: this.model });
+    const result = await geminiModel.generateContent(parts);
+    const response = result.response;
+    const usage = response.usageMetadata;
+
+    await this.costLogger.log({
+      tenantId,
+      userId,
+      feature: 'ai_section_mapping',
+      model: this.model,
+      inputTokens: usage?.promptTokenCount ?? 0,
+      outputTokens: usage?.candidatesTokenCount ?? 0,
+    });
+
+    const raw = response.text();
+    return this.parseSectionsResponse(raw);
+  }
+
+  private buildSectionsPrompt(): string {
+    return `You are analyzing a photo of storage furniture (cabinets, drawers, shelves, closets, etc.) in a luxury home.
+
+Your task: identify every distinct storage unit visible in the image and return a structured map.
+
+Grid convention:
+- Rows: numbered top-to-bottom starting at 1 (1 = top row, 2 = second row, etc.)
+- Columns: lettered left-to-right starting at A (A = leftmost, B = next, etc.)
+- Code: combine row + column, e.g. "1A", "2B", "3C"
+
+For each storage unit, determine:
+- code: grid code (e.g. "1A")
+- name: descriptive name (e.g. "Top Left Drawer", "Center Cabinet", "Glass Door Upper Right")
+- type: one of "drawer" | "cabinet" | "shelf" | "rack" | "safe" | "compartment" | "other"
+- row: numeric row (1, 2, 3...)
+- column: letter column ("A", "B", "C"...)
+- notes: optional brief note (e.g. "has glass door", "deep pull-out", "corner unit")
+
+Return ONLY valid JSON with no markdown:
+{
+  "furnitureDescription": string,
+  "confidence": number (0-1),
+  "sections": [
+    { "code": string, "name": string, "type": string, "row": number, "column": string, "notes": string | null }
+  ]
+}
+
+Rules:
+- Include ALL visible storage units, even partially visible ones
+- If the same physical piece has multiple doors/drawers, each is a separate section
+- Order sections by row then column (1A, 1B, 1C, 2A, 2B...)
+- Return ONLY the JSON object, no explanation`;
+  }
+
+  private parseSectionsResponse(raw: string): AnalyzeSectionsResult {
+    let parsed: Record<string, unknown>;
+    try {
+      const clean = raw.replace(/```json|```/g, '').trim();
+      parsed = JSON.parse(clean) as Record<string, unknown>;
+    } catch {
+      this.logger.error(`Failed to parse sections AI response: ${raw}`);
+      throw new BadRequestException('AI returned an invalid response. Please try again.');
+    }
+
+    const rawSections = Array.isArray(parsed['sections']) ? parsed['sections'] : [];
+
+    return {
+      furnitureDescription: (parsed['furnitureDescription'] as string) ?? '',
+      confidence: (parsed['confidence'] as number) ?? 0.5,
+      sections: rawSections.map((s: Record<string, unknown>) => ({
+        code: (s['code'] as string) ?? '',
+        name: (s['name'] as string) ?? '',
+        type: (s['type'] as string) ?? 'other',
+        row: (s['row'] as number) ?? 1,
+        column: (s['column'] as string) ?? 'A',
+        notes: (s['notes'] as string | null) ?? undefined,
+      })),
+    };
   }
 
   private readonly ALLOWED_UPLOAD_DIR = path.resolve('/app/uploads');

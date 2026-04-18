@@ -91,6 +91,9 @@ export class Item {
   @Prop({ trim: true })
   locationDetail?: string;
 
+  @Prop({ type: String, required: false, default: null, index: true })
+  sectionId?: string | null;
+
   @Prop({ required: true })
   createdBy!: string;
 

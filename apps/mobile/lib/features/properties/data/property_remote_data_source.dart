@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import 'models/property_model.dart';
+import 'models/room_section_model.dart';
 
 /// Remote data source for properties API.
 /// Uses shared Dio instance; auth interceptor attaches Bearer token.
@@ -150,6 +151,96 @@ class PropertyRemoteDataSource {
     return PropertyModel.fromJson(
       Map<String, dynamic>.from(data is Map ? data : {}),
     );
+  }
+
+  // ── Sections ──────────────────────────────────────────────────────────────
+
+  /// GET /properties/:id/floors/:floorId/rooms/:roomId/sections
+  Future<List<RoomSectionModel>> getSections(
+    String propertyId,
+    String floorId,
+    String roomId,
+  ) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '$_path/$propertyId/floors/$floorId/rooms/$roomId/sections',
+    );
+    final data = _unwrapData(response);
+    if (data is! List) return [];
+    return data
+        .map((e) => RoomSectionModel.fromJson(Map<String, dynamic>.from(e as Map)))
+        .toList();
+  }
+
+  /// POST /properties/:id/floors/:floorId/rooms/:roomId/sections
+  Future<PropertyModel> addSection(
+    String propertyId,
+    String floorId,
+    String roomId,
+    Map<String, dynamic> body,
+  ) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '$_path/$propertyId/floors/$floorId/rooms/$roomId/sections',
+      data: body,
+    );
+    final data = _unwrapData(response);
+    return PropertyModel.fromJson(Map<String, dynamic>.from(data is Map ? data : {}));
+  }
+
+  /// POST /properties/:id/floors/:floorId/rooms/:roomId/sections/bulk
+  Future<PropertyModel> addSectionsBulk(
+    String propertyId,
+    String floorId,
+    String roomId,
+    List<Map<String, dynamic>> sections,
+  ) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '$_path/$propertyId/floors/$floorId/rooms/$roomId/sections/bulk',
+      data: {'sections': sections},
+    );
+    final data = _unwrapData(response);
+    return PropertyModel.fromJson(Map<String, dynamic>.from(data is Map ? data : {}));
+  }
+
+  /// PUT /properties/:id/floors/:floorId/rooms/:roomId/sections/:sectionId
+  Future<PropertyModel> updateSection(
+    String propertyId,
+    String floorId,
+    String roomId,
+    String sectionId,
+    Map<String, dynamic> body,
+  ) async {
+    final response = await _dio.put<Map<String, dynamic>>(
+      '$_path/$propertyId/floors/$floorId/rooms/$roomId/sections/$sectionId',
+      data: body,
+    );
+    final data = _unwrapData(response);
+    return PropertyModel.fromJson(Map<String, dynamic>.from(data is Map ? data : {}));
+  }
+
+  /// DELETE /properties/:id/floors/:floorId/rooms/:roomId/sections/:sectionId
+  Future<PropertyModel> deleteSection(
+    String propertyId,
+    String floorId,
+    String roomId,
+    String sectionId,
+  ) async {
+    final response = await _dio.delete<Map<String, dynamic>>(
+      '$_path/$propertyId/floors/$floorId/rooms/$roomId/sections/$sectionId',
+    );
+    final data = _unwrapData(response);
+    return PropertyModel.fromJson(Map<String, dynamic>.from(data is Map ? data : {}));
+  }
+
+  // ── AI Section Analysis ───────────────────────────────────────────────────
+
+  /// POST /ai/vision/analyze-sections
+  Future<Map<String, dynamic>> analyzeSections(String imageUrl) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      'ai/vision/analyze-sections',
+      data: {'imageUrl': imageUrl},
+    );
+    final data = _unwrapData(response);
+    return Map<String, dynamic>.from(data is Map ? data : {});
   }
 
   dynamic _unwrapData(Response<Map<String, dynamic>> response) {

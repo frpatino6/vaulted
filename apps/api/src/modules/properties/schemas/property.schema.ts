@@ -22,6 +22,28 @@ export class Address {
 }
 
 @Schema({ _id: false })
+export class RoomSection {
+  @Prop({ required: true })
+  sectionId!: string;
+
+  @Prop({ required: true, trim: true })
+  code!: string;
+
+  @Prop({ required: true, trim: true })
+  name!: string;
+
+  @Prop({
+    required: true,
+    enum: ['drawer', 'cabinet', 'shelf', 'rack', 'safe', 'compartment', 'other'],
+    default: 'other',
+  })
+  type!: 'drawer' | 'cabinet' | 'shelf' | 'rack' | 'safe' | 'compartment' | 'other';
+
+  @Prop({ trim: true })
+  notes?: string;
+}
+
+@Schema({ _id: false })
 export class Room {
   @Prop({ required: true })
   roomId!: string;
@@ -31,6 +53,9 @@ export class Room {
 
   @Prop({ required: true, trim: true })
   type!: string;
+
+  @Prop({ type: [RoomSection], default: [] })
+  sections!: RoomSection[];
 }
 
 @Schema({ _id: false })
@@ -70,6 +95,7 @@ export class Property {
 }
 
 export const AddressSchema = SchemaFactory.createForClass(Address);
+export const RoomSectionSchema = SchemaFactory.createForClass(RoomSection);
 export const RoomSchema = SchemaFactory.createForClass(Room);
 export const FloorSchema = SchemaFactory.createForClass(Floor);
 export const PropertySchema = SchemaFactory.createForClass(Property);

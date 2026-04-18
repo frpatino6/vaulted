@@ -5,6 +5,7 @@ import { Role } from '../../../common/enums/role.enum';
 import { JwtPayload } from '../../auth/strategies/jwt.strategy';
 import { AiVisionService, AnalyzeItemResult } from './ai-vision.service';
 import { AnalyzeItemDto } from './dto/analyze-item.dto';
+import { AnalyzeSectionsDto, AnalyzeSectionsResult } from './dto/analyze-sections.dto';
 
 @Controller('ai/vision')
 @Roles(Role.OWNER, Role.MANAGER)
@@ -17,5 +18,13 @@ export class AiVisionController {
     @Body() dto: AnalyzeItemDto,
   ): Promise<AnalyzeItemResult> {
     return this.aiVisionService.analyzeItem(user.tenantId, user.sub, dto);
+  }
+
+  @Post('analyze-sections')
+  async analyzeSections(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: AnalyzeSectionsDto,
+  ): Promise<AnalyzeSectionsResult> {
+    return this.aiVisionService.analyzeSections(user.tenantId, user.sub, dto);
   }
 }
