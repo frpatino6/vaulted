@@ -15,7 +15,7 @@ export class InviteUserDto {
   email!: string;
 
   @IsEnum(Role)
-  role!: Role.MANAGER | Role.STAFF | Role.AUDITOR | Role.GUEST;
+  role!: Role;
 
   @IsArray()
   @ArrayMaxSize(100)

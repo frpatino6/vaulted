@@ -6,7 +6,13 @@ import '../../../core/theme/app_theme.dart';
 import '../../properties/domain/properties_notifier.dart';
 import '../domain/users_notifier.dart';
 
-const List<String> _inviteRoles = ['manager', 'staff', 'auditor', 'guest'];
+const List<String> _inviteRoles = [
+  'owner',
+  'manager',
+  'staff',
+  'auditor',
+  'guest',
+];
 
 /// Bottom sheet to invite a new user (email, role, property access, optional expiry).
 class InviteUserSheet extends ConsumerStatefulWidget {

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../storage/auth_token_store.dart';
 import 'auth_redirect_notifier.dart';
 import '../../features/auth/presentation/login_screen.dart';
+import '../../features/auth/presentation/accept_invite_screen.dart';
 import '../../features/auth/presentation/mfa_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/reports/presentation/reports_screen.dart';
@@ -45,12 +46,13 @@ GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
       final isMfaPending = AuthTokenStore.instance.isMfaPending;
       final isLogin = state.matchedLocation == '/login';
       final isMfa = state.matchedLocation == '/mfa';
+      final isAcceptInvite = state.matchedLocation == '/accept-invite';
 
       // /properties removed — redirect to dashboard
       if (state.matchedLocation == '/properties') return '/dashboard';
 
-      // Not authenticated → force login
-      if (!hasToken && !isLogin) return '/login';
+      // Not authenticated → force login (allow public invite acceptance)
+      if (!hasToken && !isLogin && !isAcceptInvite) return '/login';
 
       // Authenticated but MFA not yet verified → force MFA screen
       if (hasToken && isMfaPending && !isMfa) return '/mfa';
@@ -62,6 +64,13 @@ GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
     },
     routes: [
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
+      GoRoute(
+        path: '/accept-invite',
+        builder: (context, state) {
+          final token = state.uri.queryParameters['token'] ?? '';
+          return AcceptInviteScreen(token: token);
+        },
+      ),
       GoRoute(path: '/mfa', builder: (context, state) => const MfaScreen()),
       GoRoute(
         path: '/dashboard',

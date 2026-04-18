@@ -2,6 +2,7 @@ import {
   Injectable,
   UnauthorizedException,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -12,6 +13,8 @@ import { Redis } from 'ioredis';
 import * as speakeasy from 'speakeasy';
 import * as QRCode from 'qrcode';
 import { v4 as uuidv4 } from 'uuid';
+import { createHash } from 'crypto';
+import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
 import { TenantsService } from '../tenants/tenants.service';
 import { AuditService } from '../audit/audit.service';
@@ -20,8 +23,10 @@ import { JwtPayload } from './strategies/jwt.strategy';
 import { JwtRefreshPayload } from './strategies/jwt-refresh.strategy';
 import { User } from '../users/entities/user.entity';
 import { Tenant } from '../tenants/entities/tenant.entity';
+import { AcceptInviteDto } from './dto/accept-invite.dto';
 
 const ACCESS_TOKEN_TTL_SECONDS = 15 * 60;
+const BCRYPT_ROUNDS = 12;
 const REFRESH_TOKEN_TTL_SECONDS = 7 * 24 * 60 * 60;
 
 @Injectable()
@@ -267,5 +272,47 @@ export class AuthService {
     ]);
 
     return { accessToken, refreshToken };
+  }
+
+  async acceptInvite(
+    dto: AcceptInviteDto,
+    ipAddress: string,
+  ): Promise<{ accessToken: string; refreshToken: string; mfaRequired: boolean }> {
+    const tokenHash = createHash('sha256').update(dto.token).digest('hex');
+    const user = await this.usersService.findByInviteTokenHash(tokenHash);
+
+    if (!user) {
+      throw new BadRequestException('Invalid or expired invite token');
+    }
+
+    if (user.expiresAt && user.expiresAt < new Date()) {
+      throw new BadRequestException('Invite has expired');
+    }
+
+    if (user.status !== 'invited') {
+      throw new BadRequestException('Invite already used');
+    }
+
+    const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
+    const updatedUser = await this.usersService.completeInvite(user.id, passwordHash);
+
+    await this.usersService.updateLastLogin(updatedUser.id);
+
+    await this.auditService.log({
+      tenantId: updatedUser.tenantId,
+      userId: updatedUser.id,
+      action: 'user.invite_accepted',
+      entityType: 'user',
+      entityId: updatedUser.id,
+      ipAddress,
+    });
+
+    const roleRequiresMfa =
+      MFA_REQUIRED_ROLES.includes(updatedUser.role) && updatedUser.mfaEnabled;
+    const tokens = await this.generateTokenPair(updatedUser, {
+      mfaVerified: !roleRequiresMfa,
+    });
+
+    return { ...tokens, mfaRequired: roleRequiresMfa };
   }
 }

@@ -49,6 +49,29 @@ class AuthRepository {
     return {'accessToken': accessToken, 'mfaRequired': mfaRequired};
   }
 
+  Future<Map<String, dynamic>> acceptInvite({
+    required String token,
+    required String password,
+  }) async {
+    final result = await _remote.acceptInvite(token: token, password: password);
+
+    final accessToken = result.data['accessToken'] as String?;
+    final mfaRequired = result.data['mfaRequired'] as bool? ?? false;
+
+    if (accessToken == null || accessToken.isEmpty) {
+      throw Exception('No access token in response');
+    }
+
+    final refreshToken = _parseRefreshTokenFromCookie(result.setCookie);
+    if (refreshToken != null) {
+      await _secureStorage.saveRefreshToken(refreshToken);
+    }
+
+    _tokenStore.setToken(accessToken);
+
+    return {'accessToken': accessToken, 'mfaRequired': mfaRequired};
+  }
+
   Future<Map<String, dynamic>> verifyMfa(String code) async {
     final result = await _remote.verifyMfa(code);
     final accessToken = result.data['accessToken'] as String?;
