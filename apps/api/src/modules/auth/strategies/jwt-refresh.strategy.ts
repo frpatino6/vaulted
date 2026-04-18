@@ -3,20 +3,20 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
-import { InjectRedis } from '../../../common/decorators/inject-redis.decorator';
-import { Redis } from 'ioredis';
 import { JwtPayload } from './jwt.strategy';
 
 export interface JwtRefreshPayload extends JwtPayload {
   refreshTokenId: string;
 }
 
+/**
+ * Validates refresh token signature and cookie presence only.
+ * Blacklist + replay detection is handled in AuthService.refresh()
+ * so that replay attacks can trigger full session invalidation.
+ */
 @Injectable()
 export class JwtRefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh') {
-  constructor(
-    config: ConfigService,
-    @InjectRedis() private readonly redis: Redis,
-  ) {
+  constructor(config: ConfigService) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
         (req: Request) => req.cookies?.['refresh_token'] as string | null ?? null,
@@ -26,18 +26,10 @@ export class JwtRefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh'
     });
   }
 
-  async validate(req: Request, payload: JwtRefreshPayload): Promise<JwtRefreshPayload> {
-    const token = req.cookies?.['refresh_token'] as string | undefined;
-
-    if (!token) {
+  validate(req: Request, payload: JwtRefreshPayload): JwtRefreshPayload {
+    if (!req.cookies?.['refresh_token']) {
       throw new UnauthorizedException('Refresh token not found');
     }
-
-    const isBlacklisted = await this.redis.get(`blacklist:refresh:${payload.refreshTokenId}`);
-    if (isBlacklisted) {
-      throw new UnauthorizedException('Refresh token has been revoked');
-    }
-
     return payload;
   }
 }
