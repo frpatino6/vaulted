@@ -76,6 +76,7 @@ export class InventoryService {
       tags: dto.tags ?? [],
       serialNumber: dto.serialNumber,
       locationDetail: dto.locationDetail,
+      sectionId: dto.sectionId ?? null,
       createdBy: userId,
     });
 
@@ -169,6 +170,7 @@ export class InventoryService {
             ...(dto.tags !== undefined ? { tags: dto.tags } : {}),
             ...(dto.serialNumber !== undefined ? { serialNumber: dto.serialNumber } : {}),
             ...(dto.locationDetail !== undefined ? { locationDetail: dto.locationDetail } : {}),
+            ...(dto.sectionId !== undefined ? { sectionId: dto.sectionId } : {}),
           },
         },
         { new: true, runValidators: true },

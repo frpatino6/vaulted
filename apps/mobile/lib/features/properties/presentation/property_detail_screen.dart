@@ -22,6 +22,7 @@ import '../domain/property_detail_notifier.dart';
 import 'add_floor_sheet.dart';
 import 'add_room_sheet.dart';
 import 'edit_room_sheet.dart';
+import 'room_sections_screen.dart';
 
 // Speed dial state
 enum _SpeedDialState { closed, open }
@@ -1475,6 +1476,17 @@ class _FloorTile extends ConsumerWidget {
                         onSelected: (action) {
                           if (action == _RoomAction.edit) {
                             _showEditRoom(context, room);
+                          } else if (action == _RoomAction.sections) {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => RoomSectionsScreen(
+                                  propertyId: propertyId,
+                                  floorId: floor.floorId,
+                                  roomId: room.roomId,
+                                  roomName: room.name,
+                                ),
+                              ),
+                            );
                           } else {
                             _confirmDeleteRoom(context, ref, room);
                           }
@@ -1489,6 +1501,20 @@ class _FloorTile extends ConsumerWidget {
                                 const SizedBox(width: AppSpacing.sm),
                                 Text(
                                   'Edit',
+                                  style: TextStyle(color: AppColors.onBackground),
+                                ),
+                              ],
+                            ),
+                          ),
+                          PopupMenuItem(
+                            value: _RoomAction.sections,
+                            child: Row(
+                              children: [
+                                Icon(Icons.grid_view_outlined,
+                                    size: 16, color: AppColors.accent),
+                                const SizedBox(width: AppSpacing.sm),
+                                Text(
+                                  'Sections',
                                   style: TextStyle(color: AppColors.onBackground),
                                 ),
                               ],
@@ -1540,7 +1566,7 @@ class _FloorTile extends ConsumerWidget {
   }
 }
 
-enum _RoomAction { edit, delete }
+enum _RoomAction { edit, sections, delete }
 
 class _NotFoundView extends StatelessWidget {
   @override

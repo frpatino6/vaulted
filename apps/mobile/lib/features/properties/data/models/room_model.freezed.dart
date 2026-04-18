@@ -24,6 +24,7 @@ mixin _$RoomModel {
   String get roomId => throw _privateConstructorUsedError;
   String get name => throw _privateConstructorUsedError;
   String get type => throw _privateConstructorUsedError;
+  List<RoomSectionModel> get sections => throw _privateConstructorUsedError;
 
   /// Serializes this RoomModel to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -40,7 +41,12 @@ abstract class $RoomModelCopyWith<$Res> {
   factory $RoomModelCopyWith(RoomModel value, $Res Function(RoomModel) then) =
       _$RoomModelCopyWithImpl<$Res, RoomModel>;
   @useResult
-  $Res call({String roomId, String name, String type});
+  $Res call({
+    String roomId,
+    String name,
+    String type,
+    List<RoomSectionModel> sections,
+  });
 }
 
 /// @nodoc
@@ -57,7 +63,12 @@ class _$RoomModelCopyWithImpl<$Res, $Val extends RoomModel>
   /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
-  $Res call({Object? roomId = null, Object? name = null, Object? type = null}) {
+  $Res call({
+    Object? roomId = null,
+    Object? name = null,
+    Object? type = null,
+    Object? sections = null,
+  }) {
     return _then(
       _value.copyWith(
             roomId:
@@ -75,6 +86,11 @@ class _$RoomModelCopyWithImpl<$Res, $Val extends RoomModel>
                     ? _value.type
                     : type // ignore: cast_nullable_to_non_nullable
                         as String,
+            sections:
+                null == sections
+                    ? _value.sections
+                    : sections // ignore: cast_nullable_to_non_nullable
+                        as List<RoomSectionModel>,
           )
           as $Val,
     );
@@ -90,7 +106,12 @@ abstract class _$$RoomModelImplCopyWith<$Res>
   ) = __$$RoomModelImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({String roomId, String name, String type});
+  $Res call({
+    String roomId,
+    String name,
+    String type,
+    List<RoomSectionModel> sections,
+  });
 }
 
 /// @nodoc
@@ -106,7 +127,12 @@ class __$$RoomModelImplCopyWithImpl<$Res>
   /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
-  $Res call({Object? roomId = null, Object? name = null, Object? type = null}) {
+  $Res call({
+    Object? roomId = null,
+    Object? name = null,
+    Object? type = null,
+    Object? sections = null,
+  }) {
     return _then(
       _$RoomModelImpl(
         roomId:
@@ -124,6 +150,11 @@ class __$$RoomModelImplCopyWithImpl<$Res>
                 ? _value.type
                 : type // ignore: cast_nullable_to_non_nullable
                     as String,
+        sections:
+            null == sections
+                ? _value._sections
+                : sections // ignore: cast_nullable_to_non_nullable
+                    as List<RoomSectionModel>,
       ),
     );
   }
@@ -136,7 +167,8 @@ class _$RoomModelImpl implements _RoomModel {
     required this.roomId,
     required this.name,
     required this.type,
-  });
+    final List<RoomSectionModel> sections = const [],
+  }) : _sections = sections;
 
   factory _$RoomModelImpl.fromJson(Map<String, dynamic> json) =>
       _$$RoomModelImplFromJson(json);
@@ -147,10 +179,17 @@ class _$RoomModelImpl implements _RoomModel {
   final String name;
   @override
   final String type;
+  final List<RoomSectionModel> _sections;
+  @override
+  @JsonKey()
+  List<RoomSectionModel> get sections {
+    if (_sections is EqualUnmodifiableListView) return _sections;
+    return EqualUnmodifiableListView(_sections);
+  }
 
   @override
   String toString() {
-    return 'RoomModel(roomId: $roomId, name: $name, type: $type)';
+    return 'RoomModel(roomId: $roomId, name: $name, type: $type, sections: $sections)';
   }
 
   @override
@@ -160,12 +199,20 @@ class _$RoomModelImpl implements _RoomModel {
             other is _$RoomModelImpl &&
             (identical(other.roomId, roomId) || other.roomId == roomId) &&
             (identical(other.name, name) || other.name == name) &&
-            (identical(other.type, type) || other.type == type));
+            (identical(other.type, type) || other.type == type) &&
+            const DeepCollectionEquality()
+                .equals(other._sections, _sections));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, roomId, name, type);
+  int get hashCode => Object.hash(
+    runtimeType,
+    roomId,
+    name,
+    type,
+    const DeepCollectionEquality().hash(_sections),
+  );
 
   /// Create a copy of RoomModel
   /// with the given fields replaced by the non-null parameter values.
@@ -186,6 +233,7 @@ abstract class _RoomModel implements RoomModel {
     required final String roomId,
     required final String name,
     required final String type,
+    final List<RoomSectionModel> sections,
   }) = _$RoomModelImpl;
 
   factory _RoomModel.fromJson(Map<String, dynamic> json) =
@@ -197,6 +245,8 @@ abstract class _RoomModel implements RoomModel {
   String get name;
   @override
   String get type;
+  @override
+  List<RoomSectionModel> get sections;
 
   /// Create a copy of RoomModel
   /// with the given fields replaced by the non-null parameter values.

@@ -11,6 +11,13 @@ _$RoomModelImpl _$$RoomModelImplFromJson(Map<String, dynamic> json) =>
       roomId: json['roomId'] as String,
       name: json['name'] as String,
       type: json['type'] as String,
+      sections: (json['sections'] as List<dynamic>?)
+              ?.map(
+                (e) =>
+                    RoomSectionModel.fromJson(e as Map<String, dynamic>),
+              )
+              .toList() ??
+          const [],
     );
 
 Map<String, dynamic> _$$RoomModelImplToJson(_$RoomModelImpl instance) =>
@@ -18,4 +25,5 @@ Map<String, dynamic> _$$RoomModelImplToJson(_$RoomModelImpl instance) =>
       'roomId': instance.roomId,
       'name': instance.name,
       'type': instance.type,
+      'sections': instance.sections.map((e) => e.toJson()).toList(),
     };

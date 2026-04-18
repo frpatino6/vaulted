@@ -7,6 +7,7 @@ import '../../../shared/widgets/item_photo_picker.dart';
 import '../../media/data/media_repository_provider.dart';
 import '../../properties/data/models/floor_model.dart';
 import '../../properties/data/models/room_model.dart';
+import '../../properties/data/models/room_section_model.dart';
 import '../../wardrobe/data/models/wardrobe_attributes.dart';
 import '../data/item_repository_provider.dart';
 import '../domain/item_list_notifier.dart';
@@ -71,6 +72,10 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
   String? _selectedRoomId;
   String? _selectedRoomName;
 
+  /// Selected section within the room.
+  String? _selectedSectionId;
+  String? _selectedSectionName;
+
   @override
   void initState() {
     super.initState();
@@ -124,8 +129,20 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
       setState(() {
         _selectedRoomId = picked.roomId;
         _selectedRoomName = picked.name;
+        _selectedSectionId = null;
+        _selectedSectionName = null;
       });
     }
+  }
+
+  List<RoomSectionModel> get _availableSections {
+    if (_selectedRoomId == null || widget.floors == null) return [];
+    for (final floor in widget.floors!) {
+      for (final room in floor.rooms) {
+        if (room.roomId == _selectedRoomId) return room.sections;
+      }
+    }
+    return [];
   }
 
   Future<void> _submit() async {
@@ -180,9 +197,10 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
         serialNumber: _serialNumberController.text.trim().isEmpty
             ? null
             : _serialNumberController.text.trim(),
-        locationDetail: _locationDetailController.text.trim().isEmpty
-            ? null
-            : _locationDetailController.text.trim(),
+        locationDetail: _selectedSectionId == null && _locationDetailController.text.trim().isNotEmpty
+            ? _locationDetailController.text.trim()
+            : null,
+        sectionId: _selectedSectionId,
         purchasePrice: purchasePrice,
         currentValue: currentValue,
         tags: tags,
@@ -351,17 +369,64 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
                       ? () => setState(() {
                             _selectedRoomId = null;
                             _selectedRoomName = null;
+                            _selectedSectionId = null;
+                            _selectedSectionName = null;
                           })
                       : null,
                 ),
-                const SizedBox(height: AppSpacing.md),
-                TextFormField(
-                  controller: _locationDetailController,
-                  decoration: const InputDecoration(
-                    labelText: 'Within room (optional)',
-                    hintText: 'e.g. Left shelf, Cabinet 3',
+                // Section dropdown — shown only when room has defined sections
+                if (_availableSections.isNotEmpty) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  DropdownButtonFormField<String>(
+                    value: _selectedSectionId,
+                    decoration: InputDecoration(
+                      labelText: 'Section (optional)',
+                      hintText: 'Select section',
+                      prefixIcon: const Icon(Icons.grid_view_outlined, size: 18),
+                      suffixIcon: _selectedSectionId != null
+                          ? IconButton(
+                              icon: const Icon(Icons.close, size: 16),
+                              onPressed: () => setState(() {
+                                _selectedSectionId = null;
+                                _selectedSectionName = null;
+                              }),
+                            )
+                          : null,
+                    ),
+                    items: [
+                      const DropdownMenuItem<String>(
+                        value: null,
+                        child: Text('No section'),
+                      ),
+                      ..._availableSections.map(
+                        (s) => DropdownMenuItem<String>(
+                          value: s.sectionId,
+                          child: Text('${s.code} – ${s.name}'),
+                        ),
+                      ),
+                    ],
+                    onChanged: (v) {
+                      final section = _availableSections
+                          .where((s) => s.sectionId == v)
+                          .firstOrNull;
+                      setState(() {
+                        _selectedSectionId = v;
+                        _selectedSectionName = section != null
+                            ? '${section.code} – ${section.name}'
+                            : null;
+                      });
+                    },
                   ),
-                ),
+                ] else ...[
+                  const SizedBox(height: AppSpacing.md),
+                  TextFormField(
+                    controller: _locationDetailController,
+                    decoration: const InputDecoration(
+                      labelText: 'Within room (optional)',
+                      hintText: 'e.g. Left shelf, Cabinet 3',
+                    ),
+                  ),
+                ],
                 // ─────────────────────────────────────────────────────────
 
                 const SizedBox(height: AppSpacing.md),
