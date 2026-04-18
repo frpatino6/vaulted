@@ -60,6 +60,7 @@ export class InventoryController {
     @Query('category') category?: string,
     @Query('status') status?: string,
     @Query('unlocated') unlocated?: string,
+    @Query('limit') limit?: string,
   ) {
     return this.inventoryService.findAll(
       user.tenantId,
@@ -69,6 +70,7 @@ export class InventoryController {
         category,
         status,
         unlocated: unlocated === 'true',
+        limit: limit ? parseInt(limit, 10) : undefined,
       },
       user.role,
       user.sub,

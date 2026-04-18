@@ -12,13 +12,14 @@ class ItemRemoteDataSource {
 
   static const String _path = 'items';
 
-  /// GET /items?propertyId=&roomId=&category=&status=&unlocated=true
+  /// GET /items?propertyId=&roomId=&category=&status=&unlocated=true&limit=N
   Future<List<ItemModel>> getItems({
     String? propertyId,
     String? roomId,
     String? category,
     String? status,
     bool unlocated = false,
+    int? limit,
   }) async {
     final queryParams = <String, dynamic>{};
     if (propertyId != null && propertyId.isNotEmpty) queryParams['propertyId'] = propertyId;
@@ -26,6 +27,7 @@ class ItemRemoteDataSource {
     if (category != null && category.isNotEmpty) queryParams['category'] = category;
     if (status != null && status.isNotEmpty) queryParams['status'] = status;
     if (unlocated) queryParams['unlocated'] = 'true';
+    if (limit != null && limit > 0) queryParams['limit'] = limit.toString();
 
     final response = await _dio.get<Map<String, dynamic>>(
       _path,

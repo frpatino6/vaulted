@@ -21,6 +21,7 @@ import '../domain/dashboard_notifier.dart';
 import '../../movements/data/models/movement_model.dart';
 import '../../movements/domain/movement_list_notifier.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
+import '../../../shared/widgets/app_bottom_nav.dart';
 
 /// Dashboard: clean welcome header, Quick Actions grid, recent property cards.
 class DashboardScreen extends ConsumerWidget {
@@ -36,6 +37,7 @@ class DashboardScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.backgroundElevated,
+      bottomNavigationBar: const AppBottomNav(currentTab: AppTab.home),
       body: RefreshIndicator(
         color: AppColors.accent,
         onRefresh: () async {
@@ -958,6 +960,7 @@ class _StatsSection extends StatelessWidget {
                   value: _currency.format(data.totalValuation),
                   icon: Icons.account_balance_outlined,
                   highlight: true,
+                  onTap: () => context.push('/assets'),
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
@@ -986,16 +989,20 @@ class _StatCard extends StatelessWidget {
     required this.value,
     required this.icon,
     this.highlight = false,
+    this.onTap,
   });
 
   final String label;
   final String value;
   final IconData icon;
   final bool highlight;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: AppColors.surfaceVariant,
@@ -1032,7 +1039,29 @@ class _StatCard extends StatelessWidget {
               fontSize: 10,
             ),
           ),
+          if (onTap != null) ...[
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Text(
+                  'View all',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: AppColors.accent.withValues(alpha: 0.7),
+                    letterSpacing: 0.3,
+                  ),
+                ),
+                const SizedBox(width: 2),
+                Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 8,
+                  color: AppColors.accent.withValues(alpha: 0.7),
+                ),
+              ],
+            ),
+          ],
         ],
+      ),
       ),
     );
   }

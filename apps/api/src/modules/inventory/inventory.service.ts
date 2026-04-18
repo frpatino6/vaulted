@@ -21,6 +21,7 @@ interface InventoryFilters {
   category?: string;
   status?: string;
   unlocated?: boolean;
+  limit?: number;
 }
 
 interface InventorySearchFilters {
@@ -123,7 +124,9 @@ export class InventoryService {
       query.status = filters.status;
     }
 
-    const items = await this.itemModel.find(query).sort({ createdAt: -1 }).exec();
+    const q = this.itemModel.find(query).sort({ createdAt: -1 });
+    if (filters.limit && filters.limit > 0) q.limit(filters.limit);
+    const items = await q.exec();
     if (role === Role.OWNER) return items;
     return items.map((item) => this.accessControl.stripValuation(item.toObject()) as Item);
   }

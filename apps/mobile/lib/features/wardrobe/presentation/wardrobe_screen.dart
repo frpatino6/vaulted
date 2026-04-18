@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
+import '../../../shared/widgets/app_bottom_nav.dart';
 import '../../inventory/data/models/item_model.dart';
 import '../data/wardrobe_stats_repository.dart';
 import '../domain/wardrobe_notifier.dart';
@@ -63,6 +64,7 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      bottomNavigationBar: const AppBottomNav(currentTab: AppTab.wardrobe),
       appBar: AppBar(
         backgroundColor: AppColors.background,
         foregroundColor: AppColors.onBackground,

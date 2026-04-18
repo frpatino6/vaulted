@@ -29,6 +29,7 @@ import '../../features/ai_scan/data/models/ai_scan_result_model.dart';
 import '../../features/ai_scan/presentation/ai_scan_screen.dart';
 import '../../features/ai_scan/presentation/ai_item_review_screen.dart';
 import '../../features/properties/data/models/floor_model.dart';
+import '../../features/inventory/presentation/asset_browser_screen.dart';
 import '../../features/insurance/presentation/insurance_list_screen.dart';
 import '../../features/insurance/presentation/insurance_detail_screen.dart';
 import '../../features/insurance/presentation/insurance_form_screen.dart';
@@ -111,6 +112,10 @@ GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
       GoRoute(
         path: '/search',
         builder: (context, state) => const SearchScreen(),
+      ),
+      GoRoute(
+        path: '/assets',
+        builder: (context, state) => const AssetBrowserScreen(),
       ),
       GoRoute(
         path: '/scanner',
