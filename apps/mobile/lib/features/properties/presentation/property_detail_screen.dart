@@ -21,6 +21,7 @@ import '../domain/properties_notifier.dart';
 import '../domain/property_detail_notifier.dart';
 import 'add_floor_sheet.dart';
 import 'add_room_sheet.dart';
+import 'edit_floor_sheet.dart';
 import 'edit_room_sheet.dart';
 import 'room_sections_screen.dart';
 
@@ -1336,6 +1337,73 @@ class _FloorTile extends ConsumerWidget {
   final VoidCallback onAddRoom;
   final VoidCallback onRefresh;
 
+  void _showEditFloor(BuildContext context) {
+    showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => EditFloorSheet(
+        floorId: floor.floorId,
+        currentName: floor.name,
+        onUpdated: onRefresh,
+      ),
+    );
+  }
+
+  Future<void> _confirmDeleteFloor(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: Text(
+          'Delete floor',
+          style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                color: AppColors.onBackground,
+              ),
+        ),
+        content: Text(
+          'Delete "${floor.name}"? All rooms and their items will become unlocated.',
+          style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
+                color: AppColors.onSurfaceVariant,
+              ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    try {
+      await ref
+          .read(propertyDetailNotifierProvider.notifier)
+          .deleteFloor(floor.floorId);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Floor deleted')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(PropertyDetailNotifier.message(e)),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
   void _showEditRoom(BuildContext context, RoomModel room) {
     showModalBottomSheet<bool>(
       context: context,
@@ -1438,10 +1506,48 @@ class _FloorTile extends ConsumerWidget {
                 ?.copyWith(color: AppColors.onSurfaceVariant),
           ),
         ),
-        trailing: Icon(
-          Icons.chevron_right,
-          color: AppColors.onSurfaceVariant.withValues(alpha: 0.4),
-        ),
+        trailing: canManageProperties
+            ? PopupMenuButton<_FloorAction>(
+                icon: Icon(
+                  Icons.more_vert,
+                  size: 20,
+                  color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
+                ),
+                color: AppColors.surfaceVariant,
+                onSelected: (action) {
+                  if (action == _FloorAction.edit) {
+                    _showEditFloor(context);
+                  } else {
+                    _confirmDeleteFloor(context, ref);
+                  }
+                },
+                itemBuilder: (_) => [
+                  PopupMenuItem(
+                    value: _FloorAction.edit,
+                    child: Row(
+                      children: [
+                        Icon(Icons.edit_outlined, size: 16, color: AppColors.accent),
+                        const SizedBox(width: AppSpacing.sm),
+                        Text('Edit', style: TextStyle(color: AppColors.onBackground)),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: _FloorAction.delete,
+                    child: Row(
+                      children: [
+                        Icon(Icons.delete_outline, size: 16, color: AppColors.error),
+                        const SizedBox(width: AppSpacing.sm),
+                        Text('Delete', style: TextStyle(color: AppColors.error)),
+                      ],
+                    ),
+                  ),
+                ],
+              )
+            : Icon(
+                Icons.chevron_right,
+                color: AppColors.onSurfaceVariant.withValues(alpha: 0.4),
+              ),
         children: [
           ...floor.rooms.map(
             (room) => Padding(
@@ -1565,6 +1671,8 @@ class _FloorTile extends ConsumerWidget {
     );
   }
 }
+
+enum _FloorAction { edit, delete }
 
 enum _RoomAction { edit, sections, delete }
 

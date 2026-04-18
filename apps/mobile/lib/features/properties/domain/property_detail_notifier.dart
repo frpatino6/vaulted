@@ -37,6 +37,34 @@ class PropertyDetailNotifier extends AsyncNotifier<PropertyModel?> {
     }
   }
 
+  Future<PropertyModel?> updateFloor(String floorId, String name) async {
+    final id = _propertyId;
+    if (id == null) return null;
+    try {
+      final property = await ref
+          .read(propertyRepositoryProvider)
+          .updateFloor(id, floorId, name);
+      state = AsyncData(property);
+      return property;
+    } catch (_) {
+      rethrow;
+    }
+  }
+
+  Future<PropertyModel?> deleteFloor(String floorId) async {
+    final id = _propertyId;
+    if (id == null) return null;
+    try {
+      final property = await ref
+          .read(propertyRepositoryProvider)
+          .deleteFloor(id, floorId);
+      state = AsyncData(property);
+      return property;
+    } catch (_) {
+      rethrow;
+    }
+  }
+
   Future<PropertyModel?> addRoom(
     String floorId,
     String name,

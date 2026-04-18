@@ -53,6 +53,15 @@ class PropertyRepository {
   Future<PropertyModel> addFloor(String propertyId, String name) =>
       _remote.addFloor(propertyId, name);
 
+  Future<PropertyModel> updateFloor(
+    String propertyId,
+    String floorId,
+    String name,
+  ) => _remote.updateFloor(propertyId, floorId, name);
+
+  Future<PropertyModel> deleteFloor(String propertyId, String floorId) =>
+      _remote.deleteFloor(propertyId, floorId);
+
   Future<PropertyModel> addRoom(
     String propertyId,
     String floorId,

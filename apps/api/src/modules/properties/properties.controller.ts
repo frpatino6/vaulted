@@ -119,6 +119,50 @@ export class PropertiesController {
   }
 
   @Roles(Role.OWNER, Role.MANAGER)
+  @Put(':id/floors/:floorId')
+  async updateFloor(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') propertyId: string,
+    @Param('floorId') floorId: string,
+    @Body() dto: AddFloorDto,
+  ) {
+    const property = await this.propertiesService.updateFloor(user.tenantId, propertyId, floorId, dto.name);
+
+    await this.auditService.log({
+      tenantId: user.tenantId,
+      userId: user.sub,
+      action: 'property.update_floor',
+      entityType: 'property',
+      entityId: propertyId,
+      metadata: { floorId, floorName: dto.name },
+    });
+
+    return property;
+  }
+
+  @Roles(Role.OWNER, Role.MANAGER)
+  @Delete(':id/floors/:floorId')
+  @HttpCode(HttpStatus.OK)
+  async deleteFloor(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') propertyId: string,
+    @Param('floorId') floorId: string,
+  ) {
+    const property = await this.propertiesService.deleteFloor(user.tenantId, propertyId, floorId);
+
+    await this.auditService.log({
+      tenantId: user.tenantId,
+      userId: user.sub,
+      action: 'property.delete_floor',
+      entityType: 'property',
+      entityId: propertyId,
+      metadata: { floorId },
+    });
+
+    return property;
+  }
+
+  @Roles(Role.OWNER, Role.MANAGER)
   @Post(':id/floors/:floorId/rooms')
   async addRoom(
     @CurrentUser() user: JwtPayload,

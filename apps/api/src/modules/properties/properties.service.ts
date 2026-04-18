@@ -127,6 +127,49 @@ export class PropertiesService {
     return property;
   }
 
+  async updateFloor(
+    tenantId: string,
+    propertyId: string,
+    floorId: string,
+    name: string,
+  ): Promise<Property> {
+    const property = await this.findOwnedPropertyOrThrow(tenantId, propertyId);
+    const floorExists = property.floors.some((f) => f.floorId === floorId);
+    if (!floorExists) throw new NotFoundException('Floor not found');
+
+    const updatedProperty = await this.propertyModel
+      .findOneAndUpdate(
+        { _id: propertyId, tenantId, 'floors.floorId': floorId },
+        { $set: { 'floors.$.name': name } },
+        { new: true, runValidators: true },
+      )
+      .exec();
+
+    if (!updatedProperty) throw new NotFoundException('Property not found');
+    return updatedProperty;
+  }
+
+  async deleteFloor(
+    tenantId: string,
+    propertyId: string,
+    floorId: string,
+  ): Promise<Property> {
+    const property = await this.findOwnedPropertyOrThrow(tenantId, propertyId);
+    const floorExists = property.floors.some((f) => f.floorId === floorId);
+    if (!floorExists) throw new NotFoundException('Floor not found');
+
+    const updatedProperty = await this.propertyModel
+      .findOneAndUpdate(
+        { _id: propertyId, tenantId },
+        { $pull: { floors: { floorId } } },
+        { new: true },
+      )
+      .exec();
+
+    if (!updatedProperty) throw new NotFoundException('Property not found');
+    return updatedProperty;
+  }
+
   async addRoom(
     tenantId: string,
     propertyId: string,
