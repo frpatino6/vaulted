@@ -76,26 +76,31 @@ class _$AddressModelCopyWithImpl<$Res, $Val extends AddressModel>
   }) {
     return _then(
       _value.copyWith(
-            street: null == street
-                ? _value.street
-                : street // ignore: cast_nullable_to_non_nullable
-                      as String,
-            city: null == city
-                ? _value.city
-                : city // ignore: cast_nullable_to_non_nullable
-                      as String,
-            state: null == state
-                ? _value.state
-                : state // ignore: cast_nullable_to_non_nullable
-                      as String,
-            zip: null == zip
-                ? _value.zip
-                : zip // ignore: cast_nullable_to_non_nullable
-                      as String,
-            country: null == country
-                ? _value.country
-                : country // ignore: cast_nullable_to_non_nullable
-                      as String,
+            street:
+                null == street
+                    ? _value.street
+                    : street // ignore: cast_nullable_to_non_nullable
+                        as String,
+            city:
+                null == city
+                    ? _value.city
+                    : city // ignore: cast_nullable_to_non_nullable
+                        as String,
+            state:
+                null == state
+                    ? _value.state
+                    : state // ignore: cast_nullable_to_non_nullable
+                        as String,
+            zip:
+                null == zip
+                    ? _value.zip
+                    : zip // ignore: cast_nullable_to_non_nullable
+                        as String,
+            country:
+                null == country
+                    ? _value.country
+                    : country // ignore: cast_nullable_to_non_nullable
+                        as String,
           )
           as $Val,
     );
@@ -142,26 +147,31 @@ class __$$AddressModelImplCopyWithImpl<$Res>
   }) {
     return _then(
       _$AddressModelImpl(
-        street: null == street
-            ? _value.street
-            : street // ignore: cast_nullable_to_non_nullable
-                  as String,
-        city: null == city
-            ? _value.city
-            : city // ignore: cast_nullable_to_non_nullable
-                  as String,
-        state: null == state
-            ? _value.state
-            : state // ignore: cast_nullable_to_non_nullable
-                  as String,
-        zip: null == zip
-            ? _value.zip
-            : zip // ignore: cast_nullable_to_non_nullable
-                  as String,
-        country: null == country
-            ? _value.country
-            : country // ignore: cast_nullable_to_non_nullable
-                  as String,
+        street:
+            null == street
+                ? _value.street
+                : street // ignore: cast_nullable_to_non_nullable
+                    as String,
+        city:
+            null == city
+                ? _value.city
+                : city // ignore: cast_nullable_to_non_nullable
+                    as String,
+        state:
+            null == state
+                ? _value.state
+                : state // ignore: cast_nullable_to_non_nullable
+                    as String,
+        zip:
+            null == zip
+                ? _value.zip
+                : zip // ignore: cast_nullable_to_non_nullable
+                    as String,
+        country:
+            null == country
+                ? _value.country
+                : country // ignore: cast_nullable_to_non_nullable
+                    as String,
       ),
     );
   }

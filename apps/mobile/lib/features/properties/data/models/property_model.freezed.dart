@@ -77,34 +77,41 @@ class _$PropertyModelCopyWithImpl<$Res, $Val extends PropertyModel>
   }) {
     return _then(
       _value.copyWith(
-            id: null == id
-                ? _value.id
-                : id // ignore: cast_nullable_to_non_nullable
-                      as String,
-            tenantId: null == tenantId
-                ? _value.tenantId
-                : tenantId // ignore: cast_nullable_to_non_nullable
-                      as String,
-            name: null == name
-                ? _value.name
-                : name // ignore: cast_nullable_to_non_nullable
-                      as String,
-            type: null == type
-                ? _value.type
-                : type // ignore: cast_nullable_to_non_nullable
-                      as String,
-            address: null == address
-                ? _value.address
-                : address // ignore: cast_nullable_to_non_nullable
-                      as AddressModel,
-            floors: null == floors
-                ? _value.floors
-                : floors // ignore: cast_nullable_to_non_nullable
-                      as List<FloorModel>,
-            photos: null == photos
-                ? _value.photos
-                : photos // ignore: cast_nullable_to_non_nullable
-                      as List<String>,
+            id:
+                null == id
+                    ? _value.id
+                    : id // ignore: cast_nullable_to_non_nullable
+                        as String,
+            tenantId:
+                null == tenantId
+                    ? _value.tenantId
+                    : tenantId // ignore: cast_nullable_to_non_nullable
+                        as String,
+            name:
+                null == name
+                    ? _value.name
+                    : name // ignore: cast_nullable_to_non_nullable
+                        as String,
+            type:
+                null == type
+                    ? _value.type
+                    : type // ignore: cast_nullable_to_non_nullable
+                        as String,
+            address:
+                null == address
+                    ? _value.address
+                    : address // ignore: cast_nullable_to_non_nullable
+                        as AddressModel,
+            floors:
+                null == floors
+                    ? _value.floors
+                    : floors // ignore: cast_nullable_to_non_nullable
+                        as List<FloorModel>,
+            photos:
+                null == photos
+                    ? _value.photos
+                    : photos // ignore: cast_nullable_to_non_nullable
+                        as List<String>,
           )
           as $Val,
     );
@@ -168,34 +175,41 @@ class __$$PropertyModelImplCopyWithImpl<$Res>
   }) {
     return _then(
       _$PropertyModelImpl(
-        id: null == id
-            ? _value.id
-            : id // ignore: cast_nullable_to_non_nullable
-                  as String,
-        tenantId: null == tenantId
-            ? _value.tenantId
-            : tenantId // ignore: cast_nullable_to_non_nullable
-                  as String,
-        name: null == name
-            ? _value.name
-            : name // ignore: cast_nullable_to_non_nullable
-                  as String,
-        type: null == type
-            ? _value.type
-            : type // ignore: cast_nullable_to_non_nullable
-                  as String,
-        address: null == address
-            ? _value.address
-            : address // ignore: cast_nullable_to_non_nullable
-                  as AddressModel,
-        floors: null == floors
-            ? _value._floors
-            : floors // ignore: cast_nullable_to_non_nullable
-                  as List<FloorModel>,
-        photos: null == photos
-            ? _value._photos
-            : photos // ignore: cast_nullable_to_non_nullable
-                  as List<String>,
+        id:
+            null == id
+                ? _value.id
+                : id // ignore: cast_nullable_to_non_nullable
+                    as String,
+        tenantId:
+            null == tenantId
+                ? _value.tenantId
+                : tenantId // ignore: cast_nullable_to_non_nullable
+                    as String,
+        name:
+            null == name
+                ? _value.name
+                : name // ignore: cast_nullable_to_non_nullable
+                    as String,
+        type:
+            null == type
+                ? _value.type
+                : type // ignore: cast_nullable_to_non_nullable
+                    as String,
+        address:
+            null == address
+                ? _value.address
+                : address // ignore: cast_nullable_to_non_nullable
+                    as AddressModel,
+        floors:
+            null == floors
+                ? _value._floors
+                : floors // ignore: cast_nullable_to_non_nullable
+                    as List<FloorModel>,
+        photos:
+            null == photos
+                ? _value._photos
+                : photos // ignore: cast_nullable_to_non_nullable
+                    as List<String>,
       ),
     );
   }

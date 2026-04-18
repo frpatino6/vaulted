@@ -90,42 +90,51 @@ class _$ChatItemResultCopyWithImpl<$Res, $Val extends ChatItemResult>
   }) {
     return _then(
       _value.copyWith(
-            id: null == id
-                ? _value.id
-                : id // ignore: cast_nullable_to_non_nullable
-                      as String,
-            name: null == name
-                ? _value.name
-                : name // ignore: cast_nullable_to_non_nullable
-                      as String,
-            category: null == category
-                ? _value.category
-                : category // ignore: cast_nullable_to_non_nullable
-                      as String,
-            status: null == status
-                ? _value.status
-                : status // ignore: cast_nullable_to_non_nullable
-                      as String,
-            propertyName: freezed == propertyName
-                ? _value.propertyName
-                : propertyName // ignore: cast_nullable_to_non_nullable
-                      as String?,
-            roomName: freezed == roomName
-                ? _value.roomName
-                : roomName // ignore: cast_nullable_to_non_nullable
-                      as String?,
-            photos: null == photos
-                ? _value.photos
-                : photos // ignore: cast_nullable_to_non_nullable
-                      as List<String>,
-            valuation: freezed == valuation
-                ? _value.valuation
-                : valuation // ignore: cast_nullable_to_non_nullable
-                      as ChatItemValuation?,
-            score: null == score
-                ? _value.score
-                : score // ignore: cast_nullable_to_non_nullable
-                      as double,
+            id:
+                null == id
+                    ? _value.id
+                    : id // ignore: cast_nullable_to_non_nullable
+                        as String,
+            name:
+                null == name
+                    ? _value.name
+                    : name // ignore: cast_nullable_to_non_nullable
+                        as String,
+            category:
+                null == category
+                    ? _value.category
+                    : category // ignore: cast_nullable_to_non_nullable
+                        as String,
+            status:
+                null == status
+                    ? _value.status
+                    : status // ignore: cast_nullable_to_non_nullable
+                        as String,
+            propertyName:
+                freezed == propertyName
+                    ? _value.propertyName
+                    : propertyName // ignore: cast_nullable_to_non_nullable
+                        as String?,
+            roomName:
+                freezed == roomName
+                    ? _value.roomName
+                    : roomName // ignore: cast_nullable_to_non_nullable
+                        as String?,
+            photos:
+                null == photos
+                    ? _value.photos
+                    : photos // ignore: cast_nullable_to_non_nullable
+                        as List<String>,
+            valuation:
+                freezed == valuation
+                    ? _value.valuation
+                    : valuation // ignore: cast_nullable_to_non_nullable
+                        as ChatItemValuation?,
+            score:
+                null == score
+                    ? _value.score
+                    : score // ignore: cast_nullable_to_non_nullable
+                        as double,
           )
           as $Val,
     );
@@ -197,42 +206,51 @@ class __$$ChatItemResultImplCopyWithImpl<$Res>
   }) {
     return _then(
       _$ChatItemResultImpl(
-        id: null == id
-            ? _value.id
-            : id // ignore: cast_nullable_to_non_nullable
-                  as String,
-        name: null == name
-            ? _value.name
-            : name // ignore: cast_nullable_to_non_nullable
-                  as String,
-        category: null == category
-            ? _value.category
-            : category // ignore: cast_nullable_to_non_nullable
-                  as String,
-        status: null == status
-            ? _value.status
-            : status // ignore: cast_nullable_to_non_nullable
-                  as String,
-        propertyName: freezed == propertyName
-            ? _value.propertyName
-            : propertyName // ignore: cast_nullable_to_non_nullable
-                  as String?,
-        roomName: freezed == roomName
-            ? _value.roomName
-            : roomName // ignore: cast_nullable_to_non_nullable
-                  as String?,
-        photos: null == photos
-            ? _value._photos
-            : photos // ignore: cast_nullable_to_non_nullable
-                  as List<String>,
-        valuation: freezed == valuation
-            ? _value.valuation
-            : valuation // ignore: cast_nullable_to_non_nullable
-                  as ChatItemValuation?,
-        score: null == score
-            ? _value.score
-            : score // ignore: cast_nullable_to_non_nullable
-                  as double,
+        id:
+            null == id
+                ? _value.id
+                : id // ignore: cast_nullable_to_non_nullable
+                    as String,
+        name:
+            null == name
+                ? _value.name
+                : name // ignore: cast_nullable_to_non_nullable
+                    as String,
+        category:
+            null == category
+                ? _value.category
+                : category // ignore: cast_nullable_to_non_nullable
+                    as String,
+        status:
+            null == status
+                ? _value.status
+                : status // ignore: cast_nullable_to_non_nullable
+                    as String,
+        propertyName:
+            freezed == propertyName
+                ? _value.propertyName
+                : propertyName // ignore: cast_nullable_to_non_nullable
+                    as String?,
+        roomName:
+            freezed == roomName
+                ? _value.roomName
+                : roomName // ignore: cast_nullable_to_non_nullable
+                    as String?,
+        photos:
+            null == photos
+                ? _value._photos
+                : photos // ignore: cast_nullable_to_non_nullable
+                    as List<String>,
+        valuation:
+            freezed == valuation
+                ? _value.valuation
+                : valuation // ignore: cast_nullable_to_non_nullable
+                    as ChatItemValuation?,
+        score:
+            null == score
+                ? _value.score
+                : score // ignore: cast_nullable_to_non_nullable
+                    as double,
       ),
     );
   }
@@ -429,14 +447,16 @@ class _$ChatItemValuationCopyWithImpl<$Res, $Val extends ChatItemValuation>
   $Res call({Object? currentValue = null, Object? currency = null}) {
     return _then(
       _value.copyWith(
-            currentValue: null == currentValue
-                ? _value.currentValue
-                : currentValue // ignore: cast_nullable_to_non_nullable
-                      as int,
-            currency: null == currency
-                ? _value.currency
-                : currency // ignore: cast_nullable_to_non_nullable
-                      as String,
+            currentValue:
+                null == currentValue
+                    ? _value.currentValue
+                    : currentValue // ignore: cast_nullable_to_non_nullable
+                        as int,
+            currency:
+                null == currency
+                    ? _value.currency
+                    : currency // ignore: cast_nullable_to_non_nullable
+                        as String,
           )
           as $Val,
     );
@@ -471,14 +491,16 @@ class __$$ChatItemValuationImplCopyWithImpl<$Res>
   $Res call({Object? currentValue = null, Object? currency = null}) {
     return _then(
       _$ChatItemValuationImpl(
-        currentValue: null == currentValue
-            ? _value.currentValue
-            : currentValue // ignore: cast_nullable_to_non_nullable
-                  as int,
-        currency: null == currency
-            ? _value.currency
-            : currency // ignore: cast_nullable_to_non_nullable
-                  as String,
+        currentValue:
+            null == currentValue
+                ? _value.currentValue
+                : currentValue // ignore: cast_nullable_to_non_nullable
+                    as int,
+        currency:
+            null == currency
+                ? _value.currency
+                : currency // ignore: cast_nullable_to_non_nullable
+                    as String,
       ),
     );
   }
@@ -630,38 +652,46 @@ class _$ChatMessageModelCopyWithImpl<$Res, $Val extends ChatMessageModel>
   }) {
     return _then(
       _value.copyWith(
-            id: null == id
-                ? _value.id
-                : id // ignore: cast_nullable_to_non_nullable
-                      as String,
-            role: null == role
-                ? _value.role
-                : role // ignore: cast_nullable_to_non_nullable
-                      as ChatRole,
-            content: null == content
-                ? _value.content
-                : content // ignore: cast_nullable_to_non_nullable
-                      as String,
-            items: null == items
-                ? _value.items
-                : items // ignore: cast_nullable_to_non_nullable
-                      as List<ChatItemResult>,
-            sources: null == sources
-                ? _value.sources
-                : sources // ignore: cast_nullable_to_non_nullable
-                      as List<String>,
-            sessionId: freezed == sessionId
-                ? _value.sessionId
-                : sessionId // ignore: cast_nullable_to_non_nullable
-                      as String?,
-            createdAt: freezed == createdAt
-                ? _value.createdAt
-                : createdAt // ignore: cast_nullable_to_non_nullable
-                      as DateTime?,
-            isLoading: null == isLoading
-                ? _value.isLoading
-                : isLoading // ignore: cast_nullable_to_non_nullable
-                      as bool,
+            id:
+                null == id
+                    ? _value.id
+                    : id // ignore: cast_nullable_to_non_nullable
+                        as String,
+            role:
+                null == role
+                    ? _value.role
+                    : role // ignore: cast_nullable_to_non_nullable
+                        as ChatRole,
+            content:
+                null == content
+                    ? _value.content
+                    : content // ignore: cast_nullable_to_non_nullable
+                        as String,
+            items:
+                null == items
+                    ? _value.items
+                    : items // ignore: cast_nullable_to_non_nullable
+                        as List<ChatItemResult>,
+            sources:
+                null == sources
+                    ? _value.sources
+                    : sources // ignore: cast_nullable_to_non_nullable
+                        as List<String>,
+            sessionId:
+                freezed == sessionId
+                    ? _value.sessionId
+                    : sessionId // ignore: cast_nullable_to_non_nullable
+                        as String?,
+            createdAt:
+                freezed == createdAt
+                    ? _value.createdAt
+                    : createdAt // ignore: cast_nullable_to_non_nullable
+                        as DateTime?,
+            isLoading:
+                null == isLoading
+                    ? _value.isLoading
+                    : isLoading // ignore: cast_nullable_to_non_nullable
+                        as bool,
           )
           as $Val,
     );
@@ -714,38 +744,46 @@ class __$$ChatMessageModelImplCopyWithImpl<$Res>
   }) {
     return _then(
       _$ChatMessageModelImpl(
-        id: null == id
-            ? _value.id
-            : id // ignore: cast_nullable_to_non_nullable
-                  as String,
-        role: null == role
-            ? _value.role
-            : role // ignore: cast_nullable_to_non_nullable
-                  as ChatRole,
-        content: null == content
-            ? _value.content
-            : content // ignore: cast_nullable_to_non_nullable
-                  as String,
-        items: null == items
-            ? _value._items
-            : items // ignore: cast_nullable_to_non_nullable
-                  as List<ChatItemResult>,
-        sources: null == sources
-            ? _value._sources
-            : sources // ignore: cast_nullable_to_non_nullable
-                  as List<String>,
-        sessionId: freezed == sessionId
-            ? _value.sessionId
-            : sessionId // ignore: cast_nullable_to_non_nullable
-                  as String?,
-        createdAt: freezed == createdAt
-            ? _value.createdAt
-            : createdAt // ignore: cast_nullable_to_non_nullable
-                  as DateTime?,
-        isLoading: null == isLoading
-            ? _value.isLoading
-            : isLoading // ignore: cast_nullable_to_non_nullable
-                  as bool,
+        id:
+            null == id
+                ? _value.id
+                : id // ignore: cast_nullable_to_non_nullable
+                    as String,
+        role:
+            null == role
+                ? _value.role
+                : role // ignore: cast_nullable_to_non_nullable
+                    as ChatRole,
+        content:
+            null == content
+                ? _value.content
+                : content // ignore: cast_nullable_to_non_nullable
+                    as String,
+        items:
+            null == items
+                ? _value._items
+                : items // ignore: cast_nullable_to_non_nullable
+                    as List<ChatItemResult>,
+        sources:
+            null == sources
+                ? _value._sources
+                : sources // ignore: cast_nullable_to_non_nullable
+                    as List<String>,
+        sessionId:
+            freezed == sessionId
+                ? _value.sessionId
+                : sessionId // ignore: cast_nullable_to_non_nullable
+                    as String?,
+        createdAt:
+            freezed == createdAt
+                ? _value.createdAt
+                : createdAt // ignore: cast_nullable_to_non_nullable
+                    as DateTime?,
+        isLoading:
+            null == isLoading
+                ? _value.isLoading
+                : isLoading // ignore: cast_nullable_to_non_nullable
+                    as bool,
       ),
     );
   }

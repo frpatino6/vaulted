@@ -5,6 +5,7 @@ import '../../../core/router/auth_redirect_notifier_provider.dart';
 import '../../../core/storage/auth_token_store.dart';
 import '../data/auth_repository_provider.dart';
 import '../domain/auth_state.dart';
+import '../../presence/presentation/providers/presence_provider.dart';
 
 class AuthNotifier extends AsyncNotifier<AuthState> {
   @override
@@ -21,6 +22,10 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
         state = const AsyncData(AuthState.mfaRequired());
       } else {
         AuthTokenStore.instance.setMfaPending(false);
+        final token = result['accessToken'] as String?;
+        if (token != null) {
+          ref.read(presenceNotifierProvider.notifier).initialize(token);
+        }
         state = const AsyncData(AuthState.authenticated());
       }
     } catch (e) {
@@ -31,8 +36,12 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
   Future<void> verifyMfa(String code) async {
     state = const AsyncData(AuthState.loading());
     try {
-      await ref.read(authRepositoryProvider).verifyMfa(code);
+      final result = await ref.read(authRepositoryProvider).verifyMfa(code);
       AuthTokenStore.instance.setMfaPending(false);
+      final token = result['accessToken'] as String?;
+      if (token != null) {
+        ref.read(presenceNotifierProvider.notifier).initialize(token);
+      }
       state = const AsyncData(AuthState.authenticated());
     } catch (e) {
       state = AsyncData(AuthState.error(_mapMfaError(e)));
@@ -44,6 +53,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     try {
       await ref.read(authRepositoryProvider).logout();
     } finally {
+      ref.read(presenceNotifierProvider.notifier).pauseHeartbeat();
       state = const AsyncData(AuthState.initial());
       ref.read(authRedirectNotifierProvider).notifyAuthLost();
     }

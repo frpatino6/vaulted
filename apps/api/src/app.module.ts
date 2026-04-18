@@ -22,6 +22,7 @@ import { MaintenanceModule } from './modules/maintenance/maintenance.module';
 import { MovementsModule } from './modules/movements/movements.module';
 import { WardrobeModule } from './modules/wardrobe/wardrobe.module';
 import { InsuranceModule } from './modules/insurance/insurance.module';
+import { PresenceModule } from './modules/presence/presence.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { MfaVerifiedGuard } from './common/guards/mfa-verified.guard';
@@ -102,6 +103,7 @@ import { InsuredItem } from './modules/insurance/entities/insured-item.entity';
     MovementsModule,
     WardrobeModule,
     InsuranceModule,
+    PresenceModule,
   ],
   providers: [
     // Order matters: Throttler → JWT → MFA → Roles → Guest Expiration

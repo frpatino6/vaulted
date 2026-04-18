@@ -89,46 +89,56 @@ class _$UserModelCopyWithImpl<$Res, $Val extends UserModel>
   }) {
     return _then(
       _value.copyWith(
-            id: null == id
-                ? _value.id
-                : id // ignore: cast_nullable_to_non_nullable
-                      as String,
-            email: null == email
-                ? _value.email
-                : email // ignore: cast_nullable_to_non_nullable
-                      as String,
-            role: null == role
-                ? _value.role
-                : role // ignore: cast_nullable_to_non_nullable
-                      as String,
-            isActive: null == isActive
-                ? _value.isActive
-                : isActive // ignore: cast_nullable_to_non_nullable
-                      as bool,
-            status: null == status
-                ? _value.status
-                : status // ignore: cast_nullable_to_non_nullable
-                      as String,
-            mfaEnabled: null == mfaEnabled
-                ? _value.mfaEnabled
-                : mfaEnabled // ignore: cast_nullable_to_non_nullable
-                      as bool,
-            propertyIds: null == propertyIds
-                ? _value.propertyIds
-                : propertyIds // ignore: cast_nullable_to_non_nullable
-                      as List<String>,
-            lastLogin: freezed == lastLogin
-                ? _value.lastLogin
-                : lastLogin // ignore: cast_nullable_to_non_nullable
-                      as String?,
-            expiresAt: freezed == expiresAt
-                ? _value.expiresAt
-                : expiresAt // ignore: cast_nullable_to_non_nullable
-                      as String?,
-            createdAt: freezed == createdAt
-                ? _value.createdAt
-                : createdAt // ignore: cast_nullable_to_non_nullable
-                      as String?,
+            id:
+                null == id
+                    ? _value.id
+                    : id // ignore: cast_nullable_to_non_nullable
+                        as String,
+            email:
+                null == email
+                    ? _value.email
+                    : email // ignore: cast_nullable_to_non_nullable
+                        as String,
+            role:
+                null == role
+                    ? _value.role
+                    : role // ignore: cast_nullable_to_non_nullable
+                        as String,
+            isActive:
+                null == isActive
+                    ? _value.isActive
+                    : isActive // ignore: cast_nullable_to_non_nullable
+                        as bool,
+            status:
+                null == status
+                    ? _value.status
+                    : status // ignore: cast_nullable_to_non_nullable
+                        as String,
+            mfaEnabled:
+                null == mfaEnabled
+                    ? _value.mfaEnabled
+                    : mfaEnabled // ignore: cast_nullable_to_non_nullable
+                        as bool,
+            propertyIds:
+                null == propertyIds
+                    ? _value.propertyIds
+                    : propertyIds // ignore: cast_nullable_to_non_nullable
+                        as List<String>,
+            lastLogin:
+                freezed == lastLogin
+                    ? _value.lastLogin
+                    : lastLogin // ignore: cast_nullable_to_non_nullable
+                        as String?,
+            expiresAt:
+                freezed == expiresAt
+                    ? _value.expiresAt
+                    : expiresAt // ignore: cast_nullable_to_non_nullable
+                        as String?,
+            createdAt:
+                freezed == createdAt
+                    ? _value.createdAt
+                    : createdAt // ignore: cast_nullable_to_non_nullable
+                        as String?,
           )
           as $Val,
     );
@@ -185,46 +195,56 @@ class __$$UserModelImplCopyWithImpl<$Res>
   }) {
     return _then(
       _$UserModelImpl(
-        id: null == id
-            ? _value.id
-            : id // ignore: cast_nullable_to_non_nullable
-                  as String,
-        email: null == email
-            ? _value.email
-            : email // ignore: cast_nullable_to_non_nullable
-                  as String,
-        role: null == role
-            ? _value.role
-            : role // ignore: cast_nullable_to_non_nullable
-                  as String,
-        isActive: null == isActive
-            ? _value.isActive
-            : isActive // ignore: cast_nullable_to_non_nullable
-                  as bool,
-        status: null == status
-            ? _value.status
-            : status // ignore: cast_nullable_to_non_nullable
-                  as String,
-        mfaEnabled: null == mfaEnabled
-            ? _value.mfaEnabled
-            : mfaEnabled // ignore: cast_nullable_to_non_nullable
-                  as bool,
-        propertyIds: null == propertyIds
-            ? _value._propertyIds
-            : propertyIds // ignore: cast_nullable_to_non_nullable
-                  as List<String>,
-        lastLogin: freezed == lastLogin
-            ? _value.lastLogin
-            : lastLogin // ignore: cast_nullable_to_non_nullable
-                  as String?,
-        expiresAt: freezed == expiresAt
-            ? _value.expiresAt
-            : expiresAt // ignore: cast_nullable_to_non_nullable
-                  as String?,
-        createdAt: freezed == createdAt
-            ? _value.createdAt
-            : createdAt // ignore: cast_nullable_to_non_nullable
-                  as String?,
+        id:
+            null == id
+                ? _value.id
+                : id // ignore: cast_nullable_to_non_nullable
+                    as String,
+        email:
+            null == email
+                ? _value.email
+                : email // ignore: cast_nullable_to_non_nullable
+                    as String,
+        role:
+            null == role
+                ? _value.role
+                : role // ignore: cast_nullable_to_non_nullable
+                    as String,
+        isActive:
+            null == isActive
+                ? _value.isActive
+                : isActive // ignore: cast_nullable_to_non_nullable
+                    as bool,
+        status:
+            null == status
+                ? _value.status
+                : status // ignore: cast_nullable_to_non_nullable
+                    as String,
+        mfaEnabled:
+            null == mfaEnabled
+                ? _value.mfaEnabled
+                : mfaEnabled // ignore: cast_nullable_to_non_nullable
+                    as bool,
+        propertyIds:
+            null == propertyIds
+                ? _value._propertyIds
+                : propertyIds // ignore: cast_nullable_to_non_nullable
+                    as List<String>,
+        lastLogin:
+            freezed == lastLogin
+                ? _value.lastLogin
+                : lastLogin // ignore: cast_nullable_to_non_nullable
+                    as String?,
+        expiresAt:
+            freezed == expiresAt
+                ? _value.expiresAt
+                : expiresAt // ignore: cast_nullable_to_non_nullable
+                    as String?,
+        createdAt:
+            freezed == createdAt
+                ? _value.createdAt
+                : createdAt // ignore: cast_nullable_to_non_nullable
+                    as String?,
       ),
     );
   }

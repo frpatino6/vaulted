@@ -9,6 +9,7 @@ import 'core/router/app_router_provider.dart';
 import 'core/storage/auth_token_store.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_mode_provider.dart';
+import 'features/presence/presentation/providers/presence_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -95,11 +96,43 @@ String? _parseRefreshToken(String setCookie) {
       : setCookie.substring(valueStart, end).trim();
 }
 
-class VaultedApp extends ConsumerWidget {
+class VaultedApp extends ConsumerStatefulWidget {
   const VaultedApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<VaultedApp> createState() => _VaultedAppState();
+}
+
+class _VaultedAppState extends ConsumerState<VaultedApp>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final notifier = ref.read(presenceNotifierProvider.notifier);
+    switch (state) {
+      case AppLifecycleState.paused:
+      case AppLifecycleState.hidden:
+        notifier.pauseHeartbeat();
+      case AppLifecycleState.resumed:
+        notifier.resumeHeartbeat();
+      default:
+        break;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final router = ref.watch(appRouterProvider);
     final themeMode = ref.watch(themeModeProvider);
     return MaterialApp.router(

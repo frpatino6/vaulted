@@ -105,7 +105,7 @@ class OutfitListScreen extends ConsumerWidget {
                                               imageUrl: image,
                                               fit: BoxFit.cover,
                                               errorWidget:
-                                                  (_, __, ___) => const Icon(
+                                                  (_, _, _) => const Icon(
                                                     Icons.broken_image_outlined,
                                                     color:
                                                         AppColors
@@ -124,13 +124,13 @@ class OutfitListScreen extends ConsumerWidget {
                 );
               },
               separatorBuilder:
-                  (_, __) => const SizedBox(height: AppSpacing.sm),
+                  (_, _) => const SizedBox(height: AppSpacing.sm),
               itemCount: outfits.length,
             ),
           );
         },
         loading: () => const AppScreenSkeleton(showHeader: false),
-        error: (_, __) => const Center(child: Text('Unable to load outfits')),
+        error: (_, _) => const Center(child: Text('Unable to load outfits')),
       ),
     );
   }

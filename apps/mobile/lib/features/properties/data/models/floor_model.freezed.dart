@@ -66,18 +66,21 @@ class _$FloorModelCopyWithImpl<$Res, $Val extends FloorModel>
   }) {
     return _then(
       _value.copyWith(
-            floorId: null == floorId
-                ? _value.floorId
-                : floorId // ignore: cast_nullable_to_non_nullable
-                      as String,
-            name: null == name
-                ? _value.name
-                : name // ignore: cast_nullable_to_non_nullable
-                      as String,
-            rooms: null == rooms
-                ? _value.rooms
-                : rooms // ignore: cast_nullable_to_non_nullable
-                      as List<RoomModel>,
+            floorId:
+                null == floorId
+                    ? _value.floorId
+                    : floorId // ignore: cast_nullable_to_non_nullable
+                        as String,
+            name:
+                null == name
+                    ? _value.name
+                    : name // ignore: cast_nullable_to_non_nullable
+                        as String,
+            rooms:
+                null == rooms
+                    ? _value.rooms
+                    : rooms // ignore: cast_nullable_to_non_nullable
+                        as List<RoomModel>,
           )
           as $Val,
     );
@@ -116,18 +119,21 @@ class __$$FloorModelImplCopyWithImpl<$Res>
   }) {
     return _then(
       _$FloorModelImpl(
-        floorId: null == floorId
-            ? _value.floorId
-            : floorId // ignore: cast_nullable_to_non_nullable
-                  as String,
-        name: null == name
-            ? _value.name
-            : name // ignore: cast_nullable_to_non_nullable
-                  as String,
-        rooms: null == rooms
-            ? _value._rooms
-            : rooms // ignore: cast_nullable_to_non_nullable
-                  as List<RoomModel>,
+        floorId:
+            null == floorId
+                ? _value.floorId
+                : floorId // ignore: cast_nullable_to_non_nullable
+                    as String,
+        name:
+            null == name
+                ? _value.name
+                : name // ignore: cast_nullable_to_non_nullable
+                    as String,
+        rooms:
+            null == rooms
+                ? _value._rooms
+                : rooms // ignore: cast_nullable_to_non_nullable
+                    as List<RoomModel>,
       ),
     );
   }

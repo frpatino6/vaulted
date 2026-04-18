@@ -5,6 +5,8 @@ import 'dart:ui' as ui;
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
+import '../../presence/presentation/providers/presence_provider.dart';
+import '../../presence/presentation/widgets/online_indicator.dart';
 import '../data/models/user_model.dart';
 import '../domain/current_user_jwt.dart';
 import '../domain/users_notifier.dart';
@@ -46,6 +48,7 @@ class UsersScreen extends ConsumerWidget {
     final currentRole = currentUserRole();
     final canInvite = currentRole == 'owner' || currentRole == 'manager';
     final canOpenDetail = currentRole == 'owner' || currentRole == 'manager';
+    final presenceState = ref.watch(presenceNotifierProvider).valueOrNull;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -137,12 +140,15 @@ class UsersScreen extends ConsumerWidget {
                 final initial =
                     user.email.isNotEmpty ? user.email[0].toUpperCase() : '?';
                 final roleColor = _roleColor(user.role);
+                final isOnlineNow =
+                    presenceState?.isOnline(user.id) ?? false;
                 return _TeamMemberCard(
                   user: user,
                   displayName: _displayNameFromEmail(user.email),
                   initial: initial,
                   roleColor: roleColor,
                   canTap: canOpenDetail,
+                  isOnlineNow: isOnlineNow,
                   onTap: () => _openUserDetailSheet(context, user),
                 );
               },
@@ -243,6 +249,7 @@ class _TeamMemberCard extends StatelessWidget {
     required this.roleColor,
     required this.canTap,
     required this.onTap,
+    this.isOnlineNow = false,
   });
 
   final UserModel user;
@@ -251,10 +258,10 @@ class _TeamMemberCard extends StatelessWidget {
   final Color roleColor;
   final bool canTap;
   final VoidCallback onTap;
+  final bool isOnlineNow;
 
   static const Color _avatarGradientStart = Color(0xFF2C2C2C);
   static const Color _avatarGradientEnd = Color(0xFF121212);
-  static const Color _neonGreen = Color(0xFF39FF14);
 
   @override
   Widget build(BuildContext context) {
@@ -314,21 +321,7 @@ class _TeamMemberCard extends StatelessWidget {
                           ),
                           if (isActive) ...[
                             const SizedBox(width: 8),
-                            Container(
-                              width: 6,
-                              height: 6,
-                              decoration: BoxDecoration(
-                                color: _neonGreen,
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: _neonGreen.withValues(alpha: 0.6),
-                                    blurRadius: 4,
-                                    spreadRadius: 0,
-                                  ),
-                                ],
-                              ),
-                            ),
+                            OnlineIndicator(isOnline: isOnlineNow, size: 8),
                           ],
                         ],
                       ),

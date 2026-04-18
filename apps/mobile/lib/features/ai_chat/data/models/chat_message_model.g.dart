@@ -6,23 +6,27 @@ part of 'chat_message_model.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_$ChatItemResultImpl _$$ChatItemResultImplFromJson(
-  Map<String, dynamic> json,
-) => _$ChatItemResultImpl(
-  id: json['id'] as String,
-  name: json['name'] as String,
-  category: json['category'] as String,
-  status: json['status'] as String,
-  propertyName: json['propertyName'] as String?,
-  roomName: json['roomName'] as String?,
-  photos:
-      (json['photos'] as List<dynamic>?)?.map((e) => e as String).toList() ??
-      const [],
-  valuation: json['valuation'] == null
-      ? null
-      : ChatItemValuation.fromJson(json['valuation'] as Map<String, dynamic>),
-  score: (json['score'] as num?)?.toDouble() ?? 0.0,
-);
+_$ChatItemResultImpl _$$ChatItemResultImplFromJson(Map<String, dynamic> json) =>
+    _$ChatItemResultImpl(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      category: json['category'] as String,
+      status: json['status'] as String,
+      propertyName: json['propertyName'] as String?,
+      roomName: json['roomName'] as String?,
+      photos:
+          (json['photos'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          const [],
+      valuation:
+          json['valuation'] == null
+              ? null
+              : ChatItemValuation.fromJson(
+                json['valuation'] as Map<String, dynamic>,
+              ),
+      score: (json['score'] as num?)?.toDouble() ?? 0.0,
+    );
 
 Map<String, dynamic> _$$ChatItemResultImplToJson(
   _$ChatItemResultImpl instance,
@@ -67,9 +71,10 @@ _$ChatMessageModelImpl _$$ChatMessageModelImplFromJson(
       (json['sources'] as List<dynamic>?)?.map((e) => e as String).toList() ??
       const [],
   sessionId: json['sessionId'] as String?,
-  createdAt: json['createdAt'] == null
-      ? null
-      : DateTime.parse(json['createdAt'] as String),
+  createdAt:
+      json['createdAt'] == null
+          ? null
+          : DateTime.parse(json['createdAt'] as String),
   isLoading: json['isLoading'] as bool? ?? false,
 );
 

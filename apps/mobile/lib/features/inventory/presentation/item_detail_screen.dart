@@ -879,7 +879,7 @@ class _MaintenanceSectionWidgetState
                 padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
                 child: LinearProgressIndicator(),
               ),
-          error: (_, __) => const SizedBox.shrink(),
+          error: (_, _) => const SizedBox.shrink(),
         ),
       ],
     );
@@ -1169,7 +1169,7 @@ class _ItemImageHeaderState extends State<_ItemImageHeader> {
         opaque: false,
         barrierColor: Colors.black.withValues(alpha: 0.95),
         pageBuilder:
-            (_, __, ___) => _FullscreenGallery(
+            (_, _, _) => _FullscreenGallery(
               photos: widget.item.photos,
               initialIndex: initialIndex,
             ),

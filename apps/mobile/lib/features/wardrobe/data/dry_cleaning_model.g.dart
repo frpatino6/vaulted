@@ -12,9 +12,10 @@ _$DryCleaningModelImpl _$$DryCleaningModelImplFromJson(
   id: json['id'] as String,
   itemId: json['itemId'] as String,
   sentDate: DateTime.parse(json['sentDate'] as String),
-  returnedDate: json['returnedDate'] == null
-      ? null
-      : DateTime.parse(json['returnedDate'] as String),
+  returnedDate:
+      json['returnedDate'] == null
+          ? null
+          : DateTime.parse(json['returnedDate'] as String),
   cleanerName: json['cleanerName'] as String?,
   cost: (json['cost'] as num?)?.toDouble(),
   currency: json['currency'] as String? ?? 'USD',
