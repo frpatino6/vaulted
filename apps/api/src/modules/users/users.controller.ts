@@ -24,7 +24,7 @@ export class UsersController {
   @Roles(Role.OWNER, Role.MANAGER)
   @Post('invite')
   invite(@CurrentUser() user: JwtPayload, @Body() dto: InviteUserDto) {
-    return this.usersService.invite(user.tenantId, user.sub, dto);
+    return this.usersService.invite(user.tenantId, user.sub, user.role, dto);
   }
 
   @Roles(Role.OWNER, Role.MANAGER)

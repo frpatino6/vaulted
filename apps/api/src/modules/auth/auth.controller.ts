@@ -15,6 +15,7 @@ import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { VerifyMfaDto } from './dto/verify-mfa.dto';
+import { AcceptInviteDto } from './dto/accept-invite.dto';
 import { Public } from '../../common/decorators/public.decorator';
 import { SkipMfa } from '../../common/decorators/skip-mfa.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -69,6 +70,25 @@ export class AuthController {
     const { accessToken, refreshToken, mfaRequired } = await this.authService.login(
       dto.email,
       dto.password,
+      ip,
+    );
+
+    res.cookie('refresh_token', refreshToken, REFRESH_COOKIE_OPTIONS);
+    return { accessToken, mfaRequired };
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Post('accept-invite')
+  @HttpCode(HttpStatus.OK)
+  async acceptInvite(
+    @Body() dto: AcceptInviteDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const ip = req.ip ?? 'unknown';
+    const { accessToken, refreshToken, mfaRequired } = await this.authService.acceptInvite(
+      dto,
       ip,
     );
 
