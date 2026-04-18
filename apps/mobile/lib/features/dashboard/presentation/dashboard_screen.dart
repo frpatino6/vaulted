@@ -20,6 +20,7 @@ import '../data/models/dashboard_model.dart';
 import '../domain/dashboard_notifier.dart';
 import '../../movements/data/models/movement_model.dart';
 import '../../movements/domain/movement_list_notifier.dart';
+import '../../../features/presence/presentation/widgets/online_users_count.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/app_bottom_nav.dart';
 
@@ -49,6 +50,22 @@ class DashboardScreen extends ConsumerWidget {
         child: CustomScrollView(
           slivers: [
             SliverToBoxAdapter(child: _DashboardHeader()),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.md,
+                  AppSpacing.sm,
+                  AppSpacing.md,
+                  0,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    OnlineUsersCount(),
+                  ],
+                ),
+              ),
+            ),
             // Stats section — loading skeleton or real data
             if (dashboardState.isLoading)
               SliverToBoxAdapter(

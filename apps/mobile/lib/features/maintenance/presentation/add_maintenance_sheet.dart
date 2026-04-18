@@ -149,7 +149,7 @@ class _AddMaintenanceSheetState extends ConsumerState<AddMaintenanceSheet> {
                                 .copyWith(color: AppColors.onSurfaceVariant),
                           ),
                           value: _isRecurring,
-                          activeColor: AppColors.accent,
+                          activeThumbColor: AppColors.accent,
                           onChanged: (v) => setState(() => _isRecurring = v),
                         ),
                         if (_isRecurring) ...[

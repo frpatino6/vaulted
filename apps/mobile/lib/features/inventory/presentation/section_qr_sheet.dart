@@ -120,7 +120,7 @@ class _SectionQrSheetState extends State<_SectionQrSheet> {
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
                   itemCount: widget.sections.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  separatorBuilder: (_, _) => const SizedBox(width: 8),
                   itemBuilder: (_, i) => ChoiceChip(
                     label: Text(
                       widget.sections[i],

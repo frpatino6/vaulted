@@ -1,18 +1,18 @@
 // coverage:ignore-file
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint
-// ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_annotation_target, unnecessary_question_mark
+// ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'outfit_model.dart';
 
-// ***************************************************************************
+// **************************************************************************
 // FreezedGenerator
-// ***************************************************************************
+// **************************************************************************
 
 T _$identity<T>(T value) => value;
 
 final _privateConstructorUsedError = UnsupportedError(
-  'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.',
+  'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models',
 );
 
 OutfitItemPreviewModel _$OutfitItemPreviewModelFromJson(
@@ -21,6 +21,7 @@ OutfitItemPreviewModel _$OutfitItemPreviewModelFromJson(
   return _OutfitItemPreviewModel.fromJson(json);
 }
 
+/// @nodoc
 mixin _$OutfitItemPreviewModel {
   String get id => throw _privateConstructorUsedError;
   String get name => throw _privateConstructorUsedError;
@@ -29,19 +30,22 @@ mixin _$OutfitItemPreviewModel {
   String? get type => throw _privateConstructorUsedError;
   String? get cleaningStatus => throw _privateConstructorUsedError;
 
+  /// Serializes this OutfitItemPreviewModel to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
 
+  /// Create a copy of OutfitItemPreviewModel
+  /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
   $OutfitItemPreviewModelCopyWith<OutfitItemPreviewModel> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
+/// @nodoc
 abstract class $OutfitItemPreviewModelCopyWith<$Res> {
   factory $OutfitItemPreviewModelCopyWith(
     OutfitItemPreviewModel value,
     $Res Function(OutfitItemPreviewModel) then,
   ) = _$OutfitItemPreviewModelCopyWithImpl<$Res, OutfitItemPreviewModel>;
-
   @useResult
   $Res call({
     String id,
@@ -53,6 +57,7 @@ abstract class $OutfitItemPreviewModelCopyWith<$Res> {
   });
 }
 
+/// @nodoc
 class _$OutfitItemPreviewModelCopyWithImpl<
   $Res,
   $Val extends OutfitItemPreviewModel
@@ -60,11 +65,15 @@ class _$OutfitItemPreviewModelCopyWithImpl<
     implements $OutfitItemPreviewModelCopyWith<$Res> {
   _$OutfitItemPreviewModelCopyWithImpl(this._value, this._then);
 
+  // ignore: unused_field
   final $Val _value;
+  // ignore: unused_field
   final $Res Function($Val) _then;
 
-  @override
+  /// Create a copy of OutfitItemPreviewModel
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
+  @override
   $Res call({
     Object? id = null,
     Object? name = null,
@@ -75,27 +84,49 @@ class _$OutfitItemPreviewModelCopyWithImpl<
   }) {
     return _then(
       _value.copyWith(
-            id: null == id ? _value.id : id as String,
-            name: null == name ? _value.name : name as String,
-            photo: freezed == photo ? _value.photo : photo as String?,
-            category: freezed == category ? _value.category : category as String?,
-            type: freezed == type ? _value.type : type as String?,
-            cleaningStatus: freezed == cleaningStatus
-                ? _value.cleaningStatus
-                : cleaningStatus as String?,
+            id:
+                null == id
+                    ? _value.id
+                    : id // ignore: cast_nullable_to_non_nullable
+                        as String,
+            name:
+                null == name
+                    ? _value.name
+                    : name // ignore: cast_nullable_to_non_nullable
+                        as String,
+            photo:
+                freezed == photo
+                    ? _value.photo
+                    : photo // ignore: cast_nullable_to_non_nullable
+                        as String?,
+            category:
+                freezed == category
+                    ? _value.category
+                    : category // ignore: cast_nullable_to_non_nullable
+                        as String?,
+            type:
+                freezed == type
+                    ? _value.type
+                    : type // ignore: cast_nullable_to_non_nullable
+                        as String?,
+            cleaningStatus:
+                freezed == cleaningStatus
+                    ? _value.cleaningStatus
+                    : cleaningStatus // ignore: cast_nullable_to_non_nullable
+                        as String?,
           )
           as $Val,
     );
   }
 }
 
+/// @nodoc
 abstract class _$$OutfitItemPreviewModelImplCopyWith<$Res>
     implements $OutfitItemPreviewModelCopyWith<$Res> {
   factory _$$OutfitItemPreviewModelImplCopyWith(
     _$OutfitItemPreviewModelImpl value,
     $Res Function(_$OutfitItemPreviewModelImpl) then,
   ) = __$$OutfitItemPreviewModelImplCopyWithImpl<$Res>;
-
   @override
   @useResult
   $Res call({
@@ -108,20 +139,20 @@ abstract class _$$OutfitItemPreviewModelImplCopyWith<$Res>
   });
 }
 
+/// @nodoc
 class __$$OutfitItemPreviewModelImplCopyWithImpl<$Res>
     extends
-        _$OutfitItemPreviewModelCopyWithImpl<
-          $Res,
-          _$OutfitItemPreviewModelImpl
-        >
+        _$OutfitItemPreviewModelCopyWithImpl<$Res, _$OutfitItemPreviewModelImpl>
     implements _$$OutfitItemPreviewModelImplCopyWith<$Res> {
   __$$OutfitItemPreviewModelImplCopyWithImpl(
     _$OutfitItemPreviewModelImpl _value,
     $Res Function(_$OutfitItemPreviewModelImpl) _then,
   ) : super(_value, _then);
 
-  @override
+  /// Create a copy of OutfitItemPreviewModel
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
+  @override
   $Res call({
     Object? id = null,
     Object? name = null,
@@ -132,19 +163,42 @@ class __$$OutfitItemPreviewModelImplCopyWithImpl<$Res>
   }) {
     return _then(
       _$OutfitItemPreviewModelImpl(
-        id: null == id ? _value.id : id as String,
-        name: null == name ? _value.name : name as String,
-        photo: freezed == photo ? _value.photo : photo as String?,
-        category: freezed == category ? _value.category : category as String?,
-        type: freezed == type ? _value.type : type as String?,
-        cleaningStatus: freezed == cleaningStatus
-            ? _value.cleaningStatus
-            : cleaningStatus as String?,
+        id:
+            null == id
+                ? _value.id
+                : id // ignore: cast_nullable_to_non_nullable
+                    as String,
+        name:
+            null == name
+                ? _value.name
+                : name // ignore: cast_nullable_to_non_nullable
+                    as String,
+        photo:
+            freezed == photo
+                ? _value.photo
+                : photo // ignore: cast_nullable_to_non_nullable
+                    as String?,
+        category:
+            freezed == category
+                ? _value.category
+                : category // ignore: cast_nullable_to_non_nullable
+                    as String?,
+        type:
+            freezed == type
+                ? _value.type
+                : type // ignore: cast_nullable_to_non_nullable
+                    as String?,
+        cleaningStatus:
+            freezed == cleaningStatus
+                ? _value.cleaningStatus
+                : cleaningStatus // ignore: cast_nullable_to_non_nullable
+                    as String?,
       ),
     );
   }
 }
 
+/// @nodoc
 @JsonSerializable()
 class _$OutfitItemPreviewModelImpl implements _OutfitItemPreviewModel {
   const _$OutfitItemPreviewModelImpl({
@@ -173,15 +227,46 @@ class _$OutfitItemPreviewModelImpl implements _OutfitItemPreviewModel {
   final String? cleaningStatus;
 
   @override
-  Map<String, dynamic> toJson() {
-    return _$$OutfitItemPreviewModelImplToJson(this);
+  String toString() {
+    return 'OutfitItemPreviewModel(id: $id, name: $name, photo: $photo, category: $category, type: $type, cleaningStatus: $cleaningStatus)';
   }
 
   @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$OutfitItemPreviewModelImpl &&
+            (identical(other.id, id) || other.id == id) &&
+            (identical(other.name, name) || other.name == name) &&
+            (identical(other.photo, photo) || other.photo == photo) &&
+            (identical(other.category, category) ||
+                other.category == category) &&
+            (identical(other.type, type) || other.type == type) &&
+            (identical(other.cleaningStatus, cleaningStatus) ||
+                other.cleaningStatus == cleaningStatus));
+  }
+
   @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode =>
+      Object.hash(runtimeType, id, name, photo, category, type, cleaningStatus);
+
+  /// Create a copy of OutfitItemPreviewModel
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
   @pragma('vm:prefer-inline')
   _$$OutfitItemPreviewModelImplCopyWith<_$OutfitItemPreviewModelImpl>
-  get copyWith => __$$OutfitItemPreviewModelImplCopyWithImpl(this, _$identity);
+  get copyWith =>
+      __$$OutfitItemPreviewModelImplCopyWithImpl<_$OutfitItemPreviewModelImpl>(
+        this,
+        _$identity,
+      );
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$$OutfitItemPreviewModelImplToJson(this);
+  }
 }
 
 abstract class _OutfitItemPreviewModel implements OutfitItemPreviewModel {
@@ -210,6 +295,8 @@ abstract class _OutfitItemPreviewModel implements OutfitItemPreviewModel {
   @override
   String? get cleaningStatus;
 
+  /// Create a copy of OutfitItemPreviewModel
+  /// with the given fields replaced by the non-null parameter values.
   @override
   @JsonKey(includeFromJson: false, includeToJson: false)
   _$$OutfitItemPreviewModelImplCopyWith<_$OutfitItemPreviewModelImpl>
@@ -220,6 +307,7 @@ OutfitModel _$OutfitModelFromJson(Map<String, dynamic> json) {
   return _OutfitModel.fromJson(json);
 }
 
+/// @nodoc
 mixin _$OutfitModel {
   String get id => throw _privateConstructorUsedError;
   String get name => throw _privateConstructorUsedError;
@@ -231,19 +319,22 @@ mixin _$OutfitModel {
   List<OutfitItemPreviewModel> get items => throw _privateConstructorUsedError;
   String? get createdAt => throw _privateConstructorUsedError;
 
+  /// Serializes this OutfitModel to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
 
+  /// Create a copy of OutfitModel
+  /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
   $OutfitModelCopyWith<OutfitModel> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
+/// @nodoc
 abstract class $OutfitModelCopyWith<$Res> {
   factory $OutfitModelCopyWith(
     OutfitModel value,
     $Res Function(OutfitModel) then,
   ) = _$OutfitModelCopyWithImpl<$Res, OutfitModel>;
-
   @useResult
   $Res call({
     String id,
@@ -258,15 +349,20 @@ abstract class $OutfitModelCopyWith<$Res> {
   });
 }
 
+/// @nodoc
 class _$OutfitModelCopyWithImpl<$Res, $Val extends OutfitModel>
     implements $OutfitModelCopyWith<$Res> {
   _$OutfitModelCopyWithImpl(this._value, this._then);
 
+  // ignore: unused_field
   final $Val _value;
+  // ignore: unused_field
   final $Res Function($Val) _then;
 
-  @override
+  /// Create a copy of OutfitModel
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
+  @override
   $Res call({
     Object? id = null,
     Object? name = null,
@@ -280,34 +376,64 @@ class _$OutfitModelCopyWithImpl<$Res, $Val extends OutfitModel>
   }) {
     return _then(
       _value.copyWith(
-            id: null == id ? _value.id : id as String,
-            name: null == name ? _value.name : name as String,
-            description: freezed == description
-                ? _value.description
-                : description as String?,
-            itemIds: null == itemIds ? _value.itemIds : itemIds as List<String>,
-            season: freezed == season ? _value.season : season as String?,
-            occasion: freezed == occasion ? _value.occasion : occasion as String?,
-            photos: null == photos ? _value.photos : photos as List<String>,
-            items: null == items
-                ? _value.items
-                : items as List<OutfitItemPreviewModel>,
-            createdAt: freezed == createdAt
-                ? _value.createdAt
-                : createdAt as String?,
+            id:
+                null == id
+                    ? _value.id
+                    : id // ignore: cast_nullable_to_non_nullable
+                        as String,
+            name:
+                null == name
+                    ? _value.name
+                    : name // ignore: cast_nullable_to_non_nullable
+                        as String,
+            description:
+                freezed == description
+                    ? _value.description
+                    : description // ignore: cast_nullable_to_non_nullable
+                        as String?,
+            itemIds:
+                null == itemIds
+                    ? _value.itemIds
+                    : itemIds // ignore: cast_nullable_to_non_nullable
+                        as List<String>,
+            season:
+                freezed == season
+                    ? _value.season
+                    : season // ignore: cast_nullable_to_non_nullable
+                        as String?,
+            occasion:
+                freezed == occasion
+                    ? _value.occasion
+                    : occasion // ignore: cast_nullable_to_non_nullable
+                        as String?,
+            photos:
+                null == photos
+                    ? _value.photos
+                    : photos // ignore: cast_nullable_to_non_nullable
+                        as List<String>,
+            items:
+                null == items
+                    ? _value.items
+                    : items // ignore: cast_nullable_to_non_nullable
+                        as List<OutfitItemPreviewModel>,
+            createdAt:
+                freezed == createdAt
+                    ? _value.createdAt
+                    : createdAt // ignore: cast_nullable_to_non_nullable
+                        as String?,
           )
           as $Val,
     );
   }
 }
 
+/// @nodoc
 abstract class _$$OutfitModelImplCopyWith<$Res>
     implements $OutfitModelCopyWith<$Res> {
   factory _$$OutfitModelImplCopyWith(
     _$OutfitModelImpl value,
     $Res Function(_$OutfitModelImpl) then,
   ) = __$$OutfitModelImplCopyWithImpl<$Res>;
-
   @override
   @useResult
   $Res call({
@@ -323,6 +449,7 @@ abstract class _$$OutfitModelImplCopyWith<$Res>
   });
 }
 
+/// @nodoc
 class __$$OutfitModelImplCopyWithImpl<$Res>
     extends _$OutfitModelCopyWithImpl<$Res, _$OutfitModelImpl>
     implements _$$OutfitModelImplCopyWith<$Res> {
@@ -331,8 +458,10 @@ class __$$OutfitModelImplCopyWithImpl<$Res>
     $Res Function(_$OutfitModelImpl) _then,
   ) : super(_value, _then);
 
-  @override
+  /// Create a copy of OutfitModel
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
+  @override
   $Res call({
     Object? id = null,
     Object? name = null,
@@ -346,24 +475,57 @@ class __$$OutfitModelImplCopyWithImpl<$Res>
   }) {
     return _then(
       _$OutfitModelImpl(
-        id: null == id ? _value.id : id as String,
-        name: null == name ? _value.name : name as String,
-        description: freezed == description
-            ? _value.description
-            : description as String?,
-        itemIds: null == itemIds ? _value._itemIds : itemIds as List<String>,
-        season: freezed == season ? _value.season : season as String?,
-        occasion: freezed == occasion ? _value.occasion : occasion as String?,
-        photos: null == photos ? _value._photos : photos as List<String>,
-        items: null == items
-            ? _value._items
-            : items as List<OutfitItemPreviewModel>,
-        createdAt: freezed == createdAt ? _value.createdAt : createdAt as String?,
+        id:
+            null == id
+                ? _value.id
+                : id // ignore: cast_nullable_to_non_nullable
+                    as String,
+        name:
+            null == name
+                ? _value.name
+                : name // ignore: cast_nullable_to_non_nullable
+                    as String,
+        description:
+            freezed == description
+                ? _value.description
+                : description // ignore: cast_nullable_to_non_nullable
+                    as String?,
+        itemIds:
+            null == itemIds
+                ? _value._itemIds
+                : itemIds // ignore: cast_nullable_to_non_nullable
+                    as List<String>,
+        season:
+            freezed == season
+                ? _value.season
+                : season // ignore: cast_nullable_to_non_nullable
+                    as String?,
+        occasion:
+            freezed == occasion
+                ? _value.occasion
+                : occasion // ignore: cast_nullable_to_non_nullable
+                    as String?,
+        photos:
+            null == photos
+                ? _value._photos
+                : photos // ignore: cast_nullable_to_non_nullable
+                    as List<String>,
+        items:
+            null == items
+                ? _value._items
+                : items // ignore: cast_nullable_to_non_nullable
+                    as List<OutfitItemPreviewModel>,
+        createdAt:
+            freezed == createdAt
+                ? _value.createdAt
+                : createdAt // ignore: cast_nullable_to_non_nullable
+                    as String?,
       ),
     );
   }
 }
 
+/// @nodoc
 @JsonSerializable()
 class _$OutfitModelImpl implements _OutfitModel {
   const _$OutfitModelImpl({
@@ -376,9 +538,9 @@ class _$OutfitModelImpl implements _OutfitModel {
     final List<String> photos = const <String>[],
     final List<OutfitItemPreviewModel> items = const <OutfitItemPreviewModel>[],
     this.createdAt,
-  })  : _itemIds = itemIds,
-        _photos = photos,
-        _items = items;
+  }) : _itemIds = itemIds,
+       _photos = photos,
+       _items = items;
 
   factory _$OutfitModelImpl.fromJson(Map<String, dynamic> json) =>
       _$$OutfitModelImplFromJson(json);
@@ -392,7 +554,12 @@ class _$OutfitModelImpl implements _OutfitModel {
   final List<String> _itemIds;
   @override
   @JsonKey()
-  List<String> get itemIds => EqualUnmodifiableListView(_itemIds);
+  List<String> get itemIds {
+    if (_itemIds is EqualUnmodifiableListView) return _itemIds;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_itemIds);
+  }
+
   @override
   final String? season;
   @override
@@ -400,24 +567,75 @@ class _$OutfitModelImpl implements _OutfitModel {
   final List<String> _photos;
   @override
   @JsonKey()
-  List<String> get photos => EqualUnmodifiableListView(_photos);
+  List<String> get photos {
+    if (_photos is EqualUnmodifiableListView) return _photos;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_photos);
+  }
+
   final List<OutfitItemPreviewModel> _items;
   @override
   @JsonKey()
-  List<OutfitItemPreviewModel> get items => EqualUnmodifiableListView(_items);
+  List<OutfitItemPreviewModel> get items {
+    if (_items is EqualUnmodifiableListView) return _items;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_items);
+  }
+
   @override
   final String? createdAt;
+
+  @override
+  String toString() {
+    return 'OutfitModel(id: $id, name: $name, description: $description, itemIds: $itemIds, season: $season, occasion: $occasion, photos: $photos, items: $items, createdAt: $createdAt)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$OutfitModelImpl &&
+            (identical(other.id, id) || other.id == id) &&
+            (identical(other.name, name) || other.name == name) &&
+            (identical(other.description, description) ||
+                other.description == description) &&
+            const DeepCollectionEquality().equals(other._itemIds, _itemIds) &&
+            (identical(other.season, season) || other.season == season) &&
+            (identical(other.occasion, occasion) ||
+                other.occasion == occasion) &&
+            const DeepCollectionEquality().equals(other._photos, _photos) &&
+            const DeepCollectionEquality().equals(other._items, _items) &&
+            (identical(other.createdAt, createdAt) ||
+                other.createdAt == createdAt));
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode => Object.hash(
+    runtimeType,
+    id,
+    name,
+    description,
+    const DeepCollectionEquality().hash(_itemIds),
+    season,
+    occasion,
+    const DeepCollectionEquality().hash(_photos),
+    const DeepCollectionEquality().hash(_items),
+    createdAt,
+  );
+
+  /// Create a copy of OutfitModel
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$OutfitModelImplCopyWith<_$OutfitModelImpl> get copyWith =>
+      __$$OutfitModelImplCopyWithImpl<_$OutfitModelImpl>(this, _$identity);
 
   @override
   Map<String, dynamic> toJson() {
     return _$$OutfitModelImplToJson(this);
   }
-
-  @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @pragma('vm:prefer-inline')
-  _$$OutfitModelImplCopyWith<_$OutfitModelImpl> get copyWith =>
-      __$$OutfitModelImplCopyWithImpl(this, _$identity);
 }
 
 abstract class _OutfitModel implements OutfitModel {
@@ -455,6 +673,8 @@ abstract class _OutfitModel implements OutfitModel {
   @override
   String? get createdAt;
 
+  /// Create a copy of OutfitModel
+  /// with the given fields replaced by the non-null parameter values.
   @override
   @JsonKey(includeFromJson: false, includeToJson: false)
   _$$OutfitModelImplCopyWith<_$OutfitModelImpl> get copyWith =>

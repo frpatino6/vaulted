@@ -308,7 +308,7 @@ class _MovementCheckinScreenState extends ConsumerState<MovementCheckinScreen> {
       final updated = ref.read(movementDetailNotifierProvider).value;
       final checkedItem = updated?.items.firstWhere(
         (i) => i.itemId == itemId,
-        orElse: () => updated!.items.first,
+        orElse: () => updated.items.first,
       );
 
       setState(() {

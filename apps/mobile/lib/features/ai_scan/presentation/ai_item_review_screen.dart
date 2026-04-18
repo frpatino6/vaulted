@@ -520,7 +520,7 @@ class _PhotoStrip extends StatelessWidget {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: urls.length,
-        separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.sm),
+        separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
         itemBuilder: (_, i) => ClipRRect(
           borderRadius: BorderRadius.circular(8),
           child: Image.network(
@@ -528,7 +528,7 @@ class _PhotoStrip extends StatelessWidget {
             width: 72,
             height: 72,
             fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => Container(
+            errorBuilder: (_, _, _) => Container(
               width: 72,
               height: 72,
               color: AppColors.surface,

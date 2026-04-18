@@ -12,9 +12,10 @@ _$ItemValuationModelImpl _$$ItemValuationModelImplFromJson(
   purchasePrice: (json['purchasePrice'] as num?)?.toInt() ?? 0,
   currentValue: (json['currentValue'] as num?)?.toInt() ?? 0,
   currency: json['currency'] as String? ?? 'USD',
-  purchaseDate: json['purchaseDate'] == null
-      ? null
-      : DateTime.parse(json['purchaseDate'] as String),
+  purchaseDate:
+      json['purchaseDate'] == null
+          ? null
+          : DateTime.parse(json['purchaseDate'] as String),
 );
 
 Map<String, dynamic> _$$ItemValuationModelImplToJson(
@@ -46,9 +47,12 @@ _$ItemModelImpl _$$ItemModelImplFromJson(
       const [],
   serialNumber: json['serialNumber'] as String?,
   locationDetail: json['locationDetail'] as String?,
-  valuation: json['valuation'] == null
-      ? null
-      : ItemValuationModel.fromJson(json['valuation'] as Map<String, dynamic>),
+  valuation:
+      json['valuation'] == null
+          ? null
+          : ItemValuationModel.fromJson(
+            json['valuation'] as Map<String, dynamic>,
+          ),
   attributes: json['attributes'] as Map<String, dynamic>?,
   documents:
       (json['documents'] as List<dynamic>?)?.map((e) => e as String).toList() ??

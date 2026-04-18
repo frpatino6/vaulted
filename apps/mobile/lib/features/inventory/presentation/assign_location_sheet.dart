@@ -123,7 +123,7 @@ class _AssignLocationSheetState extends ConsumerState<AssignLocationSheet> {
           ),
           const SizedBox(height: AppSpacing.lg),
           DropdownButtonFormField<FloorModel>(
-            value: _selectedFloor,
+            initialValue: _selectedFloor,
             decoration: const InputDecoration(labelText: 'Floor'),
             dropdownColor: AppColors.surfaceVariant,
             hint: const Text('Select floor'),
@@ -145,7 +145,7 @@ class _AssignLocationSheetState extends ConsumerState<AssignLocationSheet> {
           ),
           const SizedBox(height: AppSpacing.md),
           DropdownButtonFormField<RoomModel>(
-            value: _selectedRoom,
+            initialValue: _selectedRoom,
             decoration: const InputDecoration(labelText: 'Room'),
             dropdownColor: AppColors.surfaceVariant,
             hint: const Text('Select room'),

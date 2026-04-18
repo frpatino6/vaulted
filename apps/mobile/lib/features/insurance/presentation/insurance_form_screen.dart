@@ -405,7 +405,7 @@ class _InsuranceFormScreenState extends ConsumerState<InsuranceFormScreen> {
     required void Function(T?) onChanged,
   }) {
     return DropdownButtonFormField<T>(
-      value: value,
+      initialValue: value,
       dropdownColor: AppColors.surfaceVariant,
       style: TextStyle(color: AppColors.onBackground),
       decoration: InputDecoration(

@@ -182,7 +182,7 @@ class _AttachItemSheetState extends ConsumerState<AttachItemSheet> {
                 child: ListView.separated(
                   shrinkWrap: true,
                   itemCount: _results.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 4),
+                  separatorBuilder: (_, _) => const SizedBox(height: 4),
                   itemBuilder: (_, i) =>
                       _ItemTile(item: _results[i], onTap: () {
                         setState(() {
@@ -236,7 +236,7 @@ class _AttachItemSheetState extends ConsumerState<AttachItemSheet> {
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    value: _currency,
+                    initialValue: _currency,
                     dropdownColor: AppColors.surfaceVariant,
                     style: TextStyle(color: AppColors.onBackground),
                     decoration: _inputDecoration('Currency'),
@@ -347,7 +347,7 @@ class _ItemTile extends StatelessWidget {
                       width: 44,
                       height: 44,
                       fit: BoxFit.cover,
-                      errorWidget: (_, __, ___) => _photoPlaceholder(),
+                      errorWidget: (_, _, _) => _photoPlaceholder(),
                     )
                   : _photoPlaceholder(),
             ),

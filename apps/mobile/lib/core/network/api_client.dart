@@ -15,6 +15,7 @@ class ApiClient {
     required AuthTokenStore tokenStore,
     VoidCallback? onAuthFailure,
     VoidCallback? onMfaRequired,
+    void Function(String newToken)? onTokenRefreshed,
   })  : _secureStorage = secureStorage,
         _tokenStore = tokenStore,
         _onAuthFailure = onAuthFailure,
@@ -39,6 +40,7 @@ class ApiClient {
       tokenStore: _tokenStore,
       onAuthFailure: _onAuthFailure,
       onMfaRequired: _onMfaRequired,
+      onTokenRefreshed: onTokenRefreshed,
     ));
   }
 
@@ -58,17 +60,20 @@ class _AuthInterceptor extends Interceptor {
     required AuthTokenStore tokenStore,
     VoidCallback? onAuthFailure,
     VoidCallback? onMfaRequired,
+    void Function(String newToken)? onTokenRefreshed,
   })  : _dio = dio,
         _secureStorage = secureStorage,
         _tokenStore = tokenStore,
         _onAuthFailure = onAuthFailure,
-        _onMfaRequired = onMfaRequired;
+        _onMfaRequired = onMfaRequired,
+        _onTokenRefreshed = onTokenRefreshed;
 
   final Dio _dio;
   final SecureStorage _secureStorage;
   final AuthTokenStore _tokenStore;
   final VoidCallback? _onAuthFailure;
   final VoidCallback? _onMfaRequired;
+  final void Function(String newToken)? _onTokenRefreshed;
 
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
@@ -139,6 +144,7 @@ class _AuthInterceptor extends Interceptor {
         if (inner is Map<String, dynamic> && inner['accessToken'] != null) {
           final accessToken = inner['accessToken'] as String;
           _tokenStore.setToken(accessToken);
+          _onTokenRefreshed?.call(accessToken);
 
           final opts = err.requestOptions;
           opts.headers['Authorization'] = 'Bearer $accessToken';

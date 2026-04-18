@@ -92,7 +92,7 @@ class OutfitDetailScreen extends ConsumerWidget {
                                           imageUrl: item.photo!,
                                           fit: BoxFit.cover,
                                           errorWidget:
-                                              (_, __, ___) => const Icon(
+                                              (_, _, _) => const Icon(
                                                 Icons.broken_image_outlined,
                                               ),
                                         ),
@@ -119,7 +119,7 @@ class OutfitDetailScreen extends ConsumerWidget {
                       );
                     },
                     separatorBuilder:
-                        (_, __) => const SizedBox(width: AppSpacing.sm),
+                        (_, _) => const SizedBox(width: AppSpacing.sm),
                     itemCount:
                         outfit.items.isNotEmpty
                             ? outfit.items.length

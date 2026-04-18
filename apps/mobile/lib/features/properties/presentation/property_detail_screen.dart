@@ -633,7 +633,7 @@ class _UnlocatedItemsBanner extends ConsumerWidget {
 
     return async.when(
       loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
       data: (items) {
         if (items.isEmpty) return const SizedBox.shrink();
 
@@ -704,7 +704,7 @@ class _UnlocatedItemsBanner extends ConsumerWidget {
                 ),
                 itemCount: inlineItems.length,
                 separatorBuilder:
-                    (_, __) => const SizedBox(height: AppSpacing.xs),
+                    (_, _) => const SizedBox(height: AppSpacing.xs),
                 itemBuilder: (context, index) {
                   final item = inlineItems[index];
                   return Row(
@@ -943,7 +943,7 @@ class _UnlocatedItemsSheetState extends ConsumerState<_UnlocatedItemsSheet> {
           child: async.when(
             loading:
                 () => const AppScreenSkeleton(showHeader: false, cardCount: 4),
-            error: (e, __) => Center(child: Text('Error: $e')),
+            error: (e, _) => Center(child: Text('Error: $e')),
             data: (items) {
               // Sort items by category for grouping
               final sorted = [...items]

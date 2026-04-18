@@ -112,7 +112,7 @@ class _CreateOutfitScreenState extends ConsumerState<CreateOutfitScreen> {
         },
         loading: () => const AppScreenSkeleton(showHeader: false),
         error:
-            (_, __) =>
+            (_, _) =>
                 const Center(child: Text('Unable to load wardrobe items')),
       ),
     );

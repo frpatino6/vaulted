@@ -28,28 +28,29 @@ Map<String, dynamic> _$$OutfitItemPreviewModelImplToJson(
   'cleaningStatus': instance.cleaningStatus,
 };
 
-_$OutfitModelImpl _$$OutfitModelImplFromJson(Map<String, dynamic> json) =>
-    _$OutfitModelImpl(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      description: json['description'] as String?,
-      itemIds: (json['itemIds'] as List<dynamic>?)
-              ?.map((dynamic e) => e as String)
-              .toList() ??
-          const <String>[],
-      season: json['season'] as String?,
-      occasion: json['occasion'] as String?,
-      photos: (json['photos'] as List<dynamic>?)
-              ?.map((dynamic e) => e as String)
-              .toList() ??
-          const <String>[],
-      items: (json['items'] as List<dynamic>?)
-              ?.map((dynamic e) =>
-                  OutfitItemPreviewModel.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          const <OutfitItemPreviewModel>[],
-      createdAt: json['createdAt'] as String?,
-    );
+_$OutfitModelImpl _$$OutfitModelImplFromJson(
+  Map<String, dynamic> json,
+) => _$OutfitModelImpl(
+  id: json['id'] as String,
+  name: json['name'] as String,
+  description: json['description'] as String?,
+  itemIds:
+      (json['itemIds'] as List<dynamic>?)?.map((e) => e as String).toList() ??
+      const <String>[],
+  season: json['season'] as String?,
+  occasion: json['occasion'] as String?,
+  photos:
+      (json['photos'] as List<dynamic>?)?.map((e) => e as String).toList() ??
+      const <String>[],
+  items:
+      (json['items'] as List<dynamic>?)
+          ?.map(
+            (e) => OutfitItemPreviewModel.fromJson(e as Map<String, dynamic>),
+          )
+          .toList() ??
+      const <OutfitItemPreviewModel>[],
+  createdAt: json['createdAt'] as String?,
+);
 
 Map<String, dynamic> _$$OutfitModelImplToJson(_$OutfitModelImpl instance) =>
     <String, dynamic>{

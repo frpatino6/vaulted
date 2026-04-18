@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, EntityManager } from 'typeorm';
+import { Repository, EntityManager, In } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { createHash, randomBytes } from 'crypto';
 import { User } from './entities/user.entity';
@@ -112,6 +112,17 @@ export class UsersService {
   async findSanitizedById(tenantId: string, userId: string): Promise<SanitizedUser> {
     const user = await this.findOwnedUserOrThrow(tenantId, userId);
     return this.sanitizeUser(user);
+  }
+
+  /** Batch lookup for presence / RBAC (same tenant scope). */
+  async findSanitizedByIds(tenantId: string, userIds: string[]): Promise<Map<string, SanitizedUser>> {
+    if (userIds.length === 0) {
+      return new Map();
+    }
+    const users = await this.userRepository.find({
+      where: { tenantId, id: In(userIds) },
+    });
+    return new Map(users.map((u) => [u.id, this.sanitizeUser(u)]));
   }
 
   async updateUser(
