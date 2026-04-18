@@ -663,12 +663,6 @@ class DashboardQuickActions extends ConsumerWidget {
               onTap: () => context.push('/movements'),
             ),
             _QuickActionTile(
-              icon: Icons.checkroom_outlined,
-              label: 'Wardrobe',
-              onTap: () => context.push('/wardrobe'),
-            ),
-            // D11: Reports tile removed (unimplemented stub)
-            _QuickActionTile(
               icon: Icons.build_circle_outlined,
               label: 'Maintenance',
               onTap: () => context.push('/maintenance'),

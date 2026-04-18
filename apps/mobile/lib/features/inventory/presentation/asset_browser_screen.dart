@@ -130,12 +130,14 @@ class _AssetBrowserScreenState extends ConsumerState<AssetBrowserScreen> {
   bool _isCategorySelected(String category) =>
       category == 'All' ? _selectedCategory == null : _selectedCategory == category;
 
+  // Sort change also counts as active filter so Clear appears
   bool get _hasActiveFilters =>
       _query.isNotEmpty ||
       _selectedCategory != null ||
       _selectedStatus != null ||
       _selectedPropertyId != null ||
-      _unlocated;
+      _unlocated ||
+      _sortBy != AssetSortBy.recent;
 
   @override
   Widget build(BuildContext context) {
@@ -144,6 +146,7 @@ class _AssetBrowserScreenState extends ConsumerState<AssetBrowserScreen> {
     final browserState = ref.watch(assetBrowserNotifierProvider);
     final propertiesState = ref.watch(propertiesNotifierProvider);
     final properties = propertiesState.valueOrNull ?? [];
+    final bottomPadding = MediaQuery.paddingOf(context).bottom;
 
     final showInitialSkeleton =
         !_initialLoadCompleted || browserState is AsyncLoading<AssetBrowserState>;
@@ -156,6 +159,7 @@ class _AssetBrowserScreenState extends ConsumerState<AssetBrowserScreen> {
         toolbarHeight: 64,
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
+          tooltip: 'Back',
           onPressed: () => context.pop(),
           icon: const Icon(Icons.arrow_back_ios_new_rounded),
         ),
@@ -204,6 +208,7 @@ class _AssetBrowserScreenState extends ConsumerState<AssetBrowserScreen> {
                 ),
                 suffixIcon: _query.isNotEmpty
                     ? IconButton(
+                        tooltip: 'Clear search',
                         icon: Icon(
                           Icons.close_rounded,
                           color: AppColors.onSurfaceVariant,
@@ -260,7 +265,7 @@ class _AssetBrowserScreenState extends ConsumerState<AssetBrowserScreen> {
                       ),
                     );
                   }),
-                  _FilterDivider(),
+                  const _FilterDivider(),
                   ..._statusFilters.map((s) {
                     final selected = _selectedStatus == s;
                     return Padding(
@@ -301,7 +306,7 @@ class _AssetBrowserScreenState extends ConsumerState<AssetBrowserScreen> {
                         ),
                       );
                     }),
-                    _FilterDivider(),
+                    const _FilterDivider(),
                   ],
                   Padding(
                     padding: const EdgeInsets.only(right: AppSpacing.sm),
@@ -312,7 +317,7 @@ class _AssetBrowserScreenState extends ConsumerState<AssetBrowserScreen> {
                       icon: Icons.location_off_outlined,
                     ),
                   ),
-                  _FilterDivider(),
+                  const _FilterDivider(),
                   Padding(
                     padding: const EdgeInsets.only(right: AppSpacing.sm),
                     child: _FilterChip(
@@ -322,15 +327,16 @@ class _AssetBrowserScreenState extends ConsumerState<AssetBrowserScreen> {
                       icon: Icons.schedule_outlined,
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.only(right: AppSpacing.sm),
-                    child: _FilterChip(
-                      label: 'Value ↓',
-                      selected: _sortBy == AssetSortBy.valueDesc,
-                      onTap: () => _setSortBy(AssetSortBy.valueDesc),
-                      icon: Icons.attach_money_rounded,
+                  if (canSeeValues)
+                    Padding(
+                      padding: const EdgeInsets.only(right: AppSpacing.sm),
+                      child: _FilterChip(
+                        label: 'Value ↓',
+                        selected: _sortBy == AssetSortBy.valueDesc,
+                        onTap: () => _setSortBy(AssetSortBy.valueDesc),
+                        icon: Icons.attach_money_rounded,
+                      ),
                     ),
-                  ),
                   _FilterChip(
                     label: 'Name A–Z',
                     selected: _sortBy == AssetSortBy.nameAsc,
@@ -348,10 +354,13 @@ class _AssetBrowserScreenState extends ConsumerState<AssetBrowserScreen> {
                     data: (data) => _BrowserBody(
                       data: data,
                       canSeeValues: canSeeValues,
+                      sortBy: _sortBy,
+                      bottomPadding: bottomPadding,
                     ),
                     loading: () => const AppScreenSkeleton(showHeader: false),
                     error: (e, _) => _ErrorState(
                       message: AssetBrowserNotifier.message(e),
+                      onRetry: _applyFilters,
                     ),
                   ),
           ),
@@ -362,6 +371,8 @@ class _AssetBrowserScreenState extends ConsumerState<AssetBrowserScreen> {
 }
 
 class _FilterDivider extends StatelessWidget {
+  const _FilterDivider();
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -388,46 +399,53 @@ class _FilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: selected
-              ? AppColors.accent.withValues(alpha: 0.12)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          constraints: const BoxConstraints(minHeight: 44, minWidth: 44),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
             color: selected
-                ? AppColors.accent
-                : Colors.white.withValues(alpha: 0.15),
-            width: selected ? 1 : 0.5,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (icon != null) ...[
-              Icon(
-                icon,
-                size: 12,
-                color: selected
-                    ? AppColors.accent
-                    : AppColors.onSurfaceVariant,
-              ),
-              const SizedBox(width: 4),
-            ],
-            Text(
-              label,
-              style: AppTypography.labelLarge.copyWith(
-                color: selected
-                    ? AppColors.accent
-                    : AppColors.onBackground.withValues(alpha: 0.8),
-                fontSize: 12,
-              ),
+                ? AppColors.accent.withValues(alpha: 0.12)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              // Fixed width — only color animates to avoid layout shift
+              color: selected
+                  ? AppColors.accent
+                  : Colors.white.withValues(alpha: 0.15),
             ),
-          ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                Icon(
+                  icon,
+                  size: 12,
+                  color: selected
+                      ? AppColors.accent
+                      : AppColors.onSurfaceVariant,
+                ),
+                const SizedBox(width: 4),
+              ],
+              Text(
+                label,
+                style: AppTypography.labelLarge.copyWith(
+                  color: selected
+                      ? AppColors.accent
+                      : AppColors.onBackground.withValues(alpha: 0.8),
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -435,10 +453,17 @@ class _FilterChip extends StatelessWidget {
 }
 
 class _BrowserBody extends StatelessWidget {
-  const _BrowserBody({required this.data, required this.canSeeValues});
+  const _BrowserBody({
+    required this.data,
+    required this.canSeeValues,
+    required this.sortBy,
+    required this.bottomPadding,
+  });
 
   final AssetBrowserState data;
   final bool canSeeValues;
+  final AssetSortBy sortBy;
+  final double bottomPadding;
 
   @override
   Widget build(BuildContext context) {
@@ -456,11 +481,16 @@ class _BrowserBody extends StatelessWidget {
             0,
           ),
           sliver: SliverToBoxAdapter(
-            child: _SectionHeader(data: data),
+            child: _SectionHeader(data: data, sortBy: sortBy),
           ),
         ),
         SliverPadding(
-          padding: const EdgeInsets.all(AppSpacing.md),
+          padding: EdgeInsets.fromLTRB(
+            AppSpacing.md,
+            AppSpacing.md,
+            AppSpacing.md,
+            AppSpacing.md + bottomPadding,
+          ),
           sliver: SliverList.separated(
             itemCount: data.items.length,
             separatorBuilder: (context, i) =>
@@ -477,16 +507,21 @@ class _BrowserBody extends StatelessWidget {
 }
 
 class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({required this.data});
+  const _SectionHeader({required this.data, required this.sortBy});
 
   final AssetBrowserState data;
+  final AssetSortBy sortBy;
 
   String get _label {
     if (data.isFiltered) return '${data.items.length} results';
-    return 'Recently Added';
+    return switch (sortBy) {
+      AssetSortBy.recent => 'Recently Added',
+      AssetSortBy.valueDesc => 'All Items · Value ↓',
+      AssetSortBy.nameAsc => 'All Items · A–Z',
+    };
   }
 
-  bool get _isRecent => !data.isFiltered;
+  bool get _isRecent => !data.isFiltered && sortBy == AssetSortBy.recent;
 
   @override
   Widget build(BuildContext context) {
@@ -496,7 +531,7 @@ class _SectionHeader extends StatelessWidget {
           Container(
             width: 3,
             height: 14,
-            margin: const EdgeInsets.only(right: 8),
+            margin: const EdgeInsets.only(right: AppSpacing.sm),
             decoration: BoxDecoration(
               color: AppColors.accent,
               borderRadius: BorderRadius.circular(2),
@@ -548,11 +583,14 @@ class _BrowserItemCard extends StatelessWidget {
                   color: AppColors.catalogGold,
                 ),
                 const SizedBox(width: 4),
-                Text(
-                  locationText,
-                  style: TextStyle(
-                    fontSize: 11.0,
-                    color: Colors.white.withValues(alpha: 0.38),
+                Flexible(
+                  child: Text(
+                    locationText,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.bodySmall.copyWith(
+                      fontSize: 11,
+                      color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
+                    ),
                   ),
                 ),
               ],
@@ -609,19 +647,37 @@ class _EmptyState extends StatelessWidget {
 }
 
 class _ErrorState extends StatelessWidget {
-  const _ErrorState({required this.message});
+  const _ErrorState({required this.message, required this.onRetry});
 
   final String message;
+  final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-        child: Text(
-          message,
-          textAlign: TextAlign.center,
-          style: AppTypography.bodyMedium.copyWith(color: AppColors.onBackground),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: AppTypography.bodyMedium.copyWith(
+                color: AppColors.onBackground,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            TextButton(
+              onPressed: onRetry,
+              child: Text(
+                'Try again',
+                style: AppTypography.labelLarge.copyWith(
+                  color: AppColors.accent,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
