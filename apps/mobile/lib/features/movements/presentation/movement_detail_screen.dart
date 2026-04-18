@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/loading_skeleton.dart';
 import '../../users/domain/current_user_jwt.dart';
 import '../data/models/movement_model.dart';
 import '../domain/movement_detail_notifier.dart';
@@ -21,64 +22,81 @@ class MovementDetailScreen extends ConsumerStatefulWidget {
       _MovementDetailScreenState();
 }
 
-class _MovementDetailScreenState
-    extends ConsumerState<MovementDetailScreen> {
+class _MovementDetailScreenState extends ConsumerState<MovementDetailScreen> {
+  bool _initialLoadCompleted = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref
           .read(movementDetailNotifierProvider.notifier)
-          .load(widget.movementId);
+          .load(widget.movementId)
+          .whenComplete(() {
+            if (!mounted) return;
+            setState(() => _initialLoadCompleted = true);
+          });
     });
   }
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(movementDetailNotifierProvider);
+    final showInitialSkeleton =
+        !_initialLoadCompleted &&
+        !state.hasError &&
+        (state.isLoading || state.valueOrNull == null);
+    final renderState =
+        showInitialSkeleton ? const AsyncLoading<MovementModel?>() : state;
     final role = currentUserRole() ?? 'guest';
     final canOperate = role == 'owner' || role == 'manager';
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: state.when(
+      body: renderState.when(
         data: (movement) {
           if (movement == null) {
             return Center(
-              child: Text('Movement not found',
-                  style: TextStyle(color: AppColors.onSurfaceVariant)),
+              child: Text(
+                'Movement not found',
+                style: TextStyle(color: AppColors.onSurfaceVariant),
+              ),
             );
           }
           return _buildContent(context, movement, canOperate);
         },
-        loading: () => const Center(
-          child: CircularProgressIndicator(
-              color: AppColors.accent, strokeWidth: 2),
-        ),
-        error: (e, _) => Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.error_outline, color: AppColors.error, size: 40),
-              const SizedBox(height: AppSpacing.sm),
-              Text(MovementDetailNotifier.message(e),
-                  style: TextStyle(color: AppColors.onSurfaceVariant)),
-              const SizedBox(height: AppSpacing.md),
-              TextButton(
-                onPressed: () => ref
-                    .read(movementDetailNotifierProvider.notifier)
-                    .load(widget.movementId),
-                child: const Text('Retry'),
+        loading: () => const AppScreenSkeleton(showHeader: false, cardCount: 4),
+        error:
+            (e, _) => Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.error_outline, color: AppColors.error, size: 40),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    MovementDetailNotifier.message(e),
+                    style: TextStyle(color: AppColors.onSurfaceVariant),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  TextButton(
+                    onPressed:
+                        () => ref
+                            .read(movementDetailNotifierProvider.notifier)
+                            .load(widget.movementId),
+                    child: const Text('Retry'),
+                  ),
+                ],
               ),
-            ],
-          ),
-        ),
+            ),
       ),
     );
   }
 
   Widget _buildContent(
-      BuildContext context, MovementModel movement, bool canOperate) {
+    BuildContext context,
+    MovementModel movement,
+    bool canOperate,
+  ) {
     final typeInfo = movementTypeInfo(movement.operationType);
     final statusInfo = movementStatusInfo(movement.status);
     final isActive = movement.isActive;
@@ -92,8 +110,11 @@ class _MovementDetailScreenState
           pinned: true,
           elevation: 0,
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                color: AppColors.onBackground, size: 20),
+            icon: const Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: AppColors.onBackground,
+              size: 20,
+            ),
             onPressed: () => context.pop(),
           ),
           title: Row(
@@ -118,51 +139,67 @@ class _MovementDetailScreenState
             if (canOperate && !movement.isFinished)
               PopupMenuButton<String>(
                 color: AppColors.surfaceVariant,
-                icon: Icon(Icons.more_vert_rounded,
-                    color: AppColors.onBackground),
+                icon: Icon(
+                  Icons.more_vert_rounded,
+                  color: AppColors.onBackground,
+                ),
                 onSelected: (v) => _handleMenu(context, v, movement),
-                itemBuilder: (_) => [
-                  if (isDraft)
-                    PopupMenuItem(
-                      value: 'resume',
-                      child: Row(
-                        children: [
-                          Icon(Icons.qr_code_scanner_rounded,
-                              color: AppColors.accent, size: 18),
-                          const SizedBox(width: AppSpacing.sm),
-                          Text('Resume scanning',
-                              style:
-                                  TextStyle(color: AppColors.onBackground)),
-                        ],
+                itemBuilder:
+                    (_) => [
+                      if (isDraft)
+                        PopupMenuItem(
+                          value: 'resume',
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.qr_code_scanner_rounded,
+                                color: AppColors.accent,
+                                size: 18,
+                              ),
+                              const SizedBox(width: AppSpacing.sm),
+                              Text(
+                                'Resume scanning',
+                                style: TextStyle(color: AppColors.onBackground),
+                              ),
+                            ],
+                          ),
+                        ),
+                      if (isActive)
+                        PopupMenuItem(
+                          value: 'complete',
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.check_circle_outline,
+                                color: AppColors.accent,
+                                size: 18,
+                              ),
+                              const SizedBox(width: AppSpacing.sm),
+                              Text(
+                                'Mark as complete',
+                                style: TextStyle(color: AppColors.onBackground),
+                              ),
+                            ],
+                          ),
+                        ),
+                      PopupMenuItem(
+                        value: 'cancel',
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.cancel_outlined,
+                              color: AppColors.error,
+                              size: 18,
+                            ),
+                            const SizedBox(width: AppSpacing.sm),
+                            Text(
+                              'Cancel operation',
+                              style: TextStyle(color: AppColors.error),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  if (isActive)
-                    PopupMenuItem(
-                      value: 'complete',
-                      child: Row(
-                        children: [
-                          Icon(Icons.check_circle_outline,
-                              color: AppColors.accent, size: 18),
-                          const SizedBox(width: AppSpacing.sm),
-                          Text('Mark as complete',
-                              style:
-                                  TextStyle(color: AppColors.onBackground)),
-                        ],
-                      ),
-                    ),
-                  PopupMenuItem(
-                    value: 'cancel',
-                    child: Row(
-                      children: [
-                        Icon(Icons.cancel_outlined,
-                            color: AppColors.error, size: 18),
-                        const SizedBox(width: AppSpacing.sm),
-                        Text('Cancel operation',
-                            style: TextStyle(color: AppColors.error)),
-                      ],
-                    ),
-                  ),
-                ],
+                    ],
               ),
           ],
         ),
@@ -170,7 +207,11 @@ class _MovementDetailScreenState
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(
-                AppSpacing.md, 0, AppSpacing.md, AppSpacing.md),
+              AppSpacing.md,
+              0,
+              AppSpacing.md,
+              AppSpacing.md,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -207,29 +248,35 @@ class _MovementDetailScreenState
         // Items list
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(
-              AppSpacing.md, 0, AppSpacing.md, 120),
-          sliver: movement.items.isEmpty
-              ? SliverToBoxAdapter(
-                  child: Center(
-                    child: Padding(
-                      padding:
-                          const EdgeInsets.symmetric(vertical: AppSpacing.xl),
-                      child: Text(
-                        'No items in this operation',
-                        style: TextStyle(color: AppColors.onSurfaceVariant),
+            AppSpacing.md,
+            0,
+            AppSpacing.md,
+            120,
+          ),
+          sliver:
+              movement.items.isEmpty
+                  ? SliverToBoxAdapter(
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: AppSpacing.xl,
+                        ),
+                        child: Text(
+                          'No items in this operation',
+                          style: TextStyle(color: AppColors.onSurfaceVariant),
+                        ),
                       ),
                     ),
-                  ),
-                )
-              : SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (ctx, i) => Padding(
-                      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                      child: _ItemCard(item: movement.items[i]),
+                  )
+                  : SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (ctx, i) => Padding(
+                        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                        child: _ItemCard(item: movement.items[i]),
+                      ),
+                      childCount: movement.items.length,
                     ),
-                    childCount: movement.items.length,
                   ),
-                ),
         ),
       ],
     );
@@ -242,15 +289,16 @@ class _MovementDetailScreenState
       backgroundColor: Colors.transparent,
       builder: (_) => MovementCheckinScreen(movementId: movement.id),
     ).then((_) {
-      ref
-          .read(movementDetailNotifierProvider.notifier)
-          .load(widget.movementId);
+      ref.read(movementDetailNotifierProvider.notifier).load(widget.movementId);
       ref.read(movementListNotifierProvider.notifier).load();
     });
   }
 
   void _handleMenu(
-      BuildContext context, String action, MovementModel movement) async {
+    BuildContext context,
+    String action,
+    MovementModel movement,
+  ) async {
     switch (action) {
       case 'resume':
         context.push('/movements/${movement.id}/scan');
@@ -265,33 +313,38 @@ class _MovementDetailScreenState
     final pending = movement.outCount;
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surfaceVariant,
-        title: Text('Complete operation?',
-            style: TextStyle(color: AppColors.onBackground)),
-        content: Text(
-          pending > 0
-              ? '$pending item(s) haven\'t been checked in. They will be marked as MISSING.'
-              : 'All items accounted for. Mark as complete?',
-          style: TextStyle(color: AppColors.onSurfaceVariant),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text('Cancel',
-                style: TextStyle(color: AppColors.onSurfaceVariant)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor:
-                  pending > 0 ? AppColors.error : AppColors.accent,
-              foregroundColor: Colors.black,
+      builder:
+          (ctx) => AlertDialog(
+            backgroundColor: AppColors.surfaceVariant,
+            title: Text(
+              'Complete operation?',
+              style: TextStyle(color: AppColors.onBackground),
             ),
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Complete'),
+            content: Text(
+              pending > 0
+                  ? '$pending item(s) haven\'t been checked in. They will be marked as MISSING.'
+                  : 'All items accounted for. Mark as complete?',
+              style: TextStyle(color: AppColors.onSurfaceVariant),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: Text(
+                  'Cancel',
+                  style: TextStyle(color: AppColors.onSurfaceVariant),
+                ),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor:
+                      pending > 0 ? AppColors.error : AppColors.accent,
+                  foregroundColor: Colors.black,
+                ),
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text('Complete'),
+              ),
+            ],
           ),
-        ],
-      ),
     );
 
     if (confirmed == true && mounted) {
@@ -300,10 +353,12 @@ class _MovementDetailScreenState
         ref.read(movementListNotifierProvider.notifier).load();
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(MovementDetailNotifier.message(e)),
-            backgroundColor: AppColors.error,
-          ));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(MovementDetailNotifier.message(e)),
+              backgroundColor: AppColors.error,
+            ),
+          );
         }
       }
     }
@@ -312,29 +367,36 @@ class _MovementDetailScreenState
   void _confirmCancel(BuildContext context, MovementModel movement) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surfaceVariant,
-        title: Text('Cancel operation?',
-            style: TextStyle(color: AppColors.onBackground)),
-        content: Text(
-          movement.isActive
-              ? 'Active items will be restored to their previous status.'
-              : 'The draft will be permanently cancelled.',
-          style: TextStyle(color: AppColors.onSurfaceVariant),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text('Keep',
-                style: TextStyle(color: AppColors.onSurfaceVariant)),
+      builder:
+          (ctx) => AlertDialog(
+            backgroundColor: AppColors.surfaceVariant,
+            title: Text(
+              'Cancel operation?',
+              style: TextStyle(color: AppColors.onBackground),
+            ),
+            content: Text(
+              movement.isActive
+                  ? 'Active items will be restored to their previous status.'
+                  : 'The draft will be permanently cancelled.',
+              style: TextStyle(color: AppColors.onSurfaceVariant),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: Text(
+                  'Keep',
+                  style: TextStyle(color: AppColors.onSurfaceVariant),
+                ),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: Text(
+                  'Cancel operation',
+                  style: TextStyle(color: AppColors.error),
+                ),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text('Cancel operation',
-                style: TextStyle(color: AppColors.error)),
-          ),
-        ],
-      ),
     );
 
     if (confirmed == true && mounted) {
@@ -344,10 +406,12 @@ class _MovementDetailScreenState
         if (mounted) context.pop();
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(MovementDetailNotifier.message(e)),
-            backgroundColor: AppColors.error,
-          ));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(MovementDetailNotifier.message(e)),
+              backgroundColor: AppColors.error,
+            ),
+          );
         }
       }
     }
@@ -357,8 +421,7 @@ class _MovementDetailScreenState
 // ---------------------------------------------------------------------------
 
 class _HeaderCard extends StatelessWidget {
-  const _HeaderCard(
-      {required this.movement, required this.statusInfo});
+  const _HeaderCard({required this.movement, required this.statusInfo});
 
   final MovementModel movement;
   final dynamic statusInfo;
@@ -381,7 +444,8 @@ class _HeaderCard extends StatelessWidget {
         color: AppColors.surfaceVariant,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-            color: AppColors.onSurfaceVariant.withValues(alpha: 0.1)),
+          color: AppColors.onSurfaceVariant.withValues(alpha: 0.1),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -394,34 +458,41 @@ class _HeaderCard extends StatelessWidget {
                   children: [
                     if (movement.destination.isNotEmpty)
                       _InfoRow(
-                          icon: Icons.place_outlined,
-                          text: movement.destination),
+                        icon: Icons.place_outlined,
+                        text: movement.destination,
+                      ),
                     if (movement.description.isNotEmpty)
                       _InfoRow(
-                          icon: Icons.notes_rounded,
-                          text: movement.description),
+                        icon: Icons.notes_rounded,
+                        text: movement.description,
+                      ),
                     if (movement.dueDate != null)
                       _InfoRow(
-                          icon: Icons.event_outlined,
-                          text:
-                              'Due ${fmtDate(movement.dueDate) ?? movement.dueDate!}',
-                          color: AppColors.accent),
+                        icon: Icons.event_outlined,
+                        text:
+                            'Due ${fmtDate(movement.dueDate) ?? movement.dueDate!}',
+                        color: AppColors.accent,
+                      ),
                     if (fmtDate(movement.createdAt) != null)
                       _InfoRow(
-                          icon: Icons.calendar_today_outlined,
-                          text: 'Started ${fmtDate(movement.createdAt)!}'),
+                        icon: Icons.calendar_today_outlined,
+                        text: 'Started ${fmtDate(movement.createdAt)!}',
+                      ),
                     if (movement.isCompleted &&
                         fmtDate(movement.completedAt) != null)
                       _InfoRow(
-                          icon: Icons.check_circle_outline,
-                          text: 'Completed ${fmtDate(movement.completedAt)!}',
-                          color: const Color(0xFF4CAF50)),
+                        icon: Icons.check_circle_outline,
+                        text: 'Completed ${fmtDate(movement.completedAt)!}',
+                        color: const Color(0xFF4CAF50),
+                      ),
                     if (movement.notes.isNotEmpty) ...[
                       const SizedBox(height: AppSpacing.xs),
                       Text(
                         movement.notes,
                         style: TextStyle(
-                            color: AppColors.onSurfaceVariant, fontSize: 12),
+                          color: AppColors.onSurfaceVariant,
+                          fontSize: 12,
+                        ),
                       ),
                     ],
                   ],
@@ -448,15 +519,15 @@ class _InfoRow extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 6),
       child: Row(
         children: [
-          Icon(icon,
-              size: 14,
-              color: color ?? AppColors.onSurfaceVariant),
+          Icon(icon, size: 14, color: color ?? AppColors.onSurfaceVariant),
           const SizedBox(width: 6),
           Expanded(
             child: Text(
               text,
               style: TextStyle(
-                  color: color ?? AppColors.onSurface, fontSize: 13),
+                color: color ?? AppColors.onSurface,
+                fontSize: 13,
+              ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
@@ -492,7 +563,8 @@ class _ProgressCard extends StatelessWidget {
         color: AppColors.surfaceVariant,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-            color: const Color(0xFF2196F3).withValues(alpha: 0.2)),
+          color: const Color(0xFF2196F3).withValues(alpha: 0.2),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -503,14 +575,17 @@ class _ProgressCard extends StatelessWidget {
               Text(
                 'Check-in Progress',
                 style: TextStyle(
-                    color: AppColors.onBackground,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600),
+                  color: AppColors.onBackground,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               Text(
                 '$returned / $total returned',
                 style: TextStyle(
-                    color: AppColors.onSurfaceVariant, fontSize: 13),
+                  color: AppColors.onSurfaceVariant,
+                  fontSize: 13,
+                ),
               ),
             ],
           ),
@@ -519,9 +594,12 @@ class _ProgressCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
               value: progress,
-              backgroundColor: AppColors.onSurfaceVariant.withValues(alpha: 0.2),
+              backgroundColor: AppColors.onSurfaceVariant.withValues(
+                alpha: 0.2,
+              ),
               valueColor: const AlwaysStoppedAnimation<Color>(
-                  Color(0xFF4CAF50)),
+                Color(0xFF4CAF50),
+              ),
               minHeight: 6,
             ),
           ),
@@ -529,8 +607,11 @@ class _ProgressCard extends StatelessWidget {
             const SizedBox(height: AppSpacing.xs),
             Row(
               children: [
-                Icon(Icons.warning_amber_rounded,
-                    color: AppColors.error, size: 14),
+                Icon(
+                  Icons.warning_amber_rounded,
+                  color: AppColors.error,
+                  size: 14,
+                ),
                 const SizedBox(width: 4),
                 Text(
                   '${movement.missingCount} item(s) missing',
@@ -549,12 +630,15 @@ class _ProgressCard extends StatelessWidget {
                   backgroundColor: AppColors.accent,
                   foregroundColor: Colors.black,
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                   padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
                 icon: const Icon(Icons.qr_code_scanner_rounded, size: 18),
-                label: const Text('Scan Check-in',
-                    style: TextStyle(fontWeight: FontWeight.w700)),
+                label: const Text(
+                  'Scan Check-in',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
               ),
             ),
           ],
@@ -581,19 +665,23 @@ class _ItemCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surfaceVariant,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-            color: statusColor.withValues(alpha: 0.15)),
+        border: Border.all(color: statusColor.withValues(alpha: 0.15)),
       ),
       child: Row(
         children: [
           // Thumbnail
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: item.itemPhoto.isNotEmpty
-                ? Image.network(item.itemPhoto,
-                    width: 48, height: 48, fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => _placeholder())
-                : _placeholder(),
+            child:
+                item.itemPhoto.isNotEmpty
+                    ? Image.network(
+                      item.itemPhoto,
+                      width: 48,
+                      height: 48,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => _placeholder(),
+                    )
+                    : _placeholder(),
           ),
           const SizedBox(width: AppSpacing.sm),
           // Info
@@ -604,9 +692,10 @@ class _ItemCard extends StatelessWidget {
                 Text(
                   item.itemName,
                   style: TextStyle(
-                      color: AppColors.onBackground,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500),
+                    color: AppColors.onBackground,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -614,11 +703,12 @@ class _ItemCard extends StatelessWidget {
                 Text(
                   [
                     if (item.fromRoomName.isNotEmpty) item.fromRoomName,
-                    if (item.fromPropertyName.isNotEmpty)
-                      item.fromPropertyName,
+                    if (item.fromPropertyName.isNotEmpty) item.fromPropertyName,
                   ].join(' · '),
                   style: TextStyle(
-                      color: AppColors.onSurfaceVariant, fontSize: 11),
+                    color: AppColors.onSurfaceVariant,
+                    fontSize: 11,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -627,7 +717,9 @@ class _ItemCard extends StatelessWidget {
                   Text(
                     'Returned ${_fmt(item.checkedInAt)}',
                     style: TextStyle(
-                        color: const Color(0xFF4CAF50), fontSize: 11),
+                      color: const Color(0xFF4CAF50),
+                      fontSize: 11,
+                    ),
                   ),
                 ],
               ],
@@ -657,12 +749,15 @@ class _ItemCard extends StatelessWidget {
   }
 
   Widget _placeholder() => Container(
-        width: 48,
-        height: 48,
-        color: AppColors.surface,
-        child: Icon(Icons.inventory_2_outlined,
-            size: 22, color: AppColors.onSurfaceVariant),
-      );
+    width: 48,
+    height: 48,
+    color: AppColors.surface,
+    child: Icon(
+      Icons.inventory_2_outlined,
+      size: 22,
+      color: AppColors.onSurfaceVariant,
+    ),
+  );
 
   String? _fmt(String? iso) {
     if (iso == null) return null;
@@ -675,13 +770,13 @@ class _ItemCard extends StatelessWidget {
 }
 
 Color _itemStatusColor(String status) => switch (status) {
-      'returned' => const Color(0xFF4CAF50),
-      'missing' => const Color(0xFFCF6679),
-      _ => const Color(0xFF2196F3),
-    };
+  'returned' => const Color(0xFF4CAF50),
+  'missing' => const Color(0xFFCF6679),
+  _ => const Color(0xFF2196F3),
+};
 
 String _itemStatusLabel(String status) => switch (status) {
-      'returned' => 'RETURNED',
-      'missing' => 'MISSING',
-      _ => 'OUT',
-    };
+  'returned' => 'RETURNED',
+  'missing' => 'MISSING',
+  _ => 'OUT',
+};

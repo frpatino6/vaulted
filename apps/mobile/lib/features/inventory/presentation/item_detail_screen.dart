@@ -19,6 +19,7 @@ import '../../maintenance/presentation/add_maintenance_sheet.dart';
 import '../data/item_repository_provider.dart';
 import '../data/models/item_model.dart';
 import '../domain/item_detail_notifier.dart';
+import '../../properties/domain/property_detail_notifier.dart';
 import 'edit_item_sheet.dart';
 import '../../../shared/widgets/item_card.dart';
 import '../../../shared/widgets/status_badge.dart';
@@ -46,11 +47,20 @@ class ItemDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
+  bool _historyExpanded = false;
+  bool _initialLoadCompleted = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(itemDetailNotifierProvider.notifier).load(widget.itemId);
+      ref
+          .read(itemDetailNotifierProvider.notifier)
+          .load(widget.itemId)
+          .whenComplete(() {
+            if (!mounted) return;
+            setState(() => _initialLoadCompleted = true);
+          });
     });
   }
 
@@ -60,10 +70,25 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
     final canEdit = role == 'owner' || role == 'manager' || role == 'staff';
     final canSeeValues = role == 'owner' || role == 'auditor';
     final state = ref.watch(itemDetailNotifierProvider);
+    final showInitialSkeleton =
+        !_initialLoadCompleted &&
+        !state.hasError &&
+        (state.isLoading || state.valueOrNull == null);
+    final renderState =
+        showInitialSkeleton ? const AsyncLoading<ItemModel?>() : state;
+    final historyEntries =
+        ref
+            .watch(itemHistoryProvider(widget.itemId))
+            .valueOrNull
+            ?.map(
+              (h) => _HistoryEntry(date: h.formattedDate, label: h.actionLabel),
+            )
+            .toList() ??
+        const [];
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: state.when(
+      body: renderState.when(
         data: (item) {
           if (item == null) {
             return const Center(child: Text('Item not found'));
@@ -81,14 +106,6 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                actions: [
-                  if (canEdit)
-                    IconButton(
-                      icon: const Icon(Icons.edit_outlined),
-                      onPressed: () => _showEditSheet(context, item),
-                      tooltip: 'Edit',
-                    ),
-                ],
               ),
               SliverToBoxAdapter(
                 child: Padding(
@@ -105,9 +122,16 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                         onAddPhoto: () => _onAddOrChangePhoto(context, item),
                       ),
                       const SizedBox(height: AppSpacing.lg),
-                      if (canSeeValues) _PriceHighlightSection(item: item),
-                      if (canSeeValues) const SizedBox(height: AppSpacing.lg),
-                      _SpecsGrid(item: item),
+                      if (canSeeValues &&
+                          (item.valuation?.currentValue ?? 0) > 0)
+                        _PriceHighlightSection(item: item),
+                      if (canSeeValues &&
+                          (item.valuation?.currentValue ?? 0) > 0)
+                        const SizedBox(height: AppSpacing.lg),
+                      _SpecsGrid(
+                        item: item,
+                        resolvedRoomName: _resolveRoomName(item.roomId),
+                      ),
                       if (item.isWardrobe && item.hasWardrobeDetails) ...[
                         const SizedBox(height: AppSpacing.lg),
                         _WardrobeDetailSection(attrs: item.wardrobeAttributes),
@@ -115,24 +139,17 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                       if (item.isWardrobe) ...[
                         const SizedBox(height: AppSpacing.md),
                         FilledButton.tonalIcon(
-                          onPressed: () => _showDryCleaningHistory(context, item.id),
+                          onPressed:
+                              () => _showDryCleaningHistory(context, item.id),
                           icon: Icon(
                             Icons.local_laundry_service,
-                            color: item.wardrobeAttributes.cleaningStatus == 'at_dry_cleaner'
-                                ? Colors.blue
-                                : null,
+                            color:
+                                item.wardrobeAttributes.cleaningStatus ==
+                                        'at_dry_cleaner'
+                                    ? Colors.blue
+                                    : null,
                           ),
                           label: const Text('Dry Cleaning History'),
-                        ),
-                      ],
-                      if (item.subcategory.isNotEmpty) ...[
-                        const SizedBox(height: AppSpacing.lg),
-                        _SectionLabel('SUBCATEGORY'),
-                        const SizedBox(height: AppSpacing.sm),
-                        Text(
-                          item.subcategory,
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(color: AppColors.onBackground),
                         ),
                       ],
                       if (canSeeValues &&
@@ -157,26 +174,64 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                         const SizedBox(height: AppSpacing.sm),
                         Text(
                           _formatCreatedAt(item.createdAt!),
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(
-                                color: AppColors.onSurfaceVariant.withValues(
-                                  alpha: 0.8,
-                                ),
-                              ),
+                          style: Theme.of(
+                            context,
+                          ).textTheme.bodySmall?.copyWith(
+                            color: AppColors.onSurfaceVariant.withValues(
+                              alpha: 0.8,
+                            ),
+                          ),
                         ),
                       ],
                       if (item.documents.isNotEmpty) ...[
                         const SizedBox(height: AppSpacing.lg),
                         _SectionLabel('DOCUMENTS'),
                         const SizedBox(height: AppSpacing.sm),
-                        Text(
-                          '${item.documents.length} document(s)',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(
-                                color: AppColors.onSurfaceVariant.withValues(
-                                  alpha: 0.8,
+                        Container(
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceVariant,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Column(
+                            children: List.generate(item.documents.length, (
+                              index,
+                            ) {
+                              final url = item.documents[index];
+                              final segments =
+                                  Uri.tryParse(url)?.pathSegments ?? [];
+                              final filename =
+                                  segments.isNotEmpty &&
+                                          segments.last.isNotEmpty
+                                      ? segments.last
+                                      : 'Document ${index + 1}';
+                              return ListTile(
+                                leading: const Icon(
+                                  Icons.description_outlined,
+                                  color: AppColors.accent,
+                                  size: 18,
                                 ),
-                              ),
+                                title: Text(
+                                  filename,
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(color: AppColors.onBackground),
+                                ),
+                                trailing: const Icon(
+                                  Icons.open_in_new,
+                                  size: 14,
+                                  color: AppColors.onSurfaceVariant,
+                                ),
+                                onTap: () {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Opening documents coming soon',
+                                      ),
+                                    ),
+                                  );
+                                },
+                              );
+                            }),
+                          ),
                         ),
                       ],
                       if (item.tags.isNotEmpty) ...[
@@ -186,22 +241,22 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                         Wrap(
                           spacing: AppSpacing.sm,
                           runSpacing: AppSpacing.sm,
-                          children: item.tags
-                              .map(
-                                (t) => Chip(
-                                  label: Text(t),
-                                  backgroundColor: AppColors.surfaceVariant
-                                      .withValues(alpha: 0.6),
-                                  side: BorderSide.none,
-                                  labelStyle: Theme.of(context)
-                                      .textTheme
-                                      .bodySmall
-                                      ?.copyWith(
+                          children:
+                              item.tags
+                                  .map(
+                                    (t) => Chip(
+                                      label: Text(t),
+                                      backgroundColor: AppColors.surfaceVariant
+                                          .withValues(alpha: 0.6),
+                                      side: BorderSide.none,
+                                      labelStyle: Theme.of(
+                                        context,
+                                      ).textTheme.bodySmall?.copyWith(
                                         color: AppColors.onSurfaceVariant,
                                       ),
-                                ),
-                              )
-                              .toList(),
+                                    ),
+                                  )
+                                  .toList(),
                         ),
                       ],
                       if (item.qrCode != null && item.qrCode!.isNotEmpty) ...[
@@ -211,7 +266,11 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                       const SizedBox(height: AppSpacing.lg),
                       _HistorySectionLabel(),
                       const SizedBox(height: AppSpacing.sm),
-                      _HistorySection(historyEntries: []),
+                      _HistorySection(
+                        historyEntries: historyEntries,
+                        expanded: _historyExpanded,
+                        onExpand: () => setState(() => _historyExpanded = true),
+                      ),
                       const SizedBox(height: AppSpacing.xxl),
                     ],
                   ),
@@ -220,38 +279,41 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
             ],
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, _) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.error_outline,
-                size: 48,
-                color: AppColors.onSurfaceVariant,
+        loading: () => const _ItemDetailSkeleton(),
+        error:
+            (err, _) => Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    size: 48,
+                    color: AppColors.onSurfaceVariant,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  Text(
+                    ItemDetailNotifier.message(err),
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppColors.onBackground,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  FilledButton.tonal(
+                    onPressed:
+                        () => ref
+                            .read(itemDetailNotifierProvider.notifier)
+                            .load(widget.itemId),
+                    child: const Text('Retry'),
+                  ),
+                ],
               ),
-              const SizedBox(height: AppSpacing.md),
-              Text(
-                ItemDetailNotifier.message(err),
-                textAlign: TextAlign.center,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(color: AppColors.onBackground),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              FilledButton.tonal(
-                onPressed: () => ref
-                    .read(itemDetailNotifierProvider.notifier)
-                    .load(widget.itemId),
-                child: const Text('Retry'),
-              ),
-            ],
-          ),
-        ),
+            ),
       ),
-      bottomNavigationBar: state.valueOrNull != null && canEdit
-          ? _buildEditFooter(context, state.valueOrNull!)
-          : null,
+      bottomNavigationBar:
+          state.valueOrNull != null && canEdit
+              ? _buildEditFooter(context, state.valueOrNull!)
+              : null,
     );
   }
 
@@ -306,37 +368,50 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
         ),
-        builder: (ctx) => SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              vertical: AppSpacing.lg,
-              horizontal: AppSpacing.md,
+        builder:
+            (ctx) => SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: AppSpacing.lg,
+                  horizontal: AppSpacing.md,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Add photo',
+                      style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                        color: AppColors.onBackground,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    ListTile(
+                      leading: const Icon(
+                        Icons.camera_alt_outlined,
+                        color: AppColors.accent,
+                      ),
+                      title: const Text(
+                        'Camera',
+                        style: TextStyle(color: AppColors.onBackground),
+                      ),
+                      onTap: () => Navigator.of(ctx).pop(ImageSource.camera),
+                    ),
+                    ListTile(
+                      leading: const Icon(
+                        Icons.photo_library_outlined,
+                        color: AppColors.accent,
+                      ),
+                      title: const Text(
+                        'Gallery',
+                        style: TextStyle(color: AppColors.onBackground),
+                      ),
+                      onTap: () => Navigator.of(ctx).pop(ImageSource.gallery),
+                    ),
+                  ],
+                ),
+              ),
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Add photo',
-                  style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
-                    color: AppColors.onBackground,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                ListTile(
-                  leading: const Icon(Icons.camera_alt_outlined, color: AppColors.accent),
-                  title: const Text('Camera', style: TextStyle(color: AppColors.onBackground)),
-                  onTap: () => Navigator.of(ctx).pop(ImageSource.camera),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.photo_library_outlined, color: AppColors.accent),
-                  title: const Text('Gallery', style: TextStyle(color: AppColors.onBackground)),
-                  onTap: () => Navigator.of(ctx).pop(ImageSource.gallery),
-                ),
-              ],
-            ),
-          ),
-        ),
       );
       if (source == null || !context.mounted) return;
       file = await picker.pickImage(source: source, imageQuality: 85);
@@ -375,16 +450,32 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
     );
   }
 
+  String? _resolveRoomName(String? roomId) {
+    if (roomId == null || roomId.isEmpty) return null;
+    final property = ref.read(propertyDetailNotifierProvider).valueOrNull;
+    if (property == null) return null;
+    for (final floor in property.floors) {
+      for (final room in floor.rooms) {
+        if (room.roomId == roomId) return room.name;
+      }
+    }
+    return null;
+  }
+
   void _showEditSheet(BuildContext context, ItemModel item) {
+    final property = ref.read(propertyDetailNotifierProvider).valueOrNull;
     showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => EditItemSheet(
-        item: item,
-        onUpdated: () =>
-            ref.read(itemDetailNotifierProvider.notifier).load(item.id),
-      ),
+      builder:
+          (ctx) => EditItemSheet(
+            item: item,
+            floors: property?.floors,
+            onUpdated:
+                () =>
+                    ref.read(itemDetailNotifierProvider.notifier).load(item.id),
+          ),
     );
   }
 }
@@ -431,9 +522,10 @@ class _MaintenanceSectionWidgetState
 
   Future<void> _runAiAnalysis() async {
     setState(() => _aiLoading = true);
-    final result = await ref
-        .read(itemMaintenanceNotifierProvider(widget.itemId).notifier)
-        .analyzeWithAi();
+    final result =
+        await ref
+            .read(itemMaintenanceNotifierProvider(widget.itemId).notifier)
+            .analyzeWithAi();
     if (!mounted) return;
     setState(() => _aiLoading = false);
 
@@ -450,7 +542,9 @@ class _MaintenanceSectionWidgetState
     if (suggestion == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('This item was recently analyzed. Try again in 7 days.'),
+          content: Text(
+            'This item was recently analyzed. Try again in 7 days.',
+          ),
         ),
       );
       return;
@@ -463,106 +557,146 @@ class _MaintenanceSectionWidgetState
 
     await showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Icon(Icons.auto_awesome, color: AppColors.accentLight, size: 20),
-            const SizedBox(width: 8),
-            const Text('AI Maintenance Analysis',
-                style: TextStyle(fontSize: 16, color: Colors.white)),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _AiRiskBadge(score: riskScore),
-            const SizedBox(height: 12),
-            if (title.isNotEmpty) ...[
-              Text(title,
-                  style: const TextStyle(
-                      color: Colors.white,
+      builder:
+          (ctx) => AlertDialog(
+            backgroundColor: AppColors.surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: Row(
+              children: [
+                Icon(
+                  Icons.auto_awesome,
+                  color: AppColors.accentLight,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'AI Maintenance Analysis',
+                  style: TextStyle(fontSize: 16, color: AppColors.onBackground),
+                ),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _AiRiskBadge(score: riskScore),
+                const SizedBox(height: 12),
+                if (title.isNotEmpty) ...[
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: AppColors.onBackground,
                       fontWeight: FontWeight.w600,
-                      fontSize: 14)),
-              const SizedBox(height: 6),
-            ],
-            if (reason.isNotEmpty)
-              Text(reason,
-                  style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.7), fontSize: 13)),
-            if (action.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              Text('Recommended action:',
-                  style: TextStyle(
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                ],
+                if (reason.isNotEmpty)
+                  Text(
+                    reason,
+                    style: const TextStyle(
+                      color: AppColors.onSurfaceVariant,
+                      fontSize: 13,
+                    ),
+                  ),
+                if (action.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    'Recommended action:',
+                    style: TextStyle(
                       color: AppColors.accent,
                       fontSize: 11,
-                      letterSpacing: 0.5)),
-              const SizedBox(height: 4),
-              Text(action,
-                  style: const TextStyle(color: Colors.white, fontSize: 13)),
-            ],
-            if (recordCreated) ...[
-              const SizedBox(height: 12),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppColors.accent.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.check_circle_outline,
-                        size: 14, color: AppColors.accent),
-                    const SizedBox(width: 6),
-                    Text('Maintenance scheduled automatically',
-                        style: TextStyle(
-                            color: AppColors.accent, fontSize: 12)),
-                  ],
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    action,
+                    style: const TextStyle(
+                      color: AppColors.onBackground,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+                if (recordCreated) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.accent.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.check_circle_outline,
+                          size: 14,
+                          color: AppColors.accent,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Maintenance scheduled automatically',
+                          style: TextStyle(
+                            color: AppColors.accent,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: Text(
+                  'Close',
+                  style: TextStyle(color: AppColors.accentLight),
                 ),
               ),
-            ],
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child:
-                Text('Close', style: TextStyle(color: AppColors.accentLight)),
-          ),
-          if (!recordCreated)
-            TextButton(
-              onPressed: () async {
-                Navigator.of(ctx).pop();
-                final record = await showAddMaintenanceSheet(
-                  context,
-                  widget.itemId,
-                  initialTitle: title,
-                  initialNotes: action.isNotEmpty ? action : reason,
-                );
-                if (record != null && mounted) {
-                  ref
-                      .read(itemMaintenanceNotifierProvider(widget.itemId)
-                          .notifier)
-                      .reload();
-                }
-              },
-              child: Text('Schedule',
-                  style: TextStyle(
+              if (!recordCreated)
+                TextButton(
+                  onPressed: () async {
+                    Navigator.of(ctx).pop();
+                    final record = await showAddMaintenanceSheet(
+                      context,
+                      widget.itemId,
+                      initialTitle: title,
+                      initialNotes: action.isNotEmpty ? action : reason,
+                    );
+                    if (record != null && mounted) {
+                      ref
+                          .read(
+                            itemMaintenanceNotifierProvider(
+                              widget.itemId,
+                            ).notifier,
+                          )
+                          .reload();
+                    }
+                  },
+                  child: Text(
+                    'Schedule',
+                    style: TextStyle(
                       color: AppColors.accent,
-                      fontWeight: FontWeight.w600)),
-            ),
-        ],
-      ),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+            ],
+          ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final state =
-        ref.watch(itemMaintenanceNotifierProvider(widget.itemId));
+    final state = ref.watch(itemMaintenanceNotifierProvider(widget.itemId));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -573,10 +707,10 @@ class _MaintenanceSectionWidgetState
             Text(
               'MAINTENANCE',
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: AppColors.accent,
-                    letterSpacing: 2.0,
-                    fontSize: 10,
-                  ),
+                color: AppColors.accent,
+                letterSpacing: 2.0,
+                fontSize: 10,
+              ),
             ),
             if (widget.canSchedule)
               Row(
@@ -584,49 +718,65 @@ class _MaintenanceSectionWidgetState
                 children: [
                   TextButton.icon(
                     onPressed: _aiLoading ? null : _runAiAnalysis,
-                    icon: _aiLoading
-                        ? SizedBox(
-                            width: 12,
-                            height: 12,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 1.5,
+                    icon:
+                        _aiLoading
+                            ? SizedBox(
+                              width: 12,
+                              height: 12,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 1.5,
+                                color: AppColors.accentLight,
+                              ),
+                            )
+                            : Icon(
+                              Icons.auto_awesome,
+                              size: 14,
                               color: AppColors.accentLight,
                             ),
-                          )
-                        : Icon(Icons.auto_awesome,
-                            size: 14, color: AppColors.accentLight),
                     label: Text(
                       'AI Analysis',
                       style: TextStyle(
-                          color: AppColors.accentLight, fontSize: 12),
+                        color: AppColors.accentLight,
+                        fontSize: 12,
+                      ),
                     ),
                     style: TextButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm,
+                        vertical: AppSpacing.xs,
+                      ),
+                      tapTargetSize: MaterialTapTargetSize.padded,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   TextButton.icon(
                     onPressed: () async {
                       final record = await showAddMaintenanceSheet(
-                          context, widget.itemId);
+                        context,
+                        widget.itemId,
+                      );
                       if (record != null) {
                         ref
-                            .read(itemMaintenanceNotifierProvider(widget.itemId)
-                                .notifier)
+                            .read(
+                              itemMaintenanceNotifierProvider(
+                                widget.itemId,
+                              ).notifier,
+                            )
                             .reload();
                       }
                     },
                     icon: Icon(Icons.add, size: 16, color: AppColors.accent),
                     label: Text(
                       'Schedule',
-                      style:
-                          TextStyle(color: AppColors.accent, fontSize: 12),
+                      style: TextStyle(color: AppColors.accent, fontSize: 12),
                     ),
                     style: TextButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm,
+                        vertical: AppSpacing.xs,
+                      ),
+                      tapTargetSize: MaterialTapTargetSize.padded,
+                    ),
                   ),
                 ],
               ),
@@ -635,95 +785,101 @@ class _MaintenanceSectionWidgetState
         const SizedBox(height: AppSpacing.sm),
         state.when(
           data: (records) {
-            final active = records
-                .where((r) => r.isPending || r.isOverdue)
-                .take(3)
-                .toList();
+            final active =
+                records
+                    .where((r) => r.isPending || r.isOverdue)
+                    .take(3)
+                    .toList();
             if (active.isEmpty) {
               return Padding(
                 padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
                 child: Text(
                   'No maintenance scheduled.',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.onSurfaceVariant
-                            .withValues(alpha: 0.5),
-                        fontStyle: FontStyle.italic,
-                      ),
+                    color: AppColors.onSurfaceVariant.withValues(alpha: 0.5),
+                    fontStyle: FontStyle.italic,
+                  ),
                 ),
               );
             }
             return Column(
-              children: active.map((r) {
-                final isOverdue = r.isOverdue;
-                final color = isOverdue
-                    ? const Color(0xFFCF6679)
-                    : r.isUrgent
-                        ? const Color(0xFFE07B39)
-                        : const Color(0xFFD4AF37);
-                final date = DateTime.tryParse(r.scheduledDate);
-                final dateStr = date != null
-                    ? DateFormat.yMMMd().format(date)
-                    : r.scheduledDate;
+              children:
+                  active.map((r) {
+                    final isOverdue = r.isOverdue;
+                    final color =
+                        isOverdue
+                            ? const Color(0xFFCF6679)
+                            : r.isUrgent
+                            ? const Color(0xFFE07B39)
+                            : const Color(0xFFD4AF37);
+                    final date = DateTime.tryParse(r.scheduledDate);
+                    final dateStr =
+                        date != null
+                            ? DateFormat.yMMMd().format(date)
+                            : r.scheduledDate;
 
-                return Container(
-                  margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
-                    vertical: AppSpacing.sm,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceVariant.withValues(alpha: 0.6),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                        color: color.withValues(alpha: 0.3), width: 1),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.build_outlined, size: 16, color: color),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              r.title,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall
-                                  ?.copyWith(
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.md,
+                        vertical: AppSpacing.sm,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceVariant.withValues(alpha: 0.6),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: color.withValues(alpha: 0.3),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.build_outlined, size: 16, color: color),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  r.title,
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.bodySmall?.copyWith(
                                     color: AppColors.onBackground,
                                     fontWeight: FontWeight.w600,
                                   ),
+                                ),
+                                Text(
+                                  isOverdue
+                                      ? 'Overdue · Was $dateStr'
+                                      : dateStr,
+                                  style: Theme.of(context).textTheme.labelSmall
+                                      ?.copyWith(color: color, fontSize: 10),
+                                ),
+                              ],
                             ),
-                            Text(
-                              isOverdue
-                                  ? 'Overdue · Was $dateStr'
-                                  : dateStr,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .labelSmall
-                                  ?.copyWith(color: color, fontSize: 10),
+                          ),
+                          if (r.isAiSuggested)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 4),
+                              child: Icon(
+                                Icons.auto_awesome,
+                                size: 14,
+                                color: AppColors.accentLight,
+                              ),
                             ),
-                          ],
-                        ),
+                        ],
                       ),
-                      if (r.isAiSuggested)
-                        Padding(
-                          padding: const EdgeInsets.only(left: 4),
-                          child: Icon(Icons.auto_awesome,
-                              size: 14, color: AppColors.accentLight),
-                        ),
-                    ],
-                  ),
-                );
-              }).toList(),
+                    );
+                  }).toList(),
             );
           },
-          loading: () => const Padding(
-            padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
-            child: LinearProgressIndicator(),
-          ),
-          error: (_, __) => const SizedBox.shrink(),
+          loading:
+              () => const Padding(
+                padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
+                child: LinearProgressIndicator(),
+              ),
+          error: (_, _) => const SizedBox.shrink(),
         ),
       ],
     );
@@ -786,23 +942,6 @@ class _QrSection extends StatelessWidget {
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: AppColors.onSurfaceVariant,
               ),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Center(
-            child: OutlinedButton(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Share coming soon')),
-                );
-              },
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.onSurfaceVariant,
-                side: BorderSide(
-                  color: AppColors.onSurfaceVariant.withValues(alpha: 0.35),
-                ),
-              ),
-              child: const Text('Share QR'),
             ),
           ),
         ],
@@ -1029,10 +1168,11 @@ class _ItemImageHeaderState extends State<_ItemImageHeader> {
       PageRouteBuilder<void>(
         opaque: false,
         barrierColor: Colors.black.withValues(alpha: 0.95),
-        pageBuilder: (_, __, ___) => _FullscreenGallery(
-          photos: widget.item.photos,
-          initialIndex: initialIndex,
-        ),
+        pageBuilder:
+            (_, _, _) => _FullscreenGallery(
+              photos: widget.item.photos,
+              initialIndex: initialIndex,
+            ),
       ),
     );
   }
@@ -1058,43 +1198,52 @@ class _ItemImageHeaderState extends State<_ItemImageHeader> {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
-              child: hasPhoto
-                  ? multiplePhotos
-                        ? SizedBox(
+              child:
+                  hasPhoto
+                      ? multiplePhotos
+                          ? SizedBox(
                             height: 220,
                             width: double.infinity,
                             child: PageView.builder(
                               controller: _pageController,
                               itemCount: item.photos.length,
-                              itemBuilder: (_, index) => GestureDetector(
-                                onTap: () => _openGallery(index),
-                                child: CachedNetworkImage(
-                                  imageUrl: item.photos[index],
-                                  height: 220,
-                                  width: double.infinity,
-                                  fit: BoxFit.cover,
-                                  placeholder: (_, _) =>
-                                      _gradientPlaceholder(context, item),
-                                  errorWidget: (_, _, _) =>
-                                      _gradientPlaceholder(context, item),
-                                ),
-                              ),
+                              itemBuilder:
+                                  (_, index) => GestureDetector(
+                                    onTap: () => _openGallery(index),
+                                    child: CachedNetworkImage(
+                                      imageUrl: item.photos[index],
+                                      height: 220,
+                                      width: double.infinity,
+                                      fit: BoxFit.cover,
+                                      placeholder:
+                                          (_, _) => _gradientPlaceholder(
+                                            context,
+                                            item,
+                                          ),
+                                      errorWidget:
+                                          (_, _, _) => _gradientPlaceholder(
+                                            context,
+                                            item,
+                                          ),
+                                    ),
+                                  ),
                             ),
                           )
-                        : GestureDetector(
+                          : GestureDetector(
                             onTap: () => _openGallery(0),
                             child: CachedNetworkImage(
                               imageUrl: item.photos.first,
                               height: 220,
                               width: double.infinity,
                               fit: BoxFit.cover,
-                              placeholder: (_, _) =>
-                                  _gradientPlaceholder(context, item),
-                              errorWidget: (_, _, _) =>
-                                  _gradientPlaceholder(context, item),
+                              placeholder:
+                                  (_, _) => _gradientPlaceholder(context, item),
+                              errorWidget:
+                                  (_, _, _) =>
+                                      _gradientPlaceholder(context, item),
                             ),
                           )
-                  : _gradientPlaceholder(context, item),
+                      : _gradientPlaceholder(context, item),
             ),
             if (widget.canEdit)
               Positioned(
@@ -1126,11 +1275,12 @@ class _ItemImageHeaderState extends State<_ItemImageHeader> {
             children: List.generate(
               item.photos.length,
               (i) => GestureDetector(
-                onTap: () => _pageController.animateToPage(
-                  i,
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOut,
-                ),
+                onTap:
+                    () => _pageController.animateToPage(
+                      i,
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                    ),
                 child: Container(
                   margin: const EdgeInsets.symmetric(horizontal: 3),
                   width: 8,
@@ -1151,23 +1301,24 @@ class _ItemImageHeaderState extends State<_ItemImageHeader> {
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               itemCount: item.photos.length,
-              itemBuilder: (ctx, i) => Padding(
-                padding: const EdgeInsets.only(right: AppSpacing.sm),
-                child: GestureDetector(
-                  onTap: () => _openGallery(i),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(AppSpacing.xs),
-                    child: CachedNetworkImage(
-                      imageUrl: item.photos[i],
-                      width: 56,
-                      height: 56,
-                      fit: BoxFit.cover,
-                      placeholder: (_, _) => _thumbPlaceholder(),
-                      errorWidget: (_, _, _) => _thumbPlaceholder(),
+              itemBuilder:
+                  (ctx, i) => Padding(
+                    padding: const EdgeInsets.only(right: AppSpacing.sm),
+                    child: GestureDetector(
+                      onTap: () => _openGallery(i),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(AppSpacing.xs),
+                        child: CachedNetworkImage(
+                          imageUrl: item.photos[i],
+                          width: 56,
+                          height: 56,
+                          fit: BoxFit.cover,
+                          placeholder: (_, _) => _thumbPlaceholder(),
+                          errorWidget: (_, _, _) => _thumbPlaceholder(),
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ),
             ),
           ),
         ],
@@ -1361,18 +1512,10 @@ class _ValuationDetailsSection extends StatelessWidget {
 }
 
 class _SpecsGrid extends StatelessWidget {
-  const _SpecsGrid({required this.item});
+  const _SpecsGrid({required this.item, this.resolvedRoomName});
 
   final ItemModel item;
-
-  static TextStyle _labelStyle(BuildContext context) {
-    return Theme.of(context).textTheme.labelSmall!.copyWith(
-      color: Colors.white54,
-      fontSize: 10,
-      letterSpacing: 1.2,
-      fontWeight: FontWeight.w600,
-    );
-  }
+  final String? resolvedRoomName;
 
   @override
   Widget build(BuildContext context) {
@@ -1385,40 +1528,89 @@ class _SpecsGrid extends StatelessWidget {
           color: AppColors.onSurfaceVariant.withValues(alpha: 0.2),
         ),
       ),
-      child: GridView.count(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        crossAxisCount: 2,
-        mainAxisSpacing: AppSpacing.md,
-        crossAxisSpacing: AppSpacing.md,
-        childAspectRatio: 2.2,
-        children: [
-          _SpecCell(
-            label: 'CATEGORY',
-            value: item.category,
-            labelStyle: _labelStyle(context),
-          ),
-          _SpecCell(
-            label: 'STATUS',
-            valueWidget: StatusBadge(status: item.status, compact: true),
-            labelStyle: _labelStyle(context),
-          ),
-          _SpecCell(
-            label: 'SERIAL NUMBER',
-            value: item.serialNumber?.isNotEmpty == true
-                ? item.serialNumber!
-                : '—',
-            labelStyle: _labelStyle(context),
-          ),
-          if (item.locationDetail?.isNotEmpty == true)
-            _SpecCell(
-              label: 'SECTION / LOCATION',
-              value: item.locationDetail!,
-              labelStyle: _labelStyle(context),
-            ),
-        ],
-      ),
+      child: _SpecsTable(item: item, resolvedRoomName: resolvedRoomName),
     );
+  }
+}
+
+class _SpecsTable extends StatelessWidget {
+  const _SpecsTable({required this.item, this.resolvedRoomName});
+
+  final ItemModel item;
+  final String? resolvedRoomName;
+
+  static TextStyle _labelStyle(BuildContext context) {
+    return Theme.of(context).textTheme.labelSmall!.copyWith(
+      color: Colors.white54,
+      fontSize: 10,
+      letterSpacing: 1.2,
+      fontWeight: FontWeight.w600,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ls = _labelStyle(context);
+    final cells = <Widget>[
+      _SpecCell(
+        label: 'ROOM',
+        value:
+            resolvedRoomName?.isNotEmpty == true
+                ? resolvedRoomName!
+                : 'Unassigned',
+        valueColor:
+            resolvedRoomName?.isNotEmpty == true
+                ? null
+                : AppColors.onSurfaceVariant,
+        labelStyle: ls,
+      ),
+      _SpecCell(label: 'CATEGORY', value: item.category, labelStyle: ls),
+      _SpecCell(
+        label: 'STATUS',
+        valueWidget: StatusBadge(status: item.status, compact: true),
+        labelStyle: ls,
+      ),
+      if (item.subcategory.isNotEmpty)
+        _SpecCell(
+          label: 'SUBCATEGORY',
+          value: item.subcategory,
+          labelStyle: ls,
+        ),
+      _SpecCell(
+        label: 'SERIAL NUMBER',
+        value: item.serialNumber?.isNotEmpty == true ? item.serialNumber! : '—',
+        labelStyle: ls,
+      ),
+      if (item.locationDetail?.isNotEmpty == true)
+        _SpecCell(
+          label: 'SECTION / LOCATION',
+          value: item.locationDetail!,
+          labelStyle: ls,
+        ),
+    ];
+
+    // Pair cells into rows of 2; last row gets a single cell if count is odd
+    final rows = <Widget>[];
+    for (var i = 0; i < cells.length; i += 2) {
+      final isLast = i + 1 >= cells.length;
+      rows.add(
+        Padding(
+          padding: EdgeInsets.only(
+            bottom: i + 2 < cells.length ? AppSpacing.md : 0,
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: cells[i]),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(child: isLast ? const SizedBox.shrink() : cells[i + 1]),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Column(children: rows);
   }
 }
 
@@ -1427,12 +1619,14 @@ class _SpecCell extends StatelessWidget {
     required this.label,
     this.value,
     this.valueWidget,
+    this.valueColor,
     required this.labelStyle,
   });
 
   final String label;
   final String? value;
   final Widget? valueWidget;
+  final Color? valueColor;
   final TextStyle labelStyle;
 
   @override
@@ -1448,9 +1642,9 @@ class _SpecCell extends StatelessWidget {
         else
           Text(
             value ?? '—',
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: AppColors.onBackground),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: valueColor ?? AppColors.onBackground,
+            ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
@@ -1460,9 +1654,15 @@ class _SpecCell extends StatelessWidget {
 }
 
 class _HistorySection extends StatelessWidget {
-  const _HistorySection({required this.historyEntries});
+  const _HistorySection({
+    required this.historyEntries,
+    required this.expanded,
+    required this.onExpand,
+  });
 
   final List<_HistoryEntry> historyEntries;
+  final bool expanded;
+  final VoidCallback onExpand;
 
   @override
   Widget build(BuildContext context) {
@@ -1480,7 +1680,24 @@ class _HistorySection extends StatelessWidget {
       );
     }
 
-    return _HistoryTimeline(entries: historyEntries);
+    final showAll = expanded || historyEntries.length <= 5;
+    final visibleEntries =
+        showAll ? historyEntries : historyEntries.take(5).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _HistoryTimeline(entries: visibleEntries),
+        if (!showAll)
+          TextButton(
+            onPressed: onExpand,
+            child: Text(
+              'View all ${historyEntries.length} entries →',
+              style: const TextStyle(color: AppColors.accent),
+            ),
+          ),
+      ],
+    );
   }
 }
 
@@ -1558,6 +1775,64 @@ class _HistoryTimeline extends StatelessWidget {
   }
 }
 
+class _ItemDetailSkeleton extends StatelessWidget {
+  const _ItemDetailSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomScrollView(
+      slivers: [
+        SliverAppBar(
+          pinned: true,
+          backgroundColor: AppColors.background,
+          foregroundColor: AppColors.onBackground,
+          title: Container(
+            width: 120,
+            height: 16,
+            decoration: BoxDecoration(
+              color: AppColors.surfaceVariant,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+        ),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: AppSpacing.md),
+                Container(
+                  height: 220,
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceVariant,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Container(
+                  height: 100,
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceVariant,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Container(
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceVariant,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
 
 class _AiRiskBadge extends StatelessWidget {
   const _AiRiskBadge({required this.score});
@@ -1594,7 +1869,10 @@ class _AiRiskBadge extends StatelessWidget {
           Text(
             '$label · $score/100',
             style: TextStyle(
-                color: color, fontSize: 12, fontWeight: FontWeight.w600),
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
@@ -1605,10 +1883,7 @@ class _AiRiskBadge extends StatelessWidget {
 // ── Fullscreen photo gallery ──────────────────────────────────────────────────
 
 class _FullscreenGallery extends StatefulWidget {
-  const _FullscreenGallery({
-    required this.photos,
-    required this.initialIndex,
-  });
+  const _FullscreenGallery({required this.photos, required this.initialIndex});
 
   final List<String> photos;
   final int initialIndex;
@@ -1648,21 +1923,27 @@ class _FullscreenGalleryState extends State<_FullscreenGallery> {
           PageView.builder(
             controller: _ctrl,
             itemCount: widget.photos.length,
-            itemBuilder: (_, i) => InteractiveViewer(
-              minScale: 0.8,
-              maxScale: 4.0,
-              child: CachedNetworkImage(
-                imageUrl: widget.photos[i],
-                fit: BoxFit.contain,
-                placeholder: (_, _) => const Center(
-                  child: CircularProgressIndicator(strokeWidth: 2),
+            itemBuilder:
+                (_, i) => InteractiveViewer(
+                  minScale: 0.8,
+                  maxScale: 4.0,
+                  child: CachedNetworkImage(
+                    imageUrl: widget.photos[i],
+                    fit: BoxFit.contain,
+                    placeholder:
+                        (_, _) => const Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                    errorWidget:
+                        (_, _, _) => const Center(
+                          child: Icon(
+                            Icons.broken_image_outlined,
+                            color: Colors.white38,
+                            size: 64,
+                          ),
+                        ),
+                  ),
                 ),
-                errorWidget: (_, _, _) => const Center(
-                  child: Icon(Icons.broken_image_outlined,
-                      color: Colors.white38, size: 64),
-                ),
-              ),
-            ),
           ),
           // Close button
           SafeArea(
@@ -1697,8 +1978,9 @@ class _FullscreenGalleryState extends State<_FullscreenGallery> {
                     height: 8,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(4),
-                      color: Colors.white
-                          .withValues(alpha: i == _current ? 1.0 : 0.4),
+                      color: Colors.white.withValues(
+                        alpha: i == _current ? 1.0 : 0.4,
+                      ),
                     ),
                   ),
                 ),

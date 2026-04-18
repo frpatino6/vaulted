@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/loading_skeleton.dart';
 import '../data/outfit_model.dart';
 import '../domain/outfit_notifier.dart';
 
@@ -12,7 +13,9 @@ class OutfitListScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final AsyncValue<List<OutfitModel>> state = ref.watch(outfitNotifierProvider);
+    final AsyncValue<List<OutfitModel>> state = ref.watch(
+      outfitNotifierProvider,
+    );
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -33,16 +36,18 @@ class OutfitListScreen extends ConsumerWidget {
           }
 
           return RefreshIndicator(
-            onRefresh: () => ref.read(outfitNotifierProvider.notifier).refresh(),
+            onRefresh:
+                () => ref.read(outfitNotifierProvider.notifier).refresh(),
             child: ListView.separated(
               padding: const EdgeInsets.all(AppSpacing.md),
               itemBuilder: (BuildContext context, int index) {
                 final OutfitModel outfit = outfits[index];
-                final List<String> thumbnails = outfit.items
-                    .map((OutfitItemPreviewModel item) => item.photo)
-                    .whereType<String>()
-                    .take(3)
-                    .toList();
+                final List<String> thumbnails =
+                    outfit.items
+                        .map((OutfitItemPreviewModel item) => item.photo)
+                        .whereType<String>()
+                        .take(3)
+                        .toList();
                 return InkWell(
                   onTap: () => context.push('/wardrobe/outfits/${outfit.id}'),
                   child: Container(
@@ -57,17 +62,15 @@ class OutfitListScreen extends ConsumerWidget {
                       children: [
                         Text(
                           outfit.name,
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                color: AppColors.onBackground,
-                              ),
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(color: AppColors.onBackground),
                         ),
-                        if (outfit.description != null && outfit.description!.isNotEmpty) ...[
+                        if (outfit.description != null &&
+                            outfit.description!.isNotEmpty) ...[
                           const SizedBox(height: AppSpacing.xs),
                           Text(
                             outfit.description!,
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
+                            style: Theme.of(context).textTheme.bodySmall
                                 ?.copyWith(color: AppColors.onSurfaceVariant),
                           ),
                         ],
@@ -75,30 +78,40 @@ class OutfitListScreen extends ConsumerWidget {
                         SizedBox(
                           height: 56,
                           child: Row(
-                            children: List<Widget>.generate(3, (int thumbIndex) {
+                            children: List<Widget>.generate(3, (
+                              int thumbIndex,
+                            ) {
                               final String? image =
-                                  thumbIndex < thumbnails.length ? thumbnails[thumbIndex] : null;
+                                  thumbIndex < thumbnails.length
+                                      ? thumbnails[thumbIndex]
+                                      : null;
                               return Padding(
-                                padding: const EdgeInsets.only(right: AppSpacing.sm),
+                                padding: const EdgeInsets.only(
+                                  right: AppSpacing.sm,
+                                ),
                                 child: ClipRRect(
                                   borderRadius: BorderRadius.circular(8),
                                   child: Container(
                                     width: 56,
                                     height: 56,
                                     color: AppColors.background,
-                                    child: image == null
-                                        ? const Icon(
-                                            Icons.checkroom,
-                                            color: AppColors.onSurfaceVariant,
-                                          )
-                                        : CachedNetworkImage(
-                                            imageUrl: image,
-                                            fit: BoxFit.cover,
-                                            errorWidget: (_, __, ___) => const Icon(
-                                              Icons.broken_image_outlined,
+                                    child:
+                                        image == null
+                                            ? const Icon(
+                                              Icons.checkroom,
                                               color: AppColors.onSurfaceVariant,
+                                            )
+                                            : CachedNetworkImage(
+                                              imageUrl: image,
+                                              fit: BoxFit.cover,
+                                              errorWidget:
+                                                  (_, _, _) => const Icon(
+                                                    Icons.broken_image_outlined,
+                                                    color:
+                                                        AppColors
+                                                            .onSurfaceVariant,
+                                                  ),
                                             ),
-                                          ),
                                   ),
                                 ),
                               );
@@ -110,13 +123,14 @@ class OutfitListScreen extends ConsumerWidget {
                   ),
                 );
               },
-              separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+              separatorBuilder:
+                  (_, _) => const SizedBox(height: AppSpacing.sm),
               itemCount: outfits.length,
             ),
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, __) => const Center(child: Text('Unable to load outfits')),
+        loading: () => const AppScreenSkeleton(showHeader: false),
+        error: (_, _) => const Center(child: Text('Unable to load outfits')),
       ),
     );
   }

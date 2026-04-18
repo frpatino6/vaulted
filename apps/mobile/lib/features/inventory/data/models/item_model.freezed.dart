@@ -73,22 +73,26 @@ class _$ItemValuationModelCopyWithImpl<$Res, $Val extends ItemValuationModel>
   }) {
     return _then(
       _value.copyWith(
-            purchasePrice: null == purchasePrice
-                ? _value.purchasePrice
-                : purchasePrice // ignore: cast_nullable_to_non_nullable
-                      as int,
-            currentValue: null == currentValue
-                ? _value.currentValue
-                : currentValue // ignore: cast_nullable_to_non_nullable
-                      as int,
-            currency: null == currency
-                ? _value.currency
-                : currency // ignore: cast_nullable_to_non_nullable
-                      as String,
-            purchaseDate: freezed == purchaseDate
-                ? _value.purchaseDate
-                : purchaseDate // ignore: cast_nullable_to_non_nullable
-                      as DateTime?,
+            purchasePrice:
+                null == purchasePrice
+                    ? _value.purchasePrice
+                    : purchasePrice // ignore: cast_nullable_to_non_nullable
+                        as int,
+            currentValue:
+                null == currentValue
+                    ? _value.currentValue
+                    : currentValue // ignore: cast_nullable_to_non_nullable
+                        as int,
+            currency:
+                null == currency
+                    ? _value.currency
+                    : currency // ignore: cast_nullable_to_non_nullable
+                        as String,
+            purchaseDate:
+                freezed == purchaseDate
+                    ? _value.purchaseDate
+                    : purchaseDate // ignore: cast_nullable_to_non_nullable
+                        as DateTime?,
           )
           as $Val,
     );
@@ -133,22 +137,26 @@ class __$$ItemValuationModelImplCopyWithImpl<$Res>
   }) {
     return _then(
       _$ItemValuationModelImpl(
-        purchasePrice: null == purchasePrice
-            ? _value.purchasePrice
-            : purchasePrice // ignore: cast_nullable_to_non_nullable
-                  as int,
-        currentValue: null == currentValue
-            ? _value.currentValue
-            : currentValue // ignore: cast_nullable_to_non_nullable
-                  as int,
-        currency: null == currency
-            ? _value.currency
-            : currency // ignore: cast_nullable_to_non_nullable
-                  as String,
-        purchaseDate: freezed == purchaseDate
-            ? _value.purchaseDate
-            : purchaseDate // ignore: cast_nullable_to_non_nullable
-                  as DateTime?,
+        purchasePrice:
+            null == purchasePrice
+                ? _value.purchasePrice
+                : purchasePrice // ignore: cast_nullable_to_non_nullable
+                    as int,
+        currentValue:
+            null == currentValue
+                ? _value.currentValue
+                : currentValue // ignore: cast_nullable_to_non_nullable
+                    as int,
+        currency:
+            null == currency
+                ? _value.currency
+                : currency // ignore: cast_nullable_to_non_nullable
+                    as String,
+        purchaseDate:
+            freezed == purchaseDate
+                ? _value.purchaseDate
+                : purchaseDate // ignore: cast_nullable_to_non_nullable
+                    as DateTime?,
       ),
     );
   }
@@ -356,78 +364,96 @@ class _$ItemModelCopyWithImpl<$Res, $Val extends ItemModel>
   }) {
     return _then(
       _value.copyWith(
-            id: null == id
-                ? _value.id
-                : id // ignore: cast_nullable_to_non_nullable
-                      as String,
-            name: null == name
-                ? _value.name
-                : name // ignore: cast_nullable_to_non_nullable
-                      as String,
-            propertyId: freezed == propertyId
-                ? _value.propertyId
-                : propertyId // ignore: cast_nullable_to_non_nullable
-                      as String?,
-            propertyName: freezed == propertyName
-                ? _value.propertyName
-                : propertyName // ignore: cast_nullable_to_non_nullable
-                      as String?,
-            roomId: freezed == roomId
-                ? _value.roomId
-                : roomId // ignore: cast_nullable_to_non_nullable
-                      as String?,
-            roomName: freezed == roomName
-                ? _value.roomName
-                : roomName // ignore: cast_nullable_to_non_nullable
-                      as String?,
-            category: null == category
-                ? _value.category
-                : category // ignore: cast_nullable_to_non_nullable
-                      as String,
-            subcategory: null == subcategory
-                ? _value.subcategory
-                : subcategory // ignore: cast_nullable_to_non_nullable
-                      as String,
-            status: null == status
-                ? _value.status
-                : status // ignore: cast_nullable_to_non_nullable
-                      as String,
-            photos: null == photos
-                ? _value.photos
-                : photos // ignore: cast_nullable_to_non_nullable
-                      as List<String>,
-            tags: null == tags
-                ? _value.tags
-                : tags // ignore: cast_nullable_to_non_nullable
-                      as List<String>,
-            serialNumber: freezed == serialNumber
-                ? _value.serialNumber
-                : serialNumber // ignore: cast_nullable_to_non_nullable
-                      as String?,
-            locationDetail: freezed == locationDetail
-                ? _value.locationDetail
-                : locationDetail // ignore: cast_nullable_to_non_nullable
-                      as String?,
-            valuation: freezed == valuation
-                ? _value.valuation
-                : valuation // ignore: cast_nullable_to_non_nullable
-                      as ItemValuationModel?,
-            attributes: freezed == attributes
-                ? _value.attributes
-                : attributes // ignore: cast_nullable_to_non_nullable
-                      as Map<String, dynamic>?,
-            documents: null == documents
-                ? _value.documents
-                : documents // ignore: cast_nullable_to_non_nullable
-                      as List<String>,
-            createdAt: freezed == createdAt
-                ? _value.createdAt
-                : createdAt // ignore: cast_nullable_to_non_nullable
-                      as String?,
-            qrCode: freezed == qrCode
-                ? _value.qrCode
-                : qrCode // ignore: cast_nullable_to_non_nullable
-                      as String?,
+            id:
+                null == id
+                    ? _value.id
+                    : id // ignore: cast_nullable_to_non_nullable
+                        as String,
+            name:
+                null == name
+                    ? _value.name
+                    : name // ignore: cast_nullable_to_non_nullable
+                        as String,
+            propertyId:
+                freezed == propertyId
+                    ? _value.propertyId
+                    : propertyId // ignore: cast_nullable_to_non_nullable
+                        as String?,
+            propertyName:
+                freezed == propertyName
+                    ? _value.propertyName
+                    : propertyName // ignore: cast_nullable_to_non_nullable
+                        as String?,
+            roomId:
+                freezed == roomId
+                    ? _value.roomId
+                    : roomId // ignore: cast_nullable_to_non_nullable
+                        as String?,
+            roomName:
+                freezed == roomName
+                    ? _value.roomName
+                    : roomName // ignore: cast_nullable_to_non_nullable
+                        as String?,
+            category:
+                null == category
+                    ? _value.category
+                    : category // ignore: cast_nullable_to_non_nullable
+                        as String,
+            subcategory:
+                null == subcategory
+                    ? _value.subcategory
+                    : subcategory // ignore: cast_nullable_to_non_nullable
+                        as String,
+            status:
+                null == status
+                    ? _value.status
+                    : status // ignore: cast_nullable_to_non_nullable
+                        as String,
+            photos:
+                null == photos
+                    ? _value.photos
+                    : photos // ignore: cast_nullable_to_non_nullable
+                        as List<String>,
+            tags:
+                null == tags
+                    ? _value.tags
+                    : tags // ignore: cast_nullable_to_non_nullable
+                        as List<String>,
+            serialNumber:
+                freezed == serialNumber
+                    ? _value.serialNumber
+                    : serialNumber // ignore: cast_nullable_to_non_nullable
+                        as String?,
+            locationDetail:
+                freezed == locationDetail
+                    ? _value.locationDetail
+                    : locationDetail // ignore: cast_nullable_to_non_nullable
+                        as String?,
+            valuation:
+                freezed == valuation
+                    ? _value.valuation
+                    : valuation // ignore: cast_nullable_to_non_nullable
+                        as ItemValuationModel?,
+            attributes:
+                freezed == attributes
+                    ? _value.attributes
+                    : attributes // ignore: cast_nullable_to_non_nullable
+                        as Map<String, dynamic>?,
+            documents:
+                null == documents
+                    ? _value.documents
+                    : documents // ignore: cast_nullable_to_non_nullable
+                        as List<String>,
+            createdAt:
+                freezed == createdAt
+                    ? _value.createdAt
+                    : createdAt // ignore: cast_nullable_to_non_nullable
+                        as String?,
+            qrCode:
+                freezed == qrCode
+                    ? _value.qrCode
+                    : qrCode // ignore: cast_nullable_to_non_nullable
+                        as String?,
           )
           as $Val,
     );
@@ -517,78 +543,96 @@ class __$$ItemModelImplCopyWithImpl<$Res>
   }) {
     return _then(
       _$ItemModelImpl(
-        id: null == id
-            ? _value.id
-            : id // ignore: cast_nullable_to_non_nullable
-                  as String,
-        name: null == name
-            ? _value.name
-            : name // ignore: cast_nullable_to_non_nullable
-                  as String,
-        propertyId: freezed == propertyId
-            ? _value.propertyId
-            : propertyId // ignore: cast_nullable_to_non_nullable
-                  as String?,
-        propertyName: freezed == propertyName
-            ? _value.propertyName
-            : propertyName // ignore: cast_nullable_to_non_nullable
-                  as String?,
-        roomId: freezed == roomId
-            ? _value.roomId
-            : roomId // ignore: cast_nullable_to_non_nullable
-                  as String?,
-        roomName: freezed == roomName
-            ? _value.roomName
-            : roomName // ignore: cast_nullable_to_non_nullable
-                  as String?,
-        category: null == category
-            ? _value.category
-            : category // ignore: cast_nullable_to_non_nullable
-                  as String,
-        subcategory: null == subcategory
-            ? _value.subcategory
-            : subcategory // ignore: cast_nullable_to_non_nullable
-                  as String,
-        status: null == status
-            ? _value.status
-            : status // ignore: cast_nullable_to_non_nullable
-                  as String,
-        photos: null == photos
-            ? _value._photos
-            : photos // ignore: cast_nullable_to_non_nullable
-                  as List<String>,
-        tags: null == tags
-            ? _value._tags
-            : tags // ignore: cast_nullable_to_non_nullable
-                  as List<String>,
-        serialNumber: freezed == serialNumber
-            ? _value.serialNumber
-            : serialNumber // ignore: cast_nullable_to_non_nullable
-                  as String?,
-        locationDetail: freezed == locationDetail
-            ? _value.locationDetail
-            : locationDetail // ignore: cast_nullable_to_non_nullable
-                  as String?,
-        valuation: freezed == valuation
-            ? _value.valuation
-            : valuation // ignore: cast_nullable_to_non_nullable
-                  as ItemValuationModel?,
-        attributes: freezed == attributes
-            ? _value._attributes
-            : attributes // ignore: cast_nullable_to_non_nullable
-                  as Map<String, dynamic>?,
-        documents: null == documents
-            ? _value._documents
-            : documents // ignore: cast_nullable_to_non_nullable
-                  as List<String>,
-        createdAt: freezed == createdAt
-            ? _value.createdAt
-            : createdAt // ignore: cast_nullable_to_non_nullable
-                  as String?,
-        qrCode: freezed == qrCode
-            ? _value.qrCode
-            : qrCode // ignore: cast_nullable_to_non_nullable
-                  as String?,
+        id:
+            null == id
+                ? _value.id
+                : id // ignore: cast_nullable_to_non_nullable
+                    as String,
+        name:
+            null == name
+                ? _value.name
+                : name // ignore: cast_nullable_to_non_nullable
+                    as String,
+        propertyId:
+            freezed == propertyId
+                ? _value.propertyId
+                : propertyId // ignore: cast_nullable_to_non_nullable
+                    as String?,
+        propertyName:
+            freezed == propertyName
+                ? _value.propertyName
+                : propertyName // ignore: cast_nullable_to_non_nullable
+                    as String?,
+        roomId:
+            freezed == roomId
+                ? _value.roomId
+                : roomId // ignore: cast_nullable_to_non_nullable
+                    as String?,
+        roomName:
+            freezed == roomName
+                ? _value.roomName
+                : roomName // ignore: cast_nullable_to_non_nullable
+                    as String?,
+        category:
+            null == category
+                ? _value.category
+                : category // ignore: cast_nullable_to_non_nullable
+                    as String,
+        subcategory:
+            null == subcategory
+                ? _value.subcategory
+                : subcategory // ignore: cast_nullable_to_non_nullable
+                    as String,
+        status:
+            null == status
+                ? _value.status
+                : status // ignore: cast_nullable_to_non_nullable
+                    as String,
+        photos:
+            null == photos
+                ? _value._photos
+                : photos // ignore: cast_nullable_to_non_nullable
+                    as List<String>,
+        tags:
+            null == tags
+                ? _value._tags
+                : tags // ignore: cast_nullable_to_non_nullable
+                    as List<String>,
+        serialNumber:
+            freezed == serialNumber
+                ? _value.serialNumber
+                : serialNumber // ignore: cast_nullable_to_non_nullable
+                    as String?,
+        locationDetail:
+            freezed == locationDetail
+                ? _value.locationDetail
+                : locationDetail // ignore: cast_nullable_to_non_nullable
+                    as String?,
+        valuation:
+            freezed == valuation
+                ? _value.valuation
+                : valuation // ignore: cast_nullable_to_non_nullable
+                    as ItemValuationModel?,
+        attributes:
+            freezed == attributes
+                ? _value._attributes
+                : attributes // ignore: cast_nullable_to_non_nullable
+                    as Map<String, dynamic>?,
+        documents:
+            null == documents
+                ? _value._documents
+                : documents // ignore: cast_nullable_to_non_nullable
+                    as List<String>,
+        createdAt:
+            freezed == createdAt
+                ? _value.createdAt
+                : createdAt // ignore: cast_nullable_to_non_nullable
+                    as String?,
+        qrCode:
+            freezed == qrCode
+                ? _value.qrCode
+                : qrCode // ignore: cast_nullable_to_non_nullable
+                    as String?,
       ),
     );
   }

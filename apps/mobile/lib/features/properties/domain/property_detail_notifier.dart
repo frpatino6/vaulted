@@ -36,6 +36,34 @@ class PropertyDetailNotifier extends AsyncNotifier<PropertyModel?> {
     }
   }
 
+  Future<PropertyModel?> updateFloor(String floorId, String name) async {
+    final id = _propertyId;
+    if (id == null) return null;
+    try {
+      final property = await ref
+          .read(propertyRepositoryProvider)
+          .updateFloor(id, floorId, name);
+      state = AsyncData(property);
+      return property;
+    } catch (_) {
+      rethrow;
+    }
+  }
+
+  Future<PropertyModel?> deleteFloor(String floorId) async {
+    final id = _propertyId;
+    if (id == null) return null;
+    try {
+      final property = await ref
+          .read(propertyRepositoryProvider)
+          .deleteFloor(id, floorId);
+      state = AsyncData(property);
+      return property;
+    } catch (_) {
+      rethrow;
+    }
+  }
+
   Future<PropertyModel?> addRoom(
     String floorId,
     String name,
@@ -47,6 +75,39 @@ class PropertyDetailNotifier extends AsyncNotifier<PropertyModel?> {
       final property = await ref
           .read(propertyRepositoryProvider)
           .addRoom(id, floorId, name, type);
+      state = AsyncData(property);
+      return property;
+    } catch (_) {
+      rethrow;
+    }
+  }
+
+  Future<PropertyModel?> updateRoom(
+    String floorId,
+    String roomId,
+    String name,
+    String type,
+  ) async {
+    final id = _propertyId;
+    if (id == null) return null;
+    try {
+      final property = await ref
+          .read(propertyRepositoryProvider)
+          .updateRoom(id, floorId, roomId, name, type);
+      state = AsyncData(property);
+      return property;
+    } catch (_) {
+      rethrow;
+    }
+  }
+
+  Future<PropertyModel?> deleteRoom(String floorId, String roomId) async {
+    final id = _propertyId;
+    if (id == null) return null;
+    try {
+      final property = await ref
+          .read(propertyRepositoryProvider)
+          .deleteRoom(id, floorId, roomId);
       state = AsyncData(property);
       return property;
     } catch (_) {

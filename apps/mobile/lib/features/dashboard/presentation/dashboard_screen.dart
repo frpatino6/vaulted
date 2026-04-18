@@ -20,6 +20,9 @@ import '../data/models/dashboard_model.dart';
 import '../domain/dashboard_notifier.dart';
 import '../../movements/data/models/movement_model.dart';
 import '../../movements/domain/movement_list_notifier.dart';
+import '../../../features/presence/presentation/widgets/online_users_count.dart';
+import '../../../shared/widgets/loading_skeleton.dart';
+import '../../../shared/widgets/app_bottom_nav.dart';
 
 /// Dashboard: clean welcome header, Quick Actions grid, recent property cards.
 class DashboardScreen extends ConsumerWidget {
@@ -35,136 +38,232 @@ class DashboardScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.backgroundElevated,
-      body: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(child: _DashboardHeader()),
-          // Stats section — only shown when data is available
-          if (dashboardState.hasValue && dashboardState.value != null)
+      bottomNavigationBar: const AppBottomNav(currentTab: AppTab.home),
+      body: RefreshIndicator(
+        color: AppColors.accent,
+        onRefresh: () async {
+          ref.read(propertiesNotifierProvider.notifier).load();
+          ref.read(dashboardNotifierProvider.notifier).load();
+          ref.read(maintenanceListNotifierProvider.notifier).load();
+          ref.read(movementListNotifierProvider.notifier).load();
+        },
+        child: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(child: _DashboardHeader()),
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(
                   AppSpacing.md,
-                  AppSpacing.lg,
+                  AppSpacing.sm,
                   AppSpacing.md,
                   0,
                 ),
-                child: _StatsSection(
-                  data: dashboardState.value!,
-                  canSeeValues: canSeeValues,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    OnlineUsersCount(),
+                  ],
                 ),
               ),
             ),
-          const SliverToBoxAdapter(child: _MaintenanceAlertCard()),
-          const SliverToBoxAdapter(child: _ActiveOperationsCard()),
-          const SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(
-                AppSpacing.md,
-                AppSpacing.lg,
-                AppSpacing.md,
-                AppSpacing.md,
-              ),
-              child: DashboardQuickActions(),
-            ),
-          ),
-          propertiesState.when(
-            data: (list) {
-              if (list.isEmpty) {
-                if (!canManageProperties) {
-                  return SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.md,
-                        0,
-                        AppSpacing.md,
-                        AppSpacing.lg,
-                      ),
-                      child: Center(
-                        child: Text(
-                          'No properties assigned to your account',
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(color: AppColors.onSurfaceVariant),
-                        ),
-                      ),
-                    ),
-                  );
-                }
-                return SliverToBoxAdapter(
-                  child: _EmptyPropertiesCta(
-                    onAddProperty: () => _showAddPropertySheet(context, ref),
-                  ),
-                );
-              }
-              return SliverToBoxAdapter(
+            // Stats section — loading skeleton or real data
+            if (dashboardState.isLoading)
+              SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(
                     AppSpacing.md,
-                    0,
-                    AppSpacing.md,
                     AppSpacing.lg,
+                    AppSpacing.md,
+                    0,
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Text(
-                            'RECENT PROPERTIES',
-                            style: Theme.of(context).textTheme.titleSmall
-                                ?.copyWith(
-                                  color: AppColors.onSurfaceVariant.withValues(
-                                    alpha: 0.6,
-                                  ),
-                                  fontSize: 12.0,
-                                  letterSpacing: 1.5,
-                                ),
+                      Expanded(
+                        child: Container(
+                          height: 80,
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceVariant,
+                            borderRadius: BorderRadius.circular(16),
                           ),
-                          if (canManageProperties)
-                            TextButton.icon(
-                              onPressed: () =>
-                                  _showAddPropertySheet(context, ref),
-                              icon: Icon(
-                                Icons.add,
-                                size: 18,
-                                color: AppColors.accent,
-                              ),
-                              label: Text(
-                                'Add',
-                                style: TextStyle(
-                                  color: AppColors.accent,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                        ],
+                        ),
                       ),
-                      const SizedBox(height: AppSpacing.sm),
-                      ...list.map(
-                        (p) => Padding(
-                          padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                          child: DashboardPropertyCard(
-                            property: p,
-                            itemCount: null,
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Container(
+                          height: 80,
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceVariant,
+                            borderRadius: BorderRadius.circular(16),
                           ),
                         ),
                       ),
                     ],
                   ),
                 ),
-              );
-            },
-            loading: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
-            error: (_, _) => const SliverToBoxAdapter(child: SizedBox.shrink()),
-          ),
-          const SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.all(AppSpacing.lg),
-              child: Center(child: _FooterText()),
+              )
+            else if (dashboardState.hasValue && dashboardState.value != null)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.md,
+                    AppSpacing.lg,
+                    AppSpacing.md,
+                    0,
+                  ),
+                  child: _StatsSection(
+                    data: dashboardState.value!,
+                    canSeeValues: canSeeValues,
+                  ),
+                ),
+              ),
+            const SliverToBoxAdapter(child: _MaintenanceAlertCard()),
+            const SliverToBoxAdapter(child: _ActiveOperationsCard()),
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  AppSpacing.md,
+                  AppSpacing.lg,
+                  AppSpacing.md,
+                  AppSpacing.md,
+                ),
+                child: DashboardQuickActions(),
+              ),
             ),
-          ),
-        ],
+            propertiesState.when(
+              data: (list) {
+                if (list.isEmpty) {
+                  if (!canManageProperties) {
+                    return SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.md,
+                          0,
+                          AppSpacing.md,
+                          AppSpacing.lg,
+                        ),
+                        child: Center(
+                          child: Text(
+                            'No properties assigned to your account',
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(color: AppColors.onSurfaceVariant),
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+                  return SliverToBoxAdapter(
+                    child: _EmptyPropertiesCta(
+                      onAddProperty: () => _showAddPropertySheet(context, ref),
+                    ),
+                  );
+                }
+                return SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.md,
+                      0,
+                      AppSpacing.md,
+                      AppSpacing.lg,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Text(
+                              'YOUR PROPERTIES',
+                              style: Theme.of(
+                                context,
+                              ).textTheme.titleSmall?.copyWith(
+                                color: AppColors.onSurfaceVariant.withValues(
+                                  alpha: 0.6,
+                                ),
+                                fontSize: 12.0,
+                                letterSpacing: 1.5,
+                              ),
+                            ),
+                            if (canManageProperties)
+                              TextButton.icon(
+                                onPressed:
+                                    () => _showAddPropertySheet(context, ref),
+                                icon: Icon(
+                                  Icons.add,
+                                  size: 18,
+                                  color: AppColors.accent,
+                                ),
+                                label: Text(
+                                  'Add',
+                                  style: TextStyle(
+                                    color: AppColors.accent,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        ...list.map(
+                          (p) => Padding(
+                            padding: const EdgeInsets.only(
+                              bottom: AppSpacing.md,
+                            ),
+                            child: DashboardPropertyCard(
+                              property: p,
+                              itemCount: null,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+              loading:
+                  () => const SliverToBoxAdapter(
+                    child: AppScreenSkeleton(
+                      showHeader: false,
+                      scrollable: false,
+                      cardCount: 2,
+                    ),
+                  ),
+              error:
+                  (_, _) => SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      child: Center(
+                        child: Column(
+                          children: [
+                            Text(
+                              'Could not load properties',
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: AppColors.onSurfaceVariant),
+                            ),
+                            TextButton(
+                              onPressed:
+                                  () =>
+                                      ref
+                                          .read(
+                                            propertiesNotifierProvider.notifier,
+                                          )
+                                          .load(),
+                              child: const Text('Retry'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+            ),
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.all(AppSpacing.lg),
+                child: Center(child: _FooterText()),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -262,12 +361,21 @@ class _DashboardHeader extends ConsumerWidget {
     final email = _emailFromJwt() ?? 'Guest';
     final role = currentUserRole() ?? 'guest';
     final hour = DateTime.now().hour;
-    final greeting = hour < 12
-        ? 'Good morning,'
-        : hour < 18
-        ? 'Good afternoon,'
-        : 'Good evening,';
-    final firstName = email.split('@').first;
+    final greeting =
+        hour < 12
+            ? 'Good morning,'
+            : hour < 18
+            ? 'Good afternoon,'
+            : 'Good evening,';
+
+    // D4: try name claim from JWT first, fall back to capitalized email prefix
+    final firstName =
+        _firstNameFromJwt() ??
+        () {
+          final prefix = email.split('@').first;
+          if (prefix.isEmpty) return 'Guest';
+          return prefix[0].toUpperCase() + prefix.substring(1);
+        }();
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(
@@ -300,26 +408,33 @@ class _DashboardHeader extends ConsumerWidget {
               ],
             ),
           ),
-          GestureDetector(
-            onTap: () => _showUserMenu(context, ref, email, role),
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white10,
-                border: Border.all(
-                  color: AppColors.accent.withValues(alpha: 0.6),
-                  width: 1,
-                ),
-              ),
-              child: Center(
-                child: Text(
-                  email.isNotEmpty ? email[0].toUpperCase() : '?',
-                  style: TextStyle(
-                    color: AppColors.accentBright,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 16,
+          // D2: 48dp touch target wrapping the 40dp avatar container
+          SizedBox(
+            width: 48,
+            height: 48,
+            child: Center(
+              child: GestureDetector(
+                onTap: () => _showUserMenu(context, ref, email, role),
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white10,
+                    border: Border.all(
+                      color: AppColors.accent.withValues(alpha: 0.6),
+                      width: 1,
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      email.isNotEmpty ? email[0].toUpperCase() : '?',
+                      style: TextStyle(
+                        color: AppColors.accentBright,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -345,6 +460,27 @@ class _DashboardHeader extends ConsumerWidget {
     }
   }
 
+  /// D4: extract the name claim from the JWT payload.
+  String? _firstNameFromJwt() {
+    final token = AuthTokenStore.instance.getToken();
+    if (token == null) return null;
+    final parts = token.split('.');
+    if (parts.length != 3) return null;
+    try {
+      final payload = utf8.decode(
+        base64Url.decode(base64Url.normalize(parts[1])),
+      );
+      final decoded = jsonDecode(payload) as Map<String, dynamic>;
+      final name = decoded['name'] as String?;
+      if (name == null || name.trim().isEmpty) return null;
+      final first = name.trim().split(' ').first;
+      if (first.isEmpty) return null;
+      return first[0].toUpperCase() + first.substring(1);
+    } catch (_) {
+      return null;
+    }
+  }
+
   void _showUserMenu(
     BuildContext context,
     WidgetRef ref,
@@ -357,131 +493,133 @@ class _DashboardHeader extends ConsumerWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (ctx) => SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.md,
-            AppSpacing.lg,
-            AppSpacing.md,
-            AppSpacing.md,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.onSurfaceVariant.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(2),
-                ),
+      builder:
+          (ctx) => SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                AppSpacing.lg,
+                AppSpacing.md,
+                AppSpacing.md,
               ),
-              const SizedBox(height: AppSpacing.lg),
-              Row(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    width: 48,
-                    height: 48,
+                    width: 40,
+                    height: 4,
                     decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.accent.withValues(alpha: 0.15),
-                      border: Border.all(
-                        color: AppColors.accent.withValues(alpha: 0.4),
-                      ),
-                    ),
-                    child: Center(
-                      child: Text(
-                        email.isNotEmpty ? email[0].toUpperCase() : '?',
-                        style: TextStyle(
-                          color: AppColors.accent,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 20,
-                        ),
-                      ),
+                      color: AppColors.onSurfaceVariant.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          email,
-                          style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
-                            color: AppColors.onBackground,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          role[0].toUpperCase() + role.substring(1),
-                          style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
-                            color: AppColors.accent,
+                  const SizedBox(height: AppSpacing.lg),
+                  Row(
+                    children: [
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.accent.withValues(alpha: 0.15),
+                          border: Border.all(
+                            color: AppColors.accent.withValues(alpha: 0.4),
                           ),
                         ),
-                      ],
+                        child: Center(
+                          child: Text(
+                            email.isNotEmpty ? email[0].toUpperCase() : '?',
+                            style: TextStyle(
+                              color: AppColors.accent,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 20,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              email,
+                              style: Theme.of(
+                                ctx,
+                              ).textTheme.bodyMedium?.copyWith(
+                                color: AppColors.onBackground,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              role[0].toUpperCase() + role.substring(1),
+                              style: Theme.of(ctx).textTheme.bodySmall
+                                  ?.copyWith(color: AppColors.accent),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  const Divider(color: Colors.white10),
+                  ListTile(
+                    leading: Icon(
+                      Icons.build_circle_outlined,
+                      color: AppColors.onSurfaceVariant,
                     ),
+                    title: Text(
+                      'Maintenance',
+                      style: Theme.of(ctx).textTheme.bodyLarge?.copyWith(
+                        color: AppColors.onBackground,
+                      ),
+                    ),
+                    onTap: () {
+                      Navigator.of(ctx).pop();
+                      context.push('/maintenance');
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(
+                      Icons.settings_outlined,
+                      color: AppColors.onSurfaceVariant,
+                    ),
+                    title: Text(
+                      'Settings',
+                      style: Theme.of(ctx).textTheme.bodyLarge?.copyWith(
+                        color: AppColors.onBackground,
+                      ),
+                    ),
+                    onTap: () {
+                      Navigator.of(ctx).pop();
+                      context.push('/settings');
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.logout, color: AppColors.error),
+                    title: Text(
+                      'Sign out',
+                      style: Theme.of(
+                        ctx,
+                      ).textTheme.bodyLarge?.copyWith(color: AppColors.error),
+                    ),
+                    onTap: () async {
+                      Navigator.of(ctx).pop();
+                      await ref.read(authNotifierProvider.notifier).logout();
+                    },
                   ),
                 ],
               ),
-              const SizedBox(height: AppSpacing.lg),
-              const Divider(color: Colors.white10),
-              ListTile(
-                leading: Icon(
-                  Icons.build_circle_outlined,
-                  color: AppColors.onSurfaceVariant,
-                ),
-                title: Text(
-                  'Maintenance',
-                  style: Theme.of(ctx).textTheme.bodyLarge?.copyWith(
-                    color: AppColors.onBackground,
-                  ),
-                ),
-                onTap: () {
-                  Navigator.of(ctx).pop();
-                  context.push('/maintenance');
-                },
-              ),
-              ListTile(
-                leading: Icon(
-                  Icons.settings_outlined,
-                  color: AppColors.onSurfaceVariant,
-                ),
-                title: Text(
-                  'Settings',
-                  style: Theme.of(ctx).textTheme.bodyLarge?.copyWith(
-                    color: AppColors.onBackground,
-                  ),
-                ),
-                onTap: () {
-                  Navigator.of(ctx).pop();
-                  context.push('/settings');
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.logout, color: AppColors.error),
-                title: Text(
-                  'Sign out',
-                  style: Theme.of(
-                    ctx,
-                  ).textTheme.bodyLarge?.copyWith(color: AppColors.error),
-                ),
-                onTap: () async {
-                  Navigator.of(ctx).pop();
-                  await ref.read(authNotifierProvider.notifier).logout();
-                },
-              ),
-            ],
+            ),
           ),
-        ),
-      ),
     );
   }
 }
 
-/// Quick Actions: 2x2 grid, luxury look, equal square cards.
+/// Quick Actions: 2-column grid, luxury look, equal square cards.
 class DashboardQuickActions extends ConsumerWidget {
   const DashboardQuickActions({super.key});
 
@@ -499,49 +637,37 @@ class DashboardQuickActions extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 16.0),
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
-            mainAxisSpacing: 16.0,
-            crossAxisSpacing: 16.0,
-            childAspectRatio: 1.0,
-            padding: EdgeInsets.zero,
-            children: [
-              _QuickActionTile(
-                icon: Icons.qr_code_scanner_outlined,
-                label: 'Scan QR',
-                onTap: () => context.push('/scanner'),
-              ),
-              _QuickActionTile(
-                icon: Icons.auto_awesome_outlined,
-                label: 'AI Assistant',
-                onTap: () => context.push('/chat'),
-              ),
-              _QuickActionTile(
-                icon: Icons.swap_horiz_rounded,
-                label: 'Operations',
-                onTap: () => context.push('/movements'),
-              ),
-              _QuickActionTile(
-                icon: Icons.checkroom_outlined,
-                label: 'Wardrobe',
-                onTap: () => context.push('/wardrobe'),
-              ),
-              _QuickActionTile(
-                icon: Icons.build_circle_outlined,
-                label: 'Maintenance',
-                onTap: () => context.push('/maintenance'),
-              ),
-              _QuickActionTile(
-                icon: Icons.picture_as_pdf_outlined,
-                label: 'Reports',
-                onTap: () => context.push('/reports'),
-              ),
-            ],
-          ),
+        // D1: removed wrapping Padding(all:16) — GridView sits flush with parent padding
+        GridView.count(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisCount: 2,
+          mainAxisSpacing: 16.0,
+          crossAxisSpacing: 16.0,
+          childAspectRatio: 1.0,
+          padding: EdgeInsets.zero,
+          children: [
+            _QuickActionTile(
+              icon: Icons.qr_code_scanner_outlined,
+              label: 'Scan QR',
+              onTap: () => context.push('/scanner'),
+            ),
+            _QuickActionTile(
+              icon: Icons.auto_awesome_outlined,
+              label: 'AI Assistant',
+              onTap: () => context.push('/chat'),
+            ),
+            _QuickActionTile(
+              icon: Icons.swap_horiz_rounded,
+              label: 'Operations',
+              onTap: () => context.push('/movements'),
+            ),
+            _QuickActionTile(
+              icon: Icons.build_circle_outlined,
+              label: 'Maintenance',
+              onTap: () => context.push('/maintenance'),
+            ),
+          ],
         ),
       ],
     );
@@ -571,7 +697,8 @@ class _QuickActionTile extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16.0),
-            color: const Color(0xFF1E1E1E),
+            // D3: replaced const Color(0xFF1E1E1E) → AppColors.surface
+            color: AppColors.surface,
             border: Border.all(color: Colors.white10, width: 0.5),
           ),
           child: Center(
@@ -589,7 +716,8 @@ class _QuickActionTile extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 14.0,
                     fontWeight: FontWeight.w500,
-                    color: Colors.white.withValues(alpha: 0.9),
+                    // D3: replaced Colors.white.withValues(alpha:0.9) → AppColors.onBackground
+                    color: AppColors.onBackground,
                   ),
                 ),
               ],
@@ -602,7 +730,7 @@ class _QuickActionTile extends StatelessWidget {
 }
 
 /// Property card: background image + dark gradient overlay, ClipRRect 20,
-/// name + location at bottom, elegant "Primary" badge with fine gold border.
+/// name + location at bottom, elegant type badge with fine border.
 class DashboardPropertyCard extends StatelessWidget {
   const DashboardPropertyCard({
     super.key,
@@ -621,12 +749,25 @@ class DashboardPropertyCard extends StatelessWidget {
     _ => 'Rental',
   };
 
+  // D8: badge border color per type
+  Color get _typeBadgeBorderColor => switch (property.type) {
+    'primary' => AppColors.accent,
+    'vacation' => const Color(0xFF2196F3),
+    _ => AppColors.onSurfaceVariant,
+  };
+
   String get _location => '${property.address.city}, ${property.address.state}';
 
   @override
   Widget build(BuildContext context) {
     final hasImage = property.photos.isNotEmpty;
     final imageUrl = hasImage ? property.photos.first : null;
+
+    // D8: show badge for primary, vacation, and rental
+    final showBadge =
+        property.type == 'primary' ||
+        property.type == 'vacation' ||
+        property.type == 'rental';
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(20),
@@ -661,7 +802,7 @@ class DashboardPropertyCard extends StatelessWidget {
                   )
                 else
                   _buildPlaceholderGradient(),
-                // Dark gradient overlay for legibility (slightly lighter at bottom so text pops)
+                // Dark gradient overlay for legibility
                 DecoratedBox(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(20),
@@ -677,8 +818,8 @@ class DashboardPropertyCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                // Primary badge (top-right)
-                if (property.type == 'primary')
+                // D8: type badge shown for primary, vacation, and rental
+                if (showBadge)
                   Positioned(
                     top: AppSpacing.md,
                     right: AppSpacing.md,
@@ -691,7 +832,7 @@ class DashboardPropertyCard extends StatelessWidget {
                         color: Colors.black.withValues(alpha: 0.35),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: AppColors.accent.withValues(alpha: 0.8),
+                          color: _typeBadgeBorderColor.withValues(alpha: 0.8),
                           width: 1,
                         ),
                       ),
@@ -722,24 +863,26 @@ class DashboardPropertyCard extends StatelessWidget {
                           children: [
                             Text(
                               property.name,
-                              style: Theme.of(context).textTheme.titleLarge
-                                  ?.copyWith(
-                                    fontSize: 18.0,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.onBackground,
-                                  ),
+                              style: Theme.of(
+                                context,
+                              ).textTheme.titleLarge?.copyWith(
+                                fontSize: 18.0,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.onBackground,
+                              ),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                             ),
                             const SizedBox(height: 4),
                             Text(
                               _location,
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w500,
-                                    fontSize: 13,
-                                  ),
+                              style: Theme.of(
+                                context,
+                              ).textTheme.bodySmall?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w500,
+                                fontSize: 13,
+                              ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -752,12 +895,13 @@ class DashboardPropertyCard extends StatelessWidget {
                           padding: const EdgeInsets.only(bottom: 2),
                           child: Text(
                             '$itemCount items',
-                            style: Theme.of(context).textTheme.labelSmall
-                                ?.copyWith(
-                                  color: Colors.white,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w500,
-                                ),
+                            style: Theme.of(
+                              context,
+                            ).textTheme.labelSmall?.copyWith(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
                       ],
@@ -827,6 +971,7 @@ class _StatsSection extends StatelessWidget {
                   value: _currency.format(data.totalValuation),
                   icon: Icons.account_balance_outlined,
                   highlight: true,
+                  onTap: () => context.push('/assets'),
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
@@ -855,24 +1000,29 @@ class _StatCard extends StatelessWidget {
     required this.value,
     required this.icon,
     this.highlight = false,
+    this.onTap,
   });
 
   final String label;
   final String value;
   final IconData icon;
   final bool highlight;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: AppColors.surfaceVariant,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: highlight
-              ? AppColors.accent.withValues(alpha: 0.3)
-              : AppColors.onSurfaceVariant.withValues(alpha: 0.1),
+          color:
+              highlight
+                  ? AppColors.accent.withValues(alpha: 0.3)
+                  : AppColors.onSurfaceVariant.withValues(alpha: 0.1),
         ),
       ),
       child: Column(
@@ -900,7 +1050,29 @@ class _StatCard extends StatelessWidget {
               fontSize: 10,
             ),
           ),
+          if (onTap != null) ...[
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Text(
+                  'View all',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: AppColors.accent.withValues(alpha: 0.7),
+                    letterSpacing: 0.3,
+                  ),
+                ),
+                const SizedBox(width: 2),
+                Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 8,
+                  color: AppColors.accent.withValues(alpha: 0.7),
+                ),
+              ],
+            ),
+          ],
         ],
+      ),
       ),
     );
   }
@@ -940,27 +1112,31 @@ class _StatusRow extends StatelessWidget {
       child: Wrap(
         spacing: AppSpacing.md,
         runSpacing: AppSpacing.xs,
-        children: entries.map((e) {
-          final color = _statusColors[e.key] ?? AppColors.onSurfaceVariant;
-          return Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 6,
-                height: 6,
-                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-              ),
-              const SizedBox(width: 4),
-              Text(
-                '${e.value} ${e.key}',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: AppColors.onSurface,
-                  fontSize: 11,
-                ),
-              ),
-            ],
-          );
-        }).toList(),
+        children:
+            entries.map((e) {
+              final color = _statusColors[e.key] ?? AppColors.onSurfaceVariant;
+              return Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: color,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${e.value} ${e.key}',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: AppColors.onSurface,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              );
+            }).toList(),
       ),
     );
   }
@@ -1023,13 +1199,21 @@ class _MaintenanceAlertCardState extends ConsumerState<_MaintenanceAlertCard> {
                     Text(
                       'MAINTENANCE ALERTS',
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
+                        color: AppColors.onSurfaceVariant.withValues(
+                          alpha: 0.6,
+                        ),
                         fontSize: 10,
                         letterSpacing: 2.0,
                       ),
                     ),
-                    GestureDetector(
-                      onTap: () => context.push('/maintenance'),
+                    // D6: TextButton replaces GestureDetector
+                    TextButton(
+                      onPressed: () => context.push('/maintenance'),
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.padded,
+                      ),
                       child: Text(
                         'See all →',
                         style: TextStyle(
@@ -1069,7 +1253,11 @@ class _MaintenanceAlertCardState extends ConsumerState<_MaintenanceAlertCard> {
           ),
         );
       },
-      loading: () => const SizedBox.shrink(),
+      loading:
+          () => const Padding(
+            padding: EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            child: AppSkeletonBox(height: 78, radius: 18),
+          ),
       error: (_, _) => const SizedBox.shrink(),
     );
   }
@@ -1087,8 +1275,7 @@ class _ActiveOperationsCard extends ConsumerStatefulWidget {
       _ActiveOperationsCardState();
 }
 
-class _ActiveOperationsCardState
-    extends ConsumerState<_ActiveOperationsCard> {
+class _ActiveOperationsCardState extends ConsumerState<_ActiveOperationsCard> {
   @override
   void initState() {
     super.initState();
@@ -1103,21 +1290,24 @@ class _ActiveOperationsCardState
 
     return state.when(
       data: (movements) {
-        final active = movements
-            .where((m) => m.isDraft || m.isActive)
-            .toList();
+        final active = movements.where((m) => m.isDraft || m.isActive).toList();
         if (active.isEmpty) return const SizedBox.shrink();
 
         return Padding(
           padding: const EdgeInsets.fromLTRB(
-              AppSpacing.md, AppSpacing.lg, AppSpacing.md, 0),
+            AppSpacing.md,
+            AppSpacing.lg,
+            AppSpacing.md,
+            0,
+          ),
           child: Container(
             padding: const EdgeInsets.all(AppSpacing.md),
             decoration: BoxDecoration(
               color: AppColors.surfaceVariant,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                  color: const Color(0xFF2196F3).withValues(alpha: 0.3)),
+                color: const Color(0xFF2196F3).withValues(alpha: 0.3),
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1128,14 +1318,21 @@ class _ActiveOperationsCardState
                     Text(
                       'ACTIVE OPERATIONS',
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: AppColors.onSurfaceVariant
-                                .withValues(alpha: 0.6),
-                            fontSize: 10,
-                            letterSpacing: 2.0,
-                          ),
+                        color: AppColors.onSurfaceVariant.withValues(
+                          alpha: 0.6,
+                        ),
+                        fontSize: 10,
+                        letterSpacing: 2.0,
+                      ),
                     ),
-                    GestureDetector(
-                      onTap: () => context.push('/movements'),
+                    // D6: TextButton replaces GestureDetector
+                    TextButton(
+                      onPressed: () => context.push('/movements'),
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.padded,
+                      ),
                       child: Text(
                         'See all →',
                         style: TextStyle(
@@ -1155,7 +1352,9 @@ class _ActiveOperationsCardState
                     child: Text(
                       '+${active.length - 2} more',
                       style: TextStyle(
-                          color: AppColors.onSurfaceVariant, fontSize: 11),
+                        color: AppColors.onSurfaceVariant,
+                        fontSize: 11,
+                      ),
                     ),
                   ),
               ],
@@ -1163,7 +1362,11 @@ class _ActiveOperationsCardState
           ),
         );
       },
-      loading: () => const SizedBox.shrink(),
+      loading:
+          () => const Padding(
+            padding: EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            child: AppSkeletonBox(height: 96, radius: 18),
+          ),
       error: (_, _) => const SizedBox.shrink(),
     );
   }
@@ -1181,8 +1384,12 @@ class _OperationRow extends StatelessWidget {
     final isDraft = movement.isDraft;
 
     return GestureDetector(
-      onTap: () => context.push(
-          isDraft ? '/movements/${movement.id}/scan' : '/movements/${movement.id}'),
+      onTap:
+          () => context.push(
+            isDraft
+                ? '/movements/${movement.id}/scan'
+                : '/movements/${movement.id}',
+          ),
       child: Padding(
         padding: const EdgeInsets.only(bottom: AppSpacing.xs),
         child: Row(
@@ -1204,23 +1411,25 @@ class _OperationRow extends StatelessWidget {
                   Text(
                     movement.title,
                     style: TextStyle(
-                        color: AppColors.onBackground,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500),
+                      color: AppColors.onBackground,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   Text(
                     '${movement.items.length} item${movement.items.length == 1 ? '' : 's'} · ${isDraft ? 'Draft' : '${movement.returnedCount}/${movement.items.length} returned'}',
                     style: TextStyle(
-                        color: AppColors.onSurfaceVariant, fontSize: 11),
+                      color: AppColors.onSurfaceVariant,
+                      fontSize: 11,
+                    ),
                   ),
                 ],
               ),
             ),
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
                 color: (isDraft
                         ? const Color(0xFF9E9E9E)
@@ -1231,9 +1440,10 @@ class _OperationRow extends StatelessWidget {
               child: Text(
                 isDraft ? 'DRAFT' : 'ACTIVE',
                 style: TextStyle(
-                  color: isDraft
-                      ? const Color(0xFF9E9E9E)
-                      : const Color(0xFF2196F3),
+                  color:
+                      isDraft
+                          ? const Color(0xFF9E9E9E)
+                          : const Color(0xFF2196F3),
                   fontSize: 9,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.4,
@@ -1247,18 +1457,18 @@ class _OperationRow extends StatelessWidget {
   }
 
   IconData _typeIcon(String t) => switch (t) {
-        'loan' => Icons.person_outline_rounded,
-        'repair' => Icons.build_outlined,
-        'disposal' => Icons.delete_outline_rounded,
-        _ => Icons.swap_horiz_rounded,
-      };
+    'loan' => Icons.person_outline_rounded,
+    'repair' => Icons.build_outlined,
+    'disposal' => Icons.delete_outline_rounded,
+    _ => Icons.swap_horiz_rounded,
+  };
 
   Color _typeColor(String t) => switch (t) {
-        'loan' => const Color(0xFF9C27B0),
-        'repair' => const Color(0xFFFF9800),
-        'disposal' => const Color(0xFFCF6679),
-        _ => const Color(0xFF2196F3),
-      };
+    'loan' => const Color(0xFF9C27B0),
+    'repair' => const Color(0xFFFF9800),
+    'disposal' => const Color(0xFFCF6679),
+    _ => const Color(0xFF2196F3),
+  };
 }
 
 // ---------------------------------------------------------------------------

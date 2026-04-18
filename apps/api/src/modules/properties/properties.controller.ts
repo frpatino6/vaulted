@@ -18,6 +18,7 @@ import { AddFloorDto } from './dto/add-floor.dto';
 import { AddRoomDto } from './dto/add-room.dto';
 import { CreatePropertyDto } from './dto/create-property.dto';
 import { UpdatePropertyDto } from './dto/update-property.dto';
+import { UpdateRoomDto } from './dto/update-room.dto';
 import { PropertiesService } from './properties.service';
 import { PropertyDocument } from './schemas/property.schema';
 
@@ -46,13 +47,15 @@ export class PropertiesController {
   }
 
   @Get()
+  @Roles(Role.OWNER, Role.MANAGER, Role.STAFF, Role.AUDITOR)
   findAll(@CurrentUser() user: JwtPayload) {
-    return this.propertiesService.findAll(user.tenantId);
+    return this.propertiesService.findAll(user.tenantId, user.role, user.sub);
   }
 
   @Get(':id')
+  @Roles(Role.OWNER, Role.MANAGER, Role.STAFF, Role.AUDITOR)
   findById(@CurrentUser() user: JwtPayload, @Param('id') propertyId: string) {
-    return this.propertiesService.findById(user.tenantId, propertyId);
+    return this.propertiesService.findById(user.tenantId, propertyId, user.role, user.sub);
   }
 
   @Roles(Role.OWNER, Role.MANAGER)
@@ -114,6 +117,50 @@ export class PropertiesController {
   }
 
   @Roles(Role.OWNER, Role.MANAGER)
+  @Put(':id/floors/:floorId')
+  async updateFloor(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') propertyId: string,
+    @Param('floorId') floorId: string,
+    @Body() dto: AddFloorDto,
+  ) {
+    const property = await this.propertiesService.updateFloor(user.tenantId, propertyId, floorId, dto.name);
+
+    await this.auditService.log({
+      tenantId: user.tenantId,
+      userId: user.sub,
+      action: 'property.update_floor',
+      entityType: 'property',
+      entityId: propertyId,
+      metadata: { floorId, floorName: dto.name },
+    });
+
+    return property;
+  }
+
+  @Roles(Role.OWNER, Role.MANAGER)
+  @Delete(':id/floors/:floorId')
+  @HttpCode(HttpStatus.OK)
+  async deleteFloor(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') propertyId: string,
+    @Param('floorId') floorId: string,
+  ) {
+    const property = await this.propertiesService.deleteFloor(user.tenantId, propertyId, floorId);
+
+    await this.auditService.log({
+      tenantId: user.tenantId,
+      userId: user.sub,
+      action: 'property.delete_floor',
+      entityType: 'property',
+      entityId: propertyId,
+      metadata: { floorId },
+    });
+
+    return property;
+  }
+
+  @Roles(Role.OWNER, Role.MANAGER)
   @Post(':id/floors/:floorId/rooms')
   async addRoom(
     @CurrentUser() user: JwtPayload,
@@ -130,6 +177,63 @@ export class PropertiesController {
       entityType: 'property',
       entityId: propertyId,
       metadata: { floorId, roomName: dto.name },
+    });
+
+    return property;
+  }
+
+  @Roles(Role.OWNER, Role.MANAGER)
+  @Put(':id/floors/:floorId/rooms/:roomId')
+  async updateRoom(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') propertyId: string,
+    @Param('floorId') floorId: string,
+    @Param('roomId') roomId: string,
+    @Body() dto: UpdateRoomDto,
+  ) {
+    const property = await this.propertiesService.updateRoom(
+      user.tenantId,
+      propertyId,
+      floorId,
+      roomId,
+      dto,
+    );
+
+    await this.auditService.log({
+      tenantId: user.tenantId,
+      userId: user.sub,
+      action: 'property.update_room',
+      entityType: 'property',
+      entityId: propertyId,
+      metadata: { floorId, roomId },
+    });
+
+    return property;
+  }
+
+  @Roles(Role.OWNER, Role.MANAGER)
+  @Delete(':id/floors/:floorId/rooms/:roomId')
+  @HttpCode(HttpStatus.OK)
+  async deleteRoom(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') propertyId: string,
+    @Param('floorId') floorId: string,
+    @Param('roomId') roomId: string,
+  ) {
+    const property = await this.propertiesService.deleteRoom(
+      user.tenantId,
+      propertyId,
+      floorId,
+      roomId,
+    );
+
+    await this.auditService.log({
+      tenantId: user.tenantId,
+      userId: user.sub,
+      action: 'property.delete_room',
+      entityType: 'property',
+      entityId: propertyId,
+      metadata: { floorId, roomId },
     });
 
     return property;

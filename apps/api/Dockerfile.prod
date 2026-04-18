@@ -1,25 +1,29 @@
-# Stage 1 — build
+# Stage 1 — build + install
 FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# Configure npm for flaky network environments
+RUN npm config set fetch-retry-mintimeout 20000 \
+ && npm config set fetch-retry-maxtimeout 120000 \
+ && npm config set fetch-retries 5 \
+ && npm config set prefer-offline false
+
 COPY package*.json ./
 RUN npm install --legacy-peer-deps
-
 COPY . .
-RUN npm run build
+RUN npm run build && npm prune --omit=dev
 
-# Stage 2 — production
+# Stage 2 — production (no npm install needed)
 FROM node:20-alpine AS runner
 
 WORKDIR /app
 
 ENV NODE_ENV=production
 
-COPY package*.json ./
-RUN npm install --omit=dev --legacy-peer-deps
-
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
+COPY package*.json ./
 
 EXPOSE 3000
 

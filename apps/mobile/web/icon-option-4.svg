@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg4" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#06111F"/>
+      <stop offset="100%" style="stop-color:#0C1E36"/>
+    </linearGradient>
+    <linearGradient id="gold4" x1="0%" y1="0%" x2="80%" y2="100%">
+      <stop offset="0%" style="stop-color:#F7E48C"/>
+      <stop offset="40%" style="stop-color:#D4A843"/>
+      <stop offset="100%" style="stop-color:#8B6010"/>
+    </linearGradient>
+    <linearGradient id="goldFace" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FCEEA0"/>
+      <stop offset="50%" style="stop-color:#C89030"/>
+      <stop offset="100%" style="stop-color:#7A5010"/>
+    </linearGradient>
+    <linearGradient id="shackle4" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#8B6010"/>
+      <stop offset="50%" style="stop-color:#F0D060"/>
+      <stop offset="100%" style="stop-color:#9A7020"/>
+    </linearGradient>
+    <radialGradient id="glow4" cx="50%" cy="55%" r="45%">
+      <stop offset="0%" style="stop-color:#D4A030;stop-opacity:0.18"/>
+      <stop offset="100%" style="stop-color:#D4A030;stop-opacity:0"/>
+    </radialGradient>
+    <filter id="drop4">
+      <feDropShadow dx="0" dy="6" stdDeviation="14" flood-color="#C9A030" flood-opacity="0.45"/>
+    </filter>
+    <filter id="inner4">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#000" flood-opacity="0.6"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" rx="112" ry="112" fill="url(#bg4)"/>
+  <rect width="512" height="512" rx="112" ry="112" fill="url(#glow4)"/>
+
+  <!-- ==================== -->
+  <!-- ORNAMENTAL PADLOCK   -->
+  <!-- ==================== -->
+
+  <!-- SHACKLE (the arch on top) -->
+  <!-- Outer shackle -->
+  <path d="M 176 258 L 176 200 A 80 80 0 0 1 336 200 L 336 258"
+        fill="none" stroke="url(#shackle4)" stroke-width="30" stroke-linecap="round"
+        filter="url(#drop4)"/>
+  <!-- Inner shackle highlight -->
+  <path d="M 176 258 L 176 200 A 80 80 0 0 1 336 200 L 336 258"
+        fill="none" stroke="url(#gold4)" stroke-width="12" stroke-linecap="round" opacity="0.6"/>
+
+  <!-- Shackle end caps where it enters the body -->
+  <rect x="161" y="248" width="30" height="20" rx="4" fill="url(#goldFace)"/>
+  <rect x="321" y="248" width="30" height="20" rx="4" fill="url(#goldFace)"/>
+
+  <!-- LOCK BODY -->
+  <rect x="130" y="258" width="252" height="190" rx="22" fill="url(#goldFace)" filter="url(#drop4)"/>
+
+  <!-- Lock body face (slightly inset panel) -->
+  <rect x="148" y="275" width="216" height="156" rx="14" fill="#09182A"/>
+
+  <!-- Body ornamental border inside -->
+  <rect x="158" y="284" width="196" height="138" rx="10" fill="none"
+        stroke="url(#gold4)" stroke-width="1.5" opacity="0.5"/>
+
+  <!-- Decorative corner flourishes -->
+  <g stroke="url(#gold4)" stroke-width="2" fill="none" opacity="0.7">
+    <!-- Top-left corner -->
+    <path d="M 168 294 Q 163 289 158 294"/>
+    <path d="M 168 294 Q 163 299 168 294"/>
+    <!-- Top-right corner -->
+    <path d="M 344 294 Q 349 289 354 294"/>
+    <path d="M 344 294 Q 349 299 344 294"/>
+    <!-- Bottom-left -->
+    <path d="M 168 412 Q 163 417 158 412"/>
+    <path d="M 168 412 Q 163 407 168 412"/>
+    <!-- Bottom-right -->
+    <path d="M 344 412 Q 349 417 354 412"/>
+    <path d="M 344 412 Q 349 407 344 412"/>
+  </g>
+
+  <!-- KEYHOLE in center of body -->
+  <!-- Keyhole circle -->
+  <circle cx="256" cy="335" r="32" fill="url(#gold4)" filter="url(#inner4)"/>
+  <circle cx="256" cy="335" r="26" fill="#07121F"/>
+
+  <!-- Keyhole slot -->
+  <rect x="249" y="352" width="14" height="36" rx="7" fill="#07121F"/>
+  <rect x="247" y="348" width="18" height="8" rx="2" fill="#07121F"/>
+
+  <!-- Keyhole inner highlight -->
+  <circle cx="252" cy="330" r="6" fill="#1A3050" opacity="0.6"/>
+
+  <!-- Decorative horizontal lines on body -->
+  <line x1="168" y1="398" x2="344" y2="398" stroke="url(#gold4)" stroke-width="1" opacity="0.3"/>
+  <line x1="168" y1="404" x2="344" y2="404" stroke="url(#gold4)" stroke-width="1" opacity="0.15"/>
+
+  <!-- Small rivets/bolts on lock body corners -->
+  <circle cx="165" cy="272" r="5" fill="url(#gold4)"/>
+  <circle cx="347" cy="272" r="5" fill="url(#gold4)"/>
+  <circle cx="165" cy="440" r="5" fill="url(#gold4)"/>
+  <circle cx="347" cy="440" r="5" fill="url(#gold4)"/>
+
+  <!-- "V" subtle engraving on bottom of body -->
+  <path d="M 232 414 L 256 434 L 280 414"
+        fill="none" stroke="url(#gold4)" stroke-width="3" stroke-linecap="round"
+        stroke-linejoin="round" opacity="0.8"/>
+</svg>

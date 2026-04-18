@@ -1,3 +1,4 @@
+import 'models/item_history_model.dart';
 import 'models/item_model.dart';
 import 'item_remote_data_source.dart';
 
@@ -7,22 +8,26 @@ class ItemRepository {
   final ItemRemoteDataSource _remote;
 
   Future<List<ItemModel>> getItems({
-    required String propertyId,
-    required String roomId,
+    String? propertyId,
+    String? roomId,
     String? category,
     String? status,
+    bool unlocated = false,
+    int? limit,
   }) => _remote.getItems(
     propertyId: propertyId,
     roomId: roomId,
     category: category,
     status: status,
+    unlocated: unlocated,
+    limit: limit,
   );
 
   Future<ItemModel> getItem(String id) => _remote.getItem(id);
 
   Future<ItemModel> createItem({
     required String propertyId,
-    required String roomId,
+    String? roomId,
     required String name,
     required String category,
     String subcategory = '',
@@ -39,7 +44,7 @@ class ItemRepository {
   }) {
     final body = <String, dynamic>{
       'propertyId': propertyId,
-      'roomId': roomId,
+      if (roomId != null && roomId.isNotEmpty) 'roomId': roomId,
       'name': name,
       'category': category,
       if (subcategory.isNotEmpty) 'subcategory': subcategory,
@@ -67,6 +72,7 @@ class ItemRepository {
     String? category,
     String? subcategory,
     String? status,
+    String? roomId,
     String? serialNumber,
     String? locationDetail,
     Map<String, dynamic>? valuation,
@@ -80,6 +86,7 @@ class ItemRepository {
     if (category != null) body['category'] = category;
     if (subcategory != null) body['subcategory'] = subcategory;
     if (status != null) body['status'] = status;
+    if (roomId != null) body['roomId'] = roomId;
     if (serialNumber != null) body['serialNumber'] = serialNumber;
     if (locationDetail != null) body['locationDetail'] = locationDetail;
     if (valuation != null) body['valuation'] = valuation;
@@ -90,5 +97,13 @@ class ItemRepository {
     return _remote.updateItem(id, body);
   }
 
+  Future<ItemModel> assignLocation(
+    String id, {
+    required String roomId,
+  }) => _remote.updateItem(id, {'roomId': roomId});
+
   Future<void> deleteItem(String id) => _remote.deleteItem(id);
+
+  Future<List<ItemHistoryModel>> getItemHistory(String itemId) =>
+      _remote.getItemHistory(itemId);
 }

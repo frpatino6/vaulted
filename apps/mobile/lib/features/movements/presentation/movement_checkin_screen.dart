@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/loading_skeleton.dart';
 import '../data/models/movement_model.dart';
 import '../domain/movement_detail_notifier.dart';
 
@@ -19,8 +20,7 @@ class MovementCheckinScreen extends ConsumerStatefulWidget {
       _MovementCheckinScreenState();
 }
 
-class _MovementCheckinScreenState
-    extends ConsumerState<MovementCheckinScreen> {
+class _MovementCheckinScreenState extends ConsumerState<MovementCheckinScreen> {
   final MobileScannerController _scanner = MobileScannerController(
     detectionSpeed: DetectionSpeed.noDuplicates,
     returnImage: false,
@@ -30,6 +30,7 @@ class _MovementCheckinScreenState
   String? _lastScannedName;
   bool _showFeedback = false;
   String? _feedbackError;
+  bool _initialLoadCompleted = false;
 
   @override
   void initState() {
@@ -37,7 +38,11 @@ class _MovementCheckinScreenState
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref
           .read(movementDetailNotifierProvider.notifier)
-          .load(widget.movementId);
+          .load(widget.movementId)
+          .whenComplete(() {
+            if (!mounted) return;
+            setState(() => _initialLoadCompleted = true);
+          });
     });
   }
 
@@ -50,6 +55,12 @@ class _MovementCheckinScreenState
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(movementDetailNotifierProvider);
+    final showInitialSkeleton =
+        !_initialLoadCompleted &&
+        !state.hasError &&
+        (state.isLoading || state.valueOrNull == null);
+    final renderState =
+        showInitialSkeleton ? const AsyncLoading<MovementModel?>() : state;
 
     return Container(
       height: MediaQuery.of(context).size.height * 0.95,
@@ -58,30 +69,32 @@ class _MovementCheckinScreenState
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       clipBehavior: Clip.hardEdge,
-      child: state.when(
+      child: renderState.when(
         data: (movement) {
           if (movement == null) {
             return const Center(
-              child:
-                  Text('Movement not found', style: TextStyle(color: Colors.white)),
+              child: Text(
+                'Movement not found',
+                style: TextStyle(color: Colors.white),
+              ),
             );
           }
           return _buildContent(context, movement);
         },
-        loading: () => const Center(
-          child: CircularProgressIndicator(color: AppColors.accent, strokeWidth: 2),
-        ),
-        error: (e, _) => Center(
-          child: Text(MovementDetailNotifier.message(e),
-              style: const TextStyle(color: Colors.white)),
-        ),
+        loading: () => const AppScreenSkeleton(showHeader: false, cardCount: 4),
+        error:
+            (e, _) => Center(
+              child: Text(
+                MovementDetailNotifier.message(e),
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
       ),
     );
   }
 
   Widget _buildContent(BuildContext context, MovementModel movement) {
-    final pending =
-        movement.items.where((i) => i.status == 'out').toList();
+    final pending = movement.items.where((i) => i.status == 'out').toList();
     final returned =
         movement.items.where((i) => i.status == 'returned').toList();
     final total = movement.items.length;
@@ -131,11 +144,15 @@ class _MovementCheckinScreenState
                     ),
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: _processingQr
-                      ? const Center(
-                          child: CircularProgressIndicator(
-                              color: AppColors.accent, strokeWidth: 2))
-                      : null,
+                  child:
+                      _processingQr
+                          ? const Center(
+                            child: CircularProgressIndicator(
+                              color: AppColors.accent,
+                              strokeWidth: 2,
+                            ),
+                          )
+                          : null,
                 ),
                 const SizedBox(height: AppSpacing.lg),
                 AnimatedOpacity(
@@ -143,11 +160,14 @@ class _MovementCheckinScreenState
                   duration: const Duration(milliseconds: 200),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                      horizontal: AppSpacing.md,
+                      vertical: AppSpacing.sm,
+                    ),
                     decoration: BoxDecoration(
-                      color: _feedbackError != null
-                          ? AppColors.error.withValues(alpha: 0.9)
-                          : const Color(0xFF4CAF50).withValues(alpha: 0.9),
+                      color:
+                          _feedbackError != null
+                              ? AppColors.error.withValues(alpha: 0.9)
+                              : const Color(0xFF4CAF50).withValues(alpha: 0.9),
                       borderRadius: BorderRadius.circular(24),
                     ),
                     child: Row(
@@ -165,9 +185,10 @@ class _MovementCheckinScreenState
                           _feedbackError ??
                               '${_lastScannedName ?? 'Item'} checked in',
                           style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600),
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ],
                     ),
@@ -177,7 +198,9 @@ class _MovementCheckinScreenState
                 Text(
                   'Scan items to check them in',
                   style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.7), fontSize: 13),
+                    color: Colors.white.withValues(alpha: 0.7),
+                    fontSize: 13,
+                  ),
                 ),
               ],
             ),
@@ -195,10 +218,14 @@ class _MovementCheckinScreenState
                   color: Colors.black.withValues(alpha: 0.55),
                   shape: BoxShape.circle,
                   border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.2)),
+                    color: Colors.white.withValues(alpha: 0.2),
+                  ),
                 ),
-                child: const Icon(Icons.flashlight_on_outlined,
-                    color: Colors.white, size: 20),
+                child: const Icon(
+                  Icons.flashlight_on_outlined,
+                  color: Colors.white,
+                  size: 20,
+                ),
               ),
             ),
           ),
@@ -210,8 +237,11 @@ class _MovementCheckinScreenState
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.check_circle_rounded,
-                    color: Color(0xFF4CAF50), size: 72),
+                const Icon(
+                  Icons.check_circle_rounded,
+                  color: Color(0xFF4CAF50),
+                  size: 72,
+                ),
                 const SizedBox(height: AppSpacing.md),
                 Text(
                   'All items checked in!',
@@ -225,7 +255,9 @@ class _MovementCheckinScreenState
                 Text(
                   'Operation is complete.',
                   style: TextStyle(
-                      color: AppColors.onSurfaceVariant, fontSize: 14),
+                    color: AppColors.onSurfaceVariant,
+                    fontSize: 14,
+                  ),
                 ),
               ],
             ),
@@ -276,7 +308,7 @@ class _MovementCheckinScreenState
       final updated = ref.read(movementDetailNotifierProvider).value;
       final checkedItem = updated?.items.firstWhere(
         (i) => i.itemId == itemId,
-        orElse: () => updated!.items.first,
+        orElse: () => updated.items.first,
       );
 
       setState(() {
@@ -306,10 +338,12 @@ class _MovementCheckinScreenState
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(MovementDetailNotifier.message(e)),
-          backgroundColor: AppColors.error,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(MovementDetailNotifier.message(e)),
+            backgroundColor: AppColors.error,
+          ),
+        );
       }
     }
   }
@@ -346,9 +380,10 @@ class _BottomCheckinPanel extends StatelessWidget {
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withValues(alpha: 0.3),
-              blurRadius: 12,
-              offset: const Offset(0, -4))
+            color: Colors.black.withValues(alpha: 0.3),
+            blurRadius: 12,
+            offset: const Offset(0, -4),
+          ),
         ],
       ),
       child: Column(
@@ -356,7 +391,11 @@ class _BottomCheckinPanel extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(
-                AppSpacing.md, AppSpacing.md, AppSpacing.md, 0),
+              AppSpacing.md,
+              AppSpacing.md,
+              AppSpacing.md,
+              0,
+            ),
             child: Column(
               children: [
                 // Progress
@@ -366,16 +405,18 @@ class _BottomCheckinPanel extends StatelessWidget {
                     Text(
                       'Check-in',
                       style: TextStyle(
-                          color: AppColors.onBackground,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700),
+                        color: AppColors.onBackground,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     Text(
                       '$returnedCount / $total',
                       style: TextStyle(
-                          color: AppColors.accent,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700),
+                        color: AppColors.accent,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ],
                 ),
@@ -384,10 +425,12 @@ class _BottomCheckinPanel extends StatelessWidget {
                   borderRadius: BorderRadius.circular(4),
                   child: LinearProgressIndicator(
                     value: total > 0 ? returnedCount / total : 0,
-                    backgroundColor:
-                        AppColors.onSurfaceVariant.withValues(alpha: 0.2),
+                    backgroundColor: AppColors.onSurfaceVariant.withValues(
+                      alpha: 0.2,
+                    ),
                     valueColor: const AlwaysStoppedAnimation<Color>(
-                        Color(0xFF4CAF50)),
+                      Color(0xFF4CAF50),
+                    ),
                     minHeight: 6,
                   ),
                 ),
@@ -403,10 +446,11 @@ class _BottomCheckinPanel extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
                 scrollDirection: Axis.horizontal,
                 itemCount: pending.length,
-                itemBuilder: (_, i) => Padding(
-                  padding: const EdgeInsets.only(right: AppSpacing.sm),
-                  child: _PendingItemChip(item: pending[i]),
-                ),
+                itemBuilder:
+                    (_, i) => Padding(
+                      padding: const EdgeInsets.only(right: AppSpacing.sm),
+                      child: _PendingItemChip(item: pending[i]),
+                    ),
               ),
             ),
           const Divider(height: 1, color: Colors.white12),
@@ -420,11 +464,14 @@ class _BottomCheckinPanel extends StatelessWidget {
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.onSurfaceVariant,
                       side: BorderSide(
-                          color: AppColors.onSurfaceVariant
-                              .withValues(alpha: 0.3)),
+                        color: AppColors.onSurfaceVariant.withValues(
+                          alpha: 0.3,
+                        ),
+                      ),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                     child: const Text('Save & Close'),
                   ),
@@ -434,13 +481,15 @@ class _BottomCheckinPanel extends StatelessWidget {
                   child: ElevatedButton.icon(
                     onPressed: onComplete,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: pending.isEmpty
-                          ? const Color(0xFF4CAF50)
-                          : AppColors.error,
+                      backgroundColor:
+                          pending.isEmpty
+                              ? const Color(0xFF4CAF50)
+                              : AppColors.error,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                     icon: Icon(
                       pending.isEmpty
@@ -449,7 +498,9 @@ class _BottomCheckinPanel extends StatelessWidget {
                       size: 18,
                     ),
                     label: Text(
-                      pending.isEmpty ? 'Complete' : 'Complete (${pending.length} missing)',
+                      pending.isEmpty
+                          ? 'Complete'
+                          : 'Complete (${pending.length} missing)',
                       style: const TextStyle(fontWeight: FontWeight.w700),
                     ),
                   ),
@@ -476,18 +527,24 @@ class _PendingItemChip extends StatelessWidget {
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-            color: const Color(0xFF2196F3).withValues(alpha: 0.3)),
+          color: const Color(0xFF2196F3).withValues(alpha: 0.3),
+        ),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(6),
-            child: item.itemPhoto.isNotEmpty
-                ? Image.network(item.itemPhoto,
-                    width: 48, height: 48, fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => _placeholder())
-                : _placeholder(),
+            child:
+                item.itemPhoto.isNotEmpty
+                    ? Image.network(
+                      item.itemPhoto,
+                      width: 48,
+                      height: 48,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => _placeholder(),
+                    )
+                    : _placeholder(),
           ),
           const SizedBox(height: 4),
           Padding(
@@ -495,9 +552,10 @@ class _PendingItemChip extends StatelessWidget {
             child: Text(
               item.itemName,
               style: TextStyle(
-                  color: AppColors.onSurface,
-                  fontSize: 9,
-                  fontWeight: FontWeight.w500),
+                color: AppColors.onSurface,
+                fontSize: 9,
+                fontWeight: FontWeight.w500,
+              ),
               maxLines: 2,
               textAlign: TextAlign.center,
               overflow: TextOverflow.ellipsis,
@@ -509,10 +567,13 @@ class _PendingItemChip extends StatelessWidget {
   }
 
   Widget _placeholder() => Container(
-        width: 48,
-        height: 48,
-        color: AppColors.surfaceVariant,
-        child: Icon(Icons.inventory_2_outlined,
-            size: 20, color: AppColors.onSurfaceVariant),
-      );
+    width: 48,
+    height: 48,
+    color: AppColors.surfaceVariant,
+    child: Icon(
+      Icons.inventory_2_outlined,
+      size: 20,
+      color: AppColors.onSurfaceVariant,
+    ),
+  );
 }

@@ -75,6 +75,33 @@ class PropertyRemoteDataSource {
     );
   }
 
+  /// PUT /properties/:id/floors/:floorId
+  Future<PropertyModel> updateFloor(
+    String propertyId,
+    String floorId,
+    String name,
+  ) async {
+    final response = await _dio.put<Map<String, dynamic>>(
+      '$_path/$propertyId/floors/$floorId',
+      data: {'name': name},
+    );
+    final data = _unwrapData(response);
+    return PropertyModel.fromJson(
+      Map<String, dynamic>.from(data is Map ? data : {}),
+    );
+  }
+
+  /// DELETE /properties/:id/floors/:floorId
+  Future<PropertyModel> deleteFloor(String propertyId, String floorId) async {
+    final response = await _dio.delete<Map<String, dynamic>>(
+      '$_path/$propertyId/floors/$floorId',
+    );
+    final data = _unwrapData(response);
+    return PropertyModel.fromJson(
+      Map<String, dynamic>.from(data is Map ? data : {}),
+    );
+  }
+
   /// POST /properties/:id/floors/:floorId/rooms
   Future<PropertyModel> addRoom(
     String propertyId,
@@ -85,6 +112,39 @@ class PropertyRemoteDataSource {
     final response = await _dio.post<Map<String, dynamic>>(
       '$_path/$propertyId/floors/$floorId/rooms',
       data: {'name': name, 'type': type},
+    );
+    final data = _unwrapData(response);
+    return PropertyModel.fromJson(
+      Map<String, dynamic>.from(data is Map ? data : {}),
+    );
+  }
+
+  /// PUT /properties/:id/floors/:floorId/rooms/:roomId
+  Future<PropertyModel> updateRoom(
+    String propertyId,
+    String floorId,
+    String roomId,
+    String name,
+    String type,
+  ) async {
+    final response = await _dio.put<Map<String, dynamic>>(
+      '$_path/$propertyId/floors/$floorId/rooms/$roomId',
+      data: {'name': name, 'type': type},
+    );
+    final data = _unwrapData(response);
+    return PropertyModel.fromJson(
+      Map<String, dynamic>.from(data is Map ? data : {}),
+    );
+  }
+
+  /// DELETE /properties/:id/floors/:floorId/rooms/:roomId
+  Future<PropertyModel> deleteRoom(
+    String propertyId,
+    String floorId,
+    String roomId,
+  ) async {
+    final response = await _dio.delete<Map<String, dynamic>>(
+      '$_path/$propertyId/floors/$floorId/rooms/$roomId',
     );
     final data = _unwrapData(response);
     return PropertyModel.fromJson(

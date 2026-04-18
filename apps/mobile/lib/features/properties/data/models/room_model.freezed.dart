@@ -60,18 +60,21 @@ class _$RoomModelCopyWithImpl<$Res, $Val extends RoomModel>
   $Res call({Object? roomId = null, Object? name = null, Object? type = null}) {
     return _then(
       _value.copyWith(
-            roomId: null == roomId
-                ? _value.roomId
-                : roomId // ignore: cast_nullable_to_non_nullable
-                      as String,
-            name: null == name
-                ? _value.name
-                : name // ignore: cast_nullable_to_non_nullable
-                      as String,
-            type: null == type
-                ? _value.type
-                : type // ignore: cast_nullable_to_non_nullable
-                      as String,
+            roomId:
+                null == roomId
+                    ? _value.roomId
+                    : roomId // ignore: cast_nullable_to_non_nullable
+                        as String,
+            name:
+                null == name
+                    ? _value.name
+                    : name // ignore: cast_nullable_to_non_nullable
+                        as String,
+            type:
+                null == type
+                    ? _value.type
+                    : type // ignore: cast_nullable_to_non_nullable
+                        as String,
           )
           as $Val,
     );
@@ -106,18 +109,21 @@ class __$$RoomModelImplCopyWithImpl<$Res>
   $Res call({Object? roomId = null, Object? name = null, Object? type = null}) {
     return _then(
       _$RoomModelImpl(
-        roomId: null == roomId
-            ? _value.roomId
-            : roomId // ignore: cast_nullable_to_non_nullable
-                  as String,
-        name: null == name
-            ? _value.name
-            : name // ignore: cast_nullable_to_non_nullable
-                  as String,
-        type: null == type
-            ? _value.type
-            : type // ignore: cast_nullable_to_non_nullable
-                  as String,
+        roomId:
+            null == roomId
+                ? _value.roomId
+                : roomId // ignore: cast_nullable_to_non_nullable
+                    as String,
+        name:
+            null == name
+                ? _value.name
+                : name // ignore: cast_nullable_to_non_nullable
+                    as String,
+        type:
+            null == type
+                ? _value.type
+                : type // ignore: cast_nullable_to_non_nullable
+                    as String,
       ),
     );
   }

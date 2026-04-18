@@ -76,7 +76,7 @@ class DryCleaningHistorySheet extends ConsumerWidget {
                           ),
                         );
                       },
-                      separatorBuilder: (_, __) => const Divider(color: Colors.white10),
+                      separatorBuilder: (_, _) => const Divider(color: Colors.white10),
                       itemCount: records.length,
                     ),
                   ),
@@ -84,7 +84,7 @@ class DryCleaningHistorySheet extends ConsumerWidget {
               );
             },
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (_, __) => const Center(child: Text('Unable to load history')),
+            error: (_, _) => const Center(child: Text('Unable to load history')),
           ),
         );
       },

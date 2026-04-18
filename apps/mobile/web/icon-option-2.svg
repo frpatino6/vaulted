@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Background: premium black -->
+    <linearGradient id="bgGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0A0A0A;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1A1A2E;stop-opacity:1" />
+    </linearGradient>
+    <!-- Gold gradient -->
+    <linearGradient id="goldGrad2" x1="0%" y1="0%" x2="60%" y2="100%">
+      <stop offset="0%" style="stop-color:#F7E08A;stop-opacity:1" />
+      <stop offset="35%" style="stop-color:#D4A843;stop-opacity:1" />
+      <stop offset="70%" style="stop-color:#B8851A;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8B6010;stop-opacity:1" />
+    </linearGradient>
+    <!-- Gold shimmer -->
+    <linearGradient id="goldShimmer" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#C9A84C;stop-opacity:1" />
+      <stop offset="30%" style="stop-color:#F7E08A;stop-opacity:1" />
+      <stop offset="60%" style="stop-color:#C9A84C;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8B6010;stop-opacity:1" />
+    </linearGradient>
+    <!-- V letter gradient -->
+    <linearGradient id="vGrad" x1="0%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#E8C868;stop-opacity:0.9" />
+    </linearGradient>
+    <!-- Glow -->
+    <radialGradient id="crestGlow" cx="50%" cy="40%" r="55%">
+      <stop offset="0%" style="stop-color:#D4A843;stop-opacity:0.12" />
+      <stop offset="100%" style="stop-color:#D4A843;stop-opacity:0" />
+    </radialGradient>
+    <filter id="goldShadow">
+      <feDropShadow dx="0" dy="6" stdDeviation="12" flood-color="#D4A843" flood-opacity="0.4"/>
+    </filter>
+    <filter id="softGlow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- Background rounded square -->
+  <rect width="512" height="512" rx="112" ry="112" fill="url(#bgGrad2)"/>
+  <rect width="512" height="512" rx="112" ry="112" fill="url(#crestGlow)"/>
+
+  <!-- Heraldic shield shape -->
+  <!-- Shield path: pointed bottom, rounded top shoulders -->
+  <path d="M 256 420
+           C 180 370, 108 320, 96 230
+           L 96 130
+           C 96 118, 106 108, 118 108
+           L 394 108
+           C 406 108, 416 118, 416 130
+           L 416 230
+           C 404 320, 332 370, 256 420 Z"
+        fill="none" stroke="url(#goldGrad2)" stroke-width="5" filter="url(#goldShadow)"/>
+
+  <!-- Shield fill with subtle gradient -->
+  <path d="M 256 412
+           C 183 364, 114 316, 102 230
+           L 102 132
+           C 102 122, 110 114, 120 114
+           L 392 114
+           C 402 114, 410 122, 410 132
+           L 410 230
+           C 396 316, 329 364, 256 412 Z"
+        fill="#0D0D1A"/>
+
+  <!-- Inner shield border (double line effect) -->
+  <path d="M 256 400
+           C 188 354, 124 310, 113 232
+           L 113 140
+           C 113 132, 119 126, 127 126
+           L 385 126
+           C 393 126, 399 132, 399 140
+           L 399 232
+           C 388 310, 324 354, 256 400 Z"
+        fill="none" stroke="url(#goldGrad2)" stroke-width="2" opacity="0.5"/>
+
+  <!-- Top horizontal decorative line inside shield -->
+  <line x1="130" y1="165" x2="382" y2="165" stroke="url(#goldShimmer)" stroke-width="1.5" opacity="0.6"/>
+
+  <!-- Star/crown motif at top center of shield -->
+  <!-- Crown base -->
+  <rect x="216" y="128" width="80" height="22" rx="4" fill="url(#goldGrad2)"/>
+  <!-- Crown points -->
+  <polygon points="220,128 228,108 236,128" fill="url(#goldGrad2)"/>
+  <polygon points="248,128 256,104 264,128" fill="url(#goldGrad2)"/>
+  <polygon points="276,128 284,108 292,128" fill="url(#goldGrad2)"/>
+  <!-- Crown gems -->
+  <circle cx="228" cy="116" r="4" fill="#E8C050"/>
+  <circle cx="256" cy="113" r="5" fill="#F0D060"/>
+  <circle cx="284" cy="116" r="4" fill="#E8C050"/>
+
+  <!-- Large "V" lettermark - the main element -->
+  <!-- V shape using two thick strokes meeting at a point -->
+  <path d="M 148 195 L 256 370 L 364 195"
+        fill="none"
+        stroke="url(#vGrad)"
+        stroke-width="46"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        filter="url(#goldShadow)"/>
+  <!-- V inner highlight -->
+  <path d="M 148 195 L 256 370 L 364 195"
+        fill="none"
+        stroke="url(#goldShimmer)"
+        stroke-width="12"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        opacity="0.6"/>
+
+  <!-- Small decorative dots at V tips -->
+  <circle cx="148" cy="195" r="10" fill="url(#goldGrad2)"/>
+  <circle cx="364" cy="195" r="10" fill="url(#goldGrad2)"/>
+  <circle cx="256" cy="370" r="8" fill="url(#goldGrad2)" opacity="0.8"/>
+
+  <!-- Bottom shield decorative ornament -->
+  <path d="M 220 385 Q 256 415 292 385" fill="none" stroke="url(#goldGrad2)" stroke-width="2" opacity="0.5"/>
+</svg>

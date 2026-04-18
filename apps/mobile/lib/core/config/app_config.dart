@@ -14,4 +14,14 @@ class AppConfig {
     }
     return 'http://localhost:3000/api/';
   }
+
+  /// WebSocket base URL (root, no /api prefix) used by Socket.IO.
+  static String get wsBaseUrl {
+    const envUrl = String.fromEnvironment('WS_BASE_URL', defaultValue: '');
+    if (envUrl.isNotEmpty) return envUrl;
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      return 'http://10.0.2.2:3000';
+    }
+    return 'http://localhost:3000';
+  }
 }

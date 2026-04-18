@@ -12,12 +12,16 @@ import { Item, ItemDocument } from './schemas/item.schema';
 import { ItemHistory, ItemHistoryDocument } from './schemas/item-history.schema';
 import { Property, PropertyDocument } from '../properties/schemas/property.schema';
 import { EmbeddingService } from '../ai/shared/embedding.service';
+import { Role } from '../../common/enums/role.enum';
+import { AccessControlService } from '../../common/services/access-control.service';
 
 interface InventoryFilters {
   propertyId?: string;
   roomId?: string;
   category?: string;
   status?: string;
+  unlocated?: boolean;
+  limit?: number;
 }
 
 interface InventorySearchFilters {
@@ -52,6 +56,7 @@ export class InventoryService {
     @InjectModel(Property.name)
     private readonly propertyModel: Model<PropertyDocument>,
     @InjectDataSource() private readonly dataSource: DataSource,
+    private readonly accessControl: AccessControlService,
     @Optional() private readonly embeddingService?: EmbeddingService,
   ) {}
 
@@ -83,14 +88,31 @@ export class InventoryService {
     return item;
   }
 
-  async findAll(tenantId: string, filters: InventoryFilters): Promise<Item[]> {
+  async findAll(
+    tenantId: string,
+    filters: InventoryFilters,
+    role: Role,
+    userId: string,
+  ): Promise<Item[]> {
     const query: Record<string, unknown> = { tenantId };
+    const allowedPropertyIds = await this.accessControl.getAllowedPropertyIds(userId, role);
 
-    if (filters.propertyId) {
-      query.propertyId = filters.propertyId;
+    if (allowedPropertyIds !== null) {
+      if (allowedPropertyIds.length === 0) return [];
+      if (filters.propertyId) {
+        if (!allowedPropertyIds.includes(filters.propertyId)) return [];
+        query.propertyId = filters.propertyId;
+      } else {
+        query.propertyId = { $in: allowedPropertyIds };
+      }
+    } else {
+      if (filters.propertyId) query.propertyId = filters.propertyId;
     }
 
-    if (filters.roomId) {
+    if (filters.unlocated) {
+      query.roomId = { $in: [null, ''] };
+      query.status = { $ne: 'disposed' };
+    } else if (filters.roomId) {
       query.roomId = filters.roomId;
     }
 
@@ -102,11 +124,28 @@ export class InventoryService {
       query.status = filters.status;
     }
 
-    return this.itemModel.find(query).sort({ createdAt: -1 }).exec();
+    const q = this.itemModel.find(query).sort({ createdAt: -1 });
+    if (filters.limit && filters.limit > 0) q.limit(filters.limit);
+    const items = await q.exec();
+    if (role === Role.OWNER) return items;
+    return items.map((item) => this.accessControl.stripValuation(item.toObject()) as Item);
   }
 
-  async findById(tenantId: string, itemId: string): Promise<Item> {
-    return this.findOwnedItemOrThrow(tenantId, itemId);
+  async findById(
+    tenantId: string,
+    itemId: string,
+    role: Role = Role.OWNER,
+    userId = '',
+  ): Promise<Item> {
+    const item = await this.findOwnedItemOrThrow(tenantId, itemId);
+    if (userId) {
+      const allowedPropertyIds = await this.accessControl.getAllowedPropertyIds(userId, role);
+      if (allowedPropertyIds !== null && !allowedPropertyIds.includes(String(item.propertyId))) {
+        throw new NotFoundException('Item not found');
+      }
+    }
+    if (role === Role.OWNER) return item;
+    return this.accessControl.stripValuation(item.toObject()) as Item;
   }
 
   async update(tenantId: string, itemId: string, dto: UpdateItemDto): Promise<Item> {
@@ -202,7 +241,7 @@ export class InventoryService {
       action: 'moved',
       fromPropertyId: item.propertyId,
       toPropertyId: dto.toPropertyId,
-      fromRoomId: item.roomId,
+      fromRoomId: item.roomId ?? undefined,
       toRoomId: dto.toRoomId,
       performedBy: userId,
       notes: dto.notes,
@@ -250,7 +289,7 @@ export class InventoryService {
       tenantId,
       action: 'loaned',
       fromPropertyId: item.propertyId,
-      fromRoomId: item.roomId,
+      fromRoomId: item.roomId ?? undefined,
       performedBy: userId,
       notes: dto.notes,
     });
@@ -269,6 +308,8 @@ export class InventoryService {
   async search(
     tenantId: string,
     filters: InventorySearchFilters,
+    role: Role,
+    userId: string,
   ): Promise<InventorySearchResponse> {
     const page = Math.max(filters.page ?? 1, 1);
     const limit = Math.min(Math.max(filters.limit ?? 20, 1), 100);
@@ -276,6 +317,14 @@ export class InventoryService {
 
     const query: Record<string, unknown> = { tenantId };
     const normalizedQuery = filters.query?.trim();
+    const allowedPropertyIds = await this.accessControl.getAllowedPropertyIds(userId, role);
+
+    if (allowedPropertyIds !== null) {
+      if (allowedPropertyIds.length === 0) {
+        return { items: [], total: 0, page: 1, limit: 20 };
+      }
+      query.propertyId = { $in: allowedPropertyIds };
+    }
 
     if (normalizedQuery) {
       const searchRegex = new RegExp(escapeRegex(normalizedQuery), 'i');
@@ -291,7 +340,7 @@ export class InventoryService {
       query.category = filters.category;
     }
 
-    if (filters.propertyId) {
+    if (filters.propertyId && allowedPropertyIds === null) {
       query.propertyId = filters.propertyId;
     }
 
@@ -339,8 +388,12 @@ export class InventoryService {
       } as ItemDocument & { propertyName: string | null; roomName: string | null };
     });
 
+    const finalItems = role === Role.OWNER
+      ? enrichedItems
+      : enrichedItems.map((item) => this.accessControl.stripValuation(item));
+
     return {
-      items: enrichedItems,
+      items: finalItems as InventorySearchResponse['items'],
       total,
       page,
       limit,
