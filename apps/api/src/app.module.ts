@@ -28,6 +28,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { MfaVerifiedGuard } from './common/guards/mfa-verified.guard';
 import { GuestExpirationGuard } from './common/guards/guest-expiration.guard';
+import { AnomalyGuard } from './common/guards/anomaly.guard';
 import { Tenant } from './modules/tenants/entities/tenant.entity';
 import { User } from './modules/users/entities/user.entity';
 import { AuditLog } from './modules/audit/entities/audit-log.entity';
@@ -42,11 +43,9 @@ import { InsuredItem } from './modules/insurance/entities/insured-item.entity';
     }),
 
     ThrottlerModule.forRoot([
-      {
-        name: 'default',
-        ttl: 60000,
-        limit: 100,
-      },
+      { name: 'default', ttl: 60_000, limit: 100 },
+      { name: 'inventory-valuation', ttl: 900_000, limit: 20 },
+      { name: 'dashboard', ttl: 300_000, limit: 10 },
     ]),
 
     ScheduleModule.forRoot(),
@@ -107,6 +106,7 @@ import { InsuredItem } from './modules/insurance/entities/insured-item.entity';
     PresenceModule,
   ],
   providers: [
+    AnomalyGuard,
     // Order matters: Throttler → JWT → MFA → Roles → Guest Expiration
     { provide: APP_GUARD, useClass: AppThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },

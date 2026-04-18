@@ -348,6 +348,15 @@ Production target (paid): ~$125-130/month on e2-standard-4.
 
 ## Technical Debt
 
+### Envelope Encryption con rotación de claves (post-MVP)
+- **Date**: 2026-04-18
+- **Contexto**: El `CryptoService` actual usa HKDF-SHA-256 para derivar claves únicas por tenant desde una `ENCRYPTION_KEY` maestra. Es criptográficamente sólido para MVP.
+- **Decisión**: No implementar envelope encryption (dataKey por tenant almacenada cifrada en DB) hasta integrar **GCP KMS** post-MVP.
+- **Por qué se difirió**: (1) Todos los datos existentes están cifrados con HKDF — migrarlos requiere script de re-cifrado. (2) `encryptField`/`decryptField` son síncronos; volverlos async rompe todos los callers en `inventory.service.ts`. (3) `Tenant` entity necesita columna `encrypted_data_key` + migración SQL. (4) Sin caché de `dataKey` en memoria → DB round-trip por cada campo cifrado.
+- **Cuando retomar**: Al migrar a GCP KMS (post-MVP con clientes pagos). Usar `@google-cloud/kms` para wrap/unwrap de dataKeys. No implementar KMS casero.
+- **Archivos relevantes**: `apps/api/src/common/services/crypto.service.ts` · `apps/api/src/modules/tenants/entities/tenant.entity.ts`
+- **Priority**: Post-MVP — bloquea hasta tener GCP KMS configurado
+
 ### App Icon — Android & iOS not updated
 - **Date**: 2026-04-10
 - **Context**: New icon (Option 2 — El Escudo shield) applied to web only.

@@ -3,7 +3,11 @@ import { InjectRedis } from '../../../common/decorators/inject-redis.decorator';
 import Redis from 'ioredis';
 import { GeminiClient } from '../shared/gemini.client';
 import { AiCostLoggerService } from '../shared/ai-cost-logger.service';
-import { InsuranceService } from '../../insurance/insurance.service';
+import { Role } from '../../../common/enums/role.enum';
+import { CoverageGapReport, InsuranceService } from '../../insurance/insurance.service';
+
+/** AI coverage prompts need full numeric gap data (same as owner/manager view). */
+const GAP_REPORT_ROLE_FOR_AI = Role.MANAGER;
 
 const GEMINI_MODEL = 'gemini-2.0-flash';
 
@@ -41,10 +45,11 @@ export class AiInsuranceService {
     const rateLimitKey = `ai:insurance:analyze:${tenantId}`;
     await this.enforceRateLimit(rateLimitKey, 10);
 
-    const [policy, gapReport] = await Promise.all([
+    const [policy, gapReportRaw] = await Promise.all([
       this.insuranceService.findPolicyById(tenantId, policyId),
-      this.insuranceService.getCoverageGaps(tenantId),
+      this.insuranceService.getCoverageGaps(tenantId, userId, GAP_REPORT_ROLE_FOR_AI),
     ]);
+    const gapReport = gapReportRaw as CoverageGapReport;
 
     const now = new Date();
     const msUntilExpiry = policy.expiresAt.getTime() - now.getTime();

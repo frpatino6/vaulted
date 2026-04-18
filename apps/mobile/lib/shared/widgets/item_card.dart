@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../features/inventory/data/models/item_model.dart';
 import 'status_badge.dart';
+import 'valuation_text.dart';
 
 /// Category icon mapping for inventory items.
 class ItemCategoryIcons {
@@ -33,27 +34,17 @@ class ItemCategoryIcons {
 }
 
 /// Premium item card: dark surface, category icon, name, subcategory, status badge, value.
-class ItemCard extends StatelessWidget {
+class ItemCard extends ConsumerWidget {
   const ItemCard({super.key, required this.item});
 
   final ItemModel item;
 
-  static final _currencyFormat = NumberFormat.currency(
-    locale: 'en_US',
-    symbol: r'$',
-    decimalDigits: 0,
-  );
-
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final surfaceColor = isDark
         ? AppColors.surfaceVariant.withValues(alpha: 0.6)
         : AppColors.surfaceVariant.withValues(alpha: 0.4);
-
-    final valueText = item.valuation != null && item.valuation!.currentValue > 0
-        ? _currencyFormat.format(item.valuation!.currentValue)
-        : '—';
 
     return Material(
       color: surfaceColor,
@@ -114,9 +105,8 @@ class ItemCard extends StatelessWidget {
                     const SizedBox(width: 8),
                     SizedBox(
                       width: 80,
-                      child: Text(
-                        valueText,
-                        textAlign: TextAlign.right,
+                      child: ValuationText(
+                        value: item.valuation?.currentValue,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                               fontWeight: FontWeight.w600,
                               color: AppColors.accent,

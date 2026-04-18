@@ -1,12 +1,19 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   InternalServerErrorException,
+  NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { Storage } from '@google-cloud/storage';
-import { mkdir, unlink, writeFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { createReadStream } from 'node:fs';
+import { mkdir, stat, unlink, writeFile } from 'node:fs/promises';
+import { dirname, extname, join } from 'node:path';
+import { pipeline } from 'node:stream/promises';
+import type { Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { UploadResponseDto } from './dto/upload-response.dto';
 
@@ -57,7 +64,10 @@ export class MediaService {
   private readonly appUrl: string;
   private readonly useLocalStorage: boolean;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly jwtService: JwtService,
+  ) {
     this.bucketName = this.configService.get<string>('GCP_STORAGE_BUCKET');
     this.usePublicUrls =
       this.configService.get<string>('GCP_STORAGE_PUBLIC') === 'true';
@@ -79,6 +89,64 @@ export class MediaService {
         ...(keyFilename ? { keyFilename } : {}),
       });
     }
+  }
+
+  generateFileToken(fileUrl: string, tenantId: string, userId: string): string {
+    const normalizedKey = this.normalizeKey(fileUrl);
+    return this.jwtService.sign(
+      { fileKey: normalizedKey, tenantId, userId },
+      { expiresIn: '15m' },
+    );
+  }
+
+  async serveFile(token: string, res: Response): Promise<void> {
+    let payload: { fileKey: string; tenantId: string; userId: string };
+    try {
+      payload = this.jwtService.verify<{ fileKey: string; tenantId: string; userId: string }>(
+        token,
+      );
+    } catch {
+      throw new UnauthorizedException('Invalid or expired media token');
+    }
+
+    if (!payload.fileKey.startsWith(`${payload.tenantId}/`)) {
+      throw new ForbiddenException();
+    }
+
+    if (this.useLocalStorage) {
+      const fullPath = join(this.uploadsRoot, payload.fileKey);
+      const ext = extname(payload.fileKey).toLowerCase();
+      let mimeType = 'application/octet-stream';
+      if (ext === '.jpg' || ext === '.jpeg') {
+        mimeType = 'image/jpeg';
+      } else if (ext === '.png') {
+        mimeType = 'image/png';
+      } else if (ext === '.webp') {
+        mimeType = 'image/webp';
+      } else if (ext === '.pdf') {
+        mimeType = 'application/pdf';
+      }
+
+      try {
+        await stat(fullPath);
+      } catch {
+        throw new NotFoundException();
+      }
+
+      res.setHeader('Content-Type', mimeType);
+      res.setHeader('Cache-Control', 'private, no-store');
+
+      await pipeline(createReadStream(fullPath), res);
+      return;
+    }
+
+    const storageFile = this.storage!.bucket(this.bucketName!).file(payload.fileKey);
+    const [signedUrl] = await storageFile.getSignedUrl({
+      action: 'read',
+      expires: Date.now() + 5 * 60 * 1000,
+      version: 'v4',
+    });
+    res.redirect(302, signedUrl);
   }
 
   async upload(
