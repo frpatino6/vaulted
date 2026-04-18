@@ -131,6 +131,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                       _SpecsGrid(
                         item: item,
                         resolvedRoomName: _resolveRoomName(item.roomId),
+                        resolvedSectionLabel: _resolveSectionLabel(item.roomId, item.sectionId),
                       ),
                       if (item.isWardrobe && item.hasWardrobeDetails) ...[
                         const SizedBox(height: AppSpacing.lg),
@@ -457,6 +458,23 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
     for (final floor in property.floors) {
       for (final room in floor.rooms) {
         if (room.roomId == roomId) return room.name;
+      }
+    }
+    return null;
+  }
+
+  String? _resolveSectionLabel(String? roomId, String? sectionId) {
+    if (sectionId == null || sectionId.isEmpty) return null;
+    final property = ref.read(propertyDetailNotifierProvider).valueOrNull;
+    if (property == null) return null;
+    for (final floor in property.floors) {
+      for (final room in floor.rooms) {
+        if (roomId != null && room.roomId != roomId) continue;
+        for (final section in room.sections) {
+          if (section.sectionId == sectionId) {
+            return '${section.code} · ${section.name}';
+          }
+        }
       }
     }
     return null;
@@ -1512,10 +1530,11 @@ class _ValuationDetailsSection extends StatelessWidget {
 }
 
 class _SpecsGrid extends StatelessWidget {
-  const _SpecsGrid({required this.item, this.resolvedRoomName});
+  const _SpecsGrid({required this.item, this.resolvedRoomName, this.resolvedSectionLabel});
 
   final ItemModel item;
   final String? resolvedRoomName;
+  final String? resolvedSectionLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -1528,16 +1547,17 @@ class _SpecsGrid extends StatelessWidget {
           color: AppColors.onSurfaceVariant.withValues(alpha: 0.2),
         ),
       ),
-      child: _SpecsTable(item: item, resolvedRoomName: resolvedRoomName),
+      child: _SpecsTable(item: item, resolvedRoomName: resolvedRoomName, resolvedSectionLabel: resolvedSectionLabel),
     );
   }
 }
 
 class _SpecsTable extends StatelessWidget {
-  const _SpecsTable({required this.item, this.resolvedRoomName});
+  const _SpecsTable({required this.item, this.resolvedRoomName, this.resolvedSectionLabel});
 
   final ItemModel item;
   final String? resolvedRoomName;
+  final String? resolvedSectionLabel;
 
   static TextStyle _labelStyle(BuildContext context) {
     return Theme.of(context).textTheme.labelSmall!.copyWith(
@@ -1581,9 +1601,15 @@ class _SpecsTable extends StatelessWidget {
         value: item.serialNumber?.isNotEmpty == true ? item.serialNumber! : '—',
         labelStyle: ls,
       ),
-      if (item.locationDetail?.isNotEmpty == true)
+      if (resolvedSectionLabel != null)
         _SpecCell(
-          label: 'SECTION / LOCATION',
+          label: 'SECTION',
+          value: resolvedSectionLabel!,
+          labelStyle: ls,
+        )
+      else if (item.locationDetail?.isNotEmpty == true)
+        _SpecCell(
+          label: 'LOCATION',
           value: item.locationDetail!,
           labelStyle: ls,
         ),

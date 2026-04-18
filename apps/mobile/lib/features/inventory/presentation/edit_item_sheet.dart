@@ -7,6 +7,7 @@ import '../../../shared/widgets/item_photo_picker.dart';
 import '../../media/data/media_repository_provider.dart';
 import '../../properties/data/models/floor_model.dart';
 import '../../properties/data/models/room_model.dart';
+import '../../properties/data/models/room_section_model.dart';
 import '../../wardrobe/data/models/wardrobe_attributes.dart';
 import '../data/item_repository_provider.dart';
 import '../data/models/item_model.dart';
@@ -64,6 +65,7 @@ class _EditItemSheetState extends ConsumerState<EditItemSheet> {
 
   String? _selectedRoomId;
   String? _selectedRoomName;
+  String? _selectedSectionId;
 
   @override
   void initState() {
@@ -95,6 +97,7 @@ class _EditItemSheetState extends ConsumerState<EditItemSheet> {
 
     _selectedRoomId = item.roomId;
     _selectedRoomName = _resolveRoomName(item.roomId);
+    _selectedSectionId = item.sectionId;
   }
 
   String? _resolveRoomName(String? roomId) {
@@ -127,8 +130,19 @@ class _EditItemSheetState extends ConsumerState<EditItemSheet> {
       setState(() {
         _selectedRoomId = picked.roomId;
         _selectedRoomName = picked.name;
+        _selectedSectionId = null;
       });
     }
+  }
+
+  List<RoomSectionModel> get _availableSections {
+    if (_selectedRoomId == null || widget.floors == null) return [];
+    for (final floor in widget.floors!) {
+      for (final room in floor.rooms) {
+        if (room.roomId == _selectedRoomId) return room.sections;
+      }
+    }
+    return [];
   }
 
   @override
@@ -200,7 +214,10 @@ class _EditItemSheetState extends ConsumerState<EditItemSheet> {
         subcategory: _subcategoryController.text.trim(),
         roomId: _selectedRoomId != widget.item.roomId ? _selectedRoomId : null,
         serialNumber: serialNum.isEmpty ? null : serialNum,
-        locationDetail: locationDet.isEmpty ? null : locationDet,
+        locationDetail: _selectedSectionId == null && locationDet.isNotEmpty
+            ? locationDet
+            : null,
+        sectionId: _selectedSectionId,
         valuation: {
           'purchasePrice': purchasePrice,
           'currentValue': currentValue,
@@ -381,14 +398,52 @@ class _EditItemSheetState extends ConsumerState<EditItemSheet> {
                     canChange: (widget.floors?.isNotEmpty) ?? false,
                     onTap: _openRoomPicker,
                   ),
-                  const SizedBox(height: AppSpacing.md),
-                  TextFormField(
-                    controller: _locationDetailController,
-                    decoration: const InputDecoration(
-                      labelText: 'Within room (optional)',
-                      hintText: 'e.g. Left shelf, Cabinet 3',
+                  if (_availableSections.isNotEmpty) ...[
+                    const SizedBox(height: AppSpacing.md),
+                    DropdownButtonFormField<String>(
+                      value: _selectedSectionId,
+                      decoration: InputDecoration(
+                        labelText: 'Section (optional)',
+                        hintText: 'Select section',
+                        prefixIcon: const Icon(
+                          Icons.grid_view_outlined,
+                          size: 18,
+                        ),
+                        suffixIcon: _selectedSectionId != null
+                            ? IconButton(
+                                icon: const Icon(Icons.close, size: 16),
+                                onPressed: () => setState(
+                                  () => _selectedSectionId = null,
+                                ),
+                              )
+                            : null,
+                      ),
+                      dropdownColor: AppColors.surfaceVariant,
+                      items: [
+                        const DropdownMenuItem<String>(
+                          value: null,
+                          child: Text('No section'),
+                        ),
+                        ..._availableSections.map(
+                          (s) => DropdownMenuItem<String>(
+                            value: s.sectionId,
+                            child: Text('${s.code} – ${s.name}'),
+                          ),
+                        ),
+                      ],
+                      onChanged: (v) =>
+                          setState(() => _selectedSectionId = v),
                     ),
-                  ),
+                  ] else ...[
+                    const SizedBox(height: AppSpacing.md),
+                    TextFormField(
+                      controller: _locationDetailController,
+                      decoration: const InputDecoration(
+                        labelText: 'Within room (optional)',
+                        hintText: 'e.g. Left shelf, Cabinet 3',
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: AppSpacing.md),
                   TextFormField(
                     controller: _purchasePriceController,
