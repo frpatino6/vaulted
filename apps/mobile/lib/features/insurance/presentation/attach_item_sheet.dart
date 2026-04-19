@@ -81,8 +81,8 @@ class _AttachItemSheetState extends ConsumerState<AttachItemSheet> {
 
     try {
       await widget.onAttached(item.id, coveredValue, _currency);
-      if (mounted) Navigator.pop(context);
     } catch (e) {
+      if (!mounted) return;
       String msg = 'Could not attach item. Please try again.';
       if (e is DioException) {
         final data = e.response?.data;
@@ -92,9 +92,14 @@ class _AttachItemSheetState extends ConsumerState<AttachItemSheet> {
         }
       }
       setState(() => _error = msg);
+      return;
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
+
+    // Do not wrap Navigator.pop in the same try as onAttached: a pop/layout
+    // failure would show "Could not attach" even when the item was attached.
+    if (mounted) await Navigator.maybePop(context);
   }
 
   @override
