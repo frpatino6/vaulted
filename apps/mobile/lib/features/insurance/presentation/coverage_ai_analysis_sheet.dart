@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../data/models/insurance_ai_model.dart';
+import '../domain/coverage_gaps_notifier.dart';
 import '../domain/insurance_ai_notifier.dart';
 import '../domain/insurance_detail_notifier.dart';
 
@@ -96,7 +97,25 @@ class _AnalysisContentState extends ConsumerState<_AnalysisContent> {
 
   Future<void> _showAttachDialog(
       BuildContext context, String itemId, String itemName) async {
-    final valueCtrl = TextEditingController();
+    final report = ref.read(coverageGapsNotifierProvider).valueOrNull;
+    var initialCoveredText = '';
+    if (report != null) {
+      for (final i in report.uncovered) {
+        if (i.itemId == itemId) {
+          initialCoveredText = i.currentValue.toString();
+          break;
+        }
+      }
+      if (initialCoveredText.isEmpty) {
+        for (final i in report.underinsured) {
+          if (i.itemId == itemId) {
+            initialCoveredText = i.currentValue.toString();
+            break;
+          }
+        }
+      }
+    }
+    final valueCtrl = TextEditingController(text: initialCoveredText);
     String currency = 'USD';
     String? error;
 
