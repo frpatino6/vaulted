@@ -890,11 +890,15 @@ CoverageGapItemModel _$CoverageGapItemModelFromJson(Map<String, dynamic> json) {
 /// @nodoc
 mixin _$CoverageGapItemModel {
   String get itemId => throw _privateConstructorUsedError;
-  String get itemName => throw _privateConstructorUsedError;
+  String get name => throw _privateConstructorUsedError;
+  String get category => throw _privateConstructorUsedError;
+  @JsonKey(fromJson: _parseDouble)
   double get currentValue => throw _privateConstructorUsedError;
-  double? get coveredValue => throw _privateConstructorUsedError;
+  @JsonKey(fromJson: _parseDouble)
+  double get coveredValue => throw _privateConstructorUsedError;
+  @JsonKey(fromJson: _parseDouble)
   double get gap => throw _privateConstructorUsedError;
-  bool get fullyUninsured => throw _privateConstructorUsedError;
+  String get currency => throw _privateConstructorUsedError;
 
   /// Serializes this CoverageGapItemModel to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -915,11 +919,12 @@ abstract class $CoverageGapItemModelCopyWith<$Res> {
   @useResult
   $Res call({
     String itemId,
-    String itemName,
-    double currentValue,
-    double? coveredValue,
-    double gap,
-    bool fullyUninsured,
+    String name,
+    String category,
+    @JsonKey(fromJson: _parseDouble) double currentValue,
+    @JsonKey(fromJson: _parseDouble) double coveredValue,
+    @JsonKey(fromJson: _parseDouble) double gap,
+    String currency,
   });
 }
 
@@ -942,11 +947,12 @@ class _$CoverageGapItemModelCopyWithImpl<
   @override
   $Res call({
     Object? itemId = null,
-    Object? itemName = null,
+    Object? name = null,
+    Object? category = null,
     Object? currentValue = null,
-    Object? coveredValue = freezed,
+    Object? coveredValue = null,
     Object? gap = null,
-    Object? fullyUninsured = null,
+    Object? currency = null,
   }) {
     return _then(
       _value.copyWith(
@@ -955,10 +961,15 @@ class _$CoverageGapItemModelCopyWithImpl<
                     ? _value.itemId
                     : itemId // ignore: cast_nullable_to_non_nullable
                         as String,
-            itemName:
-                null == itemName
-                    ? _value.itemName
-                    : itemName // ignore: cast_nullable_to_non_nullable
+            name:
+                null == name
+                    ? _value.name
+                    : name // ignore: cast_nullable_to_non_nullable
+                        as String,
+            category:
+                null == category
+                    ? _value.category
+                    : category // ignore: cast_nullable_to_non_nullable
                         as String,
             currentValue:
                 null == currentValue
@@ -966,20 +977,20 @@ class _$CoverageGapItemModelCopyWithImpl<
                     : currentValue // ignore: cast_nullable_to_non_nullable
                         as double,
             coveredValue:
-                freezed == coveredValue
+                null == coveredValue
                     ? _value.coveredValue
                     : coveredValue // ignore: cast_nullable_to_non_nullable
-                        as double?,
+                        as double,
             gap:
                 null == gap
                     ? _value.gap
                     : gap // ignore: cast_nullable_to_non_nullable
                         as double,
-            fullyUninsured:
-                null == fullyUninsured
-                    ? _value.fullyUninsured
-                    : fullyUninsured // ignore: cast_nullable_to_non_nullable
-                        as bool,
+            currency:
+                null == currency
+                    ? _value.currency
+                    : currency // ignore: cast_nullable_to_non_nullable
+                        as String,
           )
           as $Val,
     );
@@ -997,11 +1008,12 @@ abstract class _$$CoverageGapItemModelImplCopyWith<$Res>
   @useResult
   $Res call({
     String itemId,
-    String itemName,
-    double currentValue,
-    double? coveredValue,
-    double gap,
-    bool fullyUninsured,
+    String name,
+    String category,
+    @JsonKey(fromJson: _parseDouble) double currentValue,
+    @JsonKey(fromJson: _parseDouble) double coveredValue,
+    @JsonKey(fromJson: _parseDouble) double gap,
+    String currency,
   });
 }
 
@@ -1020,11 +1032,12 @@ class __$$CoverageGapItemModelImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? itemId = null,
-    Object? itemName = null,
+    Object? name = null,
+    Object? category = null,
     Object? currentValue = null,
-    Object? coveredValue = freezed,
+    Object? coveredValue = null,
     Object? gap = null,
-    Object? fullyUninsured = null,
+    Object? currency = null,
   }) {
     return _then(
       _$CoverageGapItemModelImpl(
@@ -1033,10 +1046,15 @@ class __$$CoverageGapItemModelImplCopyWithImpl<$Res>
                 ? _value.itemId
                 : itemId // ignore: cast_nullable_to_non_nullable
                     as String,
-        itemName:
-            null == itemName
-                ? _value.itemName
-                : itemName // ignore: cast_nullable_to_non_nullable
+        name:
+            null == name
+                ? _value.name
+                : name // ignore: cast_nullable_to_non_nullable
+                    as String,
+        category:
+            null == category
+                ? _value.category
+                : category // ignore: cast_nullable_to_non_nullable
                     as String,
         currentValue:
             null == currentValue
@@ -1044,20 +1062,20 @@ class __$$CoverageGapItemModelImplCopyWithImpl<$Res>
                 : currentValue // ignore: cast_nullable_to_non_nullable
                     as double,
         coveredValue:
-            freezed == coveredValue
+            null == coveredValue
                 ? _value.coveredValue
                 : coveredValue // ignore: cast_nullable_to_non_nullable
-                    as double?,
+                    as double,
         gap:
             null == gap
                 ? _value.gap
                 : gap // ignore: cast_nullable_to_non_nullable
                     as double,
-        fullyUninsured:
-            null == fullyUninsured
-                ? _value.fullyUninsured
-                : fullyUninsured // ignore: cast_nullable_to_non_nullable
-                    as bool,
+        currency:
+            null == currency
+                ? _value.currency
+                : currency // ignore: cast_nullable_to_non_nullable
+                    as String,
       ),
     );
   }
@@ -1068,11 +1086,12 @@ class __$$CoverageGapItemModelImplCopyWithImpl<$Res>
 class _$CoverageGapItemModelImpl implements _CoverageGapItemModel {
   const _$CoverageGapItemModelImpl({
     required this.itemId,
-    required this.itemName,
-    required this.currentValue,
-    this.coveredValue,
-    required this.gap,
-    required this.fullyUninsured,
+    required this.name,
+    required this.category,
+    @JsonKey(fromJson: _parseDouble) this.currentValue = 0.0,
+    @JsonKey(fromJson: _parseDouble) this.coveredValue = 0.0,
+    @JsonKey(fromJson: _parseDouble) this.gap = 0.0,
+    this.currency = 'USD',
   });
 
   factory _$CoverageGapItemModelImpl.fromJson(Map<String, dynamic> json) =>
@@ -1081,19 +1100,25 @@ class _$CoverageGapItemModelImpl implements _CoverageGapItemModel {
   @override
   final String itemId;
   @override
-  final String itemName;
+  final String name;
   @override
+  final String category;
+  @override
+  @JsonKey(fromJson: _parseDouble)
   final double currentValue;
   @override
-  final double? coveredValue;
+  @JsonKey(fromJson: _parseDouble)
+  final double coveredValue;
   @override
+  @JsonKey(fromJson: _parseDouble)
   final double gap;
   @override
-  final bool fullyUninsured;
+  @JsonKey()
+  final String currency;
 
   @override
   String toString() {
-    return 'CoverageGapItemModel(itemId: $itemId, itemName: $itemName, currentValue: $currentValue, coveredValue: $coveredValue, gap: $gap, fullyUninsured: $fullyUninsured)';
+    return 'CoverageGapItemModel(itemId: $itemId, name: $name, category: $category, currentValue: $currentValue, coveredValue: $coveredValue, gap: $gap, currency: $currency)';
   }
 
   @override
@@ -1102,15 +1127,16 @@ class _$CoverageGapItemModelImpl implements _CoverageGapItemModel {
         (other.runtimeType == runtimeType &&
             other is _$CoverageGapItemModelImpl &&
             (identical(other.itemId, itemId) || other.itemId == itemId) &&
-            (identical(other.itemName, itemName) ||
-                other.itemName == itemName) &&
+            (identical(other.name, name) || other.name == name) &&
+            (identical(other.category, category) ||
+                other.category == category) &&
             (identical(other.currentValue, currentValue) ||
                 other.currentValue == currentValue) &&
             (identical(other.coveredValue, coveredValue) ||
                 other.coveredValue == coveredValue) &&
             (identical(other.gap, gap) || other.gap == gap) &&
-            (identical(other.fullyUninsured, fullyUninsured) ||
-                other.fullyUninsured == fullyUninsured));
+            (identical(other.currency, currency) ||
+                other.currency == currency));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1118,11 +1144,12 @@ class _$CoverageGapItemModelImpl implements _CoverageGapItemModel {
   int get hashCode => Object.hash(
     runtimeType,
     itemId,
-    itemName,
+    name,
+    category,
     currentValue,
     coveredValue,
     gap,
-    fullyUninsured,
+    currency,
   );
 
   /// Create a copy of CoverageGapItemModel
@@ -1146,11 +1173,12 @@ class _$CoverageGapItemModelImpl implements _CoverageGapItemModel {
 abstract class _CoverageGapItemModel implements CoverageGapItemModel {
   const factory _CoverageGapItemModel({
     required final String itemId,
-    required final String itemName,
-    required final double currentValue,
-    final double? coveredValue,
-    required final double gap,
-    required final bool fullyUninsured,
+    required final String name,
+    required final String category,
+    @JsonKey(fromJson: _parseDouble) final double currentValue,
+    @JsonKey(fromJson: _parseDouble) final double coveredValue,
+    @JsonKey(fromJson: _parseDouble) final double gap,
+    final String currency,
   }) = _$CoverageGapItemModelImpl;
 
   factory _CoverageGapItemModel.fromJson(Map<String, dynamic> json) =
@@ -1159,15 +1187,20 @@ abstract class _CoverageGapItemModel implements CoverageGapItemModel {
   @override
   String get itemId;
   @override
-  String get itemName;
+  String get name;
   @override
+  String get category;
+  @override
+  @JsonKey(fromJson: _parseDouble)
   double get currentValue;
   @override
-  double? get coveredValue;
+  @JsonKey(fromJson: _parseDouble)
+  double get coveredValue;
   @override
+  @JsonKey(fromJson: _parseDouble)
   double get gap;
   @override
-  bool get fullyUninsured;
+  String get currency;
 
   /// Create a copy of CoverageGapItemModel
   /// with the given fields replaced by the non-null parameter values.
@@ -1185,11 +1218,14 @@ CoverageGapReportModel _$CoverageGapReportModelFromJson(
 
 /// @nodoc
 mixin _$CoverageGapReportModel {
-  String get policyId => throw _privateConstructorUsedError;
-  double get totalInventoryValue => throw _privateConstructorUsedError;
-  double get totalCoveredValue => throw _privateConstructorUsedError;
-  double get totalGap => throw _privateConstructorUsedError;
-  List<CoverageGapItemModel> get items => throw _privateConstructorUsedError;
+  List<CoverageGapItemModel> get uncovered =>
+      throw _privateConstructorUsedError;
+  List<CoverageGapItemModel> get underinsured =>
+      throw _privateConstructorUsedError;
+  @JsonKey(fromJson: _parseDouble)
+  double get totalUncoveredValue => throw _privateConstructorUsedError;
+  @JsonKey(fromJson: _parseDouble)
+  double get totalUnderinsuredGap => throw _privateConstructorUsedError;
 
   /// Serializes this CoverageGapReportModel to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -1209,11 +1245,10 @@ abstract class $CoverageGapReportModelCopyWith<$Res> {
   ) = _$CoverageGapReportModelCopyWithImpl<$Res, CoverageGapReportModel>;
   @useResult
   $Res call({
-    String policyId,
-    double totalInventoryValue,
-    double totalCoveredValue,
-    double totalGap,
-    List<CoverageGapItemModel> items,
+    List<CoverageGapItemModel> uncovered,
+    List<CoverageGapItemModel> underinsured,
+    @JsonKey(fromJson: _parseDouble) double totalUncoveredValue,
+    @JsonKey(fromJson: _parseDouble) double totalUnderinsuredGap,
   });
 }
 
@@ -1235,39 +1270,33 @@ class _$CoverageGapReportModelCopyWithImpl<
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? policyId = null,
-    Object? totalInventoryValue = null,
-    Object? totalCoveredValue = null,
-    Object? totalGap = null,
-    Object? items = null,
+    Object? uncovered = null,
+    Object? underinsured = null,
+    Object? totalUncoveredValue = null,
+    Object? totalUnderinsuredGap = null,
   }) {
     return _then(
       _value.copyWith(
-            policyId:
-                null == policyId
-                    ? _value.policyId
-                    : policyId // ignore: cast_nullable_to_non_nullable
-                        as String,
-            totalInventoryValue:
-                null == totalInventoryValue
-                    ? _value.totalInventoryValue
-                    : totalInventoryValue // ignore: cast_nullable_to_non_nullable
-                        as double,
-            totalCoveredValue:
-                null == totalCoveredValue
-                    ? _value.totalCoveredValue
-                    : totalCoveredValue // ignore: cast_nullable_to_non_nullable
-                        as double,
-            totalGap:
-                null == totalGap
-                    ? _value.totalGap
-                    : totalGap // ignore: cast_nullable_to_non_nullable
-                        as double,
-            items:
-                null == items
-                    ? _value.items
-                    : items // ignore: cast_nullable_to_non_nullable
+            uncovered:
+                null == uncovered
+                    ? _value.uncovered
+                    : uncovered // ignore: cast_nullable_to_non_nullable
                         as List<CoverageGapItemModel>,
+            underinsured:
+                null == underinsured
+                    ? _value.underinsured
+                    : underinsured // ignore: cast_nullable_to_non_nullable
+                        as List<CoverageGapItemModel>,
+            totalUncoveredValue:
+                null == totalUncoveredValue
+                    ? _value.totalUncoveredValue
+                    : totalUncoveredValue // ignore: cast_nullable_to_non_nullable
+                        as double,
+            totalUnderinsuredGap:
+                null == totalUnderinsuredGap
+                    ? _value.totalUnderinsuredGap
+                    : totalUnderinsuredGap // ignore: cast_nullable_to_non_nullable
+                        as double,
           )
           as $Val,
     );
@@ -1284,11 +1313,10 @@ abstract class _$$CoverageGapReportModelImplCopyWith<$Res>
   @override
   @useResult
   $Res call({
-    String policyId,
-    double totalInventoryValue,
-    double totalCoveredValue,
-    double totalGap,
-    List<CoverageGapItemModel> items,
+    List<CoverageGapItemModel> uncovered,
+    List<CoverageGapItemModel> underinsured,
+    @JsonKey(fromJson: _parseDouble) double totalUncoveredValue,
+    @JsonKey(fromJson: _parseDouble) double totalUnderinsuredGap,
   });
 }
 
@@ -1307,39 +1335,33 @@ class __$$CoverageGapReportModelImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? policyId = null,
-    Object? totalInventoryValue = null,
-    Object? totalCoveredValue = null,
-    Object? totalGap = null,
-    Object? items = null,
+    Object? uncovered = null,
+    Object? underinsured = null,
+    Object? totalUncoveredValue = null,
+    Object? totalUnderinsuredGap = null,
   }) {
     return _then(
       _$CoverageGapReportModelImpl(
-        policyId:
-            null == policyId
-                ? _value.policyId
-                : policyId // ignore: cast_nullable_to_non_nullable
-                    as String,
-        totalInventoryValue:
-            null == totalInventoryValue
-                ? _value.totalInventoryValue
-                : totalInventoryValue // ignore: cast_nullable_to_non_nullable
-                    as double,
-        totalCoveredValue:
-            null == totalCoveredValue
-                ? _value.totalCoveredValue
-                : totalCoveredValue // ignore: cast_nullable_to_non_nullable
-                    as double,
-        totalGap:
-            null == totalGap
-                ? _value.totalGap
-                : totalGap // ignore: cast_nullable_to_non_nullable
-                    as double,
-        items:
-            null == items
-                ? _value._items
-                : items // ignore: cast_nullable_to_non_nullable
+        uncovered:
+            null == uncovered
+                ? _value._uncovered
+                : uncovered // ignore: cast_nullable_to_non_nullable
                     as List<CoverageGapItemModel>,
+        underinsured:
+            null == underinsured
+                ? _value._underinsured
+                : underinsured // ignore: cast_nullable_to_non_nullable
+                    as List<CoverageGapItemModel>,
+        totalUncoveredValue:
+            null == totalUncoveredValue
+                ? _value.totalUncoveredValue
+                : totalUncoveredValue // ignore: cast_nullable_to_non_nullable
+                    as double,
+        totalUnderinsuredGap:
+            null == totalUnderinsuredGap
+                ? _value.totalUnderinsuredGap
+                : totalUnderinsuredGap // ignore: cast_nullable_to_non_nullable
+                    as double,
       ),
     );
   }
@@ -1349,36 +1371,44 @@ class __$$CoverageGapReportModelImplCopyWithImpl<$Res>
 @JsonSerializable()
 class _$CoverageGapReportModelImpl implements _CoverageGapReportModel {
   const _$CoverageGapReportModelImpl({
-    required this.policyId,
-    required this.totalInventoryValue,
-    required this.totalCoveredValue,
-    required this.totalGap,
-    final List<CoverageGapItemModel> items = const [],
-  }) : _items = items;
+    final List<CoverageGapItemModel> uncovered = const [],
+    final List<CoverageGapItemModel> underinsured = const [],
+    @JsonKey(fromJson: _parseDouble) this.totalUncoveredValue = 0.0,
+    @JsonKey(fromJson: _parseDouble) this.totalUnderinsuredGap = 0.0,
+  }) : _uncovered = uncovered,
+       _underinsured = underinsured;
 
   factory _$CoverageGapReportModelImpl.fromJson(Map<String, dynamic> json) =>
       _$$CoverageGapReportModelImplFromJson(json);
 
-  @override
-  final String policyId;
-  @override
-  final double totalInventoryValue;
-  @override
-  final double totalCoveredValue;
-  @override
-  final double totalGap;
-  final List<CoverageGapItemModel> _items;
+  final List<CoverageGapItemModel> _uncovered;
   @override
   @JsonKey()
-  List<CoverageGapItemModel> get items {
-    if (_items is EqualUnmodifiableListView) return _items;
+  List<CoverageGapItemModel> get uncovered {
+    if (_uncovered is EqualUnmodifiableListView) return _uncovered;
     // ignore: implicit_dynamic_type
-    return EqualUnmodifiableListView(_items);
+    return EqualUnmodifiableListView(_uncovered);
+  }
+
+  final List<CoverageGapItemModel> _underinsured;
+  @override
+  @JsonKey()
+  List<CoverageGapItemModel> get underinsured {
+    if (_underinsured is EqualUnmodifiableListView) return _underinsured;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_underinsured);
   }
 
   @override
+  @JsonKey(fromJson: _parseDouble)
+  final double totalUncoveredValue;
+  @override
+  @JsonKey(fromJson: _parseDouble)
+  final double totalUnderinsuredGap;
+
+  @override
   String toString() {
-    return 'CoverageGapReportModel(policyId: $policyId, totalInventoryValue: $totalInventoryValue, totalCoveredValue: $totalCoveredValue, totalGap: $totalGap, items: $items)';
+    return 'CoverageGapReportModel(uncovered: $uncovered, underinsured: $underinsured, totalUncoveredValue: $totalUncoveredValue, totalUnderinsuredGap: $totalUnderinsuredGap)';
   }
 
   @override
@@ -1386,26 +1416,28 @@ class _$CoverageGapReportModelImpl implements _CoverageGapReportModel {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$CoverageGapReportModelImpl &&
-            (identical(other.policyId, policyId) ||
-                other.policyId == policyId) &&
-            (identical(other.totalInventoryValue, totalInventoryValue) ||
-                other.totalInventoryValue == totalInventoryValue) &&
-            (identical(other.totalCoveredValue, totalCoveredValue) ||
-                other.totalCoveredValue == totalCoveredValue) &&
-            (identical(other.totalGap, totalGap) ||
-                other.totalGap == totalGap) &&
-            const DeepCollectionEquality().equals(other._items, _items));
+            const DeepCollectionEquality().equals(
+              other._uncovered,
+              _uncovered,
+            ) &&
+            const DeepCollectionEquality().equals(
+              other._underinsured,
+              _underinsured,
+            ) &&
+            (identical(other.totalUncoveredValue, totalUncoveredValue) ||
+                other.totalUncoveredValue == totalUncoveredValue) &&
+            (identical(other.totalUnderinsuredGap, totalUnderinsuredGap) ||
+                other.totalUnderinsuredGap == totalUnderinsuredGap));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(
     runtimeType,
-    policyId,
-    totalInventoryValue,
-    totalCoveredValue,
-    totalGap,
-    const DeepCollectionEquality().hash(_items),
+    const DeepCollectionEquality().hash(_uncovered),
+    const DeepCollectionEquality().hash(_underinsured),
+    totalUncoveredValue,
+    totalUnderinsuredGap,
   );
 
   /// Create a copy of CoverageGapReportModel
@@ -1428,26 +1460,25 @@ class _$CoverageGapReportModelImpl implements _CoverageGapReportModel {
 
 abstract class _CoverageGapReportModel implements CoverageGapReportModel {
   const factory _CoverageGapReportModel({
-    required final String policyId,
-    required final double totalInventoryValue,
-    required final double totalCoveredValue,
-    required final double totalGap,
-    final List<CoverageGapItemModel> items,
+    final List<CoverageGapItemModel> uncovered,
+    final List<CoverageGapItemModel> underinsured,
+    @JsonKey(fromJson: _parseDouble) final double totalUncoveredValue,
+    @JsonKey(fromJson: _parseDouble) final double totalUnderinsuredGap,
   }) = _$CoverageGapReportModelImpl;
 
   factory _CoverageGapReportModel.fromJson(Map<String, dynamic> json) =
       _$CoverageGapReportModelImpl.fromJson;
 
   @override
-  String get policyId;
+  List<CoverageGapItemModel> get uncovered;
   @override
-  double get totalInventoryValue;
+  List<CoverageGapItemModel> get underinsured;
   @override
-  double get totalCoveredValue;
+  @JsonKey(fromJson: _parseDouble)
+  double get totalUncoveredValue;
   @override
-  double get totalGap;
-  @override
-  List<CoverageGapItemModel> get items;
+  @JsonKey(fromJson: _parseDouble)
+  double get totalUnderinsuredGap;
 
   /// Create a copy of CoverageGapReportModel
   /// with the given fields replaced by the non-null parameter values.

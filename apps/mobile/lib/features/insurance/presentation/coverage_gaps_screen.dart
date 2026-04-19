@@ -82,10 +82,8 @@ class _CoverageGapsScreenState extends ConsumerState<CoverageGapsScreen> {
 
   Widget _buildReport(CoverageGapReportModel report) {
     final currencyFmt = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
-    final gapItems =
-        report.items.where((i) => i.gap > 0 || i.fullyUninsured).toList();
-    final coveredItems =
-        report.items.where((i) => !i.fullyUninsured && i.gap <= 0).toList();
+    final totalGap = report.totalUncoveredValue + report.totalUnderinsuredGap;
+    final isEmpty = report.uncovered.isEmpty && report.underinsured.isEmpty;
 
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -95,17 +93,21 @@ class _CoverageGapsScreenState extends ConsumerState<CoverageGapsScreen> {
           children: [
             Expanded(
               child: _SummaryCard(
-                label: 'Inventory Value',
-                value: currencyFmt.format(report.totalInventoryValue),
-                color: AppColors.onBackground,
+                label: 'Uninsured Gap',
+                value: currencyFmt.format(report.totalUncoveredValue),
+                color: report.totalUncoveredValue > 0
+                    ? AppColors.error
+                    : const Color(0xFF4CAF50),
               ),
             ),
             const SizedBox(width: AppSpacing.sm),
             Expanded(
               child: _SummaryCard(
-                label: 'Covered',
-                value: currencyFmt.format(report.totalCoveredValue),
-                color: const Color(0xFF4CAF50),
+                label: 'Underinsured Gap',
+                value: currencyFmt.format(report.totalUnderinsuredGap),
+                color: report.totalUnderinsuredGap > 0
+                    ? AppColors.accent
+                    : const Color(0xFF4CAF50),
               ),
             ),
           ],
@@ -113,106 +115,64 @@ class _CoverageGapsScreenState extends ConsumerState<CoverageGapsScreen> {
         const SizedBox(height: AppSpacing.sm),
         _SummaryCard(
           label: 'Total Coverage Gap',
-          value: currencyFmt.format(report.totalGap),
-          color:
-              report.totalGap > 0 ? AppColors.error : const Color(0xFF4CAF50),
+          value: currencyFmt.format(totalGap),
+          color: totalGap > 0 ? AppColors.error : const Color(0xFF4CAF50),
           fullWidth: true,
         ),
 
-        // Gap percentage indicator
-        if (report.totalInventoryValue > 0) ...[
-          const SizedBox(height: AppSpacing.md),
-          _buildCoverageBar(report),
+        if (isEmpty) ...[
+          const SizedBox(height: AppSpacing.xl),
+          Center(
+            child: Text(
+              'All items are fully covered.',
+              style: AppTypography.bodyMedium.copyWith(
+                color: AppColors.onSurfaceVariant,
+              ),
+            ),
+          ),
         ],
 
-        // Items with gaps
-        if (gapItems.isNotEmpty) ...[
+        // Uninsured items
+        if (report.uncovered.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.md),
           Text(
-            'Items with Coverage Gaps',
+            'Uninsured Items',
             style: AppTypography.titleMedium.copyWith(
               color: AppColors.onBackground,
               fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
-          ...gapItems.map(
-            (item) => _GapItemCard(item: item, currencyFmt: currencyFmt),
-          ),
-        ],
-
-        // Fully covered items
-        if (coveredItems.isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            'Fully Covered Items',
-            style: AppTypography.titleMedium.copyWith(
-              color: AppColors.onBackground,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          ...coveredItems.map(
+          ...report.uncovered.map(
             (item) => _GapItemCard(
               item: item,
               currencyFmt: currencyFmt,
-              isCovered: true,
+              fullyUninsured: true,
+            ),
+          ),
+        ],
+
+        // Underinsured items
+        if (report.underinsured.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            'Underinsured Items',
+            style: AppTypography.titleMedium.copyWith(
+              color: AppColors.onBackground,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          ...report.underinsured.map(
+            (item) => _GapItemCard(
+              item: item,
+              currencyFmt: currencyFmt,
+              fullyUninsured: false,
             ),
           ),
         ],
 
         const SizedBox(height: AppSpacing.xl),
-      ],
-    );
-  }
-
-  Widget _buildCoverageBar(CoverageGapReportModel report) {
-    final pct = (report.totalCoveredValue / report.totalInventoryValue).clamp(
-      0.0,
-      1.0,
-    );
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Coverage',
-              style: AppTypography.bodySmall.copyWith(
-                color: AppColors.onSurfaceVariant,
-              ),
-            ),
-            Text(
-              '${(pct * 100).toStringAsFixed(1)}%',
-              style: AppTypography.bodySmall.copyWith(
-                color:
-                    pct >= 0.9
-                        ? const Color(0xFF4CAF50)
-                        : pct >= 0.5
-                        ? AppColors.accent
-                        : AppColors.error,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: LinearProgressIndicator(
-            value: pct,
-            minHeight: 8,
-            backgroundColor: AppColors.surfaceVariant,
-            valueColor: AlwaysStoppedAnimation<Color>(
-              pct >= 0.9
-                  ? const Color(0xFF4CAF50)
-                  : pct >= 0.5
-                  ? AppColors.accent
-                  : AppColors.error,
-            ),
-          ),
-        ),
       ],
     );
   }
@@ -267,19 +227,18 @@ class _GapItemCard extends StatelessWidget {
   const _GapItemCard({
     required this.item,
     required this.currencyFmt,
-    this.isCovered = false,
+    required this.fullyUninsured,
   });
 
   final CoverageGapItemModel item;
   final NumberFormat currencyFmt;
-  final bool isCovered;
+  final bool fullyUninsured;
 
   @override
   Widget build(BuildContext context) {
-    final gapColor =
-        item.fullyUninsured
-            ? AppColors.error
-            : item.gap > 0
+    final gapColor = fullyUninsured
+        ? AppColors.error
+        : item.gap > 0
             ? AppColors.accent
             : const Color(0xFF4CAF50);
 
@@ -289,12 +248,7 @@ class _GapItemCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color:
-              isCovered
-                  ? const Color(0xFF4CAF50).withOpacity(0.3)
-                  : gapColor.withOpacity(0.3),
-        ),
+        border: Border.all(color: gapColor.withOpacity(0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -303,7 +257,7 @@ class _GapItemCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  item.itemName,
+                  item.name,
                   style: AppTypography.bodyMedium.copyWith(
                     color: AppColors.onBackground,
                     fontWeight: FontWeight.w500,
@@ -312,7 +266,7 @@ class _GapItemCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              if (item.fullyUninsured)
+              if (fullyUninsured)
                 _Chip(label: 'Uninsured', color: AppColors.error),
             ],
           ),
@@ -324,10 +278,10 @@ class _GapItemCard extends StatelessWidget {
                 label: 'Item Value',
                 value: currencyFmt.format(item.currentValue),
               ),
-              if (item.coveredValue != null)
+              if (!fullyUninsured)
                 _ValueLabel(
                   label: 'Covered',
-                  value: currencyFmt.format(item.coveredValue!),
+                  value: currencyFmt.format(item.coveredValue),
                   color: const Color(0xFF4CAF50),
                 ),
               _ValueLabel(

@@ -94,11 +94,12 @@ extension InsurancePolicyModelX on InsurancePolicyModel {
 class CoverageGapItemModel with _$CoverageGapItemModel {
   const factory CoverageGapItemModel({
     required String itemId,
-    required String itemName,
-    required double currentValue,
-    double? coveredValue,
-    required double gap,
-    required bool fullyUninsured,
+    required String name,
+    required String category,
+    @JsonKey(fromJson: _parseDouble) @Default(0.0) double currentValue,
+    @JsonKey(fromJson: _parseDouble) @Default(0.0) double coveredValue,
+    @JsonKey(fromJson: _parseDouble) @Default(0.0) double gap,
+    @Default('USD') String currency,
   }) = _CoverageGapItemModel;
 
   factory CoverageGapItemModel.fromJson(Map<String, dynamic> json) =>
@@ -108,11 +109,10 @@ class CoverageGapItemModel with _$CoverageGapItemModel {
 @freezed
 class CoverageGapReportModel with _$CoverageGapReportModel {
   const factory CoverageGapReportModel({
-    required String policyId,
-    required double totalInventoryValue,
-    required double totalCoveredValue,
-    required double totalGap,
-    @Default([]) List<CoverageGapItemModel> items,
+    @Default([]) List<CoverageGapItemModel> uncovered,
+    @Default([]) List<CoverageGapItemModel> underinsured,
+    @JsonKey(fromJson: _parseDouble) @Default(0.0) double totalUncoveredValue,
+    @JsonKey(fromJson: _parseDouble) @Default(0.0) double totalUnderinsuredGap,
   }) = _CoverageGapReportModel;
 
   factory CoverageGapReportModel.fromJson(Map<String, dynamic> json) =>
