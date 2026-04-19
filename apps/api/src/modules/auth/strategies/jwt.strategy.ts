@@ -12,6 +12,7 @@ export interface JwtPayload {
   email: string;
   role: Role;
   mfaVerified: boolean;
+  propertyIds?: string[];
 }
 
 @Injectable()

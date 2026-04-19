@@ -21,6 +21,7 @@ import { UpdatePolicyDto } from './dto/update-policy.dto';
 import { InsuranceService } from './insurance.service';
 import { PolicyStatus } from './entities/insurance-policy.entity';
 
+/** Mutating routes intentionally exclude {@link Role.AUDITOR} — auditors are read-only (GET). */
 @Controller('insurance')
 export class InsuranceController {
   constructor(private readonly insuranceService: InsuranceService) {}
@@ -102,6 +103,6 @@ export class InsuranceController {
   @Roles(Role.OWNER, Role.MANAGER, Role.AUDITOR)
   @Get('coverage-gaps')
   getCoverageGaps(@CurrentUser() user: JwtPayload) {
-    return this.insuranceService.getCoverageGaps(user.tenantId);
+    return this.insuranceService.getCoverageGaps(user.tenantId, user.sub, user.role);
   }
 }

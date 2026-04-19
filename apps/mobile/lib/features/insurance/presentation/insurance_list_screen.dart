@@ -45,7 +45,7 @@ class _InsuranceListScreenState extends ConsumerState<InsuranceListScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      bottomNavigationBar: const AppBottomNav(currentTab: AppTab.insurance),
+      bottomNavigationBar: AppBottomNav(currentTab: AppTab.insurance),
       appBar: AppBar(
         backgroundColor: AppColors.background,
         foregroundColor: AppColors.onBackground,

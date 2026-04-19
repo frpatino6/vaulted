@@ -64,7 +64,7 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      bottomNavigationBar: const AppBottomNav(currentTab: AppTab.wardrobe),
+      bottomNavigationBar: AppBottomNav(currentTab: AppTab.wardrobe),
       appBar: AppBar(
         backgroundColor: AppColors.background,
         foregroundColor: AppColors.onBackground,

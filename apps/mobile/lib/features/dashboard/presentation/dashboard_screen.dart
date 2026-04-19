@@ -38,7 +38,7 @@ class DashboardScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.backgroundElevated,
-      bottomNavigationBar: const AppBottomNav(currentTab: AppTab.home),
+      bottomNavigationBar: AppBottomNav(currentTab: AppTab.home),
       body: RefreshIndicator(
         color: AppColors.accent,
         onRefresh: () async {
