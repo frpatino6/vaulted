@@ -313,6 +313,19 @@ export class MediaService {
       return key.slice(gcsPublicPrefix.length);
     }
 
+    // Already a signed media token URL — extract the original fileKey from the JWT payload.
+    const mediaTokenPrefix = `${this.appUrl}/api/media/`;
+    if (key.startsWith(mediaTokenPrefix)) {
+      const token = key.slice(mediaTokenPrefix.length);
+      try {
+        const payload = this.jwtService.verify<{ fileKey: string }>(token);
+        return payload.fileKey;
+      } catch {
+        // Token invalid/expired — return as-is and let serveFile reject it.
+        return key;
+      }
+    }
+
     return key;
   }
 }
