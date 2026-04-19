@@ -57,8 +57,15 @@ class _AttachItemSheetState extends ConsumerState<AttachItemSheet> {
       final src = ref.read(searchRemoteDataSourceProvider);
       final items = await src.search(query: query);
       if (mounted) setState(() => _results = items);
-    } catch (_) {
-      if (mounted) setState(() => _results = []);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _results = [];
+          _error = e is DioException && e.error is String && (e.error as String).isNotEmpty
+              ? e.error as String
+              : 'Search failed. Please try again.';
+        });
+      }
     } finally {
       if (mounted) setState(() => _searching = false);
     }
@@ -181,6 +188,15 @@ class _AttachItemSheetState extends ConsumerState<AttachItemSheet> {
             ),
             const SizedBox(height: AppSpacing.sm),
 
+            if (_error != null && _selected == null) ...[
+              Text(
+                _error!,
+                style: AppTypography.bodySmall
+                    .copyWith(color: AppColors.error),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+            ],
+
             if (_results.isNotEmpty)
               ConstrainedBox(
                 constraints: const BoxConstraints(maxHeight: 280),
@@ -192,6 +208,7 @@ class _AttachItemSheetState extends ConsumerState<AttachItemSheet> {
                       _ItemTile(item: _results[i], onTap: () {
                         setState(() {
                           _selected = _results[i];
+                          _error = null;
                           // Pre-fill covered value with currentValue if available
                           final cv = _results[i].valuation?.currentValue;
                           if (cv != null && cv > 0) {
@@ -201,7 +218,7 @@ class _AttachItemSheetState extends ConsumerState<AttachItemSheet> {
                       }),
                 ),
               )
-            else if (!_searching && _searchCtrl.text.isNotEmpty)
+            else if (!_searching && _searchCtrl.text.isNotEmpty && _error == null)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
                 child: Center(

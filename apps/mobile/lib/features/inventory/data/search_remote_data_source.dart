@@ -34,7 +34,7 @@ class SearchRemoteDataSource {
 
     if (data['success'] != true) {
       final error = data['error'] as Map<String, dynamic>?;
-      final message = error?['message'] as String? ?? 'Unknown error';
+      final message = _formatErrorMessage(error?['message']);
       throw DioException(
         requestOptions: response.requestOptions,
         type: DioExceptionType.badResponse,
@@ -49,14 +49,30 @@ class SearchRemoteDataSource {
     final items = body['items'];
     if (items is! List) return [];
 
-    return items
-        .whereType<Map>()
-        .map(
-          (item) => ItemModel.fromJson(
-            _normalizeItemJson(Map<String, dynamic>.from(item)),
+    final out = <ItemModel>[];
+    for (final raw in items) {
+      if (raw is! Map) continue;
+      try {
+        out.add(
+          ItemModel.fromJson(
+            _normalizeItemJson(Map<String, dynamic>.from(raw)),
           ),
-        )
-        .toList();
+        );
+      } catch (_) {
+        // Skip malformed rows so one bad document does not empty the whole list.
+      }
+    }
+    return out;
+  }
+
+  /// Nest validation errors use `message: string[]`; others use `string`.
+  String _formatErrorMessage(dynamic message) {
+    if (message is String && message.isNotEmpty) return message;
+    if (message is List) {
+      final parts = message.whereType<String>().where((s) => s.isNotEmpty).toList();
+      if (parts.isNotEmpty) return parts.join('; ');
+    }
+    return 'Unknown error';
   }
 
   Map<String, dynamic> _normalizeItemJson(Map<String, dynamic> json) {
