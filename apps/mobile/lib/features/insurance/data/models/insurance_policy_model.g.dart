@@ -84,44 +84,56 @@ _$CoverageGapItemModelImpl _$$CoverageGapItemModelImplFromJson(
   Map<String, dynamic> json,
 ) => _$CoverageGapItemModelImpl(
   itemId: json['itemId'] as String,
-  itemName: json['itemName'] as String,
-  currentValue: (json['currentValue'] as num).toDouble(),
-  coveredValue: (json['coveredValue'] as num?)?.toDouble(),
-  gap: (json['gap'] as num).toDouble(),
-  fullyUninsured: json['fullyUninsured'] as bool,
+  name: json['name'] as String,
+  category: json['category'] as String,
+  currentValue:
+      json['currentValue'] == null ? 0.0 : _parseDouble(json['currentValue']),
+  coveredValue:
+      json['coveredValue'] == null ? 0.0 : _parseDouble(json['coveredValue']),
+  gap: json['gap'] == null ? 0.0 : _parseDouble(json['gap']),
+  currency: json['currency'] as String? ?? 'USD',
 );
 
 Map<String, dynamic> _$$CoverageGapItemModelImplToJson(
   _$CoverageGapItemModelImpl instance,
 ) => <String, dynamic>{
   'itemId': instance.itemId,
-  'itemName': instance.itemName,
+  'name': instance.name,
+  'category': instance.category,
   'currentValue': instance.currentValue,
   'coveredValue': instance.coveredValue,
   'gap': instance.gap,
-  'fullyUninsured': instance.fullyUninsured,
+  'currency': instance.currency,
 };
 
 _$CoverageGapReportModelImpl _$$CoverageGapReportModelImplFromJson(
   Map<String, dynamic> json,
 ) => _$CoverageGapReportModelImpl(
-  policyId: json['policyId'] as String,
-  totalInventoryValue: (json['totalInventoryValue'] as num).toDouble(),
-  totalCoveredValue: (json['totalCoveredValue'] as num).toDouble(),
-  totalGap: (json['totalGap'] as num).toDouble(),
-  items:
-      (json['items'] as List<dynamic>?)
+  uncovered:
+      (json['uncovered'] as List<dynamic>?)
           ?.map((e) => CoverageGapItemModel.fromJson(e as Map<String, dynamic>))
           .toList() ??
       const [],
+  underinsured:
+      (json['underinsured'] as List<dynamic>?)
+          ?.map((e) => CoverageGapItemModel.fromJson(e as Map<String, dynamic>))
+          .toList() ??
+      const [],
+  totalUncoveredValue:
+      json['totalUncoveredValue'] == null
+          ? 0.0
+          : _parseDouble(json['totalUncoveredValue']),
+  totalUnderinsuredGap:
+      json['totalUnderinsuredGap'] == null
+          ? 0.0
+          : _parseDouble(json['totalUnderinsuredGap']),
 );
 
 Map<String, dynamic> _$$CoverageGapReportModelImplToJson(
   _$CoverageGapReportModelImpl instance,
 ) => <String, dynamic>{
-  'policyId': instance.policyId,
-  'totalInventoryValue': instance.totalInventoryValue,
-  'totalCoveredValue': instance.totalCoveredValue,
-  'totalGap': instance.totalGap,
-  'items': instance.items,
+  'uncovered': instance.uncovered,
+  'underinsured': instance.underinsured,
+  'totalUncoveredValue': instance.totalUncoveredValue,
+  'totalUnderinsuredGap': instance.totalUnderinsuredGap,
 };
