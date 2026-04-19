@@ -10,13 +10,22 @@ import 'package:vaulted/features/insurance/domain/coverage_gaps_notifier.dart';
 
 class MockInsuranceRepository extends Mock implements InsuranceRepository {}
 
-CoverageGapReportModel _fakeReport({String policyId = 'pol-1'}) {
+CoverageGapReportModel _fakeReport() {
   return CoverageGapReportModel(
-    policyId: policyId,
-    totalInventoryValue: 100_000,
-    totalCoveredValue: 80_000,
-    totalGap: 20_000,
-    items: const [],
+    uncovered: const [
+      CoverageGapItemModel(
+        itemId: 'item-1',
+        name: 'Painting',
+        category: 'art',
+        currentValue: 50_000,
+        coveredValue: 0,
+        gap: 50_000,
+        currency: 'USD',
+      ),
+    ],
+    underinsured: const [],
+    totalUncoveredValue: 50_000,
+    totalUnderinsuredGap: 0,
   );
 }
 
@@ -53,7 +62,7 @@ void main() {
 
   group('CoverageGapsNotifier.load', () {
     test('loads report and sets AsyncData', () async {
-      final report = _fakeReport(policyId: 'pol-99');
+      final report = _fakeReport();
       when(() => mockRepo.getCoverageGaps('pol-99')).thenAnswer((_) async => report);
 
       final container = _makeContainer(mockRepo);
