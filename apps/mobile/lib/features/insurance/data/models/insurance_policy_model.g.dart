@@ -12,6 +12,7 @@ _$InsuredItemModelImpl _$$InsuredItemModelImplFromJson(
   id: json['id'] as String,
   policyId: json['policyId'] as String,
   itemId: json['itemId'] as String,
+  itemName: json['itemName'] as String? ?? '',
   coveredValue:
       json['coveredValue'] == null ? 0.0 : _parseDouble(json['coveredValue']),
   currency: json['currency'] as String? ?? 'USD',
@@ -25,6 +26,7 @@ Map<String, dynamic> _$$InsuredItemModelImplToJson(
   'id': instance.id,
   'policyId': instance.policyId,
   'itemId': instance.itemId,
+  'itemName': instance.itemName,
   'coveredValue': instance.coveredValue,
   'currency': instance.currency,
   'createdAt': instance.createdAt,

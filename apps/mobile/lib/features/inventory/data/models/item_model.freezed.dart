@@ -806,7 +806,7 @@ class _$ItemModelImpl implements _ItemModel {
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     runtimeType,
     id,
     name,
@@ -827,7 +827,7 @@ class _$ItemModelImpl implements _ItemModel {
     const DeepCollectionEquality().hash(_documents),
     createdAt,
     qrCode,
-  );
+  ]);
 
   /// Create a copy of ItemModel
   /// with the given fields replaced by the non-null parameter values.
