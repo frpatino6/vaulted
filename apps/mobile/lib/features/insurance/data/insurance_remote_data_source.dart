@@ -63,28 +63,29 @@ class InsuranceRemoteDataSource {
   // ─── Insured Items ─────────────────────────────────────────────────────────
 
   /// POST /insurance/policies/:id/items
+  ///
+  /// The API returns the created [InsuredItem] inside `data`, not the full policy.
+  /// We re-fetch the policy so the client always gets a complete [InsurancePolicyModel].
   Future<InsurancePolicyModel> attachItem(
       String policyId, Map<String, dynamic> body) async {
     final response = await _dio.post<Map<String, dynamic>>(
       '$_policies/$policyId/items',
       data: body,
     );
-    final data = _unwrapData(response);
-    return InsurancePolicyModel.fromJson(
-      Map<String, dynamic>.from(data is Map ? data : {}),
-    );
+    _unwrapData(response);
+    return getPolicy(policyId);
   }
 
   /// DELETE /insurance/policies/:id/items/:itemId
+  ///
+  /// The API responds with `{ success: true }` and no policy body. Re-fetch the policy.
   Future<InsurancePolicyModel> detachItem(
       String policyId, String itemId) async {
     final response = await _dio.delete<Map<String, dynamic>>(
       '$_policies/$policyId/items/$itemId',
     );
-    final data = _unwrapData(response);
-    return InsurancePolicyModel.fromJson(
-      Map<String, dynamic>.from(data is Map ? data : {}),
-    );
+    _unwrapData(response);
+    return getPolicy(policyId);
   }
 
   // ─── Coverage Gaps ─────────────────────────────────────────────────────────
