@@ -140,6 +140,14 @@ export class InsuranceService {
       throw new BadRequestException('expiresAt must be after startDate');
     }
 
+    const now = new Date();
+    const resolvedStatus: InsurancePolicy['status'] | undefined =
+      dto.status !== undefined
+        ? dto.status
+        : dto.expiresAt !== undefined && expires > now && policy.status === 'expired'
+          ? 'active'
+          : undefined;
+
     const updatePayload: Partial<InsurancePolicy> = {
       ...(dto.provider !== undefined ? { provider: dto.provider } : {}),
       ...(dto.policyNumber !== undefined ? { policyNumber: dto.policyNumber } : {}),
@@ -150,7 +158,7 @@ export class InsuranceService {
       ...(dto.premium !== undefined ? { premium: dto.premium } : {}),
       ...(dto.startDate !== undefined ? { startDate: start } : {}),
       ...(dto.expiresAt !== undefined ? { expiresAt: expires } : {}),
-      ...(dto.status !== undefined ? { status: dto.status } : {}),
+      ...(resolvedStatus !== undefined ? { status: resolvedStatus } : {}),
       ...(dto.notes !== undefined ? { notes: dto.notes } : {}),
     };
 
