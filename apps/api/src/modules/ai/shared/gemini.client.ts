@@ -21,7 +21,7 @@ export class GeminiClient {
 
   constructor(private readonly config: ConfigService) {
     this.genAI = new GoogleGenerativeAI(config.getOrThrow<string>('GOOGLE_GENAI_API_KEY'));
-    this.model = config.get<string>('AI_CHAT_MODEL') ?? 'gemini-2.0-flash';
+    this.model = config.get<string>('AI_CHAT_MODEL') ?? 'gemini-2.5-flash';
   }
 
   async chat(

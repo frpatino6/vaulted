@@ -21,6 +21,7 @@ import '../domain/dashboard_notifier.dart';
 import '../../movements/data/models/movement_model.dart';
 import '../../movements/domain/movement_list_notifier.dart';
 import '../../../features/presence/presentation/widgets/online_users_count.dart';
+import '../../../core/privacy/privacy_mode_provider.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/app_bottom_nav.dart';
 
@@ -408,6 +409,9 @@ class _DashboardHeader extends ConsumerWidget {
               ],
             ),
           ),
+          // Privacy mode toggle
+          _PrivacyToggleButton(),
+          const SizedBox(width: 4),
           // D2: 48dp touch target wrapping the 40dp avatar container
           SizedBox(
             width: 48,
@@ -615,6 +619,22 @@ class _DashboardHeader extends ConsumerWidget {
               ),
             ),
           ),
+    );
+  }
+}
+
+class _PrivacyToggleButton extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isPrivate = ref.watch(privacyModeProvider).valueOrNull ?? false;
+    return IconButton(
+      iconSize: 20,
+      icon: Icon(
+        isPrivate ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+        color: AppColors.onSurfaceVariant,
+      ),
+      tooltip: isPrivate ? 'Show values' : 'Hide values',
+      onPressed: () => ref.read(privacyModeProvider.notifier).toggle(),
     );
   }
 }
@@ -937,7 +957,7 @@ class DashboardPropertyCard extends StatelessWidget {
 }
 
 /// Portfolio overview: total valuation + total items + status breakdown.
-class _StatsSection extends StatelessWidget {
+class _StatsSection extends ConsumerWidget {
   const _StatsSection({required this.data, required this.canSeeValues});
 
   final DashboardModel data;
@@ -949,7 +969,8 @@ class _StatsSection extends StatelessWidget {
   );
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isPrivate = ref.watch(privacyModeProvider).valueOrNull ?? false;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -968,7 +989,7 @@ class _StatsSection extends StatelessWidget {
               Expanded(
                 child: _StatCard(
                   label: 'Total Value',
-                  value: _currency.format(data.totalValuation),
+                  value: isPrivate ? '●●●●●' : _currency.format(data.totalValuation),
                   icon: Icons.account_balance_outlined,
                   highlight: true,
                   onTap: () => context.push('/assets'),

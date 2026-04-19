@@ -16,6 +16,8 @@ describe('InsuranceService', () => {
 
   const policyRepo = {
     createQueryBuilder: jest.fn(),
+    findOne: jest.fn(),
+    find: jest.fn(),
   };
 
   const insuredItemRepo = {
@@ -52,7 +54,11 @@ describe('InsuranceService', () => {
       where: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
       orderBy: jest.fn().mockReturnThis(),
+      update: jest.fn().mockReturnThis(),
+      set: jest.fn().mockReturnThis(),
+      whereInIds: jest.fn().mockReturnThis(),
       getMany: jest.fn().mockResolvedValue([]),
+      execute: jest.fn().mockResolvedValue({}),
     };
     policyRepo.createQueryBuilder.mockReturnValue(qb);
 
@@ -68,6 +74,88 @@ describe('InsuranceService', () => {
     }).compile();
 
     service = module.get<InsuranceService>(InsuranceService);
+  });
+
+  it('findPolicyById() returns policy with itemName populated from MongoDB', async () => {
+    const expiresAt = new Date('2025-12-31');
+    policyRepo.findOne.mockResolvedValue({
+      id: 'pol-1',
+      tenantId: 'tenant-1',
+      provider: 'Acme',
+      policyNumber: 'P-001',
+      coverageType: 'all-risk',
+      totalCoverageAmount: 100_000,
+      currency: 'USD',
+      status: 'active',
+      startDate: new Date('2024-01-01'),
+      expiresAt,
+    });
+
+    insuredItemRepo.find.mockResolvedValue([
+      { itemId: 'item-1', policyId: 'pol-1', coveredValue: 50_000, currency: 'USD' },
+      { itemId: 'item-2', policyId: 'pol-1', coveredValue: 25_000, currency: 'USD' },
+    ]);
+
+    itemModelFindChain.exec.mockResolvedValue([
+      { _id: 'item-1', name: 'Diamond Ring' },
+      { _id: 'item-2', name: 'Pearl Necklace' },
+    ]);
+
+    const result = await service.findPolicyById('tenant-1', 'pol-1');
+
+    expect(result.insuredItems).toHaveLength(2);
+    expect(result.insuredItems[0].itemName).toBe('Diamond Ring');
+    expect(result.insuredItems[1].itemName).toBe('Pearl Necklace');
+    expect(itemModel.find).toHaveBeenCalled();
+  });
+
+  it('findPolicyById() falls back to itemId when MongoDB item not found', async () => {
+    const expiresAt = new Date('2025-12-31');
+    policyRepo.findOne.mockResolvedValue({
+      id: 'pol-1',
+      tenantId: 'tenant-1',
+      provider: 'Acme',
+      policyNumber: 'P-001',
+      coverageType: 'all-risk',
+      totalCoverageAmount: 100_000,
+      currency: 'USD',
+      status: 'active',
+      startDate: new Date('2024-01-01'),
+      expiresAt,
+    });
+
+    insuredItemRepo.find.mockResolvedValue([
+      { itemId: 'item-unknown', policyId: 'pol-1', coveredValue: 10_000, currency: 'USD' },
+    ]);
+
+    itemModelFindChain.exec.mockResolvedValue([]);
+
+    const result = await service.findPolicyById('tenant-1', 'pol-1');
+
+    expect(result.insuredItems[0].itemName).toBe('item-unknown');
+  });
+
+  it('findPolicyById() returns empty array when no insured items', async () => {
+    const expiresAt = new Date('2025-12-31');
+    policyRepo.findOne.mockResolvedValue({
+      id: 'pol-1',
+      tenantId: 'tenant-1',
+      provider: 'Acme',
+      policyNumber: 'P-001',
+      coverageType: 'all-risk',
+      totalCoverageAmount: 100_000,
+      currency: 'USD',
+      status: 'active',
+      startDate: new Date('2024-01-01'),
+      expiresAt,
+    });
+
+    insuredItemRepo.find.mockResolvedValue([]);
+    itemModelFindChain.exec.mockResolvedValue([]);
+
+    const result = await service.findPolicyById('tenant-1', 'pol-1');
+
+    expect(result.insuredItems).toHaveLength(0);
   });
 
   it('getCoverageGaps() returns full numeric report for manager and logs range metadata', async () => {
