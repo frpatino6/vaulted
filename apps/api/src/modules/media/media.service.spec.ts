@@ -16,6 +16,9 @@ jest.mock('node:fs/promises', () => {
   return {
     ...actual,
     stat: jest.fn(),
+    mkdir: jest.fn().mockResolvedValue(undefined),
+    writeFile: jest.fn().mockResolvedValue(undefined),
+    unlink: jest.fn().mockResolvedValue(undefined),
   };
 });
 
@@ -129,5 +132,48 @@ describe('MediaService', () => {
     const res = { setHeader: jest.fn() } as unknown as Response;
 
     await expect(service.serveFile('tok', res)).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('upload() throws BadRequestException when file is missing', async () => {
+    await expect(service.upload('tenant-1', undefined)).rejects.toThrow();
+  });
+
+  it('upload() throws BadRequestException when file exceeds 10MB', async () => {
+    const largeFile = {
+      size: 15 * 1024 * 1024,
+      buffer: Buffer.alloc(15 * 1024 * 1024),
+    } as Express.Multer.File;
+
+    await expect(service.upload('tenant-1', largeFile)).rejects.toThrow('exceeds 10MB');
+  });
+
+  it('upload() throws BadRequestException for unsupported file type', async () => {
+    const invalidFile = {
+      size: 1024,
+      buffer: Buffer.from([0x00, 0x01, 0x02]),
+    } as Express.Multer.File;
+
+    await expect(service.upload('tenant-1', invalidFile)).rejects.toThrow('Unsupported file type');
+  });
+
+  it('upload() saves file locally and returns URL', async () => {
+    const validFile = {
+      size: 1024,
+      buffer: Buffer.from([0xff, 0xd8, 0xff, 0xe0]), // JPEG magic bytes
+    } as Express.Multer.File;
+
+    const result = await service.upload('tenant-1', validFile);
+
+    expect(result.filename).toContain('tenant-1/');
+    expect(result.url).toContain('http://localhost:3000/uploads/');
+    expect(result.mimeType).toBe('image/jpeg');
+  });
+
+  it('delete() throws BadRequestException when key is missing', async () => {
+    await expect(service.delete('tenant-1', undefined)).rejects.toThrow('key query parameter');
+  });
+
+  it('delete() throws BadRequestException when key does not belong to tenant', async () => {
+    await expect(service.delete('tenant-1', 'other-tenant/file.jpg')).rejects.toThrow('Invalid file key');
   });
 });

@@ -5,7 +5,11 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { AiCostLoggerService } from '../shared/ai-cost-logger.service';
 import { AnalyzeItemDto, PropertyRoomDto } from './dto/analyze-item.dto';
-import { AnalyzeSectionsDto, AnalyzeSectionsResult } from './dto/analyze-sections.dto';
+import {
+  AnalyzeSectionsDto,
+  AnalyzeSectionsResult,
+  DetectedSection,
+} from './dto/analyze-sections.dto';
 
 export interface RoomSuggestion {
   roomId: string;
@@ -172,12 +176,29 @@ Rules:
       sections: rawSections.map((s: Record<string, unknown>) => ({
         code: (s['code'] as string) ?? '',
         name: (s['name'] as string) ?? '',
-        type: (s['type'] as string) ?? 'other',
+        type: this.coerceSectionType(s['type']),
         row: (s['row'] as number) ?? 1,
         column: (s['column'] as string) ?? 'A',
         notes: (s['notes'] as string | null) ?? undefined,
       })),
     };
+  }
+
+  private coerceSectionType(raw: unknown): DetectedSection['type'] {
+    if (typeof raw !== 'string') return 'other';
+    const v = raw.toLowerCase();
+    switch (v) {
+      case 'drawer':
+      case 'cabinet':
+      case 'shelf':
+      case 'rack':
+      case 'safe':
+      case 'compartment':
+      case 'other':
+        return v;
+      default:
+        return 'other';
+    }
   }
 
   private readonly ALLOWED_UPLOAD_DIR = path.resolve('/app/uploads');

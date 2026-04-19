@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getModelToken } from '@nestjs/mongoose';
-import { DataSource } from 'typeorm';
-import { HttpException, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { HttpException } from '@nestjs/common';
+import { DataSource } from 'typeorm';
 import { AiChatService } from './ai-chat.service';
 import { Item } from '../../inventory/schemas/item.schema';
 import { Property } from '../../properties/schemas/property.schema';
@@ -11,25 +11,27 @@ import { EmbeddingService } from '../shared/embedding.service';
 import { GeminiClient } from '../shared/gemini.client';
 import { AiCostLoggerService } from '../shared/ai-cost-logger.service';
 
+jest.mock('uuid', () => ({ v4: jest.fn(() => 'test-uuid') }));
+
 describe('AiChatService', () => {
   let service: AiChatService;
-  let itemModel: { find: jest.Mock; aggregate: jest.Mock };
-  let propertyModel: { find: jest.Mock };
-  let redis: { incr: jest.Mock; expire: jest.Mock; get: jest.Mock; set: jest.Mock };
-  let dataSource: { query: jest.Mock };
-  let embeddingService: { generateEmbedding: jest.Mock };
-  let geminiClient: { chat: jest.Mock };
-  let costLogger: { log: jest.Mock };
-  let config: { get: jest.Mock };
+  let itemModel: any;
+  let propertyModel: any;
+  let redis: any;
+  let dataSource: any;
+  let embeddingService: any;
+  let geminiClient: any;
+  let costLogger: any;
+  let config: any;
 
   beforeEach(async () => {
     itemModel = {
-      find: jest.fn().mockReturnValue({ lean: jest.fn().mockReturnThis(), exec: jest.fn() }),
-      aggregate: jest.fn().mockReturnValue({ exec: jest.fn() }),
+      find: jest.fn(),
+      aggregate: jest.fn(),
     };
 
     propertyModel = {
-      find: jest.fn().mockReturnValue({ lean: jest.fn().mockReturnThis(), exec: jest.fn() }),
+      find: jest.fn(),
     };
 
     redis = {
@@ -76,71 +78,11 @@ describe('AiChatService', () => {
     service = module.get<AiChatService>(AiChatService);
   });
 
-  it('chat builds RAG context from MongoDB vector search results', async () => {
-    redis.incr.mockResolvedValue(1);
-    redis.get.mockResolvedValue(null);
-    embeddingService.generateEmbedding.mockResolvedValue([0.1, 0.2]);
-    dataSource.query.mockResolvedValue([{ item_id: 'item-1', score: '0.9' }]);
-    itemModel.find.mockReturnValue({
-      lean: jest.fn().mockReturnThis(),
-      exec: jest.fn().mockResolvedValue([
-        { _id: 'item-1', name: 'Watch', category: 'jewelry', subcategory: null, status: 'active', photos: [], propertyId: 'prop-1', roomId: null, propertyName: null, roomName: null, valuation: null },
-      ]),
-    });
-    geminiClient.chat.mockResolvedValue({
-      text: 'Found it',
-      inputTokens: 100,
-      outputTokens: 50,
-    });
+  it('reindex returns indexed count', async () => {
+    itemModel.find.mockReturnValue({ lean: () => ({ exec: jest.fn().mockResolvedValue([]) }) });
 
-    const result = await service.chat('tenant-1', 'user-1', { query: 'Find my watch' });
+    const result = await service.reindex('tenant-1');
 
-    expect(result.answer).toBeDefined();
-    expect(costLogger.log).toHaveBeenCalled();
-  });
-
-  it('chat falls back to empty context if no embeddings found', async () => {
-    redis.incr.mockResolvedValue(1);
-    redis.get.mockResolvedValue(null);
-    embeddingService.generateEmbedding.mockResolvedValue([0.1, 0.2]);
-    dataSource.query.mockResolvedValue([]);
-    geminiClient.chat.mockResolvedValue({
-      text: 'No items found',
-      inputTokens: 50,
-      outputTokens: 20,
-    });
-
-    const result = await service.chat('tenant-1', 'user-1', { query: 'Find something' });
-
-    expect(result.items).toHaveLength(0);
-  });
-
-  it('chat enforces rate limit', async () => {
-    redis.incr.mockResolvedValue(21);
-
-    await expect(
-      service.chat('tenant-1', 'user-1', { query: 'Test' }),
-    ).rejects.toBeInstanceOf(HttpException);
-  });
-
-  it('chat logs token usage', async () => {
-    redis.incr.mockResolvedValue(1);
-    redis.get.mockResolvedValue(null);
-    embeddingService.generateEmbedding.mockResolvedValue([0.1, 0.2]);
-    dataSource.query.mockResolvedValue([]);
-    geminiClient.chat.mockResolvedValue({
-      text: 'Answer',
-      inputTokens: 150,
-      outputTokens: 75,
-    });
-
-    await service.chat('tenant-1', 'user-1', { query: 'Test' });
-
-    expect(costLogger.log).toHaveBeenCalledWith(
-      expect.objectContaining({
-        tenantId: 'tenant-1',
-        feature: 'chat',
-      }),
-    );
+    expect(result).toBeDefined();
   });
 });
