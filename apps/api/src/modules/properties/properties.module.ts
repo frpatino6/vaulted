@@ -3,6 +3,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { PropertiesController } from './properties.controller';
 import { PropertiesService } from './properties.service';
 import { Property, PropertySchema } from './schemas/property.schema';
+import { Item, ItemSchema } from '../inventory/schemas/item.schema';
 import { CommonModule } from '../../common/common.module';
 
 @Module({
@@ -10,6 +11,7 @@ import { CommonModule } from '../../common/common.module';
     CommonModule,
     MongooseModule.forFeature([
       { name: Property.name, schema: PropertySchema },
+      { name: Item.name, schema: ItemSchema },
     ]),
   ],
   controllers: [PropertiesController],

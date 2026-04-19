@@ -15,12 +15,15 @@ import { CreatePropertyDto } from './dto/create-property.dto';
 import { UpdatePropertyDto } from './dto/update-property.dto';
 import { UpdateRoomDto } from './dto/update-room.dto';
 import { Property, PropertyDocument, RoomSection } from './schemas/property.schema';
+import { Item, ItemDocument } from '../inventory/schemas/item.schema';
 
 @Injectable()
 export class PropertiesService {
   constructor(
     @InjectModel(Property.name)
     private readonly propertyModel: Model<PropertyDocument>,
+    @InjectModel(Item.name)
+    private readonly itemModel: Model<ItemDocument>,
     private readonly accessControl: AccessControlService,
   ) {}
 
@@ -155,8 +158,10 @@ export class PropertiesService {
     floorId: string,
   ): Promise<Property> {
     const property = await this.findOwnedPropertyOrThrow(tenantId, propertyId);
-    const floorExists = property.floors.some((f) => f.floorId === floorId);
-    if (!floorExists) throw new NotFoundException('Floor not found');
+    const floor = property.floors.find((f) => f.floorId === floorId);
+    if (!floor) throw new NotFoundException('Floor not found');
+
+    const roomIds = floor.rooms.map((r) => r.roomId);
 
     const updatedProperty = await this.propertyModel
       .findOneAndUpdate(
@@ -167,6 +172,14 @@ export class PropertiesService {
       .exec();
 
     if (!updatedProperty) throw new NotFoundException('Property not found');
+
+    if (roomIds.length > 0) {
+      await this.itemModel.updateMany(
+        { tenantId, propertyId, roomId: { $in: roomIds } },
+        { $set: { roomId: null, sectionId: null } },
+      );
+    }
+
     return updatedProperty;
   }
 
@@ -261,6 +274,12 @@ export class PropertiesService {
       .exec();
 
     if (!updatedProperty) throw new NotFoundException('Property not found');
+
+    await this.itemModel.updateMany(
+      { tenantId, propertyId, roomId },
+      { $set: { roomId: null, sectionId: null } },
+    );
+
     return updatedProperty;
   }
 

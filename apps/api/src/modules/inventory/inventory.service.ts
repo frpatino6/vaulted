@@ -111,7 +111,15 @@ export class InventoryService {
     }
 
     if (filters.unlocated) {
-      query.roomId = { $in: [null, ''] };
+      if (filters.propertyId) {
+        const property = await this.propertyModel.findOne({ _id: filters.propertyId, tenantId });
+        const validRoomIds = (property?.floors ?? [])
+          .flatMap((f) => f.rooms.map((r) => r.roomId))
+          .filter(Boolean);
+        query.roomId = { $nin: validRoomIds };
+      } else {
+        query.roomId = { $in: [null, ''] };
+      }
       query.status = { $ne: 'disposed' };
     } else if (filters.roomId) {
       query.roomId = filters.roomId;
