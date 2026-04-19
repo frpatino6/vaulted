@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/privacy/privacy_mode_provider.dart';
 import '../../core/theme/app_theme.dart';
 
 enum AppTab { home, insurance, wardrobe }
@@ -14,12 +13,7 @@ class AppBottomNav extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isPrivate = ref.watch(privacyModeProvider).valueOrNull ?? false;
-
-    return Stack(
-      alignment: Alignment.topRight,
-      children: [
-        NavigationBar(
+    return NavigationBar(
       backgroundColor: AppColors.surface,
       indicatorColor: AppColors.accent.withValues(alpha: 0.15),
       surfaceTintColor: Colors.transparent,
@@ -69,21 +63,6 @@ class AppBottomNav extends ConsumerWidget {
           ),
           selectedIcon: Icon(Icons.checkroom_rounded, color: AppColors.accent),
           label: 'Wardrobe',
-        ),
-      ],
-        ),
-        Positioned(
-          top: 4,
-          right: 12,
-          child: IconButton(
-            iconSize: 20,
-            icon: Icon(
-              isPrivate ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-              color: AppColors.onSurfaceVariant,
-            ),
-            tooltip: isPrivate ? 'Show values' : 'Hide values',
-            onPressed: () => ref.read(privacyModeProvider.notifier).toggle(),
-          ),
         ),
       ],
     );
