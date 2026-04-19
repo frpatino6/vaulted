@@ -138,6 +138,36 @@ void main() {
     expect(() => dataSource.search(), throwsA(isA<DioException>()));
   });
 
+  test('joins validation error messages when error message is a list', () async {
+    when(
+      () => mockDio.get<Map<String, dynamic>>(
+        'items/search',
+        queryParameters: any(named: 'queryParameters'),
+      ),
+    ).thenAnswer(
+      (_) async => makeMapResponse(
+        requestOptions: requestOptions,
+        data: {
+          'success': false,
+          'error': {
+            'message': <String>['q is too short', 'category invalid'],
+          },
+        },
+      ),
+    );
+
+    expect(
+      () => dataSource.search(query: 'x'),
+      throwsA(
+        isA<DioException>().having(
+          (e) => e.error,
+          'error',
+          'q is too short; category invalid',
+        ),
+      ),
+    );
+  });
+
   test('throws when response body is null', () async {
     when(
       () => mockDio.get<Map<String, dynamic>>(

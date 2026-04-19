@@ -238,11 +238,20 @@ void main() {
           data: {
             'success': true,
             'data': {
-              'policyId': 'p1',
-              'totalInventoryValue': 100,
-              'totalCoveredValue': 40,
-              'totalGap': 60,
-              'items': <dynamic>[],
+              'uncovered': <dynamic>[
+                {
+                  'itemId': 'i1',
+                  'name': 'Vase',
+                  'category': 'art',
+                  'currentValue': 1000,
+                  'coveredValue': 0,
+                  'gap': 1000,
+                  'currency': 'USD',
+                },
+              ],
+              'underinsured': <dynamic>[],
+              'totalUncoveredValue': 1000,
+              'totalUnderinsuredGap': 0,
             },
           },
         ),
@@ -250,8 +259,10 @@ void main() {
 
       final report = await dataSource.getCoverageGaps('p1');
 
-      expect(report.policyId, 'p1');
-      expect(report.totalGap, 60);
+      expect(report.totalUncoveredValue, 1000);
+      expect(report.totalUnderinsuredGap, 0);
+      expect(report.uncovered, hasLength(1));
+      expect(report.uncovered.single.name, 'Vase');
       verify(
         () => mockDio.get<Map<String, dynamic>>('insurance/coverage-gaps'),
       ).called(1);

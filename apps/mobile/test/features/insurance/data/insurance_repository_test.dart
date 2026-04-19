@@ -126,11 +126,11 @@ void main() {
   });
 
   test('getCoverageGaps delegates', () async {
-    final report = CoverageGapReportModel(
-      policyId: 'p',
-      totalInventoryValue: 1,
-      totalCoveredValue: 0,
-      totalGap: 1,
+    final report = const CoverageGapReportModel(
+      uncovered: [],
+      underinsured: [],
+      totalUncoveredValue: 100,
+      totalUnderinsuredGap: 25,
     );
     when(() => mockRemote.getCoverageGaps('p')).thenAnswer((_) async => report);
 
