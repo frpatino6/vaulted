@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../data/models/insurance_ai_model.dart';
 import '../domain/insurance_ai_notifier.dart';
+import '../domain/insurance_detail_notifier.dart';
 
 /// Bottom sheet that displays AI-powered coverage analysis for an insurance policy.
 class CoverageAiAnalysisSheet extends ConsumerStatefulWidget {
@@ -75,7 +76,7 @@ class _CoverageAiAnalysisSheetState
   }
 }
 
-class _AnalysisContent extends StatelessWidget {
+class _AnalysisContent extends ConsumerStatefulWidget {
   const _AnalysisContent({
     required this.analysis,
     required this.policyId,
@@ -87,9 +88,157 @@ class _AnalysisContent extends StatelessWidget {
   final ScrollController scrollController;
 
   @override
+  ConsumerState<_AnalysisContent> createState() => _AnalysisContentState();
+}
+
+class _AnalysisContentState extends ConsumerState<_AnalysisContent> {
+  final Set<String> _attaching = {};
+
+  Future<void> _showAttachDialog(
+      BuildContext context, String itemId, String itemName) async {
+    final valueCtrl = TextEditingController();
+    String currency = 'USD';
+    String? error;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => AlertDialog(
+          backgroundColor: AppColors.surface,
+          title: Text(
+            'Add to Policy',
+            style: TextStyle(color: AppColors.onBackground),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                itemName,
+                style: AppTypography.bodyMedium.copyWith(
+                  color: AppColors.onBackground,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: TextField(
+                      controller: valueCtrl,
+                      keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true),
+                      style: TextStyle(color: AppColors.onBackground),
+                      decoration: InputDecoration(
+                        labelText: 'Covered Value',
+                        labelStyle:
+                            TextStyle(color: AppColors.onSurfaceVariant),
+                        filled: true,
+                        fillColor: AppColors.surfaceVariant,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      initialValue: currency,
+                      dropdownColor: AppColors.surfaceVariant,
+                      style: TextStyle(color: AppColors.onBackground),
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: AppColors.surfaceVariant,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                      items: ['USD', 'EUR', 'GBP']
+                          .map((c) =>
+                              DropdownMenuItem(value: c, child: Text(c)))
+                          .toList(),
+                      onChanged: (v) =>
+                          setLocal(() => currency = v ?? 'USD'),
+                    ),
+                  ),
+                ],
+              ),
+              if (error != null) ...[
+                const SizedBox(height: AppSpacing.xs),
+                Text(error!,
+                    style: AppTypography.bodySmall
+                        .copyWith(color: AppColors.error)),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text('Cancel',
+                  style: TextStyle(color: AppColors.onSurface)),
+            ),
+            TextButton(
+              onPressed: () {
+                final v = double.tryParse(valueCtrl.text.trim());
+                if (v == null || v <= 0) {
+                  setLocal(() => error = 'Enter a valid value.');
+                  return;
+                }
+                Navigator.pop(ctx, true);
+              },
+              child: Text('Attach',
+                  style: TextStyle(color: AppColors.accent)),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    final coveredValue =
+        double.tryParse(valueCtrl.text.trim()) ?? 0;
+
+    setState(() => _attaching.add(itemId));
+    try {
+      await ref
+          .read(insuranceDetailNotifierProvider.notifier)
+          .attachItem(
+            widget.policyId,
+            itemId: itemId,
+            coveredValue: coveredValue,
+            currency: currency,
+          );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$itemName added to policy.'),
+            backgroundColor: const Color(0xFF4CAF50),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(InsuranceDetailNotifier.message(e)),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _attaching.remove(itemId));
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return ListView(
-      controller: scrollController,
+      controller: widget.scrollController,
       padding: const EdgeInsets.fromLTRB(
           AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.xl),
       children: [
@@ -117,28 +266,29 @@ class _AnalysisContent extends StatelessWidget {
               ),
             ),
             const SizedBox(width: AppSpacing.sm),
-            _RiskBadge(risk: analysis.overallRisk),
+            _RiskBadge(risk: widget.analysis.overallRisk),
           ],
         ),
         const SizedBox(height: AppSpacing.md),
 
         // Summary
         Text(
-          analysis.summary,
+          widget.analysis.summary,
           style:
               AppTypography.bodyMedium.copyWith(color: AppColors.onSurface),
         ),
         const SizedBox(height: AppSpacing.md),
 
         // Renewal urgency warning
-        if (analysis.renewalUrgency != 'none') ...[
+        if (widget.analysis.renewalUrgency != 'none') ...[
           Container(
             padding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.md, vertical: AppSpacing.sm),
             decoration: BoxDecoration(
               color: AppColors.error.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+              border:
+                  Border.all(color: AppColors.error.withValues(alpha: 0.3)),
             ),
             child: Row(
               children: [
@@ -147,7 +297,7 @@ class _AnalysisContent extends StatelessWidget {
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: Text(
-                    'Policy renewal is ${analysis.renewalUrgency}',
+                    'Policy renewal is ${widget.analysis.renewalUrgency}',
                     style: AppTypography.bodyMedium
                         .copyWith(color: AppColors.error),
                   ),
@@ -159,14 +309,14 @@ class _AnalysisContent extends StatelessWidget {
         ],
 
         // Recommendations
-        if (analysis.recommendations.isNotEmpty) ...[
+        if (widget.analysis.recommendations.isNotEmpty) ...[
           Text(
             'Recommendations',
             style: AppTypography.titleMedium
                 .copyWith(color: AppColors.onBackground),
           ),
           const SizedBox(height: AppSpacing.sm),
-          ...analysis.recommendations.map(
+          ...widget.analysis.recommendations.map(
             (rec) => Padding(
               padding: const EdgeInsets.only(bottom: AppSpacing.xs),
               child: Row(
@@ -190,14 +340,14 @@ class _AnalysisContent extends StatelessWidget {
         ],
 
         // Priority items
-        if (analysis.priorityItems.isNotEmpty) ...[
+        if (widget.analysis.priorityItems.isNotEmpty) ...[
           Text(
             'Priority Items',
             style: AppTypography.titleMedium
                 .copyWith(color: AppColors.onBackground),
           ),
           const SizedBox(height: AppSpacing.sm),
-          ...analysis.priorityItems.map(
+          ...widget.analysis.priorityItems.map(
             (item) => Container(
               margin: const EdgeInsets.only(bottom: AppSpacing.xs),
               padding: const EdgeInsets.all(AppSpacing.sm),
@@ -205,21 +355,50 @@ class _AnalysisContent extends StatelessWidget {
                 color: AppColors.surfaceVariant,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Column(
+              child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    item.itemName,
-                    style: AppTypography.bodyMedium.copyWith(
-                      color: AppColors.onBackground,
-                      fontWeight: FontWeight.w600,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.itemName,
+                          style: AppTypography.bodyMedium.copyWith(
+                            color: AppColors.onBackground,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          item.issue,
+                          style: AppTypography.bodySmall
+                              .copyWith(color: AppColors.onSurface),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    item.issue,
-                    style: AppTypography.bodySmall
-                        .copyWith(color: AppColors.onSurface),
+                  const SizedBox(width: AppSpacing.sm),
+                  SizedBox(
+                    width: 32,
+                    height: 32,
+                    child: _attaching.contains(item.itemId)
+                        ? Padding(
+                            padding: const EdgeInsets.all(6),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                  AppColors.accent),
+                            ),
+                          )
+                        : IconButton(
+                            padding: EdgeInsets.zero,
+                            icon: Icon(Icons.add_circle_outline,
+                                size: 20, color: AppColors.accent),
+                            tooltip: 'Add to policy',
+                            onPressed: () => _showAttachDialog(
+                                context, item.itemId, item.itemName),
+                          ),
                   ),
                 ],
               ),
@@ -232,14 +411,14 @@ class _AnalysisContent extends StatelessWidget {
         TextButton.icon(
           onPressed: () {
             Navigator.pop(context);
-            context.push('/insurance/$policyId/claim-draft');
+            context.push('/insurance/${widget.policyId}/claim-draft');
           },
           icon: Icon(Icons.description_outlined,
               size: 16, color: AppColors.accentLight),
           label: Text(
             'Draft a Claim',
-            style:
-                AppTypography.bodyMedium.copyWith(color: AppColors.accentLight),
+            style: AppTypography.bodyMedium
+                .copyWith(color: AppColors.accentLight),
           ),
         ),
       ],
