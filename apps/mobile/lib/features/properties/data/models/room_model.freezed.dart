@@ -184,6 +184,7 @@ class _$RoomModelImpl implements _RoomModel {
   @JsonKey()
   List<RoomSectionModel> get sections {
     if (_sections is EqualUnmodifiableListView) return _sections;
+    // ignore: implicit_dynamic_type
     return EqualUnmodifiableListView(_sections);
   }
 
@@ -200,8 +201,7 @@ class _$RoomModelImpl implements _RoomModel {
             (identical(other.roomId, roomId) || other.roomId == roomId) &&
             (identical(other.name, name) || other.name == name) &&
             (identical(other.type, type) || other.type == type) &&
-            const DeepCollectionEquality()
-                .equals(other._sections, _sections));
+            const DeepCollectionEquality().equals(other._sections, _sections));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)

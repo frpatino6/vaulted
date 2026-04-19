@@ -22,8 +22,12 @@ import { AttachItemDto } from './dto/attach-item.dto';
 const GAP_SEVERITY_LOW_RATIO = 0.1;
 const GAP_SEVERITY_MEDIUM_RATIO = 0.4;
 
+export interface InsuredItemWithName extends InsuredItem {
+  itemName: string;
+}
+
 export interface PolicyWithItems extends InsurancePolicy {
-  insuredItems: InsuredItem[];
+  insuredItems: InsuredItemWithName[];
 }
 
 export interface CoverageGapItem {
@@ -145,7 +149,21 @@ export class InsuranceService {
 
     await this.syncExpiredStatuses([policy]);
 
-    return { ...policy, insuredItems };
+    const itemIds = insuredItems.map((i) => i.itemId);
+    const mongoItems = await this.itemModel
+      .find({ _id: { $in: itemIds }, tenantId })
+      .select('_id name')
+      .lean()
+      .exec();
+
+    const nameMap = new Map(mongoItems.map((i) => [String(i._id), i.name as string]));
+
+    const insuredItemsWithName: InsuredItemWithName[] = insuredItems.map((i) => ({
+      ...i,
+      itemName: nameMap.get(i.itemId) ?? i.itemId,
+    }));
+
+    return { ...policy, insuredItems: insuredItemsWithName };
   }
 
   async updatePolicy(

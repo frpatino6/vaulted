@@ -24,6 +24,7 @@ mixin _$InsuredItemModel {
   String get id => throw _privateConstructorUsedError;
   String get policyId => throw _privateConstructorUsedError;
   String get itemId => throw _privateConstructorUsedError;
+  String get itemName => throw _privateConstructorUsedError;
   @JsonKey(fromJson: _parseDouble)
   double get coveredValue => throw _privateConstructorUsedError;
   String get currency => throw _privateConstructorUsedError;
@@ -51,6 +52,7 @@ abstract class $InsuredItemModelCopyWith<$Res> {
     String id,
     String policyId,
     String itemId,
+    String itemName,
     @JsonKey(fromJson: _parseDouble) double coveredValue,
     String currency,
     String? createdAt,
@@ -76,6 +78,7 @@ class _$InsuredItemModelCopyWithImpl<$Res, $Val extends InsuredItemModel>
     Object? id = null,
     Object? policyId = null,
     Object? itemId = null,
+    Object? itemName = null,
     Object? coveredValue = null,
     Object? currency = null,
     Object? createdAt = freezed,
@@ -97,6 +100,11 @@ class _$InsuredItemModelCopyWithImpl<$Res, $Val extends InsuredItemModel>
                 null == itemId
                     ? _value.itemId
                     : itemId // ignore: cast_nullable_to_non_nullable
+                        as String,
+            itemName:
+                null == itemName
+                    ? _value.itemName
+                    : itemName // ignore: cast_nullable_to_non_nullable
                         as String,
             coveredValue:
                 null == coveredValue
@@ -137,6 +145,7 @@ abstract class _$$InsuredItemModelImplCopyWith<$Res>
     String id,
     String policyId,
     String itemId,
+    String itemName,
     @JsonKey(fromJson: _parseDouble) double coveredValue,
     String currency,
     String? createdAt,
@@ -161,6 +170,7 @@ class __$$InsuredItemModelImplCopyWithImpl<$Res>
     Object? id = null,
     Object? policyId = null,
     Object? itemId = null,
+    Object? itemName = null,
     Object? coveredValue = null,
     Object? currency = null,
     Object? createdAt = freezed,
@@ -182,6 +192,11 @@ class __$$InsuredItemModelImplCopyWithImpl<$Res>
             null == itemId
                 ? _value.itemId
                 : itemId // ignore: cast_nullable_to_non_nullable
+                    as String,
+        itemName:
+            null == itemName
+                ? _value.itemName
+                : itemName // ignore: cast_nullable_to_non_nullable
                     as String,
         coveredValue:
             null == coveredValue
@@ -215,6 +230,7 @@ class _$InsuredItemModelImpl implements _InsuredItemModel {
     required this.id,
     required this.policyId,
     required this.itemId,
+    this.itemName = '',
     @JsonKey(fromJson: _parseDouble) this.coveredValue = 0.0,
     this.currency = 'USD',
     this.createdAt,
@@ -231,6 +247,9 @@ class _$InsuredItemModelImpl implements _InsuredItemModel {
   @override
   final String itemId;
   @override
+  @JsonKey()
+  final String itemName;
+  @override
   @JsonKey(fromJson: _parseDouble)
   final double coveredValue;
   @override
@@ -243,7 +262,7 @@ class _$InsuredItemModelImpl implements _InsuredItemModel {
 
   @override
   String toString() {
-    return 'InsuredItemModel(id: $id, policyId: $policyId, itemId: $itemId, coveredValue: $coveredValue, currency: $currency, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'InsuredItemModel(id: $id, policyId: $policyId, itemId: $itemId, itemName: $itemName, coveredValue: $coveredValue, currency: $currency, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 
   @override
@@ -255,6 +274,8 @@ class _$InsuredItemModelImpl implements _InsuredItemModel {
             (identical(other.policyId, policyId) ||
                 other.policyId == policyId) &&
             (identical(other.itemId, itemId) || other.itemId == itemId) &&
+            (identical(other.itemName, itemName) ||
+                other.itemName == itemName) &&
             (identical(other.coveredValue, coveredValue) ||
                 other.coveredValue == coveredValue) &&
             (identical(other.currency, currency) ||
@@ -272,6 +293,7 @@ class _$InsuredItemModelImpl implements _InsuredItemModel {
     id,
     policyId,
     itemId,
+    itemName,
     coveredValue,
     currency,
     createdAt,
@@ -300,6 +322,7 @@ abstract class _InsuredItemModel implements InsuredItemModel {
     required final String id,
     required final String policyId,
     required final String itemId,
+    final String itemName,
     @JsonKey(fromJson: _parseDouble) final double coveredValue,
     final String currency,
     final String? createdAt,
@@ -315,6 +338,8 @@ abstract class _InsuredItemModel implements InsuredItemModel {
   String get policyId;
   @override
   String get itemId;
+  @override
+  String get itemName;
   @override
   @JsonKey(fromJson: _parseDouble)
   double get coveredValue;

@@ -25,6 +25,7 @@ class InsuredItemModel with _$InsuredItemModel {
     required String id,
     required String policyId,
     required String itemId,
+    @Default('') String itemName,
     @JsonKey(fromJson: _parseDouble) @Default(0.0) double coveredValue,
     @Default('USD') String currency,
     String? createdAt,

@@ -489,10 +489,9 @@ class _InsuredItemRow extends StatelessWidget {
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(
-              item.itemId,
+              item.itemName.isNotEmpty ? item.itemName : item.itemId,
               style: AppTypography.bodySmall.copyWith(
                 color: AppColors.onSurface,
-                fontFamily: 'monospace',
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
