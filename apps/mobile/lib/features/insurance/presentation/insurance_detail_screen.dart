@@ -248,7 +248,7 @@ class _InsuranceDetailScreenState extends ConsumerState<InsuranceDetailScreen> {
                     item: item,
                     onDetach: () => _detachItem(item.itemId),
                   ),
-                ),
+                ).toList(),
 
               const SizedBox(height: AppSpacing.xl),
             ]),
@@ -459,11 +459,27 @@ class _DetailRow extends StatelessWidget {
   }
 }
 
-class _InsuredItemRow extends StatelessWidget {
+class _InsuredItemRow extends StatefulWidget {
   const _InsuredItemRow({required this.item, required this.onDetach});
 
   final InsuredItemModel item;
-  final VoidCallback onDetach;
+  final Future<void> Function() onDetach;
+
+  @override
+  State<_InsuredItemRow> createState() => _InsuredItemRowState();
+}
+
+class _InsuredItemRowState extends State<_InsuredItemRow> {
+  bool _loading = false;
+
+  Future<void> _handleDetach() async {
+    setState(() => _loading = true);
+    try {
+      await widget.onDetach();
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -489,7 +505,9 @@ class _InsuredItemRow extends StatelessWidget {
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(
-              item.itemName.isNotEmpty ? item.itemName : item.itemId,
+              widget.item.itemName.isNotEmpty
+                  ? widget.item.itemName
+                  : widget.item.itemId,
               style: AppTypography.bodySmall.copyWith(
                 color: AppColors.onSurface,
               ),
@@ -499,16 +517,30 @@ class _InsuredItemRow extends StatelessWidget {
           ),
           const SizedBox(width: AppSpacing.sm),
           Text(
-            currencyFmt.format(item.coveredValue),
+            currencyFmt.format(widget.item.coveredValue),
             style: AppTypography.bodySmall.copyWith(
               color: AppColors.accent,
               fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(width: AppSpacing.xs),
-          GestureDetector(
-            onTap: onDetach,
-            child: Icon(Icons.close, size: 16, color: AppColors.error),
+          SizedBox(
+            width: 24,
+            height: 24,
+            child: _loading
+                ? Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor:
+                          AlwaysStoppedAnimation<Color>(AppColors.error),
+                    ),
+                  )
+                : GestureDetector(
+                    onTap: _handleDetach,
+                    child:
+                        Icon(Icons.close, size: 16, color: AppColors.error),
+                  ),
           ),
         ],
       ),

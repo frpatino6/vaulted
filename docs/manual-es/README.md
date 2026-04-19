@@ -402,7 +402,7 @@ Desde el detalle de un objeto:
 
 ## 9. Seguros
 
-Gestiona tus pólizas de seguro y protege tus objetos valiosos.
+Gestiona tus pólizas de seguro y protege tus objetos valiosos. Desde aquí puedes ver qué tan bien cubierto está tu inventario y recibir recomendaciones de inteligencia artificial.
 
 ### Cómo Usar
 
@@ -410,45 +410,81 @@ Gestiona tus pólizas de seguro y protege tus objetos valiosos.
 
 1. Desde la barra inferior, toca el icono de escudo
 2. Lista todas tus pólizas de seguro
-3. Cada tarjeta muestra: proveedor, número, cobertura, expiry, objetos asegurados
+3. Cada tarjeta muestra: proveedor, número de póliza, tipo de cobertura, fecha de expiración y cantidad de objetos asegurados
 
 ### Agregar una Póliza
 
 1. Toca el botón + arriba
 2. Ingresa: proveedor, número de póliza, tipo de cobertura
-3. Define: monto de cobertura, prima, fecha de inicio y expiración
-4. Toca **Save**
+3. Define: monto de cobertura total, prima anual (opcional), fecha de inicio y fecha de expiración
+4. Opcional: agrega notas
+5. Toca **Save**
 
 ### Ver Detalles de Póliza
 
 1. Toca cualquier póliza
-2. Verás: monto total, prima, fechas, objetos asegurados
-3. Desde aquí puedes editar o agregar objetos
+2. Verás: monto total de cobertura, prima, número de póliza, fechas y la lista de objetos asegurados
+3. Desde aquí puedes editar la póliza, agregar objetos o eliminarla
 
 ### Agregar Objetos Asegurados
 
-1. En la póliza, toca el botón + en **Insured Items**
-2. Busca y selecciona objetos
-3. Toca **Attach**
+1. En el detalle de la póliza, toca el icono **+** junto a **Insured Items**
+2. Escribe el nombre del objeto en el buscador
+3. Selecciona el objeto de los resultados
+4. Ingresa el monto cubierto para ese objeto y la moneda
+5. Toca **Attach Item**
 
-### Análisis de Gaps (pro beta)
+El objeto aparece en la lista con su nombre y monto cubierto. Un objeto puede estar en varias pólizas; el sistema suma toda la cobertura.
 
-1. En una póliza, toca **Gap Analysis**
-2. AI analiza qué objetos no están asegurados
-3. Ves brechas en tu cobertura
+### Eliminar un Objeto Asegurado
+
+1. En la lista de **Insured Items**, toca el icono **✕** junto al objeto
+2. Confirma en el diálogo **Remove Item**
+3. El objeto se desvincula de la póliza (no se elimina del inventario)
+
+### Análisis de Brechas de Cobertura
+
+El **Gap Analysis** compara el valor actual de tus objetos con lo que tienes asegurado en todas tus pólizas. No es por póliza individual — analiza todo el inventario del tenant.
+
+1. En el detalle de la póliza, toca **Gap Analysis**
+2. La pantalla muestra tres tarjetas de resumen:
+   - **Uninsured Gap** — valor total de objetos sin ninguna cobertura
+   - **Underinsured Gap** — diferencia entre valor real y cobertura para objetos sub-asegurados
+   - **Total Coverage Gap** — suma de ambos
+3. Debajo verás dos listas:
+   - **Uninsured Items** — objetos que no están en ninguna póliza activa. Aparecen con la etiqueta **Uninsured** en rojo.
+   - **Underinsured Items** — objetos cubiertos parcialmente. Muestra el valor del objeto, lo que está cubierto y la brecha.
+
+**Criterio de inclusión:** Se analizan todos los objetos activos del inventario (estados: active, loaned, repair, storage). Los objetos en estado *disposed* y los que no tienen valor registrado se omiten.
+
+### Análisis de IA por Póliza
+
+Desde el detalle de una póliza, toca el icono de estrella (**✦**) en la barra superior para abrir el análisis de inteligencia artificial.
+
+Gemini analiza la póliza y sus objetos asegurados. Retorna:
+
+- **Overall Risk** — nivel de riesgo: Low, High o Critical
+- **Summary** — resumen en texto sobre el estado de cobertura
+- **Renewal Urgency** — alerta si la póliza está próxima a vencer
+- **Recommendations** — lista de acciones sugeridas para mejorar la cobertura
+- **Priority Items** — objetos específicos que requieren atención inmediata
+
+Desde este panel también puedes tocar **Draft a Claim** para que la IA redacte un borrador de reclamo describiendo el incidente.
 
 ### Eliminar Póliza
 
-1. En los detalles, toca el icono de papelera
-2. Confirma para eliminar
+1. En el detalle, toca el icono de papelera (esquina superior derecha)
+2. Confirma en el diálogo
+3. Se elimina la póliza y todos sus objetos asegurados (no afecta el inventario)
 
 ### Consejos
 
-- Las pólizas próximas a expirar aparecen en rojo
-- El monto de cobertura es lo que paga el seguro en caso de pérdida total
-- Asegura objetos de alto valor primero
-- Un gap mayor que 0 significa que el objeto excede la cobertura de la póliza
-- **Fully Uninsured** = objeto no está en ninguna póliza
+- Las pólizas próximas a expirar se muestran con la fecha en rojo
+- El monto de cobertura es lo que pagaría el seguro en caso de pérdida total
+- Un objeto puede estar en múltiples pólizas; el análisis de brechas suma toda la cobertura
+- **Uninsured** = el objeto no está en ninguna póliza activa
+- **Underinsured** = el objeto está cubierto, pero por menos de su valor actual
+- Solo Owners y Managers pueden crear, editar o eliminar pólizas
 
 ---
 
