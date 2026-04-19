@@ -1,22 +1,30 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+
 import 'package:vaulted/core/router/auth_redirect_notifier.dart';
 import 'package:vaulted/core/router/auth_redirect_notifier_provider.dart';
 import 'package:vaulted/core/storage/auth_token_store.dart';
+import 'package:vaulted/core/storage/secure_storage.dart';
 import 'package:vaulted/core/storage/secure_storage_provider.dart';
 import 'package:vaulted/features/auth/data/auth_repository.dart';
 import 'package:vaulted/features/auth/data/auth_repository_provider.dart';
 import 'package:vaulted/features/auth/domain/auth_state.dart';
 import 'package:vaulted/features/auth/presentation/auth_notifier.dart';
 import 'package:vaulted/features/presence/presentation/providers/presence_provider.dart';
-import 'package:vaulted/core/storage/secure_storage.dart';
+
+// ---------------------------------------------------------------------------
+// Mocks
+// ---------------------------------------------------------------------------
 
 class MockAuthRepository extends Mock implements AuthRepository {}
 
+class MockAuthRedirectNotifier extends Mock implements AuthRedirectNotifier {}
+
 class MockSecureStorage extends Mock implements SecureStorage {}
 
+/// Stub that satisfies PresenceNotifier's interface without real network I/O.
 class _StubPresenceNotifier extends PresenceNotifier {
   @override
   Future<PresenceState> build() async {
@@ -31,121 +39,446 @@ class _StubPresenceNotifier extends PresenceNotifier {
   void pauseHeartbeat() {}
 }
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+ProviderContainer _makeContainer({
+  required MockAuthRepository mockRepo,
+  required MockAuthRedirectNotifier mockRedirect,
+  MockSecureStorage? mockSecureStorage,
+}) {
+  return ProviderContainer(
+    overrides: [
+      authRepositoryProvider.overrideWithValue(mockRepo),
+      authRedirectNotifierProvider.overrideWithValue(mockRedirect),
+      secureStorageProvider
+          .overrideWithValue(mockSecureStorage ?? MockSecureStorage()),
+      presenceNotifierProvider.overrideWith(_StubPresenceNotifier.new),
+    ],
+  );
+}
+
+bool _isErrorWithMessage(AuthState? state, String message) {
+  if (state == null) return false;
+  return state.map(
+    initial: (_) => false,
+    loading: (_) => false,
+    mfaRequired: (_) => false,
+    authenticated: (_) => false,
+    error: (e) => e.message == message,
+  );
+}
+
+bool _isError(AuthState? state) {
+  if (state == null) return false;
+  return state.map(
+    initial: (_) => false,
+    loading: (_) => false,
+    mfaRequired: (_) => false,
+    authenticated: (_) => false,
+    error: (_) => true,
+  );
+}
+
+String _errorMessage(AuthState? state) {
+  if (state == null) throw StateError('state is null');
+  return state.map(
+    initial: (_) => throw StateError('Not an error state'),
+    loading: (_) => throw StateError('Not an error state'),
+    mfaRequired: (_) => throw StateError('Not an error state'),
+    authenticated: (_) => throw StateError('Not an error state'),
+    error: (e) => e.message,
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
 void main() {
-  setUpAll(() {
-    registerFallbackValue('');
-  });
+  late MockAuthRepository mockRepo;
+  late MockAuthRedirectNotifier mockRedirect;
+  late MockSecureStorage mockSecureStorage;
+  late ProviderContainer container;
 
   setUp(() {
+    mockRepo = MockAuthRepository();
+    mockRedirect = MockAuthRedirectNotifier();
+    mockSecureStorage = MockSecureStorage();
+
+    container = _makeContainer(
+      mockRepo: mockRepo,
+      mockRedirect: mockRedirect,
+      mockSecureStorage: mockSecureStorage,
+    );
+
     AuthTokenStore.instance.clear();
   });
 
   tearDown(() {
-    AuthTokenStore.instance.clear();
+    container.dispose();
   });
 
-  ProviderContainer buildContainer({
-    required AuthRepository authRepository,
-    SecureStorage? secureStorage,
-  }) {
-    return ProviderContainer(
-      overrides: [
-        authRepositoryProvider.overrideWithValue(authRepository),
-        secureStorageProvider.overrideWithValue(secureStorage ?? MockSecureStorage()),
-        presenceNotifierProvider.overrideWith(_StubPresenceNotifier.new),
-      ],
-    );
-  }
+  // -------------------------------------------------------------------------
+  // Initial state
+  // -------------------------------------------------------------------------
+  group('AuthNotifier — initial state', () {
+    test('starts as AsyncData containing AuthState.initial()', () {
+      final asyncState = container.read(authNotifierProvider);
+      expect(asyncState, isA<AsyncData<AuthState>>());
+      expect(asyncState.value, const AuthState.initial());
+    });
+  });
 
-  test('login() transitions to authenticated when MFA is not required', () async {
-    final repo = MockAuthRepository();
-    when(() => repo.login(any(), any())).thenAnswer(
-      (_) async => {'accessToken': 'at', 'mfaRequired': false},
-    );
-    final container = buildContainer(authRepository: repo);
-    addTearDown(container.dispose);
+  // -------------------------------------------------------------------------
+  // login()
+  // -------------------------------------------------------------------------
+  group('AuthNotifier.login', () {
+    test('transitions to authenticated when mfaRequired=false', () async {
+      when(() => mockRepo.login(any(), any())).thenAnswer(
+        (_) async => {'accessToken': 'access.jwt', 'mfaRequired': false},
+      );
 
-    await container.read(authNotifierProvider.notifier).login('a@b.com', 'secret');
+      await container
+          .read(authNotifierProvider.notifier)
+          .login('owner@test.com', 'Test1234!');
 
-    expect(
-      container.read(authNotifierProvider),
-      isA<AsyncData<AuthState>>().having(
-        (AsyncData<AuthState> d) => d.value,
-        'value',
+      expect(
+        container.read(authNotifierProvider).value,
         const AuthState.authenticated(),
-      ),
-    );
-    expect(AuthTokenStore.instance.isMfaPending, false);
-    verify(() => repo.login(any(), any())).called(1);
+      );
+    });
+
+    test('sets mfaPending=false in AuthTokenStore when mfaRequired=false',
+        () async {
+      when(() => mockRepo.login(any(), any())).thenAnswer(
+        (_) async => {'accessToken': 'access.jwt', 'mfaRequired': false},
+      );
+
+      await container
+          .read(authNotifierProvider.notifier)
+          .login('owner@test.com', 'Test1234!');
+
+      expect(AuthTokenStore.instance.isMfaPending, isFalse);
+    });
+
+    test('transitions to mfaRequired when mfaRequired=true', () async {
+      when(() => mockRepo.login(any(), any())).thenAnswer(
+        (_) async => {'accessToken': 'temp.jwt', 'mfaRequired': true},
+      );
+
+      await container
+          .read(authNotifierProvider.notifier)
+          .login('owner@test.com', 'Test1234!');
+
+      expect(
+        container.read(authNotifierProvider).value,
+        const AuthState.mfaRequired(),
+      );
+    });
+
+    test('sets mfaPending=true in AuthTokenStore when mfaRequired=true',
+        () async {
+      when(() => mockRepo.login(any(), any())).thenAnswer(
+        (_) async => {'accessToken': 'temp.jwt', 'mfaRequired': true},
+      );
+
+      await container
+          .read(authNotifierProvider.notifier)
+          .login('owner@test.com', 'Test1234!');
+
+      expect(AuthTokenStore.instance.isMfaPending, isTrue);
+    });
+
+    test('transitions to error state on generic exception', () async {
+      when(() => mockRepo.login(any(), any())).thenThrow(Exception('boom'));
+
+      await container
+          .read(authNotifierProvider.notifier)
+          .login('owner@test.com', 'bad');
+
+      final state = container.read(authNotifierProvider).value;
+      expect(_isError(state), isTrue);
+    });
+
+    test('returns "Invalid email or password." for 401 DioException', () async {
+      when(() => mockRepo.login(any(), any())).thenThrow(
+        DioException(
+          requestOptions: RequestOptions(path: '/auth/login'),
+          type: DioExceptionType.badResponse,
+          response: Response(
+            requestOptions: RequestOptions(path: '/auth/login'),
+            statusCode: 401,
+          ),
+        ),
+      );
+
+      await container
+          .read(authNotifierProvider.notifier)
+          .login('owner@test.com', 'wrong');
+
+      final state = container.read(authNotifierProvider).value;
+      expect(
+          _isErrorWithMessage(state, 'Invalid email or password.'), isTrue);
+    });
+
+    test('returns rate-limit message for 429 DioException', () async {
+      when(() => mockRepo.login(any(), any())).thenThrow(
+        DioException(
+          requestOptions: RequestOptions(path: '/auth/login'),
+          type: DioExceptionType.badResponse,
+          response: Response(
+            requestOptions: RequestOptions(path: '/auth/login'),
+            statusCode: 429,
+          ),
+        ),
+      );
+
+      await container
+          .read(authNotifierProvider.notifier)
+          .login('owner@test.com', 'pass');
+
+      final state = container.read(authNotifierProvider).value;
+      expect(_isError(state), isTrue);
+      expect(_errorMessage(state), contains('Too many attempts'));
+    });
+
+    test('returns connectivity message for connectionError DioException',
+        () async {
+      when(() => mockRepo.login(any(), any())).thenThrow(
+        DioException(
+          requestOptions: RequestOptions(path: '/auth/login'),
+          type: DioExceptionType.connectionError,
+        ),
+      );
+
+      await container
+          .read(authNotifierProvider.notifier)
+          .login('owner@test.com', 'pass');
+
+      final state = container.read(authNotifierProvider).value;
+      expect(_isError(state), isTrue);
+      expect(_errorMessage(state), contains('internet connection'));
+    });
+
+    test('returns connectivity message for connectionTimeout DioException',
+        () async {
+      when(() => mockRepo.login(any(), any())).thenThrow(
+        DioException(
+          requestOptions: RequestOptions(path: '/auth/login'),
+          type: DioExceptionType.connectionTimeout,
+        ),
+      );
+
+      await container
+          .read(authNotifierProvider.notifier)
+          .login('owner@test.com', 'pass');
+
+      final state = container.read(authNotifierProvider).value;
+      expect(_errorMessage(state), contains('internet connection'));
+    });
+
+    test('returns API error message from response body when available',
+        () async {
+      when(() => mockRepo.login(any(), any())).thenThrow(
+        DioException(
+          requestOptions: RequestOptions(path: '/auth/login'),
+          type: DioExceptionType.badResponse,
+          response: Response(
+            requestOptions: RequestOptions(path: '/auth/login'),
+            statusCode: 400,
+            data: {
+              'error': {'message': 'Account is suspended'},
+            },
+          ),
+        ),
+      );
+
+      await container
+          .read(authNotifierProvider.notifier)
+          .login('owner@test.com', 'pass');
+
+      final state = container.read(authNotifierProvider).value;
+      expect(_errorMessage(state), 'Account is suspended');
+    });
+
+    test('joins list API error messages from response body', () async {
+      when(() => mockRepo.login(any(), any())).thenThrow(
+        DioException(
+          requestOptions: RequestOptions(path: '/auth/login'),
+          type: DioExceptionType.badResponse,
+          response: Response(
+            requestOptions: RequestOptions(path: '/auth/login'),
+            statusCode: 400,
+            data: {
+              'error': {
+                'message': ['Email is invalid', 'Password too short'],
+              },
+            },
+          ),
+        ),
+      );
+
+      await container
+          .read(authNotifierProvider.notifier)
+          .login('owner@test.com', 'pass');
+
+      final state = container.read(authNotifierProvider).value;
+      expect(_errorMessage(state), 'Email is invalid, Password too short');
+    });
+
+    test('returns generic fallback for unknown exception type', () async {
+      when(() => mockRepo.login(any(), any())).thenThrow(Exception('unknown'));
+
+      await container
+          .read(authNotifierProvider.notifier)
+          .login('owner@test.com', 'pass');
+
+      final state = container.read(authNotifierProvider).value;
+      expect(_errorMessage(state), contains('Something went wrong'));
+    });
   });
 
-  test('login() transitions to mfaRequired and sets MFA pending', () async {
-    final repo = MockAuthRepository();
-    when(() => repo.login(any(), any())).thenAnswer(
-      (_) async => {'accessToken': 'partial', 'mfaRequired': true},
-    );
-    final container = buildContainer(authRepository: repo);
-    addTearDown(container.dispose);
+  // -------------------------------------------------------------------------
+  // verifyMfa()
+  // -------------------------------------------------------------------------
+  group('AuthNotifier.verifyMfa', () {
+    test('transitions to authenticated on success', () async {
+      when(() => mockRepo.verifyMfa(any())).thenAnswer(
+        (_) async => {'accessToken': 'final.jwt'},
+      );
 
-    await container.read(authNotifierProvider.notifier).login('a@b.com', 'secret');
+      await container.read(authNotifierProvider.notifier).verifyMfa('123456');
 
-    expect(
-      container.read(authNotifierProvider).valueOrNull,
-      const AuthState.mfaRequired(),
-    );
-    expect(AuthTokenStore.instance.isMfaPending, true);
+      expect(
+        container.read(authNotifierProvider).value,
+        const AuthState.authenticated(),
+      );
+    });
+
+    test('clears mfaPending flag on success', () async {
+      AuthTokenStore.instance.setMfaPending(true);
+
+      when(() => mockRepo.verifyMfa(any())).thenAnswer(
+        (_) async => {'accessToken': 'final.jwt'},
+      );
+
+      await container.read(authNotifierProvider.notifier).verifyMfa('123456');
+
+      expect(AuthTokenStore.instance.isMfaPending, isFalse);
+    });
+
+    test(
+        'transitions to error on 401 DioException with specific MFA message',
+        () async {
+      when(() => mockRepo.verifyMfa(any())).thenThrow(
+        DioException(
+          requestOptions: RequestOptions(path: '/auth/mfa/verify'),
+          type: DioExceptionType.badResponse,
+          response: Response(
+            requestOptions: RequestOptions(path: '/auth/mfa/verify'),
+            statusCode: 401,
+          ),
+        ),
+      );
+
+      await container.read(authNotifierProvider.notifier).verifyMfa('000000');
+
+      final state = container.read(authNotifierProvider).value;
+      expect(
+        _isErrorWithMessage(state, 'Invalid or expired verification code.'),
+        isTrue,
+      );
+    });
+
+    test('returns "Too many attempts..." for 429 on verifyMfa', () async {
+      when(() => mockRepo.verifyMfa(any())).thenThrow(
+        DioException(
+          requestOptions: RequestOptions(path: '/auth/mfa/verify'),
+          type: DioExceptionType.badResponse,
+          response: Response(
+            requestOptions: RequestOptions(path: '/auth/mfa/verify'),
+            statusCode: 429,
+          ),
+        ),
+      );
+
+      await container.read(authNotifierProvider.notifier).verifyMfa('000000');
+
+      final state = container.read(authNotifierProvider).value;
+      expect(_errorMessage(state), contains('Too many attempts'));
+    });
+
+    test('returns generic MFA message for non-DioException', () async {
+      when(() => mockRepo.verifyMfa(any())).thenThrow(Exception('server error'));
+
+      await container.read(authNotifierProvider.notifier).verifyMfa('000000');
+
+      final state = container.read(authNotifierProvider).value;
+      expect(
+        _isErrorWithMessage(
+            state, 'Invalid verification code. Please try again.'),
+        isTrue,
+      );
+    });
   });
 
-  test('login() maps 401 to invalid credentials message', () async {
-    final repo = MockAuthRepository();
-    when(() => repo.login(any(), any())).thenThrow(
-      DioException(
-        requestOptions: RequestOptions(path: '/login'),
-        response: Response(requestOptions: RequestOptions(path: '/login'), statusCode: 401),
-        type: DioExceptionType.badResponse,
-      ),
-    );
-    final container = buildContainer(authRepository: repo);
-    addTearDown(container.dispose);
+  // -------------------------------------------------------------------------
+  // logout()
+  // -------------------------------------------------------------------------
+  group('AuthNotifier.logout', () {
+    test('transitions back to initial state on success', () async {
+      when(() => mockRepo.logout()).thenAnswer((_) async {});
+      when(() => mockRedirect.notifyAuthLost()).thenReturn(null);
+      when(() => mockSecureStorage.deletePrivacyMode()).thenAnswer((_) async {});
 
-    await container.read(authNotifierProvider.notifier).login('a@b.com', 'bad');
+      await container.read(authNotifierProvider.notifier).logout();
 
-    final state = container.read(authNotifierProvider).valueOrNull;
-    expect(state, isA<AuthState>());
-    expect(
-      state!.maybeWhen(error: (m) => m, orElse: () => ''),
-      'Invalid email or password.',
-    );
-  });
+      expect(
+        container.read(authNotifierProvider).value,
+        const AuthState.initial(),
+      );
+    });
 
-  test('logout() clears auth and notifies redirect', () async {
-    final repo = MockAuthRepository();
-    when(() => repo.logout()).thenAnswer((_) async {});
-    final secure = MockSecureStorage();
-    when(() => secure.deletePrivacyMode()).thenAnswer((_) async {});
+    test('calls notifyAuthLost on the redirect notifier', () async {
+      when(() => mockRepo.logout()).thenAnswer((_) async {});
+      when(() => mockRedirect.notifyAuthLost()).thenReturn(null);
+      when(() => mockSecureStorage.deletePrivacyMode()).thenAnswer((_) async {});
 
-    final redirect = AuthRedirectNotifier();
-    var lost = 0;
-    redirect.addListener(() => lost++);
+      await container.read(authNotifierProvider.notifier).logout();
 
-    final container = ProviderContainer(
-      overrides: [
-        authRepositoryProvider.overrideWithValue(repo),
-        secureStorageProvider.overrideWithValue(secure),
-        presenceNotifierProvider.overrideWith(_StubPresenceNotifier.new),
-        authRedirectNotifierProvider.overrideWithValue(redirect),
-      ],
-    );
-    addTearDown(container.dispose);
+      verify(() => mockRedirect.notifyAuthLost()).called(1);
+    });
 
-    await container.read(authNotifierProvider.notifier).logout();
+    test('calls deletePrivacyMode on SecureStorage during logout', () async {
+      when(() => mockRepo.logout()).thenAnswer((_) async {});
+      when(() => mockRedirect.notifyAuthLost()).thenReturn(null);
+      when(() => mockSecureStorage.deletePrivacyMode()).thenAnswer((_) async {});
 
-    expect(
-      container.read(authNotifierProvider).valueOrNull,
-      const AuthState.initial(),
-    );
-    verify(() => repo.logout()).called(1);
-    verify(() => secure.deletePrivacyMode()).called(1);
-    expect(lost, 1);
+      await container.read(authNotifierProvider.notifier).logout();
+
+      verify(() => mockSecureStorage.deletePrivacyMode()).called(1);
+    });
+
+    test(
+        'resets state and calls notifyAuthLost via finally even when remote throws',
+        () async {
+      when(() => mockRepo.logout()).thenThrow(Exception('remote failure'));
+      when(() => mockRedirect.notifyAuthLost()).thenReturn(null);
+      when(() => mockSecureStorage.deletePrivacyMode()).thenAnswer((_) async {});
+
+      await expectLater(
+        container.read(authNotifierProvider.notifier).logout(),
+        throwsA(isA<Exception>()),
+      );
+
+      expect(
+        container.read(authNotifierProvider).value,
+        const AuthState.initial(),
+      );
+      verify(() => mockRedirect.notifyAuthLost()).called(1);
+      verify(() => mockSecureStorage.deletePrivacyMode()).called(1);
+    });
   });
 }
