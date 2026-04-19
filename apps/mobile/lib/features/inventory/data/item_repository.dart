@@ -77,6 +77,7 @@ class ItemRepository {
     String? roomId,
     String? serialNumber,
     String? locationDetail,
+    String? sectionId,
     Map<String, dynamic>? valuation,
     List<String>? tags,
     List<String>? photos,
@@ -91,6 +92,7 @@ class ItemRepository {
     if (roomId != null) body['roomId'] = roomId;
     if (serialNumber != null) body['serialNumber'] = serialNumber;
     if (locationDetail != null) body['locationDetail'] = locationDetail;
+    if (sectionId != null) body['sectionId'] = sectionId;
     if (valuation != null) body['valuation'] = valuation;
     if (tags != null) body['tags'] = tags;
     if (photos != null) body['photos'] = photos;

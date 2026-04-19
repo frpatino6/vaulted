@@ -11,6 +11,9 @@ import '../data/item_repository_provider.dart';
 import '../data/models/item_model.dart';
 import '../domain/item_list_notifier.dart';
 import '../../../shared/widgets/room_inventory_asset_card.dart';
+import '../../properties/data/models/floor_model.dart';
+import '../../properties/data/models/room_model.dart';
+import '../../properties/domain/property_detail_notifier.dart';
 import 'add_item_sheet.dart';
 import 'section_qr_sheet.dart';
 
@@ -648,6 +651,22 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
     }
   }
 
+  /// Returns a single-floor/single-room structure so AddItemSheet can
+  /// resolve sections for the current room without requiring full property load.
+  List<FloorModel> _floorsForCurrentRoom() {
+    final property = ref.read(propertyDetailNotifierProvider).valueOrNull;
+    if (property != null) return property.floors;
+    return [
+      FloorModel(
+        floorId: '',
+        name: '',
+        rooms: [
+          RoomModel(roomId: widget.roomId, name: widget.roomName, type: ''),
+        ],
+      ),
+    ];
+  }
+
   void _showAddItem(BuildContext context) {
     showModalBottomSheet<bool>(
       context: context,
@@ -658,6 +677,7 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
             propertyId: widget.propertyId,
             roomId: widget.roomId,
             roomName: widget.roomName,
+            floors: _floorsForCurrentRoom(),
             onAdded: () {
               ref
                   .read(itemListNotifierProvider.notifier)
