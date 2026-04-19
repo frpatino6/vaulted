@@ -403,6 +403,7 @@ export class InventoryService {
       const searchRegex = new RegExp(escapeRegex(normalizedQuery), 'i');
       query.$or = [
         { name: searchRegex },
+        { category: searchRegex },
         { subcategory: searchRegex },
         { tags: searchRegex },
         { serialNumber: searchRegex },
@@ -524,7 +525,12 @@ export class InventoryService {
     transform: (plaintext: string) => T,
   ): T | undefined {
     const value = raw[field];
-    if (!this.crypto.isEncryptedField(value)) return value as T | undefined;
+    if (!this.crypto.isEncryptedField(value)) {
+      // Legacy data may be stored as a string (e.g. "0") before FLE was added.
+      // Apply the transform so numeric fields are always returned as numbers.
+      if (typeof value === 'string') return transform(value);
+      return value as T | undefined;
+    }
     return transform(this.crypto.decryptField(value as string, tenantId));
   }
 
