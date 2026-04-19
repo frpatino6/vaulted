@@ -141,12 +141,12 @@ export class InsuranceService {
     }
 
     const now = new Date();
-    const resolvedStatus: InsurancePolicy['status'] | undefined =
-      dto.status !== undefined
-        ? dto.status
-        : dto.expiresAt !== undefined && expires > now && policy.status === 'expired'
-          ? 'active'
-          : undefined;
+    // Date takes precedence: future expiresAt always means active (unless explicitly cancelling).
+    // This handles the case where the form sends the stale status='expired' alongside a future date.
+    let resolvedStatus: InsurancePolicy['status'] | undefined = dto.status;
+    if (dto.status !== 'cancelled' && expires > now && policy.status === 'expired') {
+      resolvedStatus = 'active';
+    }
 
     const updatePayload: Partial<InsurancePolicy> = {
       ...(dto.provider !== undefined ? { provider: dto.provider } : {}),
