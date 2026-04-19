@@ -4,6 +4,7 @@ import {
   ExecutionContext,
   CallHandler,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
@@ -21,11 +22,17 @@ export class ResponseInterceptor<T>
     context: ExecutionContext,
     next: CallHandler,
   ): Observable<StandardResponse<T>> {
+    const res = context.switchToHttp().getResponse<Response>();
     return next.handle().pipe(
-      map((data: T) => ({
-        success: true,
-        data,
-      })),
+      map((data: T) => {
+        if (res.headersSent) {
+          return data as unknown as StandardResponse<T>;
+        }
+        return {
+          success: true,
+          data,
+        };
+      }),
     );
   }
 }

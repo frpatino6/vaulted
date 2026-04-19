@@ -154,7 +154,7 @@ void main() {
   });
 
   group('attachItem / detachItem', () {
-    test('attachItem POSTs and returns updated policy', () async {
+    test('attachItem POSTs, re-fetches policy and returns it', () async {
       when(
         () => mockDio.post<Map<String, dynamic>>(
           'insurance/policies/p1/items',
@@ -163,34 +163,52 @@ void main() {
       ).thenAnswer(
         (_) async => makeMapResponse(
           requestOptions: requestOptions,
+          // API returns only the InsuredItem row — not the full policy
+          data: {'success': true, 'data': <String, dynamic>{}},
+        ),
+      );
+      // Re-fetch the full policy after the POST
+      when(() => mockDio.get<Map<String, dynamic>>('insurance/policies/p1'))
+          .thenAnswer(
+        (_) async => makeMapResponse(
+          requestOptions: requestOptions,
           data: {'success': true, 'data': _policyPayload()},
         ),
       );
 
-      await dataSource.attachItem('p1', {
+      final result = await dataSource.attachItem('p1', {
         'itemId': 'i1',
         'coveredValue': 5000.0,
         'currency': 'USD',
       });
 
+      expect(result.policyNumber, 'PN-100');
       verify(
         () => mockDio.post<Map<String, dynamic>>(
           'insurance/policies/p1/items',
-          data: {
-            'itemId': 'i1',
-            'coveredValue': 5000.0,
-            'currency': 'USD',
-          },
+          data: {'itemId': 'i1', 'coveredValue': 5000.0, 'currency': 'USD'},
         ),
+      ).called(1);
+      verify(
+        () => mockDio.get<Map<String, dynamic>>('insurance/policies/p1'),
       ).called(1);
     });
 
-    test('detachItem DELETEs and returns policy', () async {
+    test('detachItem DELETEs, re-fetches policy and returns it', () async {
       when(
         () => mockDio.delete<Map<String, dynamic>>(
           'insurance/policies/p1/items/i9',
         ),
       ).thenAnswer(
+        (_) async => makeMapResponse(
+          requestOptions: requestOptions,
+          // DELETE returns {success: true} with no data body
+          data: {'success': true},
+        ),
+      );
+      // Re-fetch the full policy after the DELETE
+      when(() => mockDio.get<Map<String, dynamic>>('insurance/policies/p1'))
+          .thenAnswer(
         (_) async => makeMapResponse(
           requestOptions: requestOptions,
           data: {'success': true, 'data': _policyPayload()},
@@ -200,6 +218,13 @@ void main() {
       final policy = await dataSource.detachItem('p1', 'i9');
 
       expect(policy.id, 'pol-1');
+      verify(
+        () =>
+            mockDio.delete<Map<String, dynamic>>('insurance/policies/p1/items/i9'),
+      ).called(1);
+      verify(
+        () => mockDio.get<Map<String, dynamic>>('insurance/policies/p1'),
+      ).called(1);
     });
   });
 
@@ -238,7 +263,10 @@ void main() {
         .thenAnswer(
       (_) async => makeMapResponse(
         requestOptions: requestOptions,
-        data: {'success': false, 'error': {'message': 'denied'}},
+        data: {
+          'success': false,
+          'error': {'message': 'denied'},
+        },
       ),
     );
 

@@ -1,13 +1,18 @@
 import {
   Controller,
   Delete,
+  Get,
+  Param,
   Post,
   Query,
+  Res,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
+import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums/role.enum';
@@ -41,5 +46,14 @@ export class MediaController {
     @Query('key') key: string | undefined,
   ): Promise<{ deleted: true }> {
     return this.mediaService.delete(user.tenantId, key);
+  }
+
+  @Public()
+  @Get(':token')
+  serveFile(
+    @Param('token') token: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    return this.mediaService.serveFile(token, res);
   }
 }

@@ -47,6 +47,7 @@ _$ItemModelImpl _$$ItemModelImplFromJson(
       const [],
   serialNumber: json['serialNumber'] as String?,
   locationDetail: json['locationDetail'] as String?,
+  sectionId: json['sectionId'] as String?,
   valuation:
       json['valuation'] == null
           ? null
@@ -76,6 +77,7 @@ Map<String, dynamic> _$$ItemModelImplToJson(_$ItemModelImpl instance) =>
       'tags': instance.tags,
       'serialNumber': instance.serialNumber,
       'locationDetail': instance.locationDetail,
+      'sectionId': instance.sectionId,
       'valuation': instance.valuation,
       if (instance.attributes case final value?) 'attributes': value,
       'documents': instance.documents,

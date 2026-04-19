@@ -15,6 +15,7 @@ import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { VerifyMfaDto } from './dto/verify-mfa.dto';
+import { AcceptInviteDto } from './dto/accept-invite.dto';
 import { Public } from '../../common/decorators/public.decorator';
 import { SkipMfa } from '../../common/decorators/skip-mfa.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -29,6 +30,13 @@ const REFRESH_COOKIE_OPTIONS = {
   // SameSite=Lax for local dev where secure=false.
   sameSite: (process.env['NODE_ENV'] === 'production' ? 'none' : 'lax') as 'none' | 'lax',
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in ms
+  path: '/api/auth/refresh',
+};
+
+const CLEAR_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env['NODE_ENV'] === 'production',
+  sameSite: (process.env['NODE_ENV'] === 'production' ? 'none' : 'lax') as 'none' | 'lax',
   path: '/api/auth/refresh',
 };
 
@@ -77,6 +85,25 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Post('accept-invite')
+  @HttpCode(HttpStatus.OK)
+  async acceptInvite(
+    @Body() dto: AcceptInviteDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const ip = req.ip ?? 'unknown';
+    const { accessToken, refreshToken, mfaRequired } = await this.authService.acceptInvite(
+      dto,
+      ip,
+    );
+
+    res.cookie('refresh_token', refreshToken, REFRESH_COOKIE_OPTIONS);
+    return { accessToken, mfaRequired };
+  }
+
+  @Public()
   @Throttle({ default: { limit: 10, ttl: 60000 } })
   @UseGuards(AuthGuard('jwt-refresh'))
   @Post('refresh')
@@ -101,16 +128,32 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const token = req.headers.authorization?.replace('Bearer ', '') ?? '';
+    const accessToken = req.headers.authorization?.replace('Bearer ', '') ?? '';
+    const refreshCookie = req.cookies?.['refresh_token'] as string | undefined;
     const ip = req.ip ?? 'unknown';
 
-    // Extract refreshTokenId from cookie token if possible
-    const refreshTokenId = (payload as JwtRefreshPayload).refreshTokenId;
+    await this.authService.logout(accessToken, payload, refreshCookie, ip);
 
-    await this.authService.logout(token, payload, refreshTokenId, ip);
-
-    res.clearCookie('refresh_token', { path: '/api/auth/refresh' });
+    res.clearCookie('refresh_token', CLEAR_COOKIE_OPTIONS);
     return { message: 'Logged out successfully' };
+  }
+
+  @SkipMfa()
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Post('logout-all')
+  @HttpCode(HttpStatus.OK)
+  async logoutAll(
+    @CurrentUser() payload: JwtPayload,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const accessToken = req.headers.authorization?.replace('Bearer ', '') ?? '';
+    const ip = req.ip ?? 'unknown';
+
+    await this.authService.logoutAll(payload.sub, payload.tenantId, accessToken, ip);
+
+    res.clearCookie('refresh_token', CLEAR_COOKIE_OPTIONS);
+    return { message: 'All sessions have been terminated' };
   }
 
   @SkipMfa()

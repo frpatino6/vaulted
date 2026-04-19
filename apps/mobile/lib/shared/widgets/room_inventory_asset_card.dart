@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../features/inventory/data/models/item_model.dart';
 import 'item_card.dart';
 import 'status_badge.dart';
+import 'valuation_text.dart';
 
 /// Catalog-style asset card for room inventory: image, name, brand/category, price tag, refined status.
 /// Height 100; supports slidable parent for Edit/Delete.
 /// [roomNameToStrip] when set, removes " – $roomNameToStrip" from the displayed item name.
 /// [nameMaxLines] allows more text before ellipsis (e.g. 2 for search results).
 /// [valueFontWeight] controls price emphasis (e.g. FontWeight.bold for search).
-class RoomInventoryAssetCard extends StatelessWidget {
+class RoomInventoryAssetCard extends ConsumerWidget {
   const RoomInventoryAssetCard({
     super.key,
     required this.item,
@@ -30,21 +31,12 @@ class RoomInventoryAssetCard extends StatelessWidget {
   final FontWeight valueFontWeight;
   final bool showLocation;
 
-  static final _currencyFormat = NumberFormat.currency(
-    locale: 'en_US',
-    symbol: r'$',
-    decimalDigits: 0,
-  );
-
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final surfaceColor = isDark
         ? AppColors.surfaceVariant.withValues(alpha: 0.6)
         : AppColors.surfaceVariant.withValues(alpha: 0.4);
-    final valueText = item.valuation != null && item.valuation!.currentValue > 0
-        ? _currencyFormat.format(item.valuation!.currentValue)
-        : '—';
     final hasValue = item.valuation != null && item.valuation!.currentValue > 0;
     final valueColor = hasValue
         ? AppColors.catalogGold
@@ -131,11 +123,8 @@ class RoomInventoryAssetCard extends StatelessWidget {
                         width: 92,
                         child: Align(
                           alignment: Alignment.topRight,
-                          child: Text(
-                            valueText,
-                            textAlign: TextAlign.right,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          child: ValuationText(
+                            value: item.valuation?.currentValue,
                             style: Theme.of(context).textTheme.labelMedium?.copyWith(
                                   color: valueColor,
                                   fontWeight: valueFontWeight,

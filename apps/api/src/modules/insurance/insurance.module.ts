@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MongooseModule } from '@nestjs/mongoose';
+import { CommonModule } from '../../common/common.module';
 import { InsurancePolicy } from './entities/insurance-policy.entity';
 import { InsuredItem } from './entities/insured-item.entity';
 import { InsuranceController } from './insurance.controller';
@@ -9,6 +10,7 @@ import { Item, ItemSchema } from '../inventory/schemas/item.schema';
 
 @Module({
   imports: [
+    CommonModule,
     TypeOrmModule.forFeature([InsurancePolicy, InsuredItem]),
     // Read-only access to MongoDB items for coverage gap analysis
     MongooseModule.forFeature([{ name: Item.name, schema: ItemSchema }]),

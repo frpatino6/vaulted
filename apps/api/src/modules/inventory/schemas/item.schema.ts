@@ -3,21 +3,34 @@ import { HydratedDocument, Schema as MongooseSchema } from 'mongoose';
 
 export type ItemDocument = HydratedDocument<Item>;
 
+/**
+ * Fields marked [FLE] are stored as AES-256-GCM ciphertext in MongoDB
+ * ("iv:authTag:ciphertext", all hex). InventoryService transparently
+ * encrypts on write and decrypts on read — callers always receive
+ * plaintext numbers / dates via the HTTP API.
+ *
+ * Encryption is per-tenant: each tenant's valuation data is encrypted
+ * with a key derived from the master ENCRYPTION_KEY + tenantId via
+ * HKDF-SHA-256, so a DB dump cannot expose cross-tenant financial data.
+ */
 @Schema({ _id: false })
 export class ItemValuation {
-  @Prop()
+  // [FLE] plaintext type: number — stored as AES-256-GCM ciphertext
+  @Prop({ type: String })
   purchasePrice?: number;
 
   @Prop()
   purchaseDate?: Date;
 
-  @Prop()
+  // [FLE] plaintext type: number — stored as AES-256-GCM ciphertext
+  @Prop({ type: String })
   currentValue?: number;
 
   @Prop({ default: 'USD' })
   currency?: string;
 
-  @Prop()
+  // [FLE] plaintext type: Date (ISO-8601) — stored as AES-256-GCM ciphertext
+  @Prop({ type: String })
   lastAppraisalDate?: Date;
 }
 
@@ -90,6 +103,9 @@ export class Item {
 
   @Prop({ trim: true })
   locationDetail?: string;
+
+  @Prop({ type: String, required: false, default: null, index: true })
+  sectionId?: string | null;
 
   @Prop({ required: true })
   createdBy!: string;

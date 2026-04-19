@@ -21,6 +21,9 @@ import '../domain/properties_notifier.dart';
 import '../domain/property_detail_notifier.dart';
 import 'add_floor_sheet.dart';
 import 'add_room_sheet.dart';
+import 'edit_floor_sheet.dart';
+import 'edit_room_sheet.dart';
+import 'room_sections_screen.dart';
 
 // Speed dial state
 enum _SpeedDialState { closed, open }
@@ -1317,7 +1320,7 @@ class _SingleFloorPlaceholder extends StatelessWidget {
   }
 }
 
-class _FloorTile extends StatelessWidget {
+class _FloorTile extends ConsumerWidget {
   const _FloorTile({
     required this.floor,
     required this.propertyId,
@@ -1334,43 +1337,328 @@ class _FloorTile extends StatelessWidget {
   final VoidCallback onAddRoom;
   final VoidCallback onRefresh;
 
+  void _showEditFloor(BuildContext context) {
+    showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => EditFloorSheet(
+        floorId: floor.floorId,
+        currentName: floor.name,
+        onUpdated: onRefresh,
+      ),
+    );
+  }
+
+  Future<void> _confirmDeleteFloor(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: Text(
+          'Delete floor',
+          style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                color: AppColors.onBackground,
+              ),
+        ),
+        content: Text(
+          'Delete "${floor.name}"? All rooms and their items will become unlocated.',
+          style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
+                color: AppColors.onSurfaceVariant,
+              ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    try {
+      await ref
+          .read(propertyDetailNotifierProvider.notifier)
+          .deleteFloor(floor.floorId);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Floor deleted')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(PropertyDetailNotifier.message(e)),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showEditRoom(BuildContext context, RoomModel room) {
+    showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => EditRoomSheet(
+        floorId: floor.floorId,
+        floorName: floor.name,
+        room: room,
+        onUpdated: onRefresh,
+      ),
+    );
+  }
+
+  Future<void> _confirmDeleteRoom(
+    BuildContext context,
+    WidgetRef ref,
+    RoomModel room,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: Text(
+          'Delete room',
+          style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                color: AppColors.onBackground,
+              ),
+        ),
+        content: Text(
+          'Delete "${room.name}"? Items in this room will become unlocated.',
+          style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
+                color: AppColors.onSurfaceVariant,
+              ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    try {
+      await ref
+          .read(propertyDetailNotifierProvider.notifier)
+          .deleteRoom(floor.floorId, room.roomId);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Room deleted')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(PropertyDetailNotifier.message(e)),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Container(
       decoration: BoxDecoration(
         color: surfaceOverlay,
         borderRadius: BorderRadius.circular(16),
       ),
       child: ExpansionTile(
-        leading: Icon(
+        leading: const Icon(
           Icons.villa_outlined,
           size: 18,
-          color: const Color(0xFFFFD700),
+          color: Color(0xFFFFD700),
         ),
         title: Text(
           floor.name,
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w500,
-            color: AppColors.onBackground,
-          ),
+                fontWeight: FontWeight.w500,
+                color: AppColors.onBackground,
+              ),
         ),
         subtitle: Padding(
           padding: const EdgeInsets.only(top: AppSpacing.xs),
           child: Text(
             '${floor.rooms.length} room(s)',
-            style: Theme.of(
-              context,
-            ).textTheme.bodySmall?.copyWith(color: AppColors.onSurfaceVariant),
+            style: Theme.of(context)
+                .textTheme
+                .bodySmall
+                ?.copyWith(color: AppColors.onSurfaceVariant),
           ),
         ),
-        trailing: Icon(
-          Icons.chevron_right,
-          color: AppColors.onSurfaceVariant.withValues(alpha: 0.4),
-        ),
+        trailing: canManageProperties
+            ? PopupMenuButton<_FloorAction>(
+                icon: Icon(
+                  Icons.more_vert,
+                  size: 20,
+                  color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
+                ),
+                color: AppColors.surfaceVariant,
+                onSelected: (action) {
+                  if (action == _FloorAction.edit) {
+                    _showEditFloor(context);
+                  } else {
+                    _confirmDeleteFloor(context, ref);
+                  }
+                },
+                itemBuilder: (_) => [
+                  PopupMenuItem(
+                    value: _FloorAction.edit,
+                    child: Row(
+                      children: [
+                        Icon(Icons.edit_outlined, size: 16, color: AppColors.accent),
+                        const SizedBox(width: AppSpacing.sm),
+                        Text('Edit', style: TextStyle(color: AppColors.onBackground)),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: _FloorAction.delete,
+                    child: Row(
+                      children: [
+                        Icon(Icons.delete_outline, size: 16, color: AppColors.error),
+                        const SizedBox(width: AppSpacing.sm),
+                        Text('Delete', style: TextStyle(color: AppColors.error)),
+                      ],
+                    ),
+                  ),
+                ],
+              )
+            : Icon(
+                Icons.chevron_right,
+                color: AppColors.onSurfaceVariant.withValues(alpha: 0.4),
+              ),
         children: [
-          if (floor.rooms.isEmpty && canManageProperties)
+          ...floor.rooms.map(
+            (room) => Padding(
+              padding: const EdgeInsets.only(left: AppSpacing.lg),
+              child: ListTile(
+                contentPadding: const EdgeInsets.only(right: AppSpacing.sm),
+                leading: Icon(
+                  Icons.door_front_door_outlined,
+                  size: 20,
+                  color: AppColors.onSurfaceVariant,
+                ),
+                title: Text(
+                  room.name,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: AppColors.onBackground,
+                      ),
+                ),
+                subtitle: Text(
+                  room.type,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.onSurfaceVariant,
+                      ),
+                ),
+                trailing: canManageProperties
+                    ? PopupMenuButton<_RoomAction>(
+                        icon: Icon(
+                          Icons.more_vert,
+                          size: 18,
+                          color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
+                        ),
+                        color: AppColors.surfaceVariant,
+                        onSelected: (action) {
+                          if (action == _RoomAction.edit) {
+                            _showEditRoom(context, room);
+                          } else if (action == _RoomAction.sections) {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => RoomSectionsScreen(
+                                  propertyId: propertyId,
+                                  floorId: floor.floorId,
+                                  roomId: room.roomId,
+                                  roomName: room.name,
+                                ),
+                              ),
+                            );
+                          } else {
+                            _confirmDeleteRoom(context, ref, room);
+                          }
+                        },
+                        itemBuilder: (_) => [
+                          PopupMenuItem(
+                            value: _RoomAction.edit,
+                            child: Row(
+                              children: [
+                                Icon(Icons.edit_outlined,
+                                    size: 16, color: AppColors.accent),
+                                const SizedBox(width: AppSpacing.sm),
+                                Text(
+                                  'Edit',
+                                  style: TextStyle(color: AppColors.onBackground),
+                                ),
+                              ],
+                            ),
+                          ),
+                          PopupMenuItem(
+                            value: _RoomAction.sections,
+                            child: Row(
+                              children: [
+                                Icon(Icons.grid_view_outlined,
+                                    size: 16, color: AppColors.accent),
+                                const SizedBox(width: AppSpacing.sm),
+                                Text(
+                                  'Sections',
+                                  style: TextStyle(color: AppColors.onBackground),
+                                ),
+                              ],
+                            ),
+                          ),
+                          PopupMenuItem(
+                            value: _RoomAction.delete,
+                            child: Row(
+                              children: [
+                                Icon(Icons.delete_outline,
+                                    size: 16, color: AppColors.error),
+                                const SizedBox(width: AppSpacing.sm),
+                                Text(
+                                  'Delete',
+                                  style: TextStyle(color: AppColors.error),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      )
+                    : null,
+                onTap: () {
+                  context.push(
+                    '/properties/$propertyId/rooms/${room.roomId}?name=${Uri.encodeComponent(room.name)}',
+                  );
+                },
+              ),
+            ),
+          ),
+          if (canManageProperties)
             Padding(
-              padding: const EdgeInsets.all(AppSpacing.md),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg,
+                AppSpacing.xs,
+                AppSpacing.md,
+                AppSpacing.sm,
+              ),
               child: TextButton.icon(
                 onPressed: onAddRoom,
                 icon: const Icon(Icons.add, size: 18, color: AppColors.accent),
@@ -1378,42 +1666,15 @@ class _FloorTile extends StatelessWidget {
                 style: TextButton.styleFrom(foregroundColor: AppColors.accent),
               ),
             ),
-          if (floor.rooms.isNotEmpty)
-            ...floor.rooms.map(
-              (room) => Padding(
-                padding: const EdgeInsets.only(left: AppSpacing.lg),
-                child: ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(
-                    Icons.door_front_door_outlined,
-                    size: 20,
-                    color: AppColors.onSurfaceVariant,
-                  ),
-                  title: Text(
-                    room.name,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: AppColors.onBackground,
-                    ),
-                  ),
-                  subtitle: Text(
-                    room.type,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.onSurfaceVariant,
-                    ),
-                  ),
-                  onTap: () {
-                    context.push(
-                      '/properties/$propertyId/rooms/${room.roomId}?name=${Uri.encodeComponent(room.name)}',
-                    );
-                  },
-                ),
-              ),
-            ),
         ],
       ),
     );
   }
 }
+
+enum _FloorAction { edit, delete }
+
+enum _RoomAction { edit, sections, delete }
 
 class _NotFoundView extends StatelessWidget {
   @override

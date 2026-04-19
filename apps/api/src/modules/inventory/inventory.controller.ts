@@ -10,9 +10,12 @@ import {
   Put,
   Query,
   Req,
+  UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { AnomalyGuard } from '../../common/guards/anomaly.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums/role.enum';
 import { AuditService } from '../audit/audit.service';
@@ -103,6 +106,8 @@ export class InventoryController {
     );
   }
 
+  @UseGuards(AnomalyGuard)
+  @Throttle({ 'inventory-valuation': { ttl: 900_000, limit: 20 } })
   @Get(':id')
   @Roles(Role.OWNER, Role.MANAGER, Role.STAFF, Role.AUDITOR)
   findById(@CurrentUser() user: JwtPayload, @Param('id') itemId: string) {

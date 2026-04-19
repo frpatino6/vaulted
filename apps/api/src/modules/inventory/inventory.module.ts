@@ -7,6 +7,7 @@ import { Item, ItemSchema } from './schemas/item.schema';
 import { ItemHistory, ItemHistorySchema } from './schemas/item-history.schema';
 import { Property, PropertySchema } from '../properties/schemas/property.schema';
 import { CommonModule } from '../../common/common.module';
+import { MediaModule } from '../media/media.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { CommonModule } from '../../common/common.module';
     ]),
     TypeOrmModule.forFeature([]),
     CommonModule,
+    MediaModule,
   ],
   controllers: [InventoryController],
   providers: [InventoryService],

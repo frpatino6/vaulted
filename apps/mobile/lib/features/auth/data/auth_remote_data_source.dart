@@ -37,6 +37,20 @@ class AuthRemoteDataSource {
   }
 
   /// POST /auth/logout
+  /// POST /auth/accept-invite (public)
+  Future<({Map<String, dynamic> data, String? setCookie})> acceptInvite({
+    required String token,
+    required String password,
+  }) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      'auth/accept-invite',
+      data: {'token': token, 'password': password},
+    );
+    final setCookie = response.headers.value('set-cookie') ??
+        response.headers.value('Set-Cookie');
+    return (data: _unwrapData(response), setCookie: setCookie);
+  }
+
   Future<void> logout() async {
     await _dio.post('auth/logout');
   }

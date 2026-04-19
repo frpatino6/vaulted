@@ -6,10 +6,13 @@ import 'package:mocktail/mocktail.dart';
 import 'package:vaulted/core/router/auth_redirect_notifier.dart';
 import 'package:vaulted/core/router/auth_redirect_notifier_provider.dart';
 import 'package:vaulted/core/storage/auth_token_store.dart';
+import 'package:vaulted/core/storage/secure_storage.dart';
+import 'package:vaulted/core/storage/secure_storage_provider.dart';
 import 'package:vaulted/features/auth/data/auth_repository.dart';
 import 'package:vaulted/features/auth/data/auth_repository_provider.dart';
 import 'package:vaulted/features/auth/domain/auth_state.dart';
 import 'package:vaulted/features/auth/presentation/auth_notifier.dart';
+import 'package:vaulted/features/presence/presentation/providers/presence_provider.dart';
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -19,26 +22,43 @@ class MockAuthRepository extends Mock implements AuthRepository {}
 
 class MockAuthRedirectNotifier extends Mock implements AuthRedirectNotifier {}
 
+class MockSecureStorage extends Mock implements SecureStorage {}
+
+/// Stub that satisfies PresenceNotifier's interface without real network I/O.
+class _StubPresenceNotifier extends PresenceNotifier {
+  @override
+  Future<PresenceState> build() async {
+    ref.onDispose(() {});
+    return const PresenceState();
+  }
+
+  @override
+  Future<void> initialize(String accessToken) async {}
+
+  @override
+  void pauseHeartbeat() {}
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-/// Builds a [ProviderContainer] with test overrides.
 ProviderContainer _makeContainer({
   required MockAuthRepository mockRepo,
   required MockAuthRedirectNotifier mockRedirect,
+  MockSecureStorage? mockSecureStorage,
 }) {
   return ProviderContainer(
     overrides: [
       authRepositoryProvider.overrideWithValue(mockRepo),
       authRedirectNotifierProvider.overrideWithValue(mockRedirect),
+      secureStorageProvider
+          .overrideWithValue(mockSecureStorage ?? MockSecureStorage()),
+      presenceNotifierProvider.overrideWith(_StubPresenceNotifier.new),
     ],
   );
 }
 
-/// Returns true when the [AuthState] value is the error variant carrying the
-/// given [message].  Because Freezed generates a private `_Error` class we
-/// can't import directly, we match via the Freezed `map` helper.
 bool _isErrorWithMessage(AuthState? state, String message) {
   if (state == null) return false;
   return state.map(
@@ -50,7 +70,6 @@ bool _isErrorWithMessage(AuthState? state, String message) {
   );
 }
 
-/// Returns true when [state] is any error variant.
 bool _isError(AuthState? state) {
   if (state == null) return false;
   return state.map(
@@ -62,7 +81,6 @@ bool _isError(AuthState? state) {
   );
 }
 
-/// Extracts the message from an error variant. Throws if not an error.
 String _errorMessage(AuthState? state) {
   if (state == null) throw StateError('state is null');
   return state.map(
@@ -81,18 +99,20 @@ String _errorMessage(AuthState? state) {
 void main() {
   late MockAuthRepository mockRepo;
   late MockAuthRedirectNotifier mockRedirect;
+  late MockSecureStorage mockSecureStorage;
   late ProviderContainer container;
 
   setUp(() {
     mockRepo = MockAuthRepository();
     mockRedirect = MockAuthRedirectNotifier();
+    mockSecureStorage = MockSecureStorage();
 
     container = _makeContainer(
       mockRepo: mockRepo,
       mockRedirect: mockRedirect,
+      mockSecureStorage: mockSecureStorage,
     );
 
-    // Reset singleton token store before every test.
     AuthTokenStore.instance.clear();
   });
 
@@ -130,7 +150,8 @@ void main() {
       );
     });
 
-    test('sets mfaPending=false in AuthTokenStore when mfaRequired=false', () async {
+    test('sets mfaPending=false in AuthTokenStore when mfaRequired=false',
+        () async {
       when(() => mockRepo.login(any(), any())).thenAnswer(
         (_) async => {'accessToken': 'access.jwt', 'mfaRequired': false},
       );
@@ -157,7 +178,8 @@ void main() {
       );
     });
 
-    test('sets mfaPending=true in AuthTokenStore when mfaRequired=true', () async {
+    test('sets mfaPending=true in AuthTokenStore when mfaRequired=true',
+        () async {
       when(() => mockRepo.login(any(), any())).thenAnswer(
         (_) async => {'accessToken': 'temp.jwt', 'mfaRequired': true},
       );
@@ -197,7 +219,8 @@ void main() {
           .login('owner@test.com', 'wrong');
 
       final state = container.read(authNotifierProvider).value;
-      expect(_isErrorWithMessage(state, 'Invalid email or password.'), isTrue);
+      expect(
+          _isErrorWithMessage(state, 'Invalid email or password.'), isTrue);
     });
 
     test('returns rate-limit message for 429 DioException', () async {
@@ -221,7 +244,8 @@ void main() {
       expect(_errorMessage(state), contains('Too many attempts'));
     });
 
-    test('returns connectivity message for connectionError DioException', () async {
+    test('returns connectivity message for connectionError DioException',
+        () async {
       when(() => mockRepo.login(any(), any())).thenThrow(
         DioException(
           requestOptions: RequestOptions(path: '/auth/login'),
@@ -238,7 +262,8 @@ void main() {
       expect(_errorMessage(state), contains('internet connection'));
     });
 
-    test('returns connectivity message for connectionTimeout DioException', () async {
+    test('returns connectivity message for connectionTimeout DioException',
+        () async {
       when(() => mockRepo.login(any(), any())).thenThrow(
         DioException(
           requestOptions: RequestOptions(path: '/auth/login'),
@@ -254,7 +279,8 @@ void main() {
       expect(_errorMessage(state), contains('internet connection'));
     });
 
-    test('returns API error message from response body when available', () async {
+    test('returns API error message from response body when available',
+        () async {
       when(() => mockRepo.login(any(), any())).thenThrow(
         DioException(
           requestOptions: RequestOptions(path: '/auth/login'),
@@ -343,7 +369,9 @@ void main() {
       expect(AuthTokenStore.instance.isMfaPending, isFalse);
     });
 
-    test('transitions to error on 401 DioException with specific MFA message', () async {
+    test(
+        'transitions to error on 401 DioException with specific MFA message',
+        () async {
       when(() => mockRepo.verifyMfa(any())).thenThrow(
         DioException(
           requestOptions: RequestOptions(path: '/auth/mfa/verify'),
@@ -389,7 +417,8 @@ void main() {
 
       final state = container.read(authNotifierProvider).value;
       expect(
-        _isErrorWithMessage(state, 'Invalid verification code. Please try again.'),
+        _isErrorWithMessage(
+            state, 'Invalid verification code. Please try again.'),
         isTrue,
       );
     });
@@ -402,6 +431,7 @@ void main() {
     test('transitions back to initial state on success', () async {
       when(() => mockRepo.logout()).thenAnswer((_) async {});
       when(() => mockRedirect.notifyAuthLost()).thenReturn(null);
+      when(() => mockSecureStorage.deletePrivacyMode()).thenAnswer((_) async {});
 
       await container.read(authNotifierProvider.notifier).logout();
 
@@ -414,31 +444,41 @@ void main() {
     test('calls notifyAuthLost on the redirect notifier', () async {
       when(() => mockRepo.logout()).thenAnswer((_) async {});
       when(() => mockRedirect.notifyAuthLost()).thenReturn(null);
+      when(() => mockSecureStorage.deletePrivacyMode()).thenAnswer((_) async {});
 
       await container.read(authNotifierProvider.notifier).logout();
 
       verify(() => mockRedirect.notifyAuthLost()).called(1);
     });
 
-    test('resets state and calls notifyAuthLost via finally even when remote throws', () async {
-      // AuthNotifier.logout has a try/finally — the exception from
-      // repository.logout() propagates to the caller, but the finally block
-      // still sets state to initial and calls notifyAuthLost.
+    test('calls deletePrivacyMode on SecureStorage during logout', () async {
+      when(() => mockRepo.logout()).thenAnswer((_) async {});
+      when(() => mockRedirect.notifyAuthLost()).thenReturn(null);
+      when(() => mockSecureStorage.deletePrivacyMode()).thenAnswer((_) async {});
+
+      await container.read(authNotifierProvider.notifier).logout();
+
+      verify(() => mockSecureStorage.deletePrivacyMode()).called(1);
+    });
+
+    test(
+        'resets state and calls notifyAuthLost via finally even when remote throws',
+        () async {
       when(() => mockRepo.logout()).thenThrow(Exception('remote failure'));
       when(() => mockRedirect.notifyAuthLost()).thenReturn(null);
+      when(() => mockSecureStorage.deletePrivacyMode()).thenAnswer((_) async {});
 
-      // The notifier re-throws, so we expect the future to fail.
       await expectLater(
         container.read(authNotifierProvider.notifier).logout(),
         throwsA(isA<Exception>()),
       );
 
-      // Despite the throw, the finally block has already executed.
       expect(
         container.read(authNotifierProvider).value,
         const AuthState.initial(),
       );
       verify(() => mockRedirect.notifyAuthLost()).called(1);
+      verify(() => mockSecureStorage.deletePrivacyMode()).called(1);
     });
   });
 }

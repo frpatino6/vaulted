@@ -3,7 +3,10 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Redis } from 'ioredis';
 import { REDIS_CLIENT } from '../../common/decorators/inject-redis.decorator';
+import { Role } from '../../common/enums/role.enum';
 import { Item, ItemDocument } from '../inventory/schemas/item.schema';
+import { AuditService } from '../audit/audit.service';
+import { toValueRange } from '../../common/utils/value-range.util';
 
 const DASHBOARD_CACHE_TTL_SECONDS = 120;
 
@@ -38,18 +41,36 @@ export class DashboardService {
     private readonly itemModel: Model<ItemDocument>,
     @Inject(REDIS_CLIENT)
     private readonly redis: Redis,
+    private readonly audit: AuditService,
   ) {}
 
-  async getDashboard(tenantId: string): Promise<DashboardResponse> {
-    const cacheKey = `dashboard:${tenantId}`;
+  async getDashboard(tenantId: string, userId: string, role: Role, propertyIds: string[]): Promise<DashboardResponse> {
+    const cacheKey = role === Role.OWNER ? `dashboard:${tenantId}` : `dashboard:${tenantId}:${userId}`;
     const cached = await this.redis.get(cacheKey);
 
     if (cached) {
-      return JSON.parse(cached) as DashboardResponse;
+      const cachedResponse = JSON.parse(cached) as DashboardResponse;
+      void this.audit.log({
+        tenantId,
+        userId,
+        action: 'dashboard.valuation.view',
+        entityType: 'dashboard',
+        metadata: {
+          totalItems: cachedResponse.totalItems,
+          totalProperties: cachedResponse.totalProperties,
+          valuationRange: toValueRange(cachedResponse.totalValuation),
+        },
+      });
+      return cachedResponse;
     }
 
     const [aggregation] = await this.itemModel.aggregate<DashboardAggregationResult>([
-      { $match: { tenantId } },
+      {
+        $match: {
+          tenantId,
+          ...(role !== Role.OWNER && { propertyId: { $in: propertyIds } }),
+        },
+      },
       {
         $facet: {
           itemsByStatus: [
@@ -105,6 +126,18 @@ export class DashboardService {
       DASHBOARD_CACHE_TTL_SECONDS,
       JSON.stringify(response),
     );
+
+    void this.audit.log({
+      tenantId,
+      userId,
+      action: 'dashboard.valuation.view',
+      entityType: 'dashboard',
+      metadata: {
+        totalItems: response.totalItems,
+        totalProperties: response.totalProperties,
+        valuationRange: toValueRange(response.totalValuation),
+      },
+    });
 
     return response;
   }

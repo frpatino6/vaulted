@@ -2,6 +2,7 @@ import {
   Injectable,
   UnauthorizedException,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -12,6 +13,8 @@ import { Redis } from 'ioredis';
 import * as speakeasy from 'speakeasy';
 import * as QRCode from 'qrcode';
 import { v4 as uuidv4 } from 'uuid';
+import { createHash } from 'crypto';
+import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
 import { TenantsService } from '../tenants/tenants.service';
 import { AuditService } from '../audit/audit.service';
@@ -20,8 +23,10 @@ import { JwtPayload } from './strategies/jwt.strategy';
 import { JwtRefreshPayload } from './strategies/jwt-refresh.strategy';
 import { User } from '../users/entities/user.entity';
 import { Tenant } from '../tenants/entities/tenant.entity';
+import { AcceptInviteDto } from './dto/accept-invite.dto';
 
 const ACCESS_TOKEN_TTL_SECONDS = 15 * 60;
+const BCRYPT_ROUNDS = 12;
 const REFRESH_TOKEN_TTL_SECONDS = 7 * 24 * 60 * 60;
 
 @Injectable()
@@ -113,13 +118,34 @@ export class AuthService {
     payload: JwtRefreshPayload,
     ipAddress: string,
   ): Promise<{ accessToken: string; refreshToken: string }> {
-    await this.redis.setex(
-      `blacklist:refresh:${payload.refreshTokenId}`,
-      REFRESH_TOKEN_TTL_SECONDS,
-      '1',
-    );
+    const { refreshTokenId, sub: userId } = payload;
+    const blacklistKey = `blacklist:refresh:${refreshTokenId}`;
 
-    const user = await this.usersService.findById(payload.sub);
+    // If this token is already blacklisted it means it was already rotated.
+    // A second use = replay attack → immediately nuke ALL sessions for this user.
+    const isBlacklisted = await this.redis.get(blacklistKey);
+    if (isBlacklisted) {
+      await this.invalidateAllSessions(userId);
+      await this.auditService.log({
+        tenantId: payload.tenantId,
+        userId,
+        action: 'user.token_replay_detected',
+        entityType: 'user',
+        entityId: userId,
+        ipAddress,
+      });
+      throw new UnauthorizedException(
+        'Token replay detected — all sessions have been invalidated',
+      );
+    }
+
+    // Revoke the used token and remove it from the active sessions set
+    await Promise.all([
+      this.redis.setex(blacklistKey, REFRESH_TOKEN_TTL_SECONDS, '1'),
+      this.redis.srem(`sessions:${userId}`, refreshTokenId),
+    ]);
+
+    const user = await this.usersService.findById(userId);
     if (!user || !user.isActive) {
       throw new UnauthorizedException('User not found or inactive');
     }
@@ -139,18 +165,29 @@ export class AuthService {
   async logout(
     accessToken: string,
     payload: JwtPayload,
-    refreshTokenId: string | undefined,
+    refreshCookie: string | undefined,
     ipAddress: string,
   ): Promise<void> {
-    await this.redis.setex(`blacklist:${accessToken}`, ACCESS_TOKEN_TTL_SECONDS, '1');
+    const ops: Promise<unknown>[] = [
+      this.redis.setex(`blacklist:${accessToken}`, ACCESS_TOKEN_TTL_SECONDS, '1'),
+    ];
 
-    if (refreshTokenId) {
-      await this.redis.setex(
-        `blacklist:refresh:${refreshTokenId}`,
-        REFRESH_TOKEN_TTL_SECONDS,
-        '1',
-      );
+    // Decode (not verify) the refresh cookie to extract the jti and blacklist it
+    if (refreshCookie) {
+      const refreshPayload = this.decodeRefreshToken(refreshCookie);
+      if (refreshPayload?.refreshTokenId) {
+        ops.push(
+          this.redis.setex(
+            `blacklist:refresh:${refreshPayload.refreshTokenId}`,
+            REFRESH_TOKEN_TTL_SECONDS,
+            '1',
+          ),
+          this.redis.srem(`sessions:${payload.sub}`, refreshPayload.refreshTokenId),
+        );
+      }
     }
+
+    await Promise.all(ops);
 
     await this.auditService.log({
       tenantId: payload.tenantId,
@@ -158,6 +195,28 @@ export class AuthService {
       action: 'user.logout',
       entityType: 'user',
       entityId: payload.sub,
+      ipAddress,
+    });
+  }
+
+  async logoutAll(
+    userId: string,
+    tenantId: string,
+    accessToken: string,
+    ipAddress: string,
+  ): Promise<void> {
+    await Promise.all([
+      this.invalidateAllSessions(userId),
+      // Also blacklist the current access token
+      this.redis.setex(`blacklist:${accessToken}`, ACCESS_TOKEN_TTL_SECONDS, '1'),
+    ]);
+
+    await this.auditService.log({
+      tenantId,
+      userId,
+      action: 'user.logout_all',
+      entityType: 'user',
+      entityId: userId,
       ipAddress,
     });
   }
@@ -239,6 +298,8 @@ export class AuthService {
     return this.generateTokenPair(user, { mfaVerified: true });
   }
 
+  // ─── Private helpers ────────────────────────────────────────────────────────
+
   private async generateTokenPair(
     user: User,
     options: { mfaVerified?: boolean } = {},
@@ -266,6 +327,76 @@ export class AuthService {
       }),
     ]);
 
+    // Track this session so logout-all and replay escalation can find it
+    await this.redis.sadd(`sessions:${user.id}`, refreshTokenId);
+    await this.redis.expire(`sessions:${user.id}`, REFRESH_TOKEN_TTL_SECONDS);
+
     return { accessToken, refreshToken };
+  }
+
+  async acceptInvite(
+    dto: AcceptInviteDto,
+    ipAddress: string,
+  ): Promise<{ accessToken: string; refreshToken: string; mfaRequired: boolean }> {
+    const tokenHash = createHash('sha256').update(dto.token).digest('hex');
+    const user = await this.usersService.findByInviteTokenHash(tokenHash);
+
+    if (!user) {
+      throw new BadRequestException('Invalid or expired invite token');
+    }
+
+    if (user.expiresAt && user.expiresAt < new Date()) {
+      throw new BadRequestException('Invite has expired');
+    }
+
+    if (user.status !== 'invited') {
+      throw new BadRequestException('Invite already used');
+    }
+
+    const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
+    const updatedUser = await this.usersService.completeInvite(user.id, passwordHash);
+
+    await this.usersService.updateLastLogin(updatedUser.id);
+
+    await this.auditService.log({
+      tenantId: updatedUser.tenantId,
+      userId: updatedUser.id,
+      action: 'user.invite_accepted',
+      entityType: 'user',
+      entityId: updatedUser.id,
+      ipAddress,
+    });
+
+    const roleRequiresMfa =
+      MFA_REQUIRED_ROLES.includes(updatedUser.role) && updatedUser.mfaEnabled;
+    const tokens = await this.generateTokenPair(updatedUser, {
+      mfaVerified: !roleRequiresMfa,
+    });
+
+    return { ...tokens, mfaRequired: roleRequiresMfa };
+  }
+
+  private async invalidateAllSessions(userId: string): Promise<void> {
+    const sessionKey = `sessions:${userId}`;
+    const activeTokenIds = await this.redis.smembers(sessionKey);
+
+    if (activeTokenIds.length > 0) {
+      const pipeline = this.redis.pipeline();
+      for (const jti of activeTokenIds) {
+        pipeline.setex(`blacklist:refresh:${jti}`, REFRESH_TOKEN_TTL_SECONDS, '1');
+      }
+      pipeline.del(sessionKey);
+      await pipeline.exec();
+    } else {
+      await this.redis.del(sessionKey);
+    }
+  }
+
+  private decodeRefreshToken(token: string): JwtRefreshPayload | null {
+    try {
+      return this.jwtService.decode(token) as JwtRefreshPayload | null;
+    } catch {
+      return null;
+    }
   }
 }

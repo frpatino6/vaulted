@@ -38,7 +38,7 @@ class DashboardScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.backgroundElevated,
-      bottomNavigationBar: const AppBottomNav(currentTab: AppTab.home),
+      bottomNavigationBar: AppBottomNav(currentTab: AppTab.home),
       body: RefreshIndicator(
         color: AppColors.accent,
         onRefresh: () async {
@@ -662,12 +662,6 @@ class DashboardQuickActions extends ConsumerWidget {
               label: 'Operations',
               onTap: () => context.push('/movements'),
             ),
-            _QuickActionTile(
-              icon: Icons.checkroom_outlined,
-              label: 'Wardrobe',
-              onTap: () => context.push('/wardrobe'),
-            ),
-            // D11: Reports tile removed (unimplemented stub)
             _QuickActionTile(
               icon: Icons.build_circle_outlined,
               label: 'Maintenance',

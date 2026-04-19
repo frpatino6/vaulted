@@ -1,0 +1,76 @@
+---
+description: Unit test conventions for Vaulted — NestJS (Jest) and Flutter (dart test). Apply when writing or modifying *.spec.ts or *_test.dart files.
+globs: ["**/*.spec.ts", "**/*_test.dart", "**/test/**/*.dart"]
+alwaysApply: false
+---
+
+# Vaulted — Unit Test Conventions
+
+## NestJS / Jest
+
+### Setup pattern
+- Use `@nestjs/testing` `Test.createTestingModule` — never instantiate services directly.
+- Mock ALL dependencies as plain objects with `jest.fn()` — no real DB, no real Redis, no real external services.
+- Place mocks outside `beforeEach` (module-level `const`) so they are reusable across tests.
+- `beforeEach`: always call `jest.clearAllMocks()` first, then configure mock return values, then compile the module.
+- Use `{ provide: TOKEN, useValue: mockObject }` for injection tokens (e.g., `REDIS_CLIENT`).
+
+### Test naming
+- Format: `'methodName() describes the expected behavior'`
+- Examples:
+  - `'login() returns tokens and mfaRequired=false for STAFF role'`
+  - `'register() throws ConflictException if email already exists'`
+  - `'logout() calls redis.setex to blacklist the token'`
+
+### What to test per service method
+1. **Happy path** — correct inputs produce correct output and side effects.
+2. **Error cases** — each thrown exception type (NotFoundException, UnauthorizedException, ConflictException, ForbiddenException, BadRequestException).
+3. **Audit log** — verify `auditService.log` is called with `expect.objectContaining({ tenantId, userId, action })` on writes.
+4. **Audit log NOT called** — verify `auditService.log` is NOT called on failed operations.
+5. **Tenant isolation** — verify queries include `tenantId` scoping.
+6. **Role-based branching** — if a method branches on `role`, test each relevant role separately.
+
+### Assertions
+- Use `expect(x).toEqual(...)` for objects, `expect(x).toBe(...)` for primitives.
+- Use `expect.objectContaining({...})` when only verifying a subset of fields.
+- Use `rejects.toBeInstanceOf(ExceptionClass)` for async throws.
+- Verify mock call arguments with `toHaveBeenCalledWith(...)` — not just `toHaveBeenCalled()`.
+- Verify call count with `toHaveBeenCalledTimes(n)` when it matters (e.g., no double-writes).
+
+### Security-specific tests (mandatory for financial/auth methods)
+- Verify that `tenantId` from the JWT is always used in queries — never from user-supplied body.
+- Verify that data from a different tenant is not accessible (mock returns null → expect NotFoundException).
+- Verify AUDITOR/STAFF roles cannot access valuation fields (check `stripValuation` was applied or values are absent).
+
+### File location
+- Co-located with the source file: `foo.service.spec.ts` next to `foo.service.ts`.
+- Never in a separate `__tests__` directory.
+
+---
+
+## Flutter / Dart
+
+### Setup pattern
+- Use `flutter_test` package — `testWidgets` for widgets, `test` for pure logic.
+- Mock providers using `ProviderContainer` with `overrides` — never mock Riverpod providers globally.
+- For `AsyncNotifier`: override the provider with a `MockNotifier` that returns controlled `AsyncData` / `AsyncError`.
+- Use `const` for test fixture models.
+
+### Test naming
+- Format: `'description of behavior under test'`
+- Group related tests with `group('ProviderName', () { ... })`.
+
+### What to test per notifier
+1. **Initial state** — `build()` returns expected initial value.
+2. **Success path** — after calling an action method, state transitions to `AsyncData(expected)`.
+3. **Error path** — when repository throws, state transitions to `AsyncError`.
+4. **Loading state** — state is `AsyncLoading` while async operation is in flight.
+5. **Privacy mode** — if a widget renders financial values, test with `privacyModeProvider` overridden to `true` → verify `●●●●●` is shown.
+
+### Assertions
+- `expect(container.read(provider), isA<AsyncData<T>>())` for state type checks.
+- `expect(find.text('●●●●●'), findsOneWidget)` for privacy mode.
+- `expect(find.byType(SkeletonWidget), findsWidgets)` for loading states.
+
+### File location
+- `apps/mobile/test/features/<feature>/` mirroring `lib/features/<feature>/`.

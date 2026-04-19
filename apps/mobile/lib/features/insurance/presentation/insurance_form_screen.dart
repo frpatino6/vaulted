@@ -110,6 +110,9 @@ class _InsuranceFormScreenState extends ConsumerState<InsuranceFormScreen> {
         _startDate = picked;
       } else {
         _expiresAt = picked;
+        if (picked.isAfter(DateTime.now()) && _status == 'expired') {
+          _status = 'active';
+        }
       }
     });
   }
