@@ -402,7 +402,7 @@ From the item detail:
 
 ## 9. Insurance
 
-Manage your insurance policies and protect your valuable items.
+Manage your insurance policies and protect your valuable items. From here you can see how well your inventory is covered and receive AI-powered recommendations.
 
 #### How to Use
 
@@ -410,45 +410,81 @@ Manage your insurance policies and protect your valuable items.
 
 1. From the bottom bar, tap the shield icon
 2. You will see a list of all your insurance policies
-3. Each card shows: provider, number, coverage, expiry, insured items
+3. Each card shows: provider, policy number, coverage type, expiration date, and number of insured items
 
 ##### Add a Policy
 
 1. Tap the + button at the top
 2. Enter: provider, policy number, coverage type
-3. Define: coverage amount, premium, start and expiration dates
-4. Tap **Save**
+3. Define: total coverage amount, annual premium (optional), start and expiration dates
+4. Optional: add notes
+5. Tap **Save**
 
 ##### View Policy Details
 
 1. Tap any policy
-2. You will see: total coverage, premium, dates, insured items
-3. From here you can edit or add items
+2. You will see: total coverage amount, premium, policy number, dates, and the list of insured items
+3. From here you can edit the policy, add items, or delete it
 
 ##### Add Insured Items
 
-1. In the policy, tap the + button in **Insured Items**
-2. Search and select items
-3. Tap **Attach**
+1. In the policy detail, tap the **+** icon next to **Insured Items**
+2. Type the item name in the search field
+3. Select the item from the results
+4. Enter the covered amount for that item and the currency
+5. Tap **Attach Item**
 
-##### Gap Analysis (pro beta)
+The item appears in the list with its name and covered amount. An item can belong to multiple policies — the system adds up all coverage across policies.
 
-1. In a policy, tap **Gap Analysis**
-2. AI analyzes which items are uninsured
-3. You will see gaps in your coverage
+##### Remove an Insured Item
+
+1. In the **Insured Items** list, tap the **✕** icon next to the item
+2. Confirm in the **Remove Item** dialog
+3. The item is detached from the policy (it is not deleted from your inventory)
+
+##### Coverage Gap Analysis
+
+**Gap Analysis** compares the current value of your items against what you have insured across all your policies. It analyzes your entire inventory — not just one policy.
+
+1. In the policy detail, tap **Gap Analysis**
+2. The screen shows three summary cards:
+   - **Uninsured Gap** — total value of items with no coverage at all
+   - **Underinsured Gap** — difference between actual value and coverage for partially covered items
+   - **Total Coverage Gap** — sum of both
+3. Below you will see two lists:
+   - **Uninsured Items** — items not attached to any active policy. Shown with a red **Uninsured** badge.
+   - **Underinsured Items** — items partially covered. Shows item value, covered amount, and the gap.
+
+**What gets analyzed:** All active inventory items (statuses: active, loaned, repair, storage). Items with status *disposed* and items with no recorded value are excluded.
+
+##### AI Coverage Analysis
+
+From the policy detail, tap the star icon (**✦**) in the top bar to open the AI analysis panel.
+
+Gemini analyzes the policy and its insured items and returns:
+
+- **Overall Risk** — risk level: Low, High, or Critical
+- **Summary** — plain-text overview of your coverage status
+- **Renewal Urgency** — alert if the policy is close to expiring
+- **Recommendations** — list of suggested actions to improve coverage
+- **Priority Items** — specific items that need immediate attention
+
+From this panel you can also tap **Draft a Claim** to have AI write a claim draft based on your incident description.
 
 ##### Delete Policy
 
-1. In details, tap the Trash icon
-2. Confirm to delete
+1. In the policy detail, tap the trash icon (top right corner)
+2. Confirm in the dialog
+3. The policy and all its insured item links are deleted (your inventory items are not affected)
 
 #### Tips
 
-- Policies expiring soon appear in red
+- Policies expiring soon show the expiration date in red
 - Coverage amount is what the insurance pays in case of total loss
-- Insure high-value items first
-- A gap greater than 0 means the item exceeds the policy coverage
-- **Fully Uninsured** = item is not on any policy
+- An item can be on multiple policies — gap analysis sums all coverage
+- **Uninsured** = the item is not attached to any active policy
+- **Underinsured** = the item has some coverage, but less than its current value
+- Only Owners and Managers can create, edit, or delete policies
 
 ---
 
