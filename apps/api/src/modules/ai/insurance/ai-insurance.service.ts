@@ -9,7 +9,7 @@ import { CoverageGapReport, InsuranceService } from '../../insurance/insurance.s
 /** AI coverage prompts need full numeric gap data (same as owner/manager view). */
 const GAP_REPORT_ROLE_FOR_AI = Role.MANAGER;
 
-const GEMINI_MODEL = 'gemini-2.0-flash';
+const GEMINI_MODEL = 'gemini-2.5-flash';
 
 export interface CoverageAnalysisResult {
   overallRisk: 'low' | 'medium' | 'high' | 'critical';

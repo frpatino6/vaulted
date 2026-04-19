@@ -142,7 +142,7 @@ Respond ONLY with valid JSON (no markdown, no explanation):
       tenantId: String(item.tenantId),
       userId: 'system',
       feature: 'ai_maintenance',
-      model: 'gemini-2.0-flash',
+      model: 'gemini-2.5-flash',
       inputTokens: result.inputTokens,
       outputTokens: result.outputTokens,
     });
