@@ -94,6 +94,14 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
     final canDeleteItem = role == 'owner' || role == 'manager';
     final canSeeValues = role == 'owner' || role == 'auditor';
     final state = ref.watch(itemListNotifierProvider);
+    final roomSections = ref
+        .watch(propertyDetailNotifierProvider)
+        .valueOrNull
+        ?.floors
+        .expand((f) => f.rooms)
+        .where((r) => r.roomId == widget.roomId)
+        .firstOrNull
+        ?.sections ?? [];
     final showInitialSkeleton =
         !_initialLoadCompleted &&
         !state.hasError &&
@@ -135,21 +143,11 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
                 tooltip: 'Scan QR code',
                 splashRadius: 24,
               ),
-              if (state.valueOrNull?.any(
-                    (i) => i.locationDetail?.isNotEmpty == true,
-                  ) ==
-                  true)
+              if (roomSections.isNotEmpty)
                 IconButton(
                   onPressed: () {
-                    final items = state.valueOrNull ?? [];
-                    final sections =
-                        items
-                            .map((i) => i.locationDetail)
-                            .whereType<String>()
-                            .where((s) => s.isNotEmpty)
-                            .toSet()
-                            .toList()
-                          ..sort();
+                    final sections = roomSections.map((s) => s.name).toList()
+                      ..sort();
                     showSectionQrSheet(
                       context,
                       widget.roomId,
