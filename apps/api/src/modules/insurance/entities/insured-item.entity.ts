@@ -20,14 +20,12 @@ export class InsuredItem {
   @Index()
   policyId!: string;
 
-  // MongoDB ObjectId stored as string — intentionally not a FK to allow
-  // PostgreSQL and MongoDB to remain decoupled
   @Column({ name: 'item_id', length: 24 })
   @Index()
   itemId!: string;
 
-  @Column({ name: 'covered_value', type: 'numeric', precision: 15, scale: 2 })
-  coveredValue!: number;
+  @Column({ name: 'covered_value', type: 'text' })
+  coveredValue!: string;
 
   @Column({ default: 'USD', length: 3 })
   currency!: string;

@@ -8,6 +8,7 @@ import { InsuredItem } from './entities/insured-item.entity';
 import { Item } from '../inventory/schemas/item.schema';
 import { AuditService } from '../audit/audit.service';
 import { AccessControlService } from '../../common/services/access-control.service';
+import { CryptoService } from '../../common/services/crypto.service';
 import { Role } from '../../common/enums/role.enum';
 import { toValueRange } from '../../common/utils/value-range.util';
 
@@ -18,10 +19,16 @@ describe('InsuranceService', () => {
     createQueryBuilder: jest.fn(),
     findOne: jest.fn(),
     find: jest.fn(),
+    create: jest.fn(),
+    save: jest.fn(),
   };
 
   const insuredItemRepo = {
     find: jest.fn(),
+    findOne: jest.fn(),
+    create: jest.fn(),
+    save: jest.fn(),
+    delete: jest.fn(),
   };
 
   const itemModelFindChain = {
@@ -32,6 +39,7 @@ describe('InsuranceService', () => {
 
   const itemModel = {
     find: jest.fn(() => itemModelFindChain),
+    findOne: jest.fn(),
   };
 
   const auditService = {
@@ -44,6 +52,14 @@ describe('InsuranceService', () => {
       delete (copy as { valuation?: unknown }).valuation;
       return copy;
     }),
+  };
+
+  const cryptoService = {
+    encryptField: jest.fn((value: string) => `encrypted:${value}`),
+    decryptField: jest.fn((value: string) => value.replace('encrypted:', '')),
+    isEncryptedField: jest.fn((value: unknown) =>
+      typeof value === 'string' && value.startsWith('encrypted:'),
+    ),
   };
 
   beforeEach(async () => {
@@ -70,6 +86,7 @@ describe('InsuranceService', () => {
         { provide: getModelToken(Item.name), useValue: itemModel },
         { provide: AuditService, useValue: auditService },
         { provide: AccessControlService, useValue: accessControl },
+        { provide: CryptoService, useValue: cryptoService },
       ],
     }).compile();
 
@@ -81,19 +98,21 @@ describe('InsuranceService', () => {
     policyRepo.findOne.mockResolvedValue({
       id: 'pol-1',
       tenantId: 'tenant-1',
-      provider: 'Acme',
-      policyNumber: 'P-001',
+      provider: 'encrypted:Acme',
+      policyNumber: 'encrypted:P-001',
       coverageType: 'all-risk',
-      totalCoverageAmount: 100_000,
+      totalCoverageAmount: 'encrypted:100000',
       currency: 'USD',
       status: 'active',
       startDate: new Date('2024-01-01'),
       expiresAt,
+      notes: null,
+      premium: null,
     });
 
     insuredItemRepo.find.mockResolvedValue([
-      { itemId: 'item-1', policyId: 'pol-1', coveredValue: 50_000, currency: 'USD' },
-      { itemId: 'item-2', policyId: 'pol-1', coveredValue: 25_000, currency: 'USD' },
+      { itemId: 'item-1', policyId: 'pol-1', coveredValue: 'encrypted:50000', currency: 'USD' },
+      { itemId: 'item-2', policyId: 'pol-1', coveredValue: 'encrypted:25000', currency: 'USD' },
     ]);
 
     itemModelFindChain.exec.mockResolvedValue([
@@ -103,10 +122,13 @@ describe('InsuranceService', () => {
 
     const result = await service.findPolicyById('tenant-1', 'pol-1');
 
+    expect(result.provider).toBe('Acme');
+    expect(result.policyNumber).toBe('P-001');
+    expect(result.totalCoverageAmount).toBe(100_000);
     expect(result.insuredItems).toHaveLength(2);
     expect(result.insuredItems[0].itemName).toBe('Diamond Ring');
     expect(result.insuredItems[1].itemName).toBe('Pearl Necklace');
-    expect(itemModel.find).toHaveBeenCalled();
+    expect(result.insuredItems[0].coveredValue).toBe(50_000);
   });
 
   it('findPolicyById() falls back to itemId when MongoDB item not found', async () => {
@@ -114,18 +136,20 @@ describe('InsuranceService', () => {
     policyRepo.findOne.mockResolvedValue({
       id: 'pol-1',
       tenantId: 'tenant-1',
-      provider: 'Acme',
-      policyNumber: 'P-001',
+      provider: 'encrypted:Acme',
+      policyNumber: 'encrypted:P-001',
       coverageType: 'all-risk',
-      totalCoverageAmount: 100_000,
+      totalCoverageAmount: 'encrypted:100000',
       currency: 'USD',
       status: 'active',
       startDate: new Date('2024-01-01'),
       expiresAt,
+      notes: null,
+      premium: null,
     });
 
     insuredItemRepo.find.mockResolvedValue([
-      { itemId: 'item-unknown', policyId: 'pol-1', coveredValue: 10_000, currency: 'USD' },
+      { itemId: 'item-unknown', policyId: 'pol-1', coveredValue: 'encrypted:10000', currency: 'USD' },
     ]);
 
     itemModelFindChain.exec.mockResolvedValue([]);
@@ -133,6 +157,7 @@ describe('InsuranceService', () => {
     const result = await service.findPolicyById('tenant-1', 'pol-1');
 
     expect(result.insuredItems[0].itemName).toBe('item-unknown');
+    expect(result.insuredItems[0].coveredValue).toBe(10_000);
   });
 
   it('findPolicyById() returns empty array when no insured items', async () => {
@@ -140,14 +165,16 @@ describe('InsuranceService', () => {
     policyRepo.findOne.mockResolvedValue({
       id: 'pol-1',
       tenantId: 'tenant-1',
-      provider: 'Acme',
-      policyNumber: 'P-001',
+      provider: 'encrypted:Acme',
+      policyNumber: 'encrypted:P-001',
       coverageType: 'all-risk',
-      totalCoverageAmount: 100_000,
+      totalCoverageAmount: 'encrypted:100000',
       currency: 'USD',
       status: 'active',
       startDate: new Date('2024-01-01'),
       expiresAt,
+      notes: null,
+      premium: null,
     });
 
     insuredItemRepo.find.mockResolvedValue([]);
@@ -189,6 +216,25 @@ describe('InsuranceService', () => {
         totalUnderinsuredRange: toValueRange(0),
       },
     });
+  });
+
+  it('getCoverageGaps() handles legacy plaintext values via isEncryptedField check', async () => {
+    insuredItemRepo.find.mockResolvedValue([
+      { itemId: 'item-1', tenantId: 'tenant-1', coveredValue: '50000' },
+    ]);
+    itemModelFindChain.exec.mockResolvedValue([
+      {
+        _id: 'item-1',
+        name: 'Watch',
+        category: 'jewelry',
+        valuation: { currentValue: 50_000, currency: 'USD' },
+        status: 'active',
+      },
+    ]);
+
+    const result = await service.getCoverageGaps('tenant-1', 'user-1', Role.MANAGER);
+
+    expect(result.underinsured).toHaveLength(0);
   });
 
   it('getCoverageGaps() returns auditor report without exact totals and strips item valuation', async () => {
