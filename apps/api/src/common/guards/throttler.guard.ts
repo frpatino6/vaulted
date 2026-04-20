@@ -22,7 +22,7 @@ export class AppThrottlerGuard extends ThrottlerGuard {
   }
 
   protected async shouldSkip(context: ExecutionContext): Promise<boolean> {
-    return false;
+    return super.shouldSkip(context);
   }
 
   private extractUserId(request: Request): string | null {
