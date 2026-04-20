@@ -9,6 +9,7 @@ import {
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
@@ -49,6 +50,7 @@ export class MediaController {
   }
 
   @Public()
+  @SkipThrottle()
   @Get(':token')
   serveFile(
     @Param('token') token: string,
