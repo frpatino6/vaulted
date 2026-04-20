@@ -7,20 +7,10 @@ export class AppThrottlerGuard extends ThrottlerGuard {
   protected async getTracker(req: ThrottlerRequest): Promise<string> {
     const request = req as unknown as Request;
 
-    // Throttler runs before JwtAuthGuard so request.user is not set yet.
     // Decode JWT payload (no signature check — bucketing only) to throttle
     // per user and avoid Cloudflare IP collisions across users.
-    const authHeader = request.headers['authorization'] as string | undefined;
-    if (authHeader?.startsWith('Bearer ')) {
-      const token = authHeader.slice(7);
-      try {
-        const raw = Buffer.from(token.split('.')[1], 'base64url').toString();
-        const payload = JSON.parse(raw) as { sub?: string };
-        if (payload?.sub) return `user:${payload.sub}`;
-      } catch {
-        // fall through to IP-based tracking
-      }
-    }
+    const userId = this.extractUserId(request);
+    if (userId) return `user:${userId}`;
 
     // Public routes: fall back to real IP from proxy headers
     const ip =
@@ -33,5 +23,44 @@ export class AppThrottlerGuard extends ThrottlerGuard {
 
   protected async shouldSkip(context: ExecutionContext): Promise<boolean> {
     return false;
+  }
+
+  private extractUserId(request: Request): string | null {
+    // 1. Authorization: Bearer <access-token> — standard authenticated routes
+    const authHeader = request.headers['authorization'] as string | undefined;
+    if (authHeader?.startsWith('Bearer ')) {
+      const sub = this.decodeJwtSub(authHeader.slice(7));
+      if (sub) return sub;
+    }
+
+    // 2. /api/media/:token — CachedNetworkImage loads images without Auth header.
+    //    The media JWT in the URL path contains userId for bucketing.
+    const mediaMatch = (request.path ?? '').match(/^\/api\/media\/([^/?]+)/);
+    if (mediaMatch) {
+      const userId = this.decodeJwtUserId(mediaMatch[1]);
+      if (userId) return userId;
+    }
+
+    return null;
+  }
+
+  private decodeJwtSub(token: string): string | null {
+    try {
+      const raw = Buffer.from(token.split('.')[1], 'base64url').toString();
+      const payload = JSON.parse(raw) as { sub?: string };
+      return payload?.sub ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  private decodeJwtUserId(token: string): string | null {
+    try {
+      const raw = Buffer.from(token.split('.')[1], 'base64url').toString();
+      const payload = JSON.parse(raw) as { userId?: string };
+      return payload?.userId ?? null;
+    } catch {
+      return null;
+    }
   }
 }
