@@ -300,7 +300,7 @@ export class MediaService {
     return signedUrl;
   }
 
-  private normalizeKey(key: string): string {
+  normalizeKey(key: string): string {
     const uploadsPrefix = `${this.appUrl}/uploads/`;
     if (key.startsWith(uploadsPrefix)) {
       return key.slice(uploadsPrefix.length);
@@ -314,16 +314,17 @@ export class MediaService {
     }
 
     // Already a signed media token URL — extract the original fileKey from the JWT payload.
+    // Use decode (not verify) so expired tokens still resolve to the correct fileKey.
     const mediaTokenPrefix = `${this.appUrl}/api/media/`;
     if (key.startsWith(mediaTokenPrefix)) {
       const token = key.slice(mediaTokenPrefix.length);
       try {
-        const payload = this.jwtService.verify<{ fileKey: string }>(token);
-        return payload.fileKey;
+        const payload = this.jwtService.decode<{ fileKey: string }>(token);
+        if (payload?.fileKey) return payload.fileKey;
       } catch {
-        // Token invalid/expired — return as-is and let serveFile reject it.
-        return key;
+        // ignore
       }
+      return key;
     }
 
     return key;
