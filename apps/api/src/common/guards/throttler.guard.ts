@@ -22,7 +22,12 @@ export class AppThrottlerGuard extends ThrottlerGuard {
   }
 
   protected async shouldSkip(context: ExecutionContext): Promise<boolean> {
-    return super.shouldSkip(context);
+    if (await super.shouldSkip(context)) return true;
+    // Authenticated requests are already protected by JWT — skip throttle.
+    // Only public routes (login, register, media) are throttled.
+    const request = context.switchToHttp().getRequest<Request>();
+    const authHeader = (request as unknown as { headers: Record<string, string> }).headers['authorization'];
+    return typeof authHeader === 'string' && authHeader.startsWith('Bearer ');
   }
 
   private extractUserId(request: Request): string | null {
