@@ -93,9 +93,13 @@ export class MediaService {
 
   generateFileToken(fileUrl: string, tenantId: string, userId: string): string {
     const normalizedKey = this.normalizeKey(fileUrl);
+    // Deterministic per 1-hour window: same file+user within the same hour always
+    // produces the same JWT, so cached_network_image can reuse cached responses.
+    const windowStart = Math.floor(Date.now() / (60 * 60 * 1000)) * 60 * 60;
+    const exp = windowStart + 2 * 60 * 60; // valid for up to 2 hours
     return this.jwtService.sign(
-      { fileKey: normalizedKey, tenantId, userId },
-      { expiresIn: '15m' },
+      { fileKey: normalizedKey, tenantId, userId, iat: windowStart, exp },
+      { noTimestamp: true },
     );
   }
 
