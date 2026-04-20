@@ -19,10 +19,10 @@ export class InsurancePolicy {
   @Index()
   tenantId!: string;
 
-  @Column({ length: 255 })
+  @Column({ type: 'text' })
   provider!: string;
 
-  @Column({ name: 'policy_number', length: 100 })
+  @Column({ name: 'policy_number', type: 'text' })
   policyNumber!: string;
 
   @Column({
@@ -32,11 +32,11 @@ export class InsurancePolicy {
   })
   coverageType!: CoverageType;
 
-  @Column({ name: 'total_coverage_amount', type: 'numeric', precision: 15, scale: 2 })
-  totalCoverageAmount!: number;
+  @Column({ name: 'total_coverage_amount', type: 'text' })
+  totalCoverageAmount!: string;
 
-  @Column({ type: 'numeric', precision: 15, scale: 2, nullable: true })
-  premium!: number | null;
+  @Column({ type: 'text', nullable: true })
+  premium!: string | null;
 
   @Column({ default: 'USD', length: 3 })
   currency!: string;

@@ -10,6 +10,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Role } from '../../common/enums/role.enum';
 import { AccessControlService } from '../../common/services/access-control.service';
+import { CryptoService } from '../../common/services/crypto.service';
 import { AuditService } from '../audit/audit.service';
 import { toValueRange } from '../../common/utils/value-range.util';
 import { InsurancePolicy, PolicyStatus } from './entities/insurance-policy.entity';
@@ -77,6 +78,7 @@ export class InsuranceService {
     private readonly insuredItemRepo: Repository<InsuredItem>,
     @InjectModel(Item.name)
     private readonly itemModel: Model<ItemDocument>,
+    private readonly crypto: CryptoService,
     private readonly auditService: AuditService,
     private readonly accessControl: AccessControlService,
   ) {}
@@ -95,18 +97,20 @@ export class InsuranceService {
       throw new BadRequestException('expiresAt must be after startDate');
     }
 
+    const encrypted = this.encryptPolicyFields(dto, tenantId);
+
     const policy = this.policyRepo.create({
       tenantId,
-      provider: dto.provider,
-      policyNumber: dto.policyNumber,
+      provider: encrypted.provider,
+      policyNumber: encrypted.policyNumber,
       coverageType: dto.coverageType,
-      totalCoverageAmount: dto.totalCoverageAmount,
-      premium: dto.premium ?? null,
+      totalCoverageAmount: encrypted.totalCoverageAmount,
+      premium: encrypted.premium,
       currency: dto.currency ?? 'USD',
       startDate: start,
       expiresAt: expires,
       status: 'active',
-      notes: dto.notes ?? null,
+      notes: encrypted.notes,
     });
 
     const saved = await this.policyRepo.save(policy);
@@ -119,7 +123,7 @@ export class InsuranceService {
       entityId: saved.id,
     });
 
-    return saved;
+    return this.decryptPolicyFields(saved, tenantId);
   }
 
   async findAllPolicies(
@@ -134,10 +138,9 @@ export class InsuranceService {
       order: { createdAt: 'DESC' },
     });
 
-    // Lazy expiration: mark as expired on read, persist in background
     await this.syncExpiredStatuses(policies);
 
-    return policies;
+    return policies.map((p) => this.decryptPolicyFields(p, tenantId));
   }
 
   async findPolicyById(tenantId: string, policyId: string): Promise<PolicyWithItems> {
@@ -149,6 +152,9 @@ export class InsuranceService {
 
     await this.syncExpiredStatuses([policy]);
 
+    const decryptedPolicy = this.decryptPolicyFields(policy, tenantId);
+    const decryptedItems = insuredItems.map((i) => this.decryptInsuredItemFields(i, tenantId));
+
     const itemIds = insuredItems.map((i) => i.itemId);
     const mongoItems = await this.itemModel
       .find({ _id: { $in: itemIds }, tenantId })
@@ -158,12 +164,12 @@ export class InsuranceService {
 
     const nameMap = new Map(mongoItems.map((i) => [String(i._id), i.name as string]));
 
-    const insuredItemsWithName: InsuredItemWithName[] = insuredItems.map((i) => ({
+    const insuredItemsWithName: InsuredItemWithName[] = decryptedItems.map((i) => ({
       ...i,
       itemName: nameMap.get(i.itemId) ?? i.itemId,
     }));
 
-    return { ...policy, insuredItems: insuredItemsWithName };
+    return { ...decryptedPolicy, insuredItems: insuredItemsWithName };
   }
 
   async updatePolicy(
@@ -186,25 +192,25 @@ export class InsuranceService {
     }
 
     const now = new Date();
-    // Date takes precedence: future expiresAt always means active (unless explicitly cancelling).
-    // This handles the case where the form sends the stale status='expired' alongside a future date.
     let resolvedStatus: InsurancePolicy['status'] | undefined = dto.status;
     if (dto.status !== 'cancelled' && expires > now && policy.status === 'expired') {
       resolvedStatus = 'active';
     }
 
+    const encrypted = this.encryptPolicyFields(dto, tenantId);
+
     const updatePayload: Partial<InsurancePolicy> = {
-      ...(dto.provider !== undefined ? { provider: dto.provider } : {}),
-      ...(dto.policyNumber !== undefined ? { policyNumber: dto.policyNumber } : {}),
+      ...(dto.provider !== undefined ? { provider: encrypted.provider } : {}),
+      ...(dto.policyNumber !== undefined ? { policyNumber: encrypted.policyNumber } : {}),
       ...(dto.coverageType !== undefined ? { coverageType: dto.coverageType } : {}),
       ...(dto.totalCoverageAmount !== undefined
-        ? { totalCoverageAmount: dto.totalCoverageAmount }
+        ? { totalCoverageAmount: encrypted.totalCoverageAmount }
         : {}),
-      ...(dto.premium !== undefined ? { premium: dto.premium } : {}),
+      ...(dto.premium !== undefined ? { premium: encrypted.premium } : {}),
       ...(dto.startDate !== undefined ? { startDate: start } : {}),
       ...(dto.expiresAt !== undefined ? { expiresAt: expires } : {}),
       ...(resolvedStatus !== undefined ? { status: resolvedStatus } : {}),
-      ...(dto.notes !== undefined ? { notes: dto.notes } : {}),
+      ...(dto.notes !== undefined ? { notes: encrypted.notes } : {}),
     };
 
     await this.policyRepo.update({ id: policyId, tenantId }, updatePayload);
@@ -217,7 +223,8 @@ export class InsuranceService {
       entityId: policyId,
     });
 
-    return this.findOwnedPolicyOrThrow(tenantId, policyId);
+    const updated = await this.findOwnedPolicyOrThrow(tenantId, policyId);
+    return this.decryptPolicyFields(updated, tenantId);
   }
 
   async deletePolicy(
@@ -254,7 +261,6 @@ export class InsuranceService {
       throw new BadRequestException('Items can only be attached to active policies');
     }
 
-    // Verify the item exists in MongoDB and belongs to this tenant
     const item = await this.itemModel
       .findOne({ _id: dto.itemId, tenantId })
       .select('_id name status')
@@ -269,7 +275,6 @@ export class InsuranceService {
       throw new BadRequestException('Disposed items cannot be insured');
     }
 
-    // Prevent duplicate attachment to same policy
     const existing = await this.insuredItemRepo.findOne({
       where: { policyId, itemId: dto.itemId, tenantId },
     });
@@ -278,11 +283,13 @@ export class InsuranceService {
       throw new ConflictException('Item is already attached to this policy');
     }
 
+    const encrypted = this.encryptInsuredItemFields(dto, tenantId);
+
     const insuredItem = this.insuredItemRepo.create({
       tenantId,
       policyId,
       itemId: dto.itemId,
-      coveredValue: dto.coveredValue,
+      coveredValue: encrypted.coveredValue,
       currency: dto.currency ?? policy.currency,
     });
 
@@ -297,7 +304,7 @@ export class InsuranceService {
       metadata: { policyId, itemId: dto.itemId, coveredValue: dto.coveredValue },
     });
 
-    return saved;
+    return this.decryptInsuredItemFields(saved, tenantId);
   }
 
   async detachItem(
@@ -335,24 +342,22 @@ export class InsuranceService {
     userId: string,
     role: Role,
   ): Promise<CoverageGapReport | CoverageGapAuditorReport> {
-    // 1. All insured items for this tenant (across all policies)
     const allInsuredItems = await this.insuredItemRepo.find({ where: { tenantId } });
 
-    // 2. Build map: itemId → total covered value (item may appear in multiple policies)
     const coverageMap = new Map<string, number>();
     for (const ii of allInsuredItems) {
-      const current = coverageMap.get(ii.itemId) ?? 0;
-      coverageMap.set(ii.itemId, current + Number(ii.coveredValue));
+      const decrypted = this.decryptInsuredItemFields(ii, tenantId);
+      const value = Number(decrypted.coveredValue ?? 0);
+      const current = coverageMap.get(decrypted.itemId) ?? 0;
+      coverageMap.set(decrypted.itemId, current + value);
     }
 
-    // 3. All active (non-disposed) items from MongoDB for this tenant
     const mongoItems = await this.itemModel
       .find({ tenantId, status: { $ne: 'disposed' } })
       .select('_id name category valuation status')
       .lean()
       .exec();
 
-    // 4. Classify items
     const uncovered: CoverageGapItem[] = [];
     const underinsured: CoverageGapItem[] = [];
 
@@ -360,7 +365,6 @@ export class InsuranceService {
       const currentValue =
         Number(item.valuation?.currentValue ?? item.valuation?.purchasePrice ?? 0);
 
-      // Skip items with no recorded valuation — cannot determine gap
       if (currentValue === 0) continue;
 
       const coveredValue = coverageMap.get(String(item._id)) ?? 0;
@@ -389,7 +393,6 @@ export class InsuranceService {
       }
     }
 
-    // 5. Expired policies (any policy past expiresAt, regardless of recorded status)
     const now = new Date();
     const expiredPolicies = await this.policyRepo
       .createQueryBuilder('p')
@@ -400,15 +403,20 @@ export class InsuranceService {
       .orderBy('p.expiresAt', 'ASC')
       .getMany();
 
+    const decryptedExpired = expiredPolicies.map((p) => {
+      const d = this.decryptPolicyFields(p, tenantId);
+      return {
+        id: d.id,
+        provider: d.provider,
+        policyNumber: d.policyNumber,
+        expiresAt: d.expiresAt,
+      };
+    });
+
     const report: CoverageGapReport = {
       uncovered,
       underinsured,
-      expiredPolicies: expiredPolicies.map((p) => ({
-        id: p.id,
-        provider: p.provider,
-        policyNumber: p.policyNumber,
-        expiresAt: p.expiresAt,
-      })),
+      expiredPolicies: decryptedExpired,
       totalUncoveredValue: uncovered.reduce((sum, i) => sum + i.gap, 0),
       totalUnderinsuredGap: underinsured.reduce((sum, i) => sum + i.gap, 0),
     };
@@ -517,6 +525,112 @@ export class InsuranceService {
     }
 
     return policy;
+  }
+
+  // ── Field-Level Encryption helpers ───────────────────────────────────────
+
+  private encryptPolicyFields(
+    dto: CreatePolicyDto | UpdatePolicyDto,
+    tenantId: string,
+  ): {
+    provider?: string;
+    policyNumber?: string;
+    totalCoverageAmount?: string;
+    premium?: string | null;
+    notes?: string | null;
+  } {
+    return {
+      ...(dto.provider !== undefined
+        ? { provider: this.crypto.encryptField(dto.provider, tenantId) }
+        : {}),
+      ...(dto.policyNumber !== undefined
+        ? { policyNumber: this.crypto.encryptField(dto.policyNumber, tenantId) }
+        : {}),
+      ...(dto.totalCoverageAmount !== undefined
+        ? { totalCoverageAmount: this.crypto.encryptField(String(dto.totalCoverageAmount), tenantId) }
+        : {}),
+      ...(dto.premium !== undefined
+        ? { premium: dto.premium !== null ? this.crypto.encryptField(String(dto.premium), tenantId) : null }
+        : {}),
+      ...(dto.notes !== undefined
+        ? { notes: dto.notes !== null ? this.crypto.encryptField(dto.notes, tenantId) : null }
+        : {}),
+    };
+  }
+
+  private decryptPolicyFields(
+    raw: InsurancePolicy,
+    tenantId: string,
+  ): InsurancePolicy {
+    const rawObj = raw as unknown as Record<string, unknown>;
+    const provider = this.decryptFleField<string>(rawObj, 'provider', tenantId, (s) => s);
+    const policyNumber = this.decryptFleField<string>(rawObj, 'policyNumber', tenantId, (s) => s);
+    const totalCoverageAmount = this.decryptFleField<number>(
+      rawObj,
+      'totalCoverageAmount',
+      tenantId,
+      parseFloat,
+    );
+    const premium = this.decryptFleField<number | null>(
+      rawObj,
+      'premium',
+      tenantId,
+      (s) => (s ? parseFloat(s) : null),
+    );
+    const notes = this.decryptFleField<string | null>(rawObj, 'notes', tenantId, (s) => s);
+
+    const result: InsurancePolicy = {
+      ...raw,
+      provider: provider ?? raw.provider,
+      policyNumber: policyNumber ?? raw.policyNumber,
+      totalCoverageAmount: (totalCoverageAmount ?? parseFloat(raw.totalCoverageAmount as string)) as never,
+      premium: (premium ?? raw.premium as unknown as number) as never,
+      notes: notes ?? raw.notes,
+    };
+    return result;
+  }
+
+  private encryptInsuredItemFields(
+    dto: AttachItemDto,
+    tenantId: string,
+  ): { coveredValue: string } {
+    return {
+      coveredValue: this.crypto.encryptField(String(dto.coveredValue), tenantId),
+    };
+  }
+
+  private decryptInsuredItemFields(
+    raw: InsuredItem,
+    tenantId: string,
+  ): InsuredItem {
+    const rawObj = raw as unknown as Record<string, unknown>;
+    const coveredValue = this.decryptFleField<number>(
+      rawObj,
+      'coveredValue',
+      tenantId,
+      parseFloat,
+    );
+
+    const result: InsuredItem = {
+      ...raw,
+      coveredValue: (coveredValue ?? parseFloat(raw.coveredValue)) as never,
+    };
+    return result;
+  }
+
+  private decryptFleField<T>(
+    raw: Record<string, unknown>,
+    field: string,
+    tenantId: string,
+    transform: (plaintext: string) => T,
+  ): T | undefined {
+    const value = raw[field];
+    if (value === undefined) return undefined;
+    if (!this.crypto.isEncryptedField(value)) {
+      if (typeof value === 'string') return transform(value);
+      return value as T | undefined;
+    }
+    return transform(this.crypto.decryptField(value as string, tenantId));
   }
 
   /**
