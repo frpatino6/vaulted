@@ -5,6 +5,13 @@ export class AnalyzeSectionsDto {
   imageUrl!: string;
 }
 
+export interface BoundingBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export interface DetectedSection {
   code: string;
   name: string;
@@ -12,6 +19,7 @@ export interface DetectedSection {
   row: number;
   column: string;
   notes?: string;
+  boundingBox?: BoundingBox;
 }
 
 export interface AnalyzeSectionsResult {

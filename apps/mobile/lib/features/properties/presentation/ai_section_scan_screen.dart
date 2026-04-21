@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -70,12 +72,21 @@ class _AiSectionScanScreenState extends ConsumerState<AiSectionScanScreen> {
       final rawSections = (result['sections'] as List?) ?? [];
       final sections = rawSections.map((s) {
         final m = s as Map<String, dynamic>;
+        final rawBbox = m['boundingBox'] as Map<String, dynamic>?;
         return _EditableSection(
           code: m['code'] as String? ?? '',
           name: m['name'] as String? ?? '',
           type: m['type'] as String? ?? 'other',
           notes: m['notes'] as String?,
           selected: true,
+          boundingBox: rawBbox != null
+              ? _BoundingBox(
+                  x: (rawBbox['x'] as num).toDouble(),
+                  y: (rawBbox['y'] as num).toDouble(),
+                  width: (rawBbox['width'] as num).toDouble(),
+                  height: (rawBbox['height'] as num).toDouble(),
+                )
+              : null,
         );
       }).toList();
 
@@ -140,9 +151,9 @@ class _AiSectionScanScreenState extends ConsumerState<AiSectionScanScreen> {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.background,
-        title: Text(
+        title: const Text(
           'AI Section Scan',
-          style: const TextStyle(color: AppColors.onBackground),
+          style: TextStyle(color: AppColors.onBackground),
         ),
         iconTheme: const IconThemeData(color: AppColors.onBackground),
       ),
@@ -150,13 +161,15 @@ class _AiSectionScanScreenState extends ConsumerState<AiSectionScanScreen> {
         _ScanStep.capture => _CaptureView(onPick: _pickImage),
         _ScanStep.uploading => const _ProgressView(message: 'Uploading photo…'),
         _ScanStep.analyzing => const _ProgressView(message: 'AI is mapping sections…'),
-        _ScanStep.review => _ReviewView(
+        _ScanStep.review => _AnnotatedReviewView(
+            imageUrl: _imageUrl!,
             roomName: widget.roomName,
             furnitureDescription: _furnitureDescription,
             confidence: _confidence,
             sections: _detected,
             saving: _saving,
-            onToggle: (i, v) => setState(() => _detected[i] = _detected[i].copyWith(selected: v)),
+            onToggle: (i) => setState(() =>
+                _detected[i] = _detected[i].copyWith(selected: !_detected[i].selected)),
             onEdit: (i) => _showEditSheet(i),
             onRescan: () => setState(() => _step = _ScanStep.capture),
             onSave: _save,
@@ -183,6 +196,22 @@ class _AiSectionScanScreenState extends ConsumerState<AiSectionScanScreen> {
 
 enum _ScanStep { capture, uploading, analyzing, review }
 
+// ── Bounding box ─────────────────────────────────────────────────────────────
+
+class _BoundingBox {
+  const _BoundingBox({
+    required this.x,
+    required this.y,
+    required this.width,
+    required this.height,
+  });
+
+  final double x;
+  final double y;
+  final double width;
+  final double height;
+}
+
 // ── Editable section model ───────────────────────────────────────────────────
 
 class _EditableSection {
@@ -192,6 +221,7 @@ class _EditableSection {
     required this.type,
     this.notes,
     this.selected = true,
+    this.boundingBox,
   });
 
   final String code;
@@ -199,6 +229,7 @@ class _EditableSection {
   final String type;
   final String? notes;
   final bool selected;
+  final _BoundingBox? boundingBox;
 
   _EditableSection copyWith({
     String? code,
@@ -206,13 +237,16 @@ class _EditableSection {
     String? type,
     String? notes,
     bool? selected,
-  }) => _EditableSection(
-    code: code ?? this.code,
-    name: name ?? this.name,
-    type: type ?? this.type,
-    notes: notes ?? this.notes,
-    selected: selected ?? this.selected,
-  );
+    _BoundingBox? boundingBox,
+  }) =>
+      _EditableSection(
+        code: code ?? this.code,
+        name: name ?? this.name,
+        type: type ?? this.type,
+        notes: notes ?? this.notes,
+        selected: selected ?? this.selected,
+        boundingBox: boundingBox ?? this.boundingBox,
+      );
 }
 
 // ── Capture view ─────────────────────────────────────────────────────────────
@@ -251,7 +285,7 @@ class _CaptureView extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             const Text(
-              'AI will automatically detect every drawer, cabinet, and shelf — then generate section codes for you.',
+              'AI will automatically detect every drawer, cabinet, and shelf — then pin the section codes directly on the photo.',
               textAlign: TextAlign.center,
               style: TextStyle(color: AppColors.onSurfaceVariant),
             ),
@@ -321,10 +355,11 @@ class _ProgressView extends StatelessWidget {
   }
 }
 
-// ── Review view ───────────────────────────────────────────────────────────────
+// ── Annotated review view ─────────────────────────────────────────────────────
 
-class _ReviewView extends StatelessWidget {
-  const _ReviewView({
+class _AnnotatedReviewView extends StatefulWidget {
+  const _AnnotatedReviewView({
+    required this.imageUrl,
     required this.roomName,
     required this.furnitureDescription,
     required this.confidence,
@@ -336,179 +371,132 @@ class _ReviewView extends StatelessWidget {
     required this.onSave,
   });
 
+  final String imageUrl;
   final String roomName;
   final String furnitureDescription;
   final double confidence;
   final List<_EditableSection> sections;
   final bool saving;
-  final void Function(int, bool) onToggle;
+  final void Function(int) onToggle;
   final void Function(int) onEdit;
   final VoidCallback onRescan;
   final VoidCallback onSave;
 
-  int get _selectedCount => sections.where((s) => s.selected).length;
+  @override
+  State<_AnnotatedReviewView> createState() => _AnnotatedReviewViewState();
+}
+
+class _AnnotatedReviewViewState extends State<_AnnotatedReviewView> {
+  Size? _naturalImageSize;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadImageSize();
+  }
+
+  @override
+  void didUpdateWidget(_AnnotatedReviewView old) {
+    super.didUpdateWidget(old);
+    if (old.imageUrl != widget.imageUrl) _loadImageSize();
+  }
+
+  void _loadImageSize() {
+    final stream = NetworkImage(widget.imageUrl).resolve(const ImageConfiguration());
+    stream.addListener(ImageStreamListener((info, _) {
+      if (mounted) {
+        setState(() => _naturalImageSize = Size(
+              info.image.width.toDouble(),
+              info.image.height.toDouble(),
+            ));
+      }
+    }));
+  }
+
+  int get _selectedCount => widget.sections.where((s) => s.selected).length;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Header card
+        // Info bar
         Container(
-          margin: const EdgeInsets.all(16),
-          padding: const EdgeInsets.all(16),
+          margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
             color: AppColors.surfaceVariant,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(12),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
             children: [
-              Row(
-                children: [
-                  const Icon(Icons.auto_awesome, color: AppColors.accent, size: 18),
-                  const SizedBox(width: 8),
-                  Text(
-                    '${sections.length} sections detected',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.onBackground,
-                    ),
-                  ),
-                  const Spacer(),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: _confidenceColor(confidence).withAlpha(25),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      '${(_confidence * 100).round()}% confidence',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: _confidenceColor(confidence),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              if (furnitureDescription.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Text(
-                  furnitureDescription,
+              const Icon(Icons.auto_awesome, color: AppColors.accent, size: 16),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  widget.furnitureDescription.isNotEmpty
+                      ? widget.furnitureDescription
+                      : '${widget.sections.length} sections detected',
                   style: const TextStyle(
-                    color: AppColors.onSurfaceVariant,
+                    color: AppColors.onBackground,
                     fontSize: 13,
+                    fontWeight: FontWeight.w500,
                   ),
-                ),
-              ],
-              const SizedBox(height: 4),
-              Text(
-                'Review and deselect any sections you don\'t want to add.',
-                style: const TextStyle(
-                  color: AppColors.onSurfaceVariant,
-                  fontSize: 12,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
+              const SizedBox(width: 8),
+              _ConfidenceBadge(confidence: widget.confidence),
             ],
           ),
         ),
 
-        // Section list
+        // Annotated image
         Expanded(
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: sections.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 8),
-            itemBuilder: (ctx, i) {
-              final s = sections[i];
-              return Container(
-                decoration: BoxDecoration(
-                  color: s.selected
-                      ? AppColors.surfaceVariant
-                      : AppColors.surfaceVariant.withAlpha(100),
-                  borderRadius: BorderRadius.circular(14),
-                  border: s.selected
-                      ? Border.all(color: AppColors.accent.withAlpha(80), width: 1)
-                      : null,
-                ),
-                child: ListTile(
-                  leading: Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: s.selected
-                          ? AppColors.accent.withAlpha(25)
-                          : AppColors.onSurfaceVariant.withAlpha(20),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Center(
-                      child: Text(
-                        s.code,
-                        style: TextStyle(
-                          color: s.selected ? AppColors.accent : AppColors.onSurfaceVariant,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                  ),
-                  title: Text(
-                    s.name,
-                    style: TextStyle(
-                      color: s.selected ? AppColors.onBackground : AppColors.onSurfaceVariant,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  subtitle: Text(
-                    s.notes != null && s.notes!.isNotEmpty
-                        ? '${s.type} · ${s.notes}'
-                        : s.type,
-                    style: const TextStyle(
-                      color: AppColors.onSurfaceVariant,
-                      fontSize: 12,
-                    ),
-                  ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: LayoutBuilder(
+                builder: (ctx, constraints) {
+                  return Stack(
+                    fit: StackFit.expand,
                     children: [
-                      IconButton(
-                        icon: const Icon(Icons.edit_outlined, size: 18),
-                        color: AppColors.onSurfaceVariant,
-                        onPressed: () => onEdit(i),
+                      Image.network(
+                        widget.imageUrl,
+                        fit: BoxFit.contain,
+                        width: constraints.maxWidth,
+                        height: constraints.maxHeight,
                       ),
-                      Checkbox(
-                        value: s.selected,
-                        onChanged: (v) => onToggle(i, v ?? false),
-                        activeColor: AppColors.accent,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(4),
+                      if (_naturalImageSize != null)
+                        ..._buildOverlays(
+                          constraints.maxWidth,
+                          constraints.maxHeight,
                         ),
-                      ),
                     ],
-                  ),
-                ),
-              );
-            },
+                  );
+                },
+              ),
+            ),
           ),
         ),
 
         // Bottom actions
         Container(
           padding: EdgeInsets.fromLTRB(
-            16, 12, 16,
+            16,
+            12,
+            16,
             MediaQuery.of(context).padding.bottom + 16,
           ),
           decoration: BoxDecoration(
             color: AppColors.background,
-            border: Border(
-              top: BorderSide(color: AppColors.surfaceVariant),
-            ),
+            border: Border(top: BorderSide(color: AppColors.surfaceVariant)),
           ),
           child: Row(
             children: [
               OutlinedButton(
-                onPressed: onRescan,
+                onPressed: widget.onRescan,
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.onSurfaceVariant,
                   side: BorderSide(color: AppColors.onSurfaceVariant.withAlpha(100)),
@@ -521,7 +509,7 @@ class _ReviewView extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: FilledButton(
-                  onPressed: (saving || _selectedCount == 0) ? null : onSave,
+                  onPressed: (widget.saving || _selectedCount == 0) ? null : widget.onSave,
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.accent,
                     foregroundColor: AppColors.background,
@@ -529,12 +517,15 @@ class _ReviewView extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: saving
+                  child: widget.saving
                       ? const SizedBox(
-                          height: 20, width: 20,
+                          height: 20,
+                          width: 20,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : Text('Save $_selectedCount section${_selectedCount == 1 ? '' : 's'}'),
+                      : Text(
+                          'Save $_selectedCount section${_selectedCount == 1 ? '' : 's'}',
+                        ),
                 ),
               ),
             ],
@@ -544,12 +535,167 @@ class _ReviewView extends StatelessWidget {
     );
   }
 
-  double get _confidence => confidence;
+  List<Widget> _buildOverlays(double containerW, double containerH) {
+    final imgW = _naturalImageSize!.width;
+    final imgH = _naturalImageSize!.height;
 
-  Color _confidenceColor(double c) {
-    if (c >= 0.8) return const Color(0xFF4CAF50);
-    if (c >= 0.6) return const Color(0xFFFFA726);
+    // Compute rendered image rect within the container (BoxFit.contain logic)
+    final scale = min(containerW / imgW, containerH / imgH);
+    final renderedW = imgW * scale;
+    final renderedH = imgH * scale;
+    final offsetX = (containerW - renderedW) / 2;
+    final offsetY = (containerH - renderedH) / 2;
+
+    return widget.sections.asMap().entries.map((entry) {
+      final i = entry.key;
+      final s = entry.value;
+      final bbox = s.boundingBox;
+      if (bbox == null) return const SizedBox.shrink();
+
+      final centerX = offsetX + (bbox.x + bbox.width / 2) * renderedW;
+      final centerY = offsetY + (bbox.y + bbox.height / 2) * renderedH;
+
+      // Draw a subtle rectangle outline for the detected section
+      final rectLeft = offsetX + bbox.x * renderedW;
+      final rectTop = offsetY + bbox.y * renderedH;
+      final rectW = bbox.width * renderedW;
+      final rectH = bbox.height * renderedH;
+
+      return Stack(
+        children: [
+          // Section outline
+          Positioned(
+            left: rectLeft,
+            top: rectTop,
+            child: Container(
+              width: rectW,
+              height: rectH,
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: s.selected
+                      ? AppColors.accent.withAlpha(180)
+                      : AppColors.onSurfaceVariant.withAlpha(100),
+                  width: 1.5,
+                ),
+                borderRadius: BorderRadius.circular(4),
+                color: s.selected
+                    ? AppColors.accent.withAlpha(20)
+                    : Colors.black.withAlpha(20),
+              ),
+            ),
+          ),
+          // Code chip at center
+          Positioned(
+            left: centerX - 32,
+            top: centerY - 16,
+            child: _SectionChip(
+              section: s,
+              onTap: () => widget.onToggle(i),
+              onEdit: () => widget.onEdit(i),
+            ),
+          ),
+        ],
+      );
+    }).toList();
+  }
+}
+
+// ── Section chip (overlay on image) ──────────────────────────────────────────
+
+class _SectionChip extends StatelessWidget {
+  const _SectionChip({
+    required this.section,
+    required this.onTap,
+    required this.onEdit,
+  });
+
+  final _EditableSection section;
+  final VoidCallback onTap;
+  final VoidCallback onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    final isSelected = section.selected;
+    final bg = isSelected ? AppColors.accent : Colors.black54;
+    final fg = isSelected ? AppColors.background : Colors.white70;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 32,
+        padding: const EdgeInsets.only(left: 8, right: 2),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(80),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              section.code,
+              style: TextStyle(
+                color: fg,
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(width: 2),
+            GestureDetector(
+              onTap: onEdit,
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                child: Icon(
+                  Icons.edit_outlined,
+                  size: 14,
+                  color: fg.withAlpha(200),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Confidence badge ──────────────────────────────────────────────────────────
+
+class _ConfidenceBadge extends StatelessWidget {
+  const _ConfidenceBadge({required this.confidence});
+
+  final double confidence;
+
+  Color get _color {
+    if (confidence >= 0.8) return const Color(0xFF4CAF50);
+    if (confidence >= 0.6) return const Color(0xFFFFA726);
     return AppColors.error;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: _color.withAlpha(25),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        '${(confidence * 100).round()}%',
+        style: TextStyle(
+          fontSize: 11,
+          color: _color,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
   }
 }
 
@@ -608,7 +754,9 @@ class _EditSectionSheetState extends State<_EditSectionSheet> {
         ),
       ),
       padding: EdgeInsets.only(
-        left: 20, right: 20, top: 20,
+        left: 20,
+        right: 20,
+        top: 20,
         bottom: MediaQuery.of(context).viewInsets.bottom + 20,
       ),
       child: SingleChildScrollView(
@@ -618,7 +766,8 @@ class _EditSectionSheetState extends State<_EditSectionSheet> {
           children: [
             Center(
               child: Container(
-                width: 40, height: 4,
+                width: 40,
+                height: 4,
                 decoration: BoxDecoration(
                   color: AppColors.onSurfaceVariant,
                   borderRadius: BorderRadius.circular(2),
@@ -679,13 +828,16 @@ class _EditSectionSheetState extends State<_EditSectionSheet> {
                     code: _codeCtrl.text.trim(),
                     name: _nameCtrl.text.trim(),
                     type: _type,
-                    notes: _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
+                    notes:
+                        _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
                   ),
                 ),
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.accent,
                   foregroundColor: AppColors.background,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                 ),
                 child: const Text('Apply'),
               ),

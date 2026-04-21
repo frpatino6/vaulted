@@ -127,7 +127,7 @@ export class AiVisionService {
   private buildSectionsPrompt(): string {
     return `You are analyzing a photo of storage furniture (cabinets, drawers, shelves, closets, etc.) in a luxury home.
 
-Your task: identify every distinct storage unit visible in the image and return a structured map.
+Your task: identify every distinct storage unit visible in the image and return a structured map WITH precise bounding boxes so they can be overlaid on the photo.
 
 Grid convention:
 - Rows: numbered top-to-bottom starting at 1 (1 = top row, 2 = second row, etc.)
@@ -141,13 +141,23 @@ For each storage unit, determine:
 - row: numeric row (1, 2, 3...)
 - column: letter column ("A", "B", "C"...)
 - notes: optional brief note (e.g. "has glass door", "deep pull-out", "corner unit")
+- boundingBox: the bounding box of the storage unit as fractions of image dimensions (0.0 to 1.0):
+  { "x": left edge, "y": top edge, "width": box width, "height": box height }
 
 Return ONLY valid JSON with no markdown:
 {
   "furnitureDescription": string,
   "confidence": number (0-1),
   "sections": [
-    { "code": string, "name": string, "type": string, "row": number, "column": string, "notes": string | null }
+    {
+      "code": string,
+      "name": string,
+      "type": string,
+      "row": number,
+      "column": string,
+      "notes": string | null,
+      "boundingBox": { "x": number, "y": number, "width": number, "height": number }
+    }
   ]
 }
 
@@ -155,6 +165,7 @@ Rules:
 - Include ALL visible storage units, even partially visible ones
 - If the same physical piece has multiple doors/drawers, each is a separate section
 - Order sections by row then column (1A, 1B, 1C, 2A, 2B...)
+- boundingBox values must be between 0.0 and 1.0 (fractions of image size)
 - Return ONLY the JSON object, no explanation`;
   }
 
@@ -180,7 +191,26 @@ Rules:
         row: (s['row'] as number) ?? 1,
         column: (s['column'] as string) ?? 'A',
         notes: (s['notes'] as string | null) ?? undefined,
+        boundingBox: this.parseBoundingBox(s['boundingBox']),
       })),
+    };
+  }
+
+  private parseBoundingBox(raw: unknown): DetectedSection['boundingBox'] {
+    if (!raw || typeof raw !== 'object') return undefined;
+    const b = raw as Record<string, unknown>;
+    const x = typeof b['x'] === 'number' ? b['x'] : undefined;
+    const y = typeof b['y'] === 'number' ? b['y'] : undefined;
+    const width = typeof b['width'] === 'number' ? b['width'] : undefined;
+    const height = typeof b['height'] === 'number' ? b['height'] : undefined;
+    if (x === undefined || y === undefined || width === undefined || height === undefined) {
+      return undefined;
+    }
+    return {
+      x: Math.max(0, Math.min(1, x)),
+      y: Math.max(0, Math.min(1, y)),
+      width: Math.max(0, Math.min(1, width)),
+      height: Math.max(0, Math.min(1, height)),
     };
   }
 
