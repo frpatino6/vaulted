@@ -25,7 +25,9 @@ import { LoanItemDto } from './dto/loan-item.dto';
 import { MoveItemDto } from './dto/move-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
 import { InventoryService } from './inventory.service';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 
+@ApiTags('Inventory')
 @Controller('items')
 export class InventoryController {
   constructor(
@@ -35,6 +37,11 @@ export class InventoryController {
 
   @Roles(Role.OWNER, Role.MANAGER)
   @Post()
+  @ApiOperation({ summary: 'Create a new inventory item' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 201, description: 'Item created successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - insufficient role' })
   async create(
     @CurrentUser() user: JwtPayload,
     @Body() dto: CreateItemDto,
@@ -56,6 +63,15 @@ export class InventoryController {
 
   @Get()
   @Roles(Role.OWNER, Role.MANAGER, Role.STAFF, Role.AUDITOR)
+  @ApiOperation({ summary: 'Get all inventory items with filters' })
+  @ApiBearerAuth()
+  @ApiQuery({ name: 'propertyId', required: false })
+  @ApiQuery({ name: 'roomId', required: false })
+  @ApiQuery({ name: 'category', required: false })
+  @ApiQuery({ name: 'status', required: false })
+  @ApiQuery({ name: 'unlocated', required: false })
+  @ApiQuery({ name: 'limit', required: false })
+  @ApiResponse({ status: 200, description: 'Items retrieved successfully' })
   findAll(
     @CurrentUser() user: JwtPayload,
     @Query('propertyId') propertyId?: string,
@@ -82,6 +98,9 @@ export class InventoryController {
 
   @Get('search')
   @Roles(Role.OWNER, Role.MANAGER, Role.STAFF, Role.AUDITOR)
+  @ApiOperation({ summary: 'Search inventory items' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Search results' })
   search(
     @CurrentUser() user: JwtPayload,
     @Query('q') query?: string,
@@ -110,12 +129,20 @@ export class InventoryController {
   @Throttle({ 'inventory-valuation': { ttl: 900_000, limit: 20 } })
   @Get(':id')
   @Roles(Role.OWNER, Role.MANAGER, Role.STAFF, Role.AUDITOR)
+  @ApiOperation({ summary: 'Get item by ID' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Item retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Item not found' })
   findById(@CurrentUser() user: JwtPayload, @Param('id') itemId: string) {
     return this.inventoryService.findById(user.tenantId, itemId, user.role, user.sub);
   }
 
   @Roles(Role.OWNER, Role.MANAGER)
   @Put(':id')
+  @ApiOperation({ summary: 'Update an inventory item' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Item updated successfully' })
+  @ApiResponse({ status: 404, description: 'Item not found' })
   async update(
     @CurrentUser() user: JwtPayload,
     @Param('id') itemId: string,
@@ -138,7 +165,11 @@ export class InventoryController {
 
   @Roles(Role.OWNER)
   @Delete(':id')
-  @HttpCode(HttpStatus.OK)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete an inventory item' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 204, description: 'Item deleted successfully' })
+  @ApiResponse({ status: 404, description: 'Item not found' })
   async delete(
     @CurrentUser() user: JwtPayload,
     @Param('id') itemId: string,
@@ -160,6 +191,9 @@ export class InventoryController {
 
   @Roles(Role.OWNER, Role.MANAGER)
   @Post(':id/move')
+  @ApiOperation({ summary: 'Move item to different property/room' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Item moved successfully' })
   async move(
     @CurrentUser() user: JwtPayload,
     @Param('id') itemId: string,
@@ -186,6 +220,9 @@ export class InventoryController {
 
   @Roles(Role.OWNER, Role.MANAGER)
   @Post(':id/loan')
+  @ApiOperation({ summary: 'Loan an item to someone' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 201, description: 'Item loaned successfully' })
   async loan(
     @CurrentUser() user: JwtPayload,
     @Param('id') itemId: string,
@@ -212,6 +249,9 @@ export class InventoryController {
 
   @Get(':id/history')
   @Roles(Role.OWNER, Role.MANAGER, Role.STAFF, Role.AUDITOR)
+  @ApiOperation({ summary: 'Get item history' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'History retrieved successfully' })
   getHistory(@CurrentUser() user: JwtPayload, @Param('id') itemId: string) {
     return this.inventoryService.getHistory(user.tenantId, itemId);
   }

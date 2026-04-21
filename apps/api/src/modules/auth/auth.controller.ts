@@ -21,6 +21,14 @@ import { SkipMfa } from '../../common/decorators/skip-mfa.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtPayload } from './strategies/jwt.strategy';
 import { JwtRefreshPayload } from './strategies/jwt-refresh.strategy';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiUnauthorizedResponse,
+  ApiForbiddenResponse,
+} from '@nestjs/swagger';
 
 const REFRESH_COOKIE_OPTIONS = {
   httpOnly: true,
@@ -40,6 +48,7 @@ const CLEAR_COOKIE_OPTIONS = {
   path: '/api/auth/refresh',
 };
 
+@ApiTags('Authentication')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -47,6 +56,10 @@ export class AuthController {
   @Public()
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('register')
+  @ApiOperation({ summary: 'Register a new tenant and owner account' })
+  @ApiResponse({ status: 201, description: 'Registration successful, returns access token' })
+  @ApiResponse({ status: 400, description: 'Invalid input' })
+  @ApiResponse({ status: 409, description: 'Email already registered' })
   async register(
     @Body() dto: RegisterDto,
     @Req() req: Request,
@@ -68,6 +81,9 @@ export class AuthController {
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('login')
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Login with email and password' })
+  @ApiResponse({ status: 200, description: 'Login successful, returns access token and mfaRequired flag' })
+  @ApiResponse({ status: 401, description: 'Invalid credentials' })
   async login(
     @Body() dto: LoginDto,
     @Req() req: Request,
@@ -88,6 +104,9 @@ export class AuthController {
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('accept-invite')
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Accept an invitation and create account' })
+  @ApiResponse({ status: 201, description: 'Invitation accepted successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid or expired token' })
   async acceptInvite(
     @Body() dto: AcceptInviteDto,
     @Req() req: Request,
@@ -108,6 +127,9 @@ export class AuthController {
   @UseGuards(AuthGuard('jwt-refresh'))
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Refresh access token using refresh token cookie' })
+  @ApiResponse({ status: 200, description: 'Token refreshed successfully' })
+  @ApiResponse({ status: 401, description: 'Invalid or expired refresh token' })
   async refresh(
     @CurrentUser() payload: JwtRefreshPayload,
     @Req() req: Request,
@@ -123,6 +145,10 @@ export class AuthController {
   @SkipMfa()
   @Post('logout')
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Logout current session' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Logout successful' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async logout(
     @CurrentUser() payload: JwtPayload,
     @Req() req: Request,
@@ -142,6 +168,10 @@ export class AuthController {
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('logout-all')
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Logout all sessions across devices' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'All sessions terminated' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async logoutAll(
     @CurrentUser() payload: JwtPayload,
     @Req() req: Request,
@@ -159,6 +189,10 @@ export class AuthController {
   @SkipMfa()
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('mfa/setup')
+  @ApiOperation({ summary: 'Setup MFA for the account' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 201, description: 'MFA setup successful, returns QR code' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async setupMfa(@CurrentUser() user: JwtPayload) {
     return this.authService.setupMfa(user.sub, user.tenantId, user.email);
   }
@@ -167,6 +201,10 @@ export class AuthController {
   @Throttle({ default: { limit: 100, ttl: 60000 } })
   @Post('mfa/verify')
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify and enable MFA' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'MFA verified and enabled' })
+  @ApiResponse({ status: 401, description: 'Invalid MFA code' })
   async verifyMfa(
     @Body() dto: VerifyMfaDto,
     @CurrentUser() user: JwtPayload,

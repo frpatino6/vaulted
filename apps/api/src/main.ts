@@ -3,6 +3,7 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import { join } from 'node:path';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import helmet from 'helmet';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const cookieParser = require('cookie-parser') as () => unknown;
 import { AppModule } from './app.module';
@@ -76,6 +77,23 @@ async function bootstrap(): Promise<void> {
 
   app.useGlobalInterceptors(new ResponseInterceptor());
   app.useGlobalFilters(new HttpExceptionFilter());
+
+  const config = new DocumentBuilder()
+    .setTitle('Vaulted API')
+    .setDescription('Premium home inventory management API')
+    .setVersion('1.0')
+    .addBearerAuth()
+    .build();
+
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api-docs', app, document);
+
+  if (process.env['NODE_ENV'] === 'development') {
+    const fs = require('fs');
+    const path = require('path');
+    const openApiPath = path.join(__dirname, '../../../../docs/openapi.json');
+    fs.writeFileSync(openApiPath, JSON.stringify(document, null, 2));
+  }
 
   const port = process.env['PORT'] ?? 3000;
   await app.listen(port);
