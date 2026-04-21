@@ -171,6 +171,7 @@ class _AiSectionScanScreenState extends ConsumerState<AiSectionScanScreen> {
             onToggle: (i) => setState(() =>
                 _detected[i] = _detected[i].copyWith(selected: !_detected[i].selected)),
             onEdit: (i) => _showEditSheet(i),
+            onRemove: (i) => setState(() => _detected.removeAt(i)),
             onRescan: () => setState(() => _step = _ScanStep.capture),
             onSave: _save,
           ),
@@ -367,6 +368,7 @@ class _AnnotatedReviewView extends StatefulWidget {
     required this.saving,
     required this.onToggle,
     required this.onEdit,
+    required this.onRemove,
     required this.onRescan,
     required this.onSave,
   });
@@ -379,6 +381,7 @@ class _AnnotatedReviewView extends StatefulWidget {
   final bool saving;
   final void Function(int) onToggle;
   final void Function(int) onEdit;
+  final void Function(int) onRemove;
   final VoidCallback onRescan;
   final VoidCallback onSave;
 
@@ -468,7 +471,26 @@ class _AnnotatedReviewViewState extends State<_AnnotatedReviewView> {
                         width: constraints.maxWidth,
                         height: constraints.maxHeight,
                       ),
-                      if (_naturalImageSize != null)
+                      if (_naturalImageSize == null)
+                        Container(
+                          color: Colors.black54,
+                          child: const Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              CircularProgressIndicator(color: AppColors.accent),
+                              SizedBox(height: 14),
+                              Text(
+                                'Placing section markers…',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      else
                         ..._buildOverlays(
                           constraints.maxWidth,
                           constraints.maxHeight,
@@ -592,6 +614,7 @@ class _AnnotatedReviewViewState extends State<_AnnotatedReviewView> {
               section: s,
               onTap: () => widget.onToggle(i),
               onEdit: () => widget.onEdit(i),
+              onRemove: () => widget.onRemove(i),
             ),
           ),
         ],
@@ -607,11 +630,13 @@ class _SectionChip extends StatelessWidget {
     required this.section,
     required this.onTap,
     required this.onEdit,
+    required this.onRemove,
   });
 
   final _EditableSection section;
   final VoidCallback onTap;
   final VoidCallback onEdit;
+  final VoidCallback onRemove;
 
   @override
   Widget build(BuildContext context) {
@@ -654,6 +679,18 @@ class _SectionChip extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
                 child: Icon(
                   Icons.edit_outlined,
+                  size: 14,
+                  color: fg.withAlpha(200),
+                ),
+              ),
+            ),
+            GestureDetector(
+              onTap: onRemove,
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 2, right: 6, top: 4, bottom: 4),
+                child: Icon(
+                  Icons.close,
                   size: 14,
                   color: fg.withAlpha(200),
                 ),

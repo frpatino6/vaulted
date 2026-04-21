@@ -127,24 +127,43 @@ export class AiVisionService {
   private buildSectionsPrompt(): string {
     return `You are analyzing a photo of storage furniture (cabinets, drawers, shelves, closets, etc.) in a luxury home.
 
-Your task: identify every distinct storage unit visible in the image and return a structured map WITH precise bounding boxes so they can be overlaid on the photo.
+Your task: identify every distinct storage compartment visible and return a precise structured map with tight bounding boxes.
 
-Grid convention:
-- Rows: numbered top-to-bottom starting at 1 (1 = top row, 2 = second row, etc.)
-- Columns: lettered left-to-right starting at A (A = leftmost, B = next, etc.)
-- Code: combine row + column, e.g. "1A", "2B", "3C"
+## Step 1 — Locate the furniture
+First, identify the exact pixel boundary of the furniture itself. Ignore walls, floors, other objects, and background. All bounding boxes must stay within the furniture's visible area.
 
-For each storage unit, determine:
-- code: grid code (e.g. "1A")
-- name: descriptive name (e.g. "Top Left Drawer", "Center Cabinet", "Glass Door Upper Right")
+## Step 2 — Map the grid
+Grid convention (CRITICAL — read carefully):
+- ROW = horizontal layer, numbered TOP → BOTTOM starting at 1
+  • A shelf above another shelf → different rows (1, 2, 3…)
+  • Sections side by side on the same level → same row, different columns
+- COLUMN = vertical lane, lettered LEFT → RIGHT starting at A
+  • Sections side by side → A, B, C…
+  • A single vertical stack with no side-by-side sections → all column "A"
+- Code = row number + column letter: "1A", "2A", "3B"
+
+Layout examples:
+  • 6 shelves stacked vertically, no side-by-side → 1A, 2A, 3A, 4A, 5A, 6A (NOT 1A,1B,1C…)
+  • 2 rows × 3 columns grid → 1A 1B 1C / 2A 2B 2C
+  • 3 drawers side by side (single row) → 1A, 1B, 1C
+
+## Step 3 — Draw tight bounding boxes
+Each boundingBox must:
+- Wrap ONLY the individual compartment opening (door, drawer face, shelf space)
+- NOT include the surrounding frame, handles, or neighbouring units
+- Use fractions of the full image size (0.0 = left/top edge, 1.0 = right/bottom edge)
+- Be as tight as possible — prefer under-shooting the frame over over-shooting into background
+
+For each section return:
+- code: grid code (e.g. "2A")
+- name: descriptive name (e.g. "Second Shelf", "Top Left Drawer", "Glass Door Upper Right")
 - type: one of "drawer" | "cabinet" | "shelf" | "rack" | "safe" | "compartment" | "other"
-- row: numeric row (1, 2, 3...)
-- column: letter column ("A", "B", "C"...)
-- notes: optional brief note (e.g. "has glass door", "deep pull-out", "corner unit")
-- boundingBox: the bounding box of the storage unit as fractions of image dimensions (0.0 to 1.0):
-  { "x": left edge, "y": top edge, "width": box width, "height": box height }
+- row: numeric row (1, 2, 3…)
+- column: letter column ("A", "B", "C"…)
+- notes: optional brief note (e.g. "has glass door", "deep pull-out", "locked")
+- boundingBox: { "x": left, "y": top, "width": w, "height": h } — all fractions 0.0–1.0
 
-Return ONLY valid JSON with no markdown:
+Return ONLY valid JSON, no markdown:
 {
   "furnitureDescription": string,
   "confidence": number (0-1),
@@ -161,11 +180,9 @@ Return ONLY valid JSON with no markdown:
   ]
 }
 
-Rules:
-- Include ALL visible storage units, even partially visible ones
-- If the same physical piece has multiple doors/drawers, each is a separate section
-- Order sections by row then column (1A, 1B, 1C, 2A, 2B...)
-- boundingBox values must be between 0.0 and 1.0 (fractions of image size)
+Final rules:
+- Include ALL visible compartments, even partially visible
+- Order by row then column (1A, 1B, 2A, 2B…)
 - Return ONLY the JSON object, no explanation`;
   }
 
