@@ -106,6 +106,7 @@ class _RoomSectionsScreenState extends ConsumerState<RoomSectionsScreen> {
           floorId: widget.floorId,
           roomId: widget.roomId,
           roomName: widget.roomName,
+          existingSectionCodes: _sections.map((s) => s.code).toList(),
         ),
       ),
     );
