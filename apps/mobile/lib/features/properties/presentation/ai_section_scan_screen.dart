@@ -468,7 +468,26 @@ class _AnnotatedReviewViewState extends State<_AnnotatedReviewView> {
                         width: constraints.maxWidth,
                         height: constraints.maxHeight,
                       ),
-                      if (_naturalImageSize != null)
+                      if (_naturalImageSize == null)
+                        Container(
+                          color: Colors.black54,
+                          child: const Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              CircularProgressIndicator(color: AppColors.accent),
+                              SizedBox(height: 14),
+                              Text(
+                                'Placing section markers…',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      else
                         ..._buildOverlays(
                           constraints.maxWidth,
                           constraints.maxHeight,
