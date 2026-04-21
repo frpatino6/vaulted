@@ -182,6 +182,8 @@ Return ONLY valid JSON, no markdown:
 
 Final rules:
 - Include ALL visible compartments, even partially visible
+- Include closed cabinet doors and closed drawer fronts — do NOT skip sections just because they are closed or opaque
+- A tall single-door cabinet counts as ONE section (e.g. 1A), not multiple rows
 - Order by row then column (1A, 1B, 2A, 2B…)
 - Return ONLY the JSON object, no explanation`;
   }

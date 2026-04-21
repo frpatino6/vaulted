@@ -16,12 +16,14 @@ class AiSectionScanScreen extends ConsumerStatefulWidget {
     required this.floorId,
     required this.roomId,
     required this.roomName,
+    this.existingSectionCodes = const [],
   });
 
   final String propertyId;
   final String floorId;
   final String roomId;
   final String roomName;
+  final List<String> existingSectionCodes;
 
   @override
   ConsumerState<AiSectionScanScreen> createState() => _AiSectionScanScreenState();
@@ -36,6 +38,7 @@ class _AiSectionScanScreenState extends ConsumerState<AiSectionScanScreen> {
   String _furnitureDescription = '';
   double _confidence = 0;
   bool _saving = false;
+  bool _isAddingMore = false;
 
   Future<void> _pickImage(ImageSource source) async {
     final file = await _picker.pickImage(source: source, imageQuality: 85);
@@ -70,7 +73,7 @@ class _AiSectionScanScreenState extends ConsumerState<AiSectionScanScreen> {
           .analyzeSections(imageUrl);
 
       final rawSections = (result['sections'] as List?) ?? [];
-      final sections = rawSections.map((s) {
+      final incoming = rawSections.map((s) {
         final m = s as Map<String, dynamic>;
         final rawBbox = m['boundingBox'] as Map<String, dynamic>?;
         return _EditableSection(
@@ -79,6 +82,8 @@ class _AiSectionScanScreenState extends ConsumerState<AiSectionScanScreen> {
           type: m['type'] as String? ?? 'other',
           notes: m['notes'] as String?,
           selected: true,
+          row: m['row'] as int? ?? 1,
+          column: m['column'] as String? ?? 'A',
           boundingBox: rawBbox != null
               ? _BoundingBox(
                   x: (rawBbox['x'] as num).toDouble(),
@@ -92,15 +97,19 @@ class _AiSectionScanScreenState extends ConsumerState<AiSectionScanScreen> {
 
       if (mounted) {
         setState(() {
-          _detected = sections;
+          _detected = _isAddingMore ? _mergeWithOffset(incoming) : incoming;
           _furnitureDescription = result['furnitureDescription'] as String? ?? '';
           _confidence = (result['confidence'] as num?)?.toDouble() ?? 0;
+          _isAddingMore = false;
           _step = _ScanStep.review;
         });
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _step = _ScanStep.capture);
+        setState(() {
+          _step = _ScanStep.capture;
+          _isAddingMore = false;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('AI analysis failed: $e'),
@@ -109,6 +118,35 @@ class _AiSectionScanScreenState extends ConsumerState<AiSectionScanScreen> {
         );
       }
     }
+  }
+
+  /// Appends [incoming] to existing detected sections, auto-offsetting any
+  /// code that conflicts with already-used codes (current session + DB).
+  List<_EditableSection> _mergeWithOffset(List<_EditableSection> incoming) {
+    final usedCodes = <String>{
+      ...widget.existingSectionCodes,
+      ..._detected.map((s) => s.code),
+    };
+
+    final result = List<_EditableSection>.from(_detected);
+
+    for (final s in incoming) {
+      if (!usedCodes.contains(s.code)) {
+        usedCodes.add(s.code);
+        result.add(s);
+      } else {
+        var row = s.row;
+        String newCode;
+        do {
+          row++;
+          newCode = '$row${s.column}';
+        } while (usedCodes.contains(newCode));
+        usedCodes.add(newCode);
+        result.add(s.copyWith(code: newCode, row: row));
+      }
+    }
+
+    return result;
   }
 
   Future<void> _save() async {
@@ -145,6 +183,31 @@ class _AiSectionScanScreenState extends ConsumerState<AiSectionScanScreen> {
     }
   }
 
+  void _removeSection(int i) {
+    final removed = _detected[i];
+    final removedIndex = i;
+    setState(() => _detected.removeAt(i));
+
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Section ${removed.code} removed'),
+        action: SnackBarAction(
+          label: 'Undo',
+          onPressed: () {
+            if (mounted) {
+              setState(() {
+                final idx = removedIndex.clamp(0, _detected.length);
+                _detected.insert(idx, removed);
+              });
+            }
+          },
+        ),
+        duration: const Duration(seconds: 4),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -158,7 +221,11 @@ class _AiSectionScanScreenState extends ConsumerState<AiSectionScanScreen> {
         iconTheme: const IconThemeData(color: AppColors.onBackground),
       ),
       body: switch (_step) {
-        _ScanStep.capture => _CaptureView(onPick: _pickImage),
+        _ScanStep.capture => _CaptureView(
+            onPick: _pickImage,
+            isAddingMore: _isAddingMore,
+            pendingCount: _detected.length,
+          ),
         _ScanStep.uploading => const _ProgressView(message: 'Uploading photo…'),
         _ScanStep.analyzing => const _ProgressView(message: 'AI is mapping sections…'),
         _ScanStep.review => _AnnotatedReviewView(
@@ -171,8 +238,16 @@ class _AiSectionScanScreenState extends ConsumerState<AiSectionScanScreen> {
             onToggle: (i) => setState(() =>
                 _detected[i] = _detected[i].copyWith(selected: !_detected[i].selected)),
             onEdit: (i) => _showEditSheet(i),
-            onRemove: (i) => setState(() => _detected.removeAt(i)),
-            onRescan: () => setState(() => _step = _ScanStep.capture),
+            onRemove: _removeSection,
+            onRescan: () => setState(() {
+              _detected = [];
+              _isAddingMore = false;
+              _step = _ScanStep.capture;
+            }),
+            onAddMore: () => setState(() {
+              _isAddingMore = true;
+              _step = _ScanStep.capture;
+            }),
             onSave: _save,
           ),
       },
@@ -223,6 +298,8 @@ class _EditableSection {
     this.notes,
     this.selected = true,
     this.boundingBox,
+    this.row = 1,
+    this.column = 'A',
   });
 
   final String code;
@@ -231,6 +308,8 @@ class _EditableSection {
   final String? notes;
   final bool selected;
   final _BoundingBox? boundingBox;
+  final int row;
+  final String column;
 
   _EditableSection copyWith({
     String? code,
@@ -239,6 +318,8 @@ class _EditableSection {
     String? notes,
     bool? selected,
     _BoundingBox? boundingBox,
+    int? row,
+    String? column,
   }) =>
       _EditableSection(
         code: code ?? this.code,
@@ -247,15 +328,23 @@ class _EditableSection {
         notes: notes ?? this.notes,
         selected: selected ?? this.selected,
         boundingBox: boundingBox ?? this.boundingBox,
+        row: row ?? this.row,
+        column: column ?? this.column,
       );
 }
 
 // ── Capture view ─────────────────────────────────────────────────────────────
 
 class _CaptureView extends StatelessWidget {
-  const _CaptureView({required this.onPick});
+  const _CaptureView({
+    required this.onPick,
+    required this.isAddingMore,
+    required this.pendingCount,
+  });
 
   final Future<void> Function(ImageSource) onPick;
+  final bool isAddingMore;
+  final int pendingCount;
 
   @override
   Widget build(BuildContext context) {
@@ -275,20 +364,24 @@ class _CaptureView extends StatelessWidget {
               child: const Icon(Icons.auto_awesome, size: 48, color: AppColors.accent),
             ),
             const SizedBox(height: 24),
-            const Text(
-              'Take a photo of the storage furniture',
+            Text(
+              isAddingMore
+                  ? 'Scan another piece of furniture'
+                  : 'Take a photo of the storage furniture',
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
                 color: AppColors.onBackground,
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
-              'AI will automatically detect every drawer, cabinet, and shelf — then pin the section codes directly on the photo.',
+            Text(
+              isAddingMore
+                  ? '$pendingCount section${pendingCount == 1 ? '' : 's'} already mapped. New sections will be added without code conflicts.'
+                  : 'AI will automatically detect every drawer, cabinet, and shelf — then pin the section codes directly on the photo.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.onSurfaceVariant),
+              style: const TextStyle(color: AppColors.onSurfaceVariant),
             ),
             const SizedBox(height: 32),
             SizedBox(
@@ -370,6 +463,7 @@ class _AnnotatedReviewView extends StatefulWidget {
     required this.onEdit,
     required this.onRemove,
     required this.onRescan,
+    required this.onAddMore,
     required this.onSave,
   });
 
@@ -383,6 +477,7 @@ class _AnnotatedReviewView extends StatefulWidget {
   final void Function(int) onEdit;
   final void Function(int) onRemove;
   final VoidCallback onRescan;
+  final VoidCallback onAddMore;
   final VoidCallback onSave;
 
   @override
@@ -401,7 +496,10 @@ class _AnnotatedReviewViewState extends State<_AnnotatedReviewView> {
   @override
   void didUpdateWidget(_AnnotatedReviewView old) {
     super.didUpdateWidget(old);
-    if (old.imageUrl != widget.imageUrl) _loadImageSize();
+    if (old.imageUrl != widget.imageUrl) {
+      setState(() => _naturalImageSize = null);
+      _loadImageSize();
+    }
   }
 
   void _loadImageSize() {
@@ -417,6 +515,7 @@ class _AnnotatedReviewViewState extends State<_AnnotatedReviewView> {
   }
 
   int get _selectedCount => widget.sections.where((s) => s.selected).length;
+  bool get _isLowConfidence => widget.confidence > 0 && widget.confidence < 0.6;
 
   @override
   Widget build(BuildContext context) {
@@ -454,50 +553,82 @@ class _AnnotatedReviewViewState extends State<_AnnotatedReviewView> {
           ),
         ),
 
-        // Annotated image
+        // Low confidence warning
+        if (_isLowConfidence)
+          Container(
+            margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF3CD),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFFFCA28)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.warning_amber_rounded,
+                    color: Color(0xFFE65100), size: 16),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'Low confidence — consider retaking in better lighting or closer to the furniture.',
+                    style: TextStyle(
+                      color: Color(0xFF5D3A00),
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+        // Annotated image (pinch-to-zoom)
         Expanded(
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(16),
-              child: LayoutBuilder(
-                builder: (ctx, constraints) {
-                  return Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      Image.network(
-                        widget.imageUrl,
-                        fit: BoxFit.contain,
-                        width: constraints.maxWidth,
-                        height: constraints.maxHeight,
-                      ),
-                      if (_naturalImageSize == null)
-                        Container(
-                          color: Colors.black54,
-                          child: const Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              CircularProgressIndicator(color: AppColors.accent),
-                              SizedBox(height: 14),
-                              Text(
-                                'Placing section markers…',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                      else
-                        ..._buildOverlays(
-                          constraints.maxWidth,
-                          constraints.maxHeight,
+              child: InteractiveViewer(
+                minScale: 1.0,
+                maxScale: 4.0,
+                child: LayoutBuilder(
+                  builder: (ctx, constraints) {
+                    return Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Image.network(
+                          widget.imageUrl,
+                          fit: BoxFit.contain,
+                          width: constraints.maxWidth,
+                          height: constraints.maxHeight,
                         ),
-                    ],
-                  );
-                },
+                        if (_naturalImageSize == null)
+                          Container(
+                            color: Colors.black54,
+                            child: const Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                CircularProgressIndicator(color: AppColors.accent),
+                                SizedBox(height: 14),
+                                Text(
+                                  'Placing section markers…',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          ..._buildOverlays(
+                            constraints.maxWidth,
+                            constraints.maxHeight,
+                          ),
+                      ],
+                    );
+                  },
+                ),
               ),
             ),
           ),
@@ -515,40 +646,66 @@ class _AnnotatedReviewViewState extends State<_AnnotatedReviewView> {
             color: AppColors.background,
             border: Border(top: BorderSide(color: AppColors.surfaceVariant)),
           ),
-          child: Row(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              OutlinedButton(
-                onPressed: widget.onRescan,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.onSurfaceVariant,
-                  side: BorderSide(color: AppColors.onSurfaceVariant.withAlpha(100)),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text('Rescan'),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: FilledButton(
-                  onPressed: (widget.saving || _selectedCount == 0) ? null : widget.onSave,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.accent,
-                    foregroundColor: AppColors.background,
+              // "Scan another piece" — full width
+              SizedBox(
+                width: double.infinity,
+                height: 44,
+                child: OutlinedButton.icon(
+                  onPressed: widget.onAddMore,
+                  icon: const Icon(Icons.add_a_photo_outlined, size: 16),
+                  label: const Text('Scan another piece'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.accent,
+                    side: const BorderSide(color: AppColors.accent),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: widget.saving
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Text(
-                          'Save $_selectedCount section${_selectedCount == 1 ? '' : 's'}',
-                        ),
                 ),
+              ),
+              const SizedBox(height: 8),
+              // Rescan + Save
+              Row(
+                children: [
+                  OutlinedButton(
+                    onPressed: widget.onRescan,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.onSurfaceVariant,
+                      side: BorderSide(
+                          color: AppColors.onSurfaceVariant.withAlpha(100)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text('Rescan'),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed:
+                          (widget.saving || _selectedCount == 0) ? null : widget.onSave,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.accent,
+                        foregroundColor: AppColors.background,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: widget.saving
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Text(
+                              'Save $_selectedCount section${_selectedCount == 1 ? '' : 's'}',
+                            ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -561,7 +718,6 @@ class _AnnotatedReviewViewState extends State<_AnnotatedReviewView> {
     final imgW = _naturalImageSize!.width;
     final imgH = _naturalImageSize!.height;
 
-    // Compute rendered image rect within the container (BoxFit.contain logic)
     final scale = min(containerW / imgW, containerH / imgH);
     final renderedW = imgW * scale;
     final renderedH = imgH * scale;
@@ -576,8 +732,6 @@ class _AnnotatedReviewViewState extends State<_AnnotatedReviewView> {
 
       final centerX = offsetX + (bbox.x + bbox.width / 2) * renderedW;
       final centerY = offsetY + (bbox.y + bbox.height / 2) * renderedH;
-
-      // Draw a subtle rectangle outline for the detected section
       final rectLeft = offsetX + bbox.x * renderedW;
       final rectTop = offsetY + bbox.y * renderedH;
       final rectW = bbox.width * renderedW;
@@ -585,7 +739,6 @@ class _AnnotatedReviewViewState extends State<_AnnotatedReviewView> {
 
       return Stack(
         children: [
-          // Section outline
           Positioned(
             left: rectLeft,
             top: rectTop,
@@ -606,7 +759,6 @@ class _AnnotatedReviewViewState extends State<_AnnotatedReviewView> {
               ),
             ),
           ),
-          // Code chip at center
           Positioned(
             left: centerX - 32,
             top: centerY - 16,
@@ -677,11 +829,7 @@ class _SectionChip extends StatelessWidget {
               behavior: HitTestBehavior.opaque,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                child: Icon(
-                  Icons.edit_outlined,
-                  size: 14,
-                  color: fg.withAlpha(200),
-                ),
+                child: Icon(Icons.edit_outlined, size: 14, color: fg.withAlpha(200)),
               ),
             ),
             GestureDetector(
@@ -689,11 +837,7 @@ class _SectionChip extends StatelessWidget {
               behavior: HitTestBehavior.opaque,
               child: Padding(
                 padding: const EdgeInsets.only(left: 2, right: 6, top: 4, bottom: 4),
-                child: Icon(
-                  Icons.close,
-                  size: 14,
-                  color: fg.withAlpha(200),
-                ),
+                child: Icon(Icons.close, size: 14, color: fg.withAlpha(200)),
               ),
             ),
           ],
@@ -827,7 +971,8 @@ class _EditSectionSheetState extends State<_EditSectionSheet> {
                   width: 90,
                   child: TextField(
                     controller: _codeCtrl,
-                    decoration: const InputDecoration(labelText: 'Code', hintText: '1A'),
+                    decoration:
+                        const InputDecoration(labelText: 'Code', hintText: '1A'),
                     textCapitalization: TextCapitalization.characters,
                     maxLength: 10,
                   ),
@@ -865,8 +1010,9 @@ class _EditSectionSheetState extends State<_EditSectionSheet> {
                     code: _codeCtrl.text.trim(),
                     name: _nameCtrl.text.trim(),
                     type: _type,
-                    notes:
-                        _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
+                    notes: _notesCtrl.text.trim().isEmpty
+                        ? null
+                        : _notesCtrl.text.trim(),
                   ),
                 ),
                 style: FilledButton.styleFrom(
