@@ -340,6 +340,8 @@ class _AiSectionScanScreenState extends ConsumerState<AiSectionScanScreen> {
 
 enum _ScanStep { capture, uploading, analyzing, review }
 
+enum _ResizeHandle { topLeft, topRight, bottomLeft, bottomRight }
+
 class _BoundingBox {
   const _BoundingBox({
     required this.x,
@@ -550,9 +552,10 @@ class _AnnotatedReviewViewState extends State<_AnnotatedReviewView> {
   Size? _naturalImageSize;
   bool _moveMode = false;
 
-  // Drag state (only active in move mode)
+  // Drag / resize state (only active in move mode)
   int? _draggingIndex;
   Offset _dragTotal = Offset.zero;
+  _ResizeHandle? _resizingHandle;
 
   // Layout cache — populated from LayoutBuilder
   double _renderedW = 0, _renderedH = 0, _offsetX = 0, _offsetY = 0;
@@ -611,7 +614,7 @@ class _AnnotatedReviewViewState extends State<_AnnotatedReviewView> {
 
   void _onDragEnd(int i) {
     if (!_layoutReady) {
-      setState(() { _draggingIndex = null; _dragTotal = Offset.zero; });
+      setState(() { _draggingIndex = null; _dragTotal = Offset.zero; _resizingHandle = null; });
       return;
     }
     final s = widget.sections[i];
@@ -619,19 +622,43 @@ class _AnnotatedReviewViewState extends State<_AnnotatedReviewView> {
     if (bbox != null) {
       final dx = _dragTotal.dx / _renderedW;
       final dy = _dragTotal.dy / _renderedH;
-      widget.onUpdateSection(
-        i,
-        s.copyWith(
-          boundingBox: _BoundingBox(
-            x: (bbox.x + dx).clamp(0.0, 1.0 - bbox.width),
-            y: (bbox.y + dy).clamp(0.0, 1.0 - bbox.height),
-            width: bbox.width,
-            height: bbox.height,
-          ),
-        ),
-      );
+      final handle = _resizingHandle;
+      _BoundingBox newBbox;
+      if (handle == null) {
+        // Move
+        newBbox = _BoundingBox(
+          x: (bbox.x + dx).clamp(0.0, 1.0 - bbox.width),
+          y: (bbox.y + dy).clamp(0.0, 1.0 - bbox.height),
+          width: bbox.width,
+          height: bbox.height,
+        );
+      } else {
+        // Resize — opposite corner stays fixed
+        double nx = bbox.x, ny = bbox.y, nw = bbox.width, nh = bbox.height;
+        const minSize = 0.04;
+        switch (handle) {
+          case _ResizeHandle.topLeft:
+            nx = (bbox.x + dx).clamp(0.0, bbox.x + bbox.width - minSize);
+            ny = (bbox.y + dy).clamp(0.0, bbox.y + bbox.height - minSize);
+            nw = (bbox.x + bbox.width) - nx;
+            nh = (bbox.y + bbox.height) - ny;
+          case _ResizeHandle.topRight:
+            ny = (bbox.y + dy).clamp(0.0, bbox.y + bbox.height - minSize);
+            nw = (bbox.width + dx).clamp(minSize, 1.0 - bbox.x);
+            nh = (bbox.y + bbox.height) - ny;
+          case _ResizeHandle.bottomLeft:
+            nx = (bbox.x + dx).clamp(0.0, bbox.x + bbox.width - minSize);
+            nw = (bbox.x + bbox.width) - nx;
+            nh = (bbox.height + dy).clamp(minSize, 1.0 - bbox.y);
+          case _ResizeHandle.bottomRight:
+            nw = (bbox.width + dx).clamp(minSize, 1.0 - bbox.x);
+            nh = (bbox.height + dy).clamp(minSize, 1.0 - bbox.y);
+        }
+        newBbox = _BoundingBox(x: nx, y: ny, width: nw, height: nh);
+      }
+      widget.onUpdateSection(i, s.copyWith(boundingBox: newBbox));
     }
-    setState(() { _draggingIndex = null; _dragTotal = Offset.zero; });
+    setState(() { _draggingIndex = null; _dragTotal = Offset.zero; _resizingHandle = null; });
   }
 
   // ── Tap-to-add ────────────────────────────────────────────────────────────
@@ -938,6 +965,47 @@ class _AnnotatedReviewViewState extends State<_AnnotatedReviewView> {
               ),
             ),
           ),
+          // Resize corner handles (move mode only)
+          if (_moveMode) ...[
+            for (final handle in _ResizeHandle.values)
+              Positioned(
+                left: switch (handle) {
+                  _ResizeHandle.topLeft || _ResizeHandle.bottomLeft =>
+                    rectLeft + dragDx - 7,
+                  _ => rectLeft + rectW + dragDx - 7,
+                },
+                top: switch (handle) {
+                  _ResizeHandle.topLeft || _ResizeHandle.topRight =>
+                    rectTop + dragDy - 7,
+                  _ => rectTop + rectH + dragDy - 7,
+                },
+                child: GestureDetector(
+                  onPanUpdate: (d) {
+                    setState(() {
+                      _draggingIndex = i;
+                      _resizingHandle = handle;
+                      _dragTotal += d.delta;
+                    });
+                  },
+                  onPanEnd: (_) => _onDragEnd(i),
+                  child: Container(
+                    width: 14,
+                    height: 14,
+                    decoration: BoxDecoration(
+                      color: AppColors.accent,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withAlpha(80),
+                          blurRadius: 3,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+          ],
           // Code chip
           Positioned(
             left: centerX - 36,
