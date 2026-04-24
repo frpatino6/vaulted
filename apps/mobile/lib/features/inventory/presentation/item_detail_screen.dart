@@ -130,7 +130,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                         const SizedBox(height: AppSpacing.lg),
                       _SpecsGrid(
                         item: item,
-                        resolvedRoomName: _resolveRoomName(item.roomId),
+                        resolvedRoomName: item.roomName ?? _resolveRoomName(item.roomId),
                         resolvedSectionLabel: _resolveSectionLabel(item.roomId, item.sectionId),
                       ),
                       if (item.isWardrobe && item.hasWardrobeDetails) ...[
