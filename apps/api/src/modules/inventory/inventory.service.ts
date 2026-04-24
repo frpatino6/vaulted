@@ -11,6 +11,7 @@ import { MoveItemDto } from './dto/move-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
 import { Item, ItemDocument, ItemValuation } from './schemas/item.schema';
 import { ItemHistory, ItemHistoryDocument } from './schemas/item-history.schema';
+import { Movement, MovementDocument, MovementStatus, MovementType, MovementItemStatus } from '../movements/schemas/movement.schema';
 import { Property, PropertyDocument } from '../properties/schemas/property.schema';
 import { EmbeddingService } from '../ai/shared/embedding.service';
 import { Role } from '../../common/enums/role.enum';
@@ -61,6 +62,8 @@ export class InventoryService {
     private readonly itemHistoryModel: Model<ItemHistoryDocument>,
     @InjectModel(Property.name)
     private readonly propertyModel: Model<PropertyDocument>,
+    @InjectModel(Movement.name)
+    private readonly movementModel: Model<MovementDocument>,
     @InjectDataSource() private readonly dataSource: DataSource,
     private readonly accessControl: AccessControlService,
     private readonly crypto: CryptoService,
@@ -99,10 +102,66 @@ export class InventoryService {
     await item.save();
 
     void this.indexItemEmbedding(item);
+    void this.recordCreationMovement(item, tenantId, userId);
 
     const plain = item.toObject();
     plain.valuation = this.decryptValuation(plain.valuation, tenantId);
     return plain as Item;
+  }
+
+  private async recordCreationMovement(
+    item: ItemDocument,
+    tenantId: string,
+    userId: string,
+  ): Promise<void> {
+    try {
+      const now = new Date();
+      await this.movementModel.create({
+        tenantId,
+        propertyId: item.propertyId ?? '',
+        operationType: MovementType.CREATION,
+        status: MovementStatus.COMPLETED,
+        title: `Item cataloged: ${item.name}`,
+        description: '',
+        destination: '',
+        destinationPropertyId: '',
+        destinationRoomId: '',
+        destinationPropertyName: '',
+        destinationRoomName: '',
+        items: [
+          {
+            itemId: String(item._id),
+            itemName: item.name,
+            itemCategory: item.category ?? '',
+            itemPhoto: item.photos?.[0] ?? '',
+            fromPropertyId: item.propertyId ?? '',
+            fromRoomId: item.roomId ?? '',
+            fromPropertyName: '',
+            fromRoomName: '',
+            scannedAt: now,
+            checkedInAt: null,
+            checkedInBy: null,
+            status: MovementItemStatus.OUT,
+          },
+        ],
+        createdBy: userId,
+        activatedAt: now,
+        completedAt: now,
+        dueDate: null,
+        notes: '',
+      });
+
+      await this.itemHistoryModel.create({
+        itemId: String(item._id),
+        tenantId,
+        action: 'created',
+        toPropertyId: item.propertyId ?? '',
+        toRoomId: item.roomId ?? '',
+        performedBy: userId,
+      });
+    } catch (err) {
+      this.logger.error(`Failed to record creation movement for item ${String(item._id)}`, err);
+    }
   }
 
   async findAll(

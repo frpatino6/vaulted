@@ -4,6 +4,7 @@ import { HydratedDocument } from 'mongoose';
 export type MovementDocument = HydratedDocument<Movement>;
 
 export enum MovementType {
+  CREATION = 'creation',
   TRANSFER = 'transfer',
   LOAN = 'loan',
   REPAIR = 'repair',
