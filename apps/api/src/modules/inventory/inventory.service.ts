@@ -191,6 +191,24 @@ export class InventoryService {
         throw new NotFoundException('Item not found');
       }
     }
+
+    const property = await this.propertyModel
+      .findOne({ _id: item.propertyId, tenantId })
+      .select('_id name floors')
+      .exec();
+
+    const propertyName = property?.name ?? null;
+    let roomName: string | null = null;
+    if (property && item.roomId) {
+      for (const floor of property.floors ?? []) {
+        const room = floor.rooms?.find((r) => r.roomId === String(item.roomId));
+        if (room) {
+          roomName = room.name;
+          break;
+        }
+      }
+    }
+
     if (role === Role.OWNER || role === Role.MANAGER) {
       const plain = item.toObject();
       plain.valuation = this.decryptValuation(plain.valuation, String(item.tenantId));
@@ -209,9 +227,10 @@ export class InventoryService {
           ),
         },
       });
-      return this.withSignedUrls(plain as Item, userId, tenantId);
+      return this.withSignedUrls({ ...plain, propertyName, roomName } as Item, userId, tenantId);
     }
-    return this.accessControl.stripValuation(item.toObject()) as Item;
+    const stripped = this.accessControl.stripValuation(item.toObject()) as Item;
+    return { ...stripped, propertyName, roomName } as Item;
   }
 
   async update(tenantId: string, itemId: string, dto: UpdateItemDto): Promise<Item> {
