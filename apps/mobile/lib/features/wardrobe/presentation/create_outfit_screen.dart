@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../inventory/data/models/item_model.dart';
+import '../../household_members/data/models/household_member_model.dart';
+import '../../household_members/domain/household_members_notifier.dart';
 import '../domain/outfit_notifier.dart';
 import '../domain/wardrobe_notifier.dart';
 
@@ -22,11 +24,15 @@ class _CreateOutfitScreenState extends ConsumerState<CreateOutfitScreen> {
 
   final Set<String> _selectedItems = <String>{};
   String? _selectedSeason;
+  String? _selectedOwnerMemberId;
 
   @override
   Widget build(BuildContext context) {
     final AsyncValue<List<ItemModel>> wardrobeState = ref.watch(
       wardrobeNotifierProvider,
+    );
+    final AsyncValue<List<HouseholdMemberModel>> membersState = ref.watch(
+      householdMembersNotifierProvider,
     );
 
     return Scaffold(
@@ -38,6 +44,13 @@ class _CreateOutfitScreenState extends ConsumerState<CreateOutfitScreen> {
       ),
       body: wardrobeState.when(
         data: (items) {
+          final members = membersState.valueOrNull ?? const <HouseholdMemberModel>[];
+          final filteredItems = _selectedOwnerMemberId == null
+              ? items
+              : items
+                  .where((item) =>
+                      item.wardrobeAttributes.ownerMemberId == _selectedOwnerMemberId)
+                  .toList();
           return ListView(
             padding: const EdgeInsets.all(AppSpacing.md),
             children: [
@@ -77,12 +90,37 @@ class _CreateOutfitScreenState extends ConsumerState<CreateOutfitScreen> {
                 decoration: const InputDecoration(labelText: 'Occasion'),
               ),
               const SizedBox(height: AppSpacing.md),
+              DropdownButtonFormField<String>(
+                initialValue: _selectedOwnerMemberId,
+                items: [
+                  const DropdownMenuItem<String>(
+                    value: null,
+                    child: Text('No specific member'),
+                  ),
+                  ...members.map(
+                    (member) => DropdownMenuItem<String>(
+                      value: member.id,
+                      child: Text(member.name),
+                    ),
+                  ),
+                ],
+                onChanged: (value) {
+                  setState(() {
+                    _selectedOwnerMemberId = value;
+                    _selectedItems.clear();
+                  });
+                },
+                decoration: const InputDecoration(
+                  labelText: 'Household member',
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
               Text(
                 'Select items',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: AppSpacing.sm),
-              ...items.map((ItemModel item) {
+              ...filteredItems.map((ItemModel item) {
                 final bool selected = _selectedItems.contains(item.id);
                 return CheckboxListTile(
                   value: selected,
@@ -135,6 +173,7 @@ class _CreateOutfitScreenState extends ConsumerState<CreateOutfitScreen> {
           season: _selectedSeason,
           occasion: _occasionController.text.trim(),
           itemIds: _selectedItems.toList(),
+          ownerMemberId: _selectedOwnerMemberId,
         );
 
     if (!mounted) return;

@@ -20,6 +20,7 @@ import '../../features/inventory/presentation/search_screen.dart';
 import '../../features/properties/presentation/property_detail_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
 import '../../features/users/presentation/users_screen.dart';
+import '../../features/household_members/presentation/household_members_screen.dart';
 import '../../features/ai_chat/presentation/chat_screen.dart';
 import '../../features/maintenance/presentation/maintenance_list_screen.dart';
 import '../../features/maintenance/presentation/maintenance_detail_screen.dart';
@@ -165,6 +166,10 @@ GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
       GoRoute(
         path: '/settings/users',
         builder: (context, state) => const UsersScreen(),
+      ),
+      GoRoute(
+        path: '/settings/household-members',
+        builder: (context, state) => const HouseholdMembersScreen(),
       ),
       GoRoute(path: '/chat', builder: (context, state) => const ChatScreen()),
       GoRoute(

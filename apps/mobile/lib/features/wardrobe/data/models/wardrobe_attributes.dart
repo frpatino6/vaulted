@@ -7,6 +7,7 @@ class WardrobeAttributes {
     this.cleaningStatus,
     this.material,
     this.type,
+    this.ownerMemberId,
   });
 
   final String? size;
@@ -16,6 +17,7 @@ class WardrobeAttributes {
   final String? cleaningStatus;
   final String? material;
   final String? type;
+  final String? ownerMemberId;
 
   factory WardrobeAttributes.fromMap(Map<String, dynamic>? map) {
     if (map == null) return const WardrobeAttributes();
@@ -27,6 +29,7 @@ class WardrobeAttributes {
       cleaningStatus: map['cleaningStatus'] as String?,
       material: map['material'] as String?,
       type: map['type'] as String?,
+      ownerMemberId: map['ownerMemberId'] as String?,
     );
   }
 
@@ -38,6 +41,7 @@ class WardrobeAttributes {
     if (cleaningStatus != null) 'cleaningStatus': cleaningStatus,
     if (material != null) 'material': material,
     if (type != null) 'type': type,
+    if (ownerMemberId != null) 'ownerMemberId': ownerMemberId,
   };
 
   static const List<String> types = [

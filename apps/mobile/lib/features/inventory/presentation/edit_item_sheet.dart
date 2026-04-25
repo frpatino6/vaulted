@@ -9,6 +9,8 @@ import '../../properties/data/models/floor_model.dart';
 import '../../properties/data/models/room_model.dart';
 import '../../properties/data/models/room_section_model.dart';
 import '../../wardrobe/data/models/wardrobe_attributes.dart';
+import '../../household_members/data/models/household_member_model.dart';
+import '../../household_members/domain/household_members_notifier.dart';
 import '../data/item_repository_provider.dart';
 import '../data/models/item_model.dart';
 import '../domain/item_list_notifier.dart';
@@ -255,6 +257,8 @@ class _EditItemSheetState extends ConsumerState<EditItemSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final members = ref.watch(householdMembersNotifierProvider).valueOrNull ??
+        const <HouseholdMemberModel>[];
     return DraggableScrollableSheet(
       initialChildSize: 0.85,
       minChildSize: 0.4,
@@ -382,6 +386,7 @@ class _EditItemSheetState extends ConsumerState<EditItemSheet> {
                     _WardrobeFieldsSection(
                       key: _wardrobeSectionKey,
                       initialValue: widget.item.wardrobeAttributes,
+                      members: members,
                     ),
                   ],
                   const SizedBox(height: AppSpacing.md),
@@ -604,9 +609,14 @@ class _RoomPickerField extends StatelessWidget {
 // ── Wardrobe fields ────────────────────────────────────────────────────────
 
 class _WardrobeFieldsSection extends StatefulWidget {
-  const _WardrobeFieldsSection({super.key, required this.initialValue});
+  const _WardrobeFieldsSection({
+    super.key,
+    required this.initialValue,
+    required this.members,
+  });
 
   final WardrobeAttributes initialValue;
+  final List<HouseholdMemberModel> members;
 
   @override
   State<_WardrobeFieldsSection> createState() => _WardrobeFieldsSectionState();
@@ -639,6 +649,7 @@ class _WardrobeFieldsSectionState extends State<_WardrobeFieldsSection> {
   late final TextEditingController _sizeController;
   late final TextEditingController _colorController;
   late final TextEditingController _materialController;
+  String? _ownerMemberId;
 
   WardrobeAttributes get value => WardrobeAttributes(
     type: _type,
@@ -648,6 +659,7 @@ class _WardrobeFieldsSectionState extends State<_WardrobeFieldsSection> {
     material: _trimOrNull(_materialController.text),
     season: _season,
     cleaningStatus: _cleaningStatus,
+    ownerMemberId: _ownerMemberId,
   );
 
   String? _trimOrNull(String value) {
@@ -667,6 +679,7 @@ class _WardrobeFieldsSectionState extends State<_WardrobeFieldsSection> {
     _materialController = TextEditingController(
       text: widget.initialValue.material,
     );
+    _ownerMemberId = widget.initialValue.ownerMemberId;
   }
 
   @override
@@ -692,6 +705,25 @@ class _WardrobeFieldsSectionState extends State<_WardrobeFieldsSection> {
           ),
         ),
         const SizedBox(height: AppSpacing.sm),
+        DropdownButtonFormField<String>(
+          initialValue: _ownerMemberId,
+          decoration: const InputDecoration(labelText: 'Belongs to (optional)'),
+          dropdownColor: AppColors.surfaceVariant,
+          items: [
+            const DropdownMenuItem<String>(
+              value: null,
+              child: Text('Unassigned'),
+            ),
+            ...widget.members.map(
+              (member) => DropdownMenuItem<String>(
+                value: member.id,
+                child: Text(member.name),
+              ),
+            ),
+          ],
+          onChanged: (value) => setState(() => _ownerMemberId = value),
+        ),
+        const SizedBox(height: AppSpacing.md),
         DropdownButtonFormField<String>(
           initialValue: _type,
           decoration: const InputDecoration(labelText: 'Type'),

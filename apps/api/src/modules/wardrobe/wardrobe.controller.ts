@@ -58,8 +58,11 @@ export class WardrobeController {
 
   @Get('outfits')
   @Roles(Role.OWNER, Role.MANAGER)
-  listOutfits(@CurrentUser() user: JwtPayload) {
-    return this.wardrobeService.listOutfits(user.tenantId);
+  listOutfits(
+    @CurrentUser() user: JwtPayload,
+    @Query('ownerMemberId') ownerMemberId?: string,
+  ) {
+    return this.wardrobeService.listOutfits(user.tenantId, ownerMemberId);
   }
 
   @Get('outfits/:id')

@@ -39,6 +39,11 @@ export class CreateOutfitDto {
   occasion?: string;
 
   @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  ownerMemberId?: string;
+
+  @IsOptional()
   @IsArray()
   @ArrayMaxSize(10)
   @IsString({ each: true })

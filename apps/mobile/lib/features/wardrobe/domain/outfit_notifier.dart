@@ -4,9 +4,15 @@ import '../data/outfit_model.dart';
 import '../data/outfit_repository_provider.dart';
 
 class OutfitNotifier extends AsyncNotifier<List<OutfitModel>> {
+  String? _selectedMemberId;
   @override
   Future<List<OutfitModel>> build() {
     return _load();
+  }
+
+  Future<void> setOwnerMemberFilter(String? memberId) async {
+    _selectedMemberId = memberId;
+    await refresh();
   }
 
   Future<void> refresh() async {
@@ -20,6 +26,7 @@ class OutfitNotifier extends AsyncNotifier<List<OutfitModel>> {
     String? season,
     String? occasion,
     required List<String> itemIds,
+    String? ownerMemberId,
   }) async {
     await ref.read(outfitRepositoryProvider).createOutfit({
       'name': name,
@@ -27,6 +34,8 @@ class OutfitNotifier extends AsyncNotifier<List<OutfitModel>> {
       if (season != null && season.isNotEmpty) 'season': season,
       if (occasion != null && occasion.isNotEmpty) 'occasion': occasion,
       'itemIds': itemIds,
+      if (ownerMemberId != null && ownerMemberId.isNotEmpty)
+        'ownerMemberId': ownerMemberId,
     });
     await refresh();
   }
@@ -37,7 +46,9 @@ class OutfitNotifier extends AsyncNotifier<List<OutfitModel>> {
   }
 
   Future<List<OutfitModel>> _load() {
-    return ref.read(outfitRepositoryProvider).getOutfits();
+    return ref
+        .read(outfitRepositoryProvider)
+        .getOutfits(ownerMemberId: _selectedMemberId);
   }
 }
 

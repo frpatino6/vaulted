@@ -20,6 +20,8 @@ import '../data/item_repository_provider.dart';
 import '../data/models/item_model.dart';
 import '../domain/item_detail_notifier.dart';
 import '../../properties/domain/property_detail_notifier.dart';
+import '../../household_members/data/models/household_member_model.dart';
+import '../../household_members/domain/household_members_notifier.dart';
 import 'edit_item_sheet.dart';
 import '../../../shared/widgets/item_card.dart';
 import '../../../shared/widgets/status_badge.dart';
@@ -85,6 +87,8 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
             )
             .toList() ??
         const [];
+    final List<HouseholdMemberModel> members =
+        ref.watch(householdMembersNotifierProvider).valueOrNull ?? [];
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -135,7 +139,10 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                       ),
                       if (item.isWardrobe && item.hasWardrobeDetails) ...[
                         const SizedBox(height: AppSpacing.lg),
-                        _WardrobeDetailSection(attrs: item.wardrobeAttributes),
+                        _WardrobeDetailSection(
+                          attrs: item.wardrobeAttributes,
+                          members: members,
+                        ),
                       ],
                       if (item.isWardrobe) ...[
                         const SizedBox(height: AppSpacing.md),
@@ -969,9 +976,10 @@ class _QrSection extends StatelessWidget {
 }
 
 class _WardrobeDetailSection extends StatelessWidget {
-  const _WardrobeDetailSection({required this.attrs});
+  const _WardrobeDetailSection({required this.attrs, this.members = const []});
 
   final WardrobeAttributes attrs;
+  final List<HouseholdMemberModel> members;
 
   static const Map<String, String> _typeLabels = {
     'clothing': 'Clothing',
@@ -994,6 +1002,13 @@ class _WardrobeDetailSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final String? memberName = attrs.ownerMemberId != null
+        ? members
+            .where((m) => m.id == attrs.ownerMemberId)
+            .map((m) => m.name)
+            .firstOrNull
+        : null;
+
     final hasAny =
         attrs.type != null ||
         attrs.brand != null ||
@@ -1001,10 +1016,17 @@ class _WardrobeDetailSection extends StatelessWidget {
         attrs.color != null ||
         attrs.material != null ||
         attrs.season != null ||
-        attrs.cleaningStatus != null;
+        attrs.cleaningStatus != null ||
+        memberName != null;
     if (!hasAny) return const SizedBox.shrink();
 
     final rows = <Widget>[
+      if (memberName != null)
+        _WardrobeRow(
+          icon: Icons.person_outline,
+          label: 'Belongs to',
+          value: memberName,
+        ),
       if (attrs.type != null)
         _WardrobeRow(
           icon: Icons.checkroom_outlined,
@@ -1572,6 +1594,8 @@ class _SpecsTable extends StatelessWidget {
   Widget build(BuildContext context) {
     final ls = _labelStyle(context);
     final cells = <Widget>[
+      if (item.propertyName?.isNotEmpty == true)
+        _SpecCell(label: 'PROPERTY', value: item.propertyName!, labelStyle: ls),
       _SpecCell(
         label: 'ROOM',
         value:
