@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../inventory/data/item_repository_provider.dart';
 import '../../inventory/data/models/item_model.dart';
 import '../../inventory/data/search_repository_provider.dart';
+import '../data/dry_cleaning_repository_provider.dart';
 
 class WardrobeNotifier extends AsyncNotifier<List<ItemModel>> {
   @override
@@ -76,6 +77,11 @@ class WardrobeNotifier extends AsyncNotifier<List<ItemModel>> {
           return updated;
         }).toList(),
       );
+      if (cleaningStatus == 'at_dry_cleaner') {
+        await ref
+            .read(dryCleaningRepositoryProvider)
+            .createRecord(item.id);
+      }
       await _refreshSilently();
     } catch (_) {
       final latest = state.valueOrNull;
