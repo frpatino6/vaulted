@@ -9,6 +9,7 @@ import '../../features/auth/presentation/mfa_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/reports/presentation/reports_screen.dart';
 import '../../features/wardrobe/presentation/wardrobe_screen.dart';
+import '../../features/wardrobe/presentation/at_laundry_screen.dart';
 import '../../features/wardrobe/presentation/outfit_detail_screen.dart';
 import '../../features/wardrobe/presentation/create_outfit_screen.dart';
 import '../../features/wardrobe/presentation/outfit_list_screen.dart';
@@ -137,6 +138,10 @@ GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
       GoRoute(
         path: '/wardrobe',
         builder: (context, state) => const WardrobeScreen(),
+      ),
+      GoRoute(
+        path: '/wardrobe/at-laundry',
+        builder: (context, state) => const AtLaundryScreen(),
       ),
       GoRoute(
         path: '/wardrobe/outfits',

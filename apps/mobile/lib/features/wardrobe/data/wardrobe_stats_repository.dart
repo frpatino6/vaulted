@@ -6,12 +6,14 @@ class WardrobeStatsModel {
     required this.needsCleaning,
     required this.atDryCleaner,
     required this.outfitsCount,
+    this.overdueItems = 0,
   });
 
   final int totalItems;
   final int needsCleaning;
   final int atDryCleaner;
   final int outfitsCount;
+  final int overdueItems;
 
   factory WardrobeStatsModel.fromJson(Map<String, dynamic> json) {
     final Map<String, dynamic> byCleaning =
@@ -21,6 +23,7 @@ class WardrobeStatsModel {
       needsCleaning: (byCleaning['needs_cleaning'] as num?)?.toInt() ?? 0,
       atDryCleaner: (byCleaning['at_dry_cleaner'] as num?)?.toInt() ?? 0,
       outfitsCount: (json['outfitsCount'] as num?)?.toInt() ?? 0,
+      overdueItems: (json['overdueItems'] as num?)?.toInt() ?? 0,
     );
   }
 }
