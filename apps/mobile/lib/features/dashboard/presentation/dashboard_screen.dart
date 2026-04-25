@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,9 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'package:intl/intl.dart';
 
-import '../../../core/storage/auth_token_store.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../auth/presentation/auth_notifier.dart';
 import '../../users/domain/current_user_jwt.dart';
 import '../../maintenance/data/models/maintenance_model.dart';
 import '../../maintenance/domain/maintenance_notifier.dart';
@@ -24,6 +20,7 @@ import '../../../features/presence/presentation/widgets/online_users_count.dart'
 import '../../../core/privacy/privacy_mode_provider.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/app_bottom_nav.dart';
+import 'widgets/dashboard_header.dart';
 
 /// Dashboard: clean welcome header, Quick Actions grid, recent property cards.
 class DashboardScreen extends ConsumerWidget {
@@ -50,7 +47,18 @@ class DashboardScreen extends ConsumerWidget {
         },
         child: CustomScrollView(
           slivers: [
-            SliverToBoxAdapter(child: _DashboardHeader()),
+            SliverAppBar(
+              pinned: true,
+              floating: false,
+              automaticallyImplyLeading: false,
+              toolbarHeight: 76,
+              backgroundColor: AppColors.backgroundElevated,
+              surfaceTintColor: Colors.transparent,
+              elevation: 0,
+              scrolledUnderElevation: 0,
+              titleSpacing: 0,
+              title: const DashboardHeader(),
+            ),
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(
@@ -351,290 +359,6 @@ class _EmptyPropertiesCta extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-/// Clean welcome: small greeting + avatar that opens user menu.
-class _DashboardHeader extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final email = _emailFromJwt() ?? 'Guest';
-    final role = currentUserRole() ?? 'guest';
-    final hour = DateTime.now().hour;
-    final greeting =
-        hour < 12
-            ? 'Good morning,'
-            : hour < 18
-            ? 'Good afternoon,'
-            : 'Good evening,';
-
-    // D4: try name claim from JWT first, fall back to capitalized email prefix
-    final firstName =
-        _firstNameFromJwt() ??
-        () {
-          final prefix = email.split('@').first;
-          if (prefix.isEmpty) return 'Guest';
-          return prefix[0].toUpperCase() + prefix.substring(1);
-        }();
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.md,
-        AppSpacing.lg + 8,
-        AppSpacing.md,
-        0,
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  greeting,
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: AppColors.onSurfaceVariant.withValues(alpha: 0.8),
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  firstName,
-                  style: AppTypography.displaySerif.copyWith(
-                    color: AppColors.onBackground,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Privacy mode toggle
-          _PrivacyToggleButton(),
-          const SizedBox(width: 4),
-          // D2: 48dp touch target wrapping the 40dp avatar container
-          SizedBox(
-            width: 48,
-            height: 48,
-            child: Center(
-              child: GestureDetector(
-                onTap: () => _showUserMenu(context, ref, email, role),
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white10,
-                    border: Border.all(
-                      color: AppColors.accent.withValues(alpha: 0.6),
-                      width: 1,
-                    ),
-                  ),
-                  child: Center(
-                    child: Text(
-                      email.isNotEmpty ? email[0].toUpperCase() : '?',
-                      style: TextStyle(
-                        color: AppColors.accentBright,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String? _emailFromJwt() {
-    final token = AuthTokenStore.instance.getToken();
-    if (token == null) return null;
-    final parts = token.split('.');
-    if (parts.length != 3) return null;
-    try {
-      final payload = utf8.decode(
-        base64Url.decode(base64Url.normalize(parts[1])),
-      );
-      return jsonDecode(payload)['email'] as String?;
-    } catch (_) {
-      return null;
-    }
-  }
-
-  /// D4: extract the name claim from the JWT payload.
-  String? _firstNameFromJwt() {
-    final token = AuthTokenStore.instance.getToken();
-    if (token == null) return null;
-    final parts = token.split('.');
-    if (parts.length != 3) return null;
-    try {
-      final payload = utf8.decode(
-        base64Url.decode(base64Url.normalize(parts[1])),
-      );
-      final decoded = jsonDecode(payload) as Map<String, dynamic>;
-      final name = decoded['name'] as String?;
-      if (name == null || name.trim().isEmpty) return null;
-      final first = name.trim().split(' ').first;
-      if (first.isEmpty) return null;
-      return first[0].toUpperCase() + first.substring(1);
-    } catch (_) {
-      return null;
-    }
-  }
-
-  void _showUserMenu(
-    BuildContext context,
-    WidgetRef ref,
-    String email,
-    String role,
-  ) {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: AppColors.surfaceVariant,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder:
-          (ctx) => SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.md,
-                AppSpacing.lg,
-                AppSpacing.md,
-                AppSpacing.md,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AppColors.onSurfaceVariant.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                  Row(
-                    children: [
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: AppColors.accent.withValues(alpha: 0.15),
-                          border: Border.all(
-                            color: AppColors.accent.withValues(alpha: 0.4),
-                          ),
-                        ),
-                        child: Center(
-                          child: Text(
-                            email.isNotEmpty ? email[0].toUpperCase() : '?',
-                            style: TextStyle(
-                              color: AppColors.accent,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 20,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.md),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              email,
-                              style: Theme.of(
-                                ctx,
-                              ).textTheme.bodyMedium?.copyWith(
-                                color: AppColors.onBackground,
-                                fontWeight: FontWeight.w500,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              role[0].toUpperCase() + role.substring(1),
-                              style: Theme.of(ctx).textTheme.bodySmall
-                                  ?.copyWith(color: AppColors.accent),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                  const Divider(color: Colors.white10),
-                  ListTile(
-                    leading: Icon(
-                      Icons.build_circle_outlined,
-                      color: AppColors.onSurfaceVariant,
-                    ),
-                    title: Text(
-                      'Maintenance',
-                      style: Theme.of(ctx).textTheme.bodyLarge?.copyWith(
-                        color: AppColors.onBackground,
-                      ),
-                    ),
-                    onTap: () {
-                      Navigator.of(ctx).pop();
-                      context.push('/maintenance');
-                    },
-                  ),
-                  ListTile(
-                    leading: Icon(
-                      Icons.settings_outlined,
-                      color: AppColors.onSurfaceVariant,
-                    ),
-                    title: Text(
-                      'Settings',
-                      style: Theme.of(ctx).textTheme.bodyLarge?.copyWith(
-                        color: AppColors.onBackground,
-                      ),
-                    ),
-                    onTap: () {
-                      Navigator.of(ctx).pop();
-                      context.push('/settings');
-                    },
-                  ),
-                  ListTile(
-                    leading: Icon(Icons.logout, color: AppColors.error),
-                    title: Text(
-                      'Sign out',
-                      style: Theme.of(
-                        ctx,
-                      ).textTheme.bodyLarge?.copyWith(color: AppColors.error),
-                    ),
-                    onTap: () async {
-                      Navigator.of(ctx).pop();
-                      await ref.read(authNotifierProvider.notifier).logout();
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
-    );
-  }
-}
-
-class _PrivacyToggleButton extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final isPrivate = ref.watch(privacyModeProvider).valueOrNull ?? false;
-    return IconButton(
-      iconSize: 20,
-      icon: Icon(
-        isPrivate ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-        color: AppColors.onSurfaceVariant,
-      ),
-      tooltip: isPrivate ? 'Show values' : 'Hide values',
-      onPressed: () => ref.read(privacyModeProvider.notifier).toggle(),
     );
   }
 }
