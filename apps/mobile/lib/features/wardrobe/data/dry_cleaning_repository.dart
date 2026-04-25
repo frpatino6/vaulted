@@ -25,7 +25,7 @@ class DryCleaningRepository {
     final Response<Map<String, dynamic>> response =
         await _dio.post<Map<String, dynamic>>(
       'wardrobe/dry-cleaning/$itemId',
-      data: <String, dynamic>{},
+      data: <String, dynamic>{'sentDate': DateTime.now().toIso8601String()},
     );
     if (response.data?['success'] != true) {
       throw DioException(
