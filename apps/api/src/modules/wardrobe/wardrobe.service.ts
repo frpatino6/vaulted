@@ -86,14 +86,24 @@ export class WardrobeService {
       season: dto.season,
       occasion: dto.occasion,
       photos: dto.photos ?? [],
+      ownerMemberId: dto.ownerMemberId ?? null,
       createdBy: userId,
     });
     await this.clearStatsCache(tenantId);
     return outfit;
   }
 
-  async listOutfits(tenantId: string): Promise<Outfit[]> {
-    return this.outfitModel.find({ tenantId }).sort({ createdAt: -1 }).exec();
+  async listOutfits(
+    tenantId: string,
+    ownerMemberId?: string,
+  ): Promise<Outfit[]> {
+    return this.outfitModel
+      .find({
+        tenantId,
+        ...(ownerMemberId ? { ownerMemberId } : {}),
+      })
+      .sort({ createdAt: -1 })
+      .exec();
   }
 
   async getOutfitWithItems(
@@ -146,6 +156,9 @@ export class WardrobeService {
             ...(dto.season !== undefined ? { season: dto.season } : {}),
             ...(dto.occasion !== undefined ? { occasion: dto.occasion } : {}),
             ...(dto.photos !== undefined ? { photos: dto.photos } : {}),
+            ...(dto.ownerMemberId !== undefined
+              ? { ownerMemberId: dto.ownerMemberId || null }
+              : {}),
           },
         },
         { new: true, runValidators: true },

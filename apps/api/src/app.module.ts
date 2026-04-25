@@ -24,6 +24,7 @@ import { MovementsModule } from './modules/movements/movements.module';
 import { WardrobeModule } from './modules/wardrobe/wardrobe.module';
 import { InsuranceModule } from './modules/insurance/insurance.module';
 import { PresenceModule } from './modules/presence/presence.module';
+import { HouseholdMembersModule } from './modules/household-members/household-members.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { MfaVerifiedGuard } from './common/guards/mfa-verified.guard';
@@ -104,6 +105,7 @@ import { InsuredItem } from './modules/insurance/entities/insured-item.entity';
     WardrobeModule,
     InsuranceModule,
     PresenceModule,
+    HouseholdMembersModule,
   ],
   providers: [
     AnomalyGuard,

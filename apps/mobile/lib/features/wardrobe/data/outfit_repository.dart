@@ -8,8 +8,14 @@ class OutfitRepository {
   final Dio _dio;
   static const String _path = 'wardrobe/outfits';
 
-  Future<List<OutfitModel>> getOutfits() async {
-    final Response<Map<String, dynamic>> response = await _dio.get<Map<String, dynamic>>(_path);
+  Future<List<OutfitModel>> getOutfits({String? ownerMemberId}) async {
+    final Response<Map<String, dynamic>> response = await _dio.get<Map<String, dynamic>>(
+      _path,
+      queryParameters: {
+        if (ownerMemberId != null && ownerMemberId.isNotEmpty)
+          'ownerMemberId': ownerMemberId,
+      },
+    );
     final dynamic data = _unwrapData(response);
     if (data is! List) return <OutfitModel>[];
     return data

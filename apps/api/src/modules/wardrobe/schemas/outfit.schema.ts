@@ -26,6 +26,9 @@ export class Outfit {
   @Prop({ type: [String], default: [] })
   photos!: string[];
 
+  @Prop({ type: String, default: null, index: true })
+  ownerMemberId?: string | null;
+
   @Prop({ required: true })
   createdBy!: string;
 }
@@ -33,3 +36,4 @@ export class Outfit {
 export const OutfitSchema = SchemaFactory.createForClass(Outfit);
 
 OutfitSchema.index({ tenantId: 1, createdAt: -1 });
+OutfitSchema.index({ tenantId: 1, ownerMemberId: 1, createdAt: -1 });

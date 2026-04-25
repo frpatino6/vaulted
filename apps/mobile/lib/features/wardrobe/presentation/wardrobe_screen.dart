@@ -6,6 +6,8 @@ import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/app_bottom_nav.dart';
 import '../../inventory/data/models/item_model.dart';
+import '../../household_members/data/models/household_member_model.dart';
+import '../../household_members/domain/household_members_notifier.dart';
 import '../data/wardrobe_stats_repository.dart';
 import '../domain/wardrobe_notifier.dart';
 import '../domain/wardrobe_stats_provider.dart';
@@ -45,6 +47,7 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
   String _selectedType = 'all';
   String _selectedCleaningStatus = 'all';
   String _selectedSeason = 'all';
+  String? _selectedMemberId;
 
   @override
   void initState() {
@@ -61,6 +64,9 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
     );
     final AsyncValue<WardrobeStatsModel> statsState = ref.watch(
       wardrobeStatsProvider,
+    );
+    final AsyncValue<List<HouseholdMemberModel>> membersState = ref.watch(
+      householdMembersNotifierProvider,
     );
 
     return Scaffold(
@@ -92,6 +98,12 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
               ),
             ),
             _WardrobeStatsBar(state: statsState),
+            _MemberFilterRow(
+              membersState: membersState,
+              selectedMemberId: _selectedMemberId,
+              onSelected:
+                  (String? value) => setState(() => _selectedMemberId = value),
+            ),
             _FiltersRow(
               values: _typeFilters,
               selected: _selectedType,
@@ -184,7 +196,9 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
           attrs.cleaningStatus == _selectedCleaningStatus;
       final bool matchesSeason =
           _selectedSeason == 'all' || attrs.season == _selectedSeason;
-      return matchesType && matchesCleaning && matchesSeason;
+      final bool matchesMember =
+          _selectedMemberId == null || attrs.ownerMemberId == _selectedMemberId;
+      return matchesType && matchesCleaning && matchesSeason && matchesMember;
     }).toList();
   }
 

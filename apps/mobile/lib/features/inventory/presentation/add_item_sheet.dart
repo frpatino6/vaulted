@@ -9,6 +9,8 @@ import '../../properties/data/models/floor_model.dart';
 import '../../properties/data/models/room_model.dart';
 import '../../properties/data/models/room_section_model.dart';
 import '../../wardrobe/data/models/wardrobe_attributes.dart';
+import '../../household_members/data/models/household_member_model.dart';
+import '../../household_members/domain/household_members_notifier.dart';
 import '../data/item_repository_provider.dart';
 import '../domain/item_list_notifier.dart';
 import 'assign_location_sheet.dart';
@@ -224,6 +226,8 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final members = ref.watch(householdMembersNotifierProvider).valueOrNull ??
+        const <HouseholdMemberModel>[];
     final hasFloors = (widget.floors?.isNotEmpty) ?? false;
     final roomIsChangeable = hasFloors;
 
@@ -348,7 +352,10 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
                 ),
                 if (_category == 'wardrobe') ...[
                   const SizedBox(height: AppSpacing.lg),
-                  _WardrobeFieldsSection(key: _wardrobeSectionKey),
+                  _WardrobeFieldsSection(
+                    key: _wardrobeSectionKey,
+                    members: members,
+                  ),
                 ],
                 const SizedBox(height: AppSpacing.md),
                 TextFormField(
@@ -672,7 +679,9 @@ class _LocationSection extends StatelessWidget {
 // ── Wardrobe fields (unchanged) ────────────────────────────────────────────
 
 class _WardrobeFieldsSection extends StatefulWidget {
-  const _WardrobeFieldsSection({super.key});
+  const _WardrobeFieldsSection({super.key, required this.members});
+
+  final List<HouseholdMemberModel> members;
 
   @override
   State<_WardrobeFieldsSection> createState() => _WardrobeFieldsSectionState();
@@ -705,6 +714,13 @@ class _WardrobeFieldsSectionState extends State<_WardrobeFieldsSection> {
   final _sizeController = TextEditingController();
   final _colorController = TextEditingController();
   final _materialController = TextEditingController();
+  String? _ownerMemberId;
+
+  @override
+  void initState() {
+    super.initState();
+    _ownerMemberId = null;
+  }
 
   WardrobeAttributes get value => WardrobeAttributes(
     type: _type,
@@ -714,6 +730,7 @@ class _WardrobeFieldsSectionState extends State<_WardrobeFieldsSection> {
     material: _trimOrNull(_materialController.text),
     season: _season,
     cleaningStatus: _cleaningStatus,
+    ownerMemberId: _ownerMemberId,
   );
 
   String? _trimOrNull(String value) {
@@ -744,6 +761,25 @@ class _WardrobeFieldsSectionState extends State<_WardrobeFieldsSection> {
           ),
         ),
         const SizedBox(height: AppSpacing.sm),
+        DropdownButtonFormField<String>(
+          initialValue: _ownerMemberId,
+          decoration: const InputDecoration(labelText: 'Belongs to (optional)'),
+          dropdownColor: AppColors.surfaceVariant,
+          items: [
+            const DropdownMenuItem<String>(
+              value: null,
+              child: Text('Unassigned'),
+            ),
+            ...widget.members.map(
+              (member) => DropdownMenuItem<String>(
+                value: member.id,
+                child: Text(member.name),
+              ),
+            ),
+          ],
+          onChanged: (value) => setState(() => _ownerMemberId = value),
+        ),
+        const SizedBox(height: AppSpacing.md),
         DropdownButtonFormField<String>(
           initialValue: _type,
           decoration: const InputDecoration(labelText: 'Type'),

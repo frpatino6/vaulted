@@ -66,6 +66,26 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                   onTap: () => context.push('/settings/users'),
                 ),
+                const Divider(color: Colors.white10, height: 1),
+                ListTile(
+                  tileColor: Colors.transparent,
+                  leading: Icon(
+                    Icons.family_restroom_outlined,
+                    color: AppColors.accent,
+                    size: 24,
+                  ),
+                  title: Text(
+                    'Household members',
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: AppColors.onBackground,
+                    ),
+                  ),
+                  trailing: const Icon(
+                    Icons.chevron_right,
+                    color: AppColors.onSurfaceVariant,
+                  ),
+                  onTap: () => context.push('/settings/household-members'),
+                ),
               ],
             ),
             const SizedBox(height: AppSpacing.lg),
