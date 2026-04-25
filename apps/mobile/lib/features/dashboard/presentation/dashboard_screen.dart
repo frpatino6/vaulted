@@ -699,7 +699,7 @@ class _StatsSection extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'PORTFOLIO OVERVIEW',
+          'WARDROBE OVERVIEW',
           style: Theme.of(context).textTheme.labelSmall?.copyWith(
             color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
             fontSize: 10,
@@ -707,26 +707,32 @@ class _StatsSection extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: AppSpacing.sm),
-        Row(
+        GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisSpacing: AppSpacing.sm,
+          mainAxisSpacing: AppSpacing.sm,
+          childAspectRatio: 1.5,
           children: [
-            if (canSeeValues) ...[
-              Expanded(
-                child: _StatCard(
-                  label: 'Total Value',
-                  value: isPrivate ? '●●●●●' : _currency.format(data.totalValuation),
-                  icon: Icons.account_balance_outlined,
-                  highlight: true,
-                  onTap: () => context.push('/assets'),
-                ),
+            if (canSeeValues)
+              _OverviewCard(
+                icon: Icons.diamond_outlined,
+                value: isPrivate ? '●●●●●' : _currency.format(data.totalValuation),
+                label: 'Total Value',
+                valueColor: AppColors.accent,
+                iconColor: AppColors.accent,
+                borderColor: AppColors.accent.withValues(alpha: 0.3),
+                onTap: () => context.push('/assets'),
               ),
-              const SizedBox(width: AppSpacing.sm),
-            ],
-            Expanded(
-              child: _StatCard(
-                label: 'Total Items',
-                value: '${data.totalItems}',
-                icon: Icons.inventory_2_outlined,
-              ),
+            _OverviewCard(
+              icon: Icons.inventory_2_outlined,
+              value: '${data.totalItems}',
+              label: 'Total Items',
+              valueColor: AppColors.onBackground,
+              iconColor: AppColors.onSurfaceVariant,
+              borderColor: AppColors.onSurfaceVariant.withValues(alpha: 0.12),
+              onTap: () => context.push('/assets'),
             ),
           ],
         ),
@@ -739,85 +745,68 @@ class _StatsSection extends ConsumerWidget {
   }
 }
 
-class _StatCard extends StatelessWidget {
-  const _StatCard({
-    required this.label,
-    required this.value,
+class _OverviewCard extends StatelessWidget {
+  const _OverviewCard({
     required this.icon,
-    this.highlight = false,
+    required this.value,
+    required this.label,
+    required this.valueColor,
+    required this.iconColor,
+    required this.borderColor,
     this.onTap,
   });
 
-  final String label;
-  final String value;
   final IconData icon;
-  final bool highlight;
+  final String value;
+  final String label;
+  final Color valueColor;
+  final Color iconColor;
+  final Color borderColor;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
+    return Ink(
       decoration: BoxDecoration(
         color: AppColors.surfaceVariant,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color:
-              highlight
-                  ? AppColors.accent.withValues(alpha: 0.3)
-                  : AppColors.onSurfaceVariant.withValues(alpha: 0.1),
+        border: Border.all(color: borderColor),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        splashColor: AppColors.accent.withValues(alpha: 0.08),
+        highlightColor: AppColors.accent.withValues(alpha: 0.04),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 22, color: iconColor),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                value,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: valueColor,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 22,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: AppColors.onSurfaceVariant,
+                  fontSize: 10,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            icon,
-            size: 20,
-            color: highlight ? AppColors.accent : AppColors.onSurfaceVariant,
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: highlight ? AppColors.accent : AppColors.onBackground,
-              fontWeight: FontWeight.w700,
-              fontSize: 22,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: AppColors.onSurfaceVariant,
-              fontSize: 10,
-            ),
-          ),
-          if (onTap != null) ...[
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                Text(
-                  'View all',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: AppColors.accent.withValues(alpha: 0.7),
-                    letterSpacing: 0.3,
-                  ),
-                ),
-                const SizedBox(width: 2),
-                Icon(
-                  Icons.arrow_forward_ios_rounded,
-                  size: 8,
-                  color: AppColors.accent.withValues(alpha: 0.7),
-                ),
-              ],
-            ),
-          ],
-        ],
-      ),
       ),
     );
   }
