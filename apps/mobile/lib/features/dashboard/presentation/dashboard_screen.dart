@@ -737,7 +737,7 @@ class _StatsSection extends ConsumerWidget {
           ],
         ),
         if (data.itemsByStatus.isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: 16.0),
           _StatusRow(itemsByStatus: data.itemsByStatus),
         ],
       ],
@@ -798,10 +798,11 @@ class _OverviewCard extends StatelessWidget {
               const SizedBox(height: 2),
               Text(
                 label,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: AppColors.onSurfaceVariant,
-                  fontSize: 10,
-                  letterSpacing: 0.5,
+                style: const TextStyle(
+                  color: Colors.white54,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w400,
+                  letterSpacing: 0.3,
                 ),
               ),
             ],
