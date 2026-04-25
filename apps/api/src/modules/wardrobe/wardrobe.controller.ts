@@ -11,7 +11,6 @@ import {
   Query,
   Req,
 } from '@nestjs/common';
-import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -25,7 +24,6 @@ import { CreateOutfitDto } from './dto/create-outfit.dto';
 import { UpdateOutfitDto } from './dto/update-outfit.dto';
 import { WardrobeService } from './wardrobe.service';
 
-@ApiTags('wardrobe')
 @Controller('wardrobe')
 export class WardrobeController {
   constructor(
@@ -238,17 +236,6 @@ export class WardrobeController {
 
   @Roles(Role.OWNER, Role.MANAGER)
   @Get('at-laundry')
-  @ApiOperation({
-    summary: 'List all items currently at the dry cleaner',
-    description:
-      'Returns wardrobe items with no returnedDate, grouped by property. Items exceeding thresholdDays are flagged as overdue.',
-  })
-  @ApiQuery({
-    name: 'thresholdDays',
-    required: false,
-    type: Number,
-    description: 'Days before an item is considered overdue (default: 7)',
-  })
   getAtLaundry(
     @CurrentUser() user: JwtPayload,
     @Query() query: AtLaundryQueryDto,
@@ -261,7 +248,6 @@ export class WardrobeController {
 
   @Roles(Role.OWNER, Role.MANAGER)
   @Get('stats')
-  @ApiOperation({ summary: 'Get wardrobe statistics for the tenant' })
   getStats(@CurrentUser() user: JwtPayload) {
     return this.wardrobeService.getStats(user.tenantId);
   }
