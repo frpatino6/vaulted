@@ -831,47 +831,37 @@ class _StatusRow extends StatelessWidget {
 
     if (entries.isEmpty) return const SizedBox.shrink();
 
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.sm,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceVariant,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppColors.onSurfaceVariant.withValues(alpha: 0.1),
-        ),
-      ),
-      child: Wrap(
-        spacing: AppSpacing.md,
-        runSpacing: AppSpacing.xs,
-        children:
-            entries.map((e) {
-              final color = _statusColors[e.key] ?? AppColors.onSurfaceVariant;
-              return Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      color: color,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${e.value} ${e.key}',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: AppColors.onSurface,
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
-              );
-            }).toList(),
-      ),
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: entries.map((e) {
+        final dotColor = _statusColors[e.key] ?? AppColors.onSurfaceVariant;
+        final label = e.key[0].toUpperCase() + e.key.substring(1);
+        return Chip(
+          avatar: Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: dotColor,
+              shape: BoxShape.circle,
+            ),
+          ),
+          label: Text('${e.value} $label'),
+          backgroundColor: AppColors.surface,
+          side: BorderSide(
+            color: AppColors.onSurfaceVariant.withValues(alpha: 0.2),
+          ),
+          labelStyle: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: AppColors.onSurface,
+            fontSize: 11,
+            fontWeight: FontWeight.w400,
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 2),
+          labelPadding: const EdgeInsets.only(left: 2, right: 4),
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          visualDensity: VisualDensity.compact,
+        );
+      }).toList(),
     );
   }
 }
