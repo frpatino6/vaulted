@@ -57,9 +57,8 @@ class _MaintenanceListScreenState extends ConsumerState<MaintenanceListScreen>
         !_initialLoadCompleted &&
         !state.hasError &&
         (state.isLoading || (state.valueOrNull?.isEmpty ?? true));
-    final renderState = showSkeleton
-        ? const AsyncLoading<List<MaintenanceModel>>()
-        : state;
+    final renderState =
+        showSkeleton ? const AsyncLoading<List<MaintenanceModel>>() : state;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -79,19 +78,15 @@ class _MaintenanceListScreenState extends ConsumerState<MaintenanceListScreen>
           controller: _tabController,
           isScrollable: true,
           tabAlignment: TabAlignment.start,
+          indicatorColor: AppColors.accent,
           labelColor: AppColors.accent,
           unselectedLabelColor: AppColors.onSurfaceVariant,
-          labelStyle:
-              AppTypography.labelLarge.copyWith(fontWeight: FontWeight.w600),
-          unselectedLabelStyle: AppTypography.labelLarge,
-          indicatorColor: AppColors.accent,
-          indicatorWeight: 1.5,
-          dividerColor: AppColors.onSurfaceVariant.withValues(alpha: 0.10),
+          labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
           tabs: [
-            _tab('Overdue', overdue.length, _urgentDot),
-            _tab('This Week', dueSoon.length, _soonDot),
-            _tab('Upcoming', upcoming.length, null),
-            _tab('Completed', completed.length, null),
+            Tab(text: overdue.isEmpty ? 'Overdue' : 'Overdue  ${overdue.length}'),
+            Tab(text: dueSoon.isEmpty ? 'This Week' : 'This Week  ${dueSoon.length}'),
+            Tab(text: upcoming.isEmpty ? 'Upcoming' : 'Upcoming  ${upcoming.length}'),
+            Tab(text: 'Completed'),
           ],
         ),
       ),
@@ -99,297 +94,344 @@ class _MaintenanceListScreenState extends ConsumerState<MaintenanceListScreen>
         data: (_) => TabBarView(
           controller: _tabController,
           children: [
-            _list(overdue, tab: _tabs[0]),
-            _list(dueSoon, tab: _tabs[1]),
-            _list(upcoming, tab: _tabs[2]),
-            _list(completed, tab: _tabs[3]),
-          ],
-        ),
-        loading: () => const AppScreenSkeleton(showHeader: false),
-        error: (e, _) => _ErrorState(
-          message: MaintenanceListNotifier.errorMessage(e),
-          onRetry: () =>
-              ref.read(maintenanceListNotifierProvider.notifier).load(),
-        ),
-      ),
-    );
-  }
-
-  static const _urgentDot = Color(0xFFCF6679);
-  static const _soonDot = Color(0xFFD4AF37);
-
-  Tab _tab(String label, int count, Color? dotColor) {
-    return Tab(
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (dotColor != null && count > 0) ...[
-            Container(
-              width: 6,
-              height: 6,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: dotColor,
-              ),
+            _MaintenanceList(
+              records: overdue,
+              emptyMessage: 'All caught up',
+              emptySubtitle: 'No overdue maintenance at this time.',
+              onRefresh: () =>
+                  ref.read(maintenanceListNotifierProvider.notifier).load(),
             ),
-            const SizedBox(width: 5),
+            _MaintenanceList(
+              records: dueSoon,
+              emptyMessage: 'Nothing due this week',
+              emptySubtitle: 'Upcoming tasks will appear here automatically.',
+              onRefresh: () =>
+                  ref.read(maintenanceListNotifierProvider.notifier).load(),
+            ),
+            _MaintenanceList(
+              records: upcoming,
+              emptyMessage: 'Schedule looks clear',
+              emptySubtitle: 'Add tasks from item details to plan ahead.',
+              onRefresh: () =>
+                  ref.read(maintenanceListNotifierProvider.notifier).load(),
+            ),
+            _MaintenanceList(
+              records: completed,
+              emptyMessage: 'No history yet',
+              emptySubtitle: 'Completed maintenance will appear here.',
+              onRefresh: () =>
+                  ref.read(maintenanceListNotifierProvider.notifier).load(),
+            ),
           ],
-          Text(count > 0 ? '$label  $count' : label),
-        ],
-      ),
-    );
-  }
-
-  Widget _list(List<MaintenanceModel> records, {required String tab}) {
-    if (records.isEmpty) return _EmptyState(tab: tab);
-
-    return RefreshIndicator(
-      color: AppColors.accent,
-      onRefresh: () =>
-          ref.read(maintenanceListNotifierProvider.notifier).load(),
-      child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(
-            AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.xxl),
-        itemCount: records.length,
-        itemBuilder: (context, index) {
-          return _MaintenanceRow(
-            record: records[index],
-            showDivider: index < records.length - 1,
-            onTap: () => context.push(
-                '/maintenance/${records[index].id}',
-                extra: records[index]),
-          );
-        },
+        ),
+        loading: () => const AppScreenSkeleton(showHeader: false, cardCount: 5),
+        error: (e, _) => Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline,
+                  color: AppColors.error, size: 40),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                MaintenanceListNotifier.errorMessage(e),
+                style:
+                    const TextStyle(color: AppColors.onSurfaceVariant),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              TextButton(
+                onPressed: () =>
+                    ref.read(maintenanceListNotifierProvider.notifier).load(),
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 }
 
 // ---------------------------------------------------------------------------
-// Row item — each maintenance record
+// List + empty state
 // ---------------------------------------------------------------------------
 
-class _MaintenanceRow extends StatelessWidget {
-  const _MaintenanceRow({
-    required this.record,
-    required this.onTap,
-    required this.showDivider,
+class _MaintenanceList extends StatelessWidget {
+  const _MaintenanceList({
+    required this.records,
+    required this.emptyMessage,
+    required this.emptySubtitle,
+    required this.onRefresh,
   });
 
-  final MaintenanceModel record;
-  final VoidCallback onTap;
-  final bool showDivider;
+  final List<MaintenanceModel> records;
+  final String emptyMessage;
+  final String emptySubtitle;
+  final Future<void> Function() onRefresh;
 
   @override
   Widget build(BuildContext context) {
-    final accentColor = _accentColor(record);
-    final dt = DateTime.tryParse(record.scheduledDate);
-    final dateLabel = dt != null ? DateFormat.yMMMd().format(dt) : record.scheduledDate;
-    final urgencyTag = _urgencyTag(dt);
+    if (records.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.xl),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.build_circle_outlined,
+                size: 56,
+                color: AppColors.onSurfaceVariant.withValues(alpha: 0.3),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                emptyMessage,
+                style: const TextStyle(
+                  color: AppColors.onBackground,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                emptySubtitle,
+                style: const TextStyle(
+                  color: AppColors.onSurfaceVariant,
+                  fontSize: 14,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
-    return Column(
-      children: [
-        InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(4),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Colored dot indicator
-                Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: Container(
-                    width: 7,
-                    height: 7,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: accentColor,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 14),
-                // Content
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        record.title,
-                        style: AppTypography.bodyLarge.copyWith(
-                          color: AppColors.onBackground,
-                          fontWeight: FontWeight.w500,
-                          height: 1.35,
-                        ),
-                      ),
-                      const SizedBox(height: 5),
-                      Wrap(
-                        spacing: 10,
-                        runSpacing: 3,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          Text(
-                            dateLabel,
-                            style: AppTypography.bodySmall.copyWith(
-                              color: AppColors.onSurfaceVariant,
-                            ),
-                          ),
-                          if (urgencyTag != null)
-                            Text(
-                              urgencyTag,
-                              style: AppTypography.labelSmall.copyWith(
-                                color: accentColor,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          if (record.isRecurring &&
-                              record.recurrenceIntervalDays != null)
-                            Text(
-                              'Every ${record.recurrenceIntervalDays}d',
-                              style: AppTypography.bodySmall.copyWith(
-                                color: AppColors.onSurfaceVariant,
-                              ),
-                            ),
-                          if (record.isAiSuggested &&
-                              record.aiRiskScore != null)
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.auto_awesome_rounded,
-                                  size: 11,
-                                  color: AppColors.accentLight,
-                                ),
-                                const SizedBox(width: 3),
-                                Text(
-                                  'Risk ${record.aiRiskScore!.toInt()}%',
-                                  style: AppTypography.labelSmall.copyWith(
-                                    color: AppColors.accentLight,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Icon(
-                  Icons.chevron_right_rounded,
-                  size: 16,
-                  color: AppColors.onSurfaceVariant.withValues(alpha: 0.35),
-                ),
-              ],
+    return RefreshIndicator(
+      color: AppColors.accent,
+      backgroundColor: AppColors.surfaceVariant,
+      onRefresh: onRefresh,
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(
+            AppSpacing.md, AppSpacing.sm, AppSpacing.md, 120),
+        itemCount: records.length,
+        itemBuilder: (context, i) => Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+          child: MaintenanceCard(
+            record: records[i],
+            onTap: () => context.push(
+              '/maintenance/${records[i].id}',
+              extra: records[i],
             ),
           ),
         ),
-        if (showDivider)
-          Divider(
-            height: 1,
-            thickness: 1,
-            indent: 21,
-            color: AppColors.onSurfaceVariant.withValues(alpha: 0.08),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Card — matches MovementCard conventions
+// ---------------------------------------------------------------------------
+
+class MaintenanceCard extends StatelessWidget {
+  const MaintenanceCard({super.key, required this.record, required this.onTap});
+
+  final MaintenanceModel record;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final info = _statusInfo(record);
+    final icon = _icon(record);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceVariant,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: info.color.withValues(alpha: 0.2)),
           ),
-      ],
+          child: Row(
+            children: [
+              // Icon container
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: info.color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: info.color, size: 22),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              // Content
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      record.title,
+                      style: const TextStyle(
+                        color: AppColors.onBackground,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        Text(
+                          _shortDate(record.scheduledDate),
+                          style: TextStyle(
+                            color: record.isOverdue || record.isUrgent
+                                ? info.color
+                                : AppColors.onSurfaceVariant,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        if (_urgencyLabel(record) != null) ...[
+                          Text(
+                            ' · ${_urgencyLabel(record)}',
+                            style: TextStyle(
+                              color: info.color,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    if (record.isRecurring ||
+                        (record.isAiSuggested &&
+                            record.aiRiskScore != null)) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          if (record.isRecurring) ...[
+                            Icon(Icons.repeat_rounded,
+                                size: 11,
+                                color: AppColors.onSurfaceVariant),
+                            const SizedBox(width: 3),
+                            Text(
+                              'Every ${record.recurrenceIntervalDays ?? '?'}d',
+                              style: const TextStyle(
+                                color: AppColors.onSurfaceVariant,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                          if (record.isAiSuggested &&
+                              record.aiRiskScore != null) ...[
+                            if (record.isRecurring)
+                              const SizedBox(width: AppSpacing.sm),
+                            const Icon(Icons.auto_awesome_rounded,
+                                size: 11, color: AppColors.accentLight),
+                            const SizedBox(width: 3),
+                            Text(
+                              'Risk ${record.aiRiskScore!.toInt()}%',
+                              style: const TextStyle(
+                                color: AppColors.accentLight,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              // Right: chip + short date
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  _StatusChip(info: info),
+                  const SizedBox(height: 6),
+                  Text(
+                    _veryShortDate(record.scheduledDate),
+                    style: const TextStyle(
+                      color: AppColors.onSurfaceVariant,
+                      fontSize: 10,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
-  Color _accentColor(MaintenanceModel r) {
-    if (r.isOverdue) return const Color(0xFFCF6679);
-    if (r.isUrgent) return const Color(0xFFE07B39);
-    if (r.isDueSoon) return const Color(0xFFD4AF37);
-    if (r.isCompleted) return const Color(0xFF6DB86F);
-    return AppColors.onSurfaceVariant;
+  IconData _icon(MaintenanceModel r) {
+    if (r.isCompleted) return Icons.check_circle_outline_rounded;
+    if (r.isAiSuggested) return Icons.auto_awesome_rounded;
+    if (r.isRecurring) return Icons.repeat_rounded;
+    return Icons.build_outlined;
   }
 
-  String? _urgencyTag(DateTime? dt) {
+  String _shortDate(String iso) {
+    final dt = DateTime.tryParse(iso);
+    if (dt == null) return iso;
+    return DateFormat.yMMMd().format(dt);
+  }
+
+  String _veryShortDate(String iso) {
+    final dt = DateTime.tryParse(iso);
+    if (dt == null) return '';
+    return DateFormat('MMM d').format(dt);
+  }
+
+  String? _urgencyLabel(MaintenanceModel r) {
+    final dt = DateTime.tryParse(r.scheduledDate);
     if (dt == null) return null;
     final now = DateTime.now();
-    if (record.isOverdue) {
+    if (r.isOverdue) {
       final days = now.difference(dt).inDays;
-      return days <= 0 ? 'Due today' : '${days}d overdue';
+      return days <= 0 ? 'due today' : '${days}d overdue';
     }
     final diff = dt.difference(now).inDays;
-    if (diff == 0) return 'Due today';
-    if (diff == 1) return 'Tomorrow';
-    if (diff <= 7) return 'In $diff days';
+    if (diff == 0) return 'due today';
+    if (diff == 1) return 'tomorrow';
+    if (diff <= 7) return 'in $diff days';
     return null;
   }
 }
 
 // ---------------------------------------------------------------------------
-// Empty state
+// Status chip — matches movements _StatusChip exactly
 // ---------------------------------------------------------------------------
 
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.tab});
+class _StatusChip extends StatelessWidget {
+  const _StatusChip({required this.info});
 
-  final String tab;
+  final _StatusInfo info;
 
   @override
   Widget build(BuildContext context) {
-    final (title, subtitle) = switch (tab) {
-      'Overdue' => (
-          'All caught up',
-          'No overdue maintenance at this time.',
-        ),
-      'This Week' => (
-          'Nothing due this week',
-          'Upcoming tasks will appear here automatically.',
-        ),
-      'Upcoming' => (
-          'Schedule looks clear',
-          'Add tasks from item details to plan ahead.',
-        ),
-      _ => (
-          'No history yet',
-          'Completed maintenance will appear here.',
-        ),
-    };
-
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.xl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: AppColors.accent.withValues(alpha: 0.25),
-                  width: 1,
-                ),
-              ),
-              child: Icon(
-                Icons.check_rounded,
-                size: 22,
-                color: AppColors.accent.withValues(alpha: 0.5),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: AppTypography.titleSerif.copyWith(
-                color: AppColors.onBackground,
-                fontSize: 17,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              subtitle,
-              textAlign: TextAlign.center,
-              style: AppTypography.bodySmall.copyWith(
-                color: AppColors.onSurfaceVariant,
-              ),
-            ),
-          ],
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: info.color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: info.color.withValues(alpha: 0.3)),
+      ),
+      child: Text(
+        info.label,
+        style: TextStyle(
+          color: info.color,
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.4,
         ),
       ),
     );
@@ -397,37 +439,20 @@ class _EmptyState extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Error state
+// Status helpers
 // ---------------------------------------------------------------------------
 
-class _ErrorState extends StatelessWidget {
-  const _ErrorState({required this.message, required this.onRetry});
+class _StatusInfo {
+  const _StatusInfo(this.color, this.label);
+  final Color color;
+  final String label;
+}
 
-  final String message;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: AppColors.error),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            FilledButton.tonalIcon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Retry'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+_StatusInfo _statusInfo(MaintenanceModel r) {
+  if (r.isOverdue) return const _StatusInfo(Color(0xFFCF6679), 'OVERDUE');
+  if (r.isUrgent) return const _StatusInfo(Color(0xFFE07B39), 'URGENT');
+  if (r.isDueSoon) return const _StatusInfo(Color(0xFFD4AF37), 'DUE SOON');
+  if (r.isCompleted) return const _StatusInfo(Color(0xFF6DB86F), 'DONE');
+  if (r.isCancelled) return const _StatusInfo(Color(0xFF9E9E9E), 'CANCELLED');
+  return const _StatusInfo(Color(0xFF8A8AA8), 'PENDING');
 }
