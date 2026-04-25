@@ -70,9 +70,9 @@ class _MaintenanceListScreenState extends ConsumerState<MaintenanceListScreen>
         scrolledUnderElevation: 0,
         title: Text(
           'Maintenance',
-          style: AppTypography.titleSerif.copyWith(
+          style: AppTypography.displaySerif.copyWith(
             color: AppColors.onBackground,
-            fontSize: 20,
+            fontSize: 22,
           ),
         ),
         bottom: TabBar(
@@ -378,6 +378,7 @@ class _EmptyState extends StatelessWidget {
               textAlign: TextAlign.center,
               style: AppTypography.titleSerif.copyWith(
                 color: AppColors.onBackground,
+                fontSize: 17,
               ),
             ),
             const SizedBox(height: AppSpacing.xs),
