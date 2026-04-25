@@ -497,6 +497,90 @@ class _WardrobeEmptyState extends StatelessWidget {
   }
 }
 
+class _MemberFilterRow extends StatelessWidget {
+  const _MemberFilterRow({
+    required this.membersState,
+    required this.selectedMemberId,
+    required this.onSelected,
+  });
+
+  final AsyncValue<List<HouseholdMemberModel>> membersState;
+  final String? selectedMemberId;
+  final ValueChanged<String?> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final List<HouseholdMemberModel> members =
+        membersState.valueOrNull?.where((m) => m.isActive).toList() ?? [];
+
+    if (members.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            _MemberChip(
+              label: 'Everyone',
+              isSelected: selectedMemberId == null,
+              onTap: () => onSelected(null),
+            ),
+            ...members.map(
+              (HouseholdMemberModel m) => _MemberChip(
+                label: m.name,
+                isSelected: selectedMemberId == m.id,
+                onTap: () => onSelected(m.id),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MemberChip extends StatelessWidget {
+  const _MemberChip({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: AppSpacing.sm),
+      child: FilterChip(
+        visualDensity: VisualDensity.compact,
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        labelPadding: const EdgeInsets.symmetric(horizontal: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
+        label: Text(label),
+        selected: isSelected,
+        showCheckmark: false,
+        selectedColor: AppColors.accent.withValues(alpha: 0.15),
+        backgroundColor: AppColors.surfaceVariant,
+        side: BorderSide(
+          color: isSelected ? AppColors.accent : Colors.white10,
+          width: 0.5,
+        ),
+        labelStyle: Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: isSelected
+              ? AppColors.accent
+              : AppColors.onBackground.withValues(alpha: 0.85),
+          fontSize: 11,
+        ),
+        onSelected: (_) => onTap(),
+      ),
+    );
+  }
+}
+
 class _StatusDot extends StatelessWidget {
   const _StatusDot({required this.status});
 
