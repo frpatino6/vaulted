@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
@@ -153,7 +154,7 @@ class _MaintenanceListScreenState extends ConsumerState<MaintenanceListScreen>
 }
 
 // ---------------------------------------------------------------------------
-// List + empty state
+// List + empty state — Tarea 3: ConstrainedBox for tablet/web
 // ---------------------------------------------------------------------------
 
 class _MaintenanceList extends StatelessWidget {
@@ -211,17 +212,22 @@ class _MaintenanceList extends StatelessWidget {
       color: AppColors.accent,
       backgroundColor: AppColors.surfaceVariant,
       onRefresh: onRefresh,
-      child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(
-            AppSpacing.md, AppSpacing.sm, AppSpacing.md, 120),
-        itemCount: records.length,
-        itemBuilder: (context, i) => Padding(
-          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-          child: MaintenanceCard(
-            record: records[i],
-            onTap: () => context.push(
-              '/maintenance/${records[i].id}',
-              extra: records[i],
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 800),
+          child: ListView.builder(
+            padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md, AppSpacing.sm, AppSpacing.md, 120),
+            itemCount: records.length,
+            itemBuilder: (context, i) => Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: MaintenanceCard(
+                record: records[i],
+                onTap: () => context.push(
+                  '/maintenance/${records[i].id}',
+                  extra: records[i],
+                ),
+              ),
             ),
           ),
         ),
@@ -231,94 +237,121 @@ class _MaintenanceList extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Card — matches MovementCard conventions
+// Card — Tarea 1 + 2: cleaned subtitle, risk badge, complete action, Slidable
 // ---------------------------------------------------------------------------
 
-class MaintenanceCard extends StatelessWidget {
+class MaintenanceCard extends ConsumerWidget {
   const MaintenanceCard({super.key, required this.record, required this.onTap});
 
   final MaintenanceModel record;
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final info = _statusInfo(record);
-    final icon = _icon(record);
+    final icon = _leadingIcon(record);
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceVariant,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: info.color.withValues(alpha: 0.2)),
+    return Slidable(
+      key: ValueKey(record.id),
+      endActionPane: ActionPane(
+        motion: const DrawerMotion(),
+        extentRatio: 0.45,
+        children: [
+          SlidableAction(
+            onPressed: (_) => context.push(
+              '/maintenance/${record.id}',
+              extra: record,
+            ),
+            backgroundColor: const Color(0xFF2196F3),
+            foregroundColor: Colors.white,
+            icon: Icons.schedule_rounded,
+            label: 'Reschedule',
           ),
-          child: Row(
-            children: [
-              // Icon container
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: info.color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: info.color, size: 22),
+          SlidableAction(
+            onPressed: (_) => ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Snooze coming soon'),
+                duration: Duration(seconds: 2),
               ),
-              const SizedBox(width: AppSpacing.md),
-              // Content
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      record.title,
-                      style: const TextStyle(
-                        color: AppColors.onBackground,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        Text(
-                          _shortDate(record.scheduledDate),
-                          style: TextStyle(
-                            color: record.isOverdue || record.isUrgent
-                                ? info.color
-                                : AppColors.onSurfaceVariant,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        if (_urgencyLabel(record) != null) ...[
-                          Text(
-                            ' · ${_urgencyLabel(record)}',
-                            style: TextStyle(
-                              color: info.color,
-                              fontSize: 12,
+            ),
+            backgroundColor: AppColors.surfaceVariant,
+            foregroundColor: AppColors.onSurface,
+            icon: Icons.snooze_rounded,
+            label: 'Snooze',
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            padding: const EdgeInsets.only(
+              left: AppSpacing.md,
+              top: AppSpacing.md,
+              bottom: AppSpacing.md,
+              right: AppSpacing.xs,
+            ),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceVariant,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: info.color.withValues(alpha: 0.2)),
+            ),
+            child: Row(
+              children: [
+                // Leading icon
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: info.color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, color: info.color, size: 22),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                // Content
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Title row + risk badge
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              record.title,
+                              style: const TextStyle(
+                                color: AppColors.onBackground,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
+                          if (record.isAiSuggested &&
+                              record.aiRiskScore != null) ...[
+                            const SizedBox(width: 6),
+                            _RiskBadge(score: record.aiRiskScore!),
+                          ],
                         ],
-                      ],
-                    ),
-                    if (record.isRecurring ||
-                        (record.isAiSuggested &&
-                            record.aiRiskScore != null)) ...[
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          if (record.isRecurring) ...[
-                            Icon(Icons.repeat_rounded,
-                                size: 11,
-                                color: AppColors.onSurfaceVariant),
+                      ),
+                      const SizedBox(height: 3),
+                      // Subtitle: single clean line
+                      _SubtitleLine(record: record, statusColor: info.color),
+                      // Recurrence tag
+                      if (record.isRecurring) ...[
+                        const SizedBox(height: 3),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.repeat_rounded,
+                              size: 11,
+                              color: AppColors.onSurfaceVariant,
+                            ),
                             const SizedBox(width: 3),
                             Text(
                               'Every ${record.recurrenceIntervalDays ?? '?'}d',
@@ -328,66 +361,147 @@ class MaintenanceCard extends StatelessWidget {
                               ),
                             ),
                           ],
-                          if (record.isAiSuggested &&
-                              record.aiRiskScore != null) ...[
-                            if (record.isRecurring)
-                              const SizedBox(width: AppSpacing.sm),
-                            const Icon(Icons.auto_awesome_rounded,
-                                size: 11, color: AppColors.accentLight),
-                            const SizedBox(width: 3),
-                            Text(
-                              'Risk ${record.aiRiskScore!.toInt()}%',
-                              style: const TextStyle(
-                                color: AppColors.accentLight,
-                                fontSize: 11,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
+                        ),
+                      ],
                     ],
-                  ],
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              // Right: chip + short date
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  _StatusChip(info: info),
-                  const SizedBox(height: 6),
-                  Text(
-                    _veryShortDate(record.scheduledDate),
-                    style: const TextStyle(
-                      color: AppColors.onSurfaceVariant,
-                      fontSize: 10,
-                    ),
                   ),
-                ],
-              ),
-            ],
+                ),
+                // Trailing: quick complete button
+                IconButton(
+                  icon: Icon(
+                    record.isCompleted
+                        ? Icons.check_circle_rounded
+                        : Icons.check_circle_outline_rounded,
+                    color: record.isCompleted
+                        ? AppColors.accent
+                        : AppColors.onSurfaceVariant.withValues(alpha: 0.45),
+                  ),
+                  iconSize: 26,
+                  tooltip: record.isCompleted ? 'Completed' : 'Mark as done',
+                  onPressed: record.isCompleted
+                      ? null
+                      : () async {
+                          await ref
+                              .read(maintenanceListNotifierProvider.notifier)
+                              .complete(record.id);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Marked as completed'),
+                                duration: Duration(seconds: 2),
+                              ),
+                            );
+                          }
+                        },
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  IconData _icon(MaintenanceModel r) {
+  IconData _leadingIcon(MaintenanceModel r) {
     if (r.isCompleted) return Icons.check_circle_outline_rounded;
     if (r.isAiSuggested) return Icons.auto_awesome_rounded;
     if (r.isRecurring) return Icons.repeat_rounded;
     return Icons.build_outlined;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Risk badge — traffic-light coloring for aiRiskScore
+// ---------------------------------------------------------------------------
+
+class _RiskBadge extends StatelessWidget {
+  const _RiskBadge({required this.score});
+
+  final double score;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = score >= 80
+        ? const Color(0xFFCF6679)
+        : score >= 50
+        ? const Color(0xFFFF9800)
+        : const Color(0xFF6DB86F);
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.shield_outlined, size: 12, color: color),
+        const SizedBox(width: 2),
+        Text(
+          '${score.toInt()}%',
+          style: TextStyle(
+            color: color,
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Subtitle line — date + urgency on one clean line (Tarea 1)
+// ---------------------------------------------------------------------------
+
+class _SubtitleLine extends StatelessWidget {
+  const _SubtitleLine({required this.record, required this.statusColor});
+
+  final MaintenanceModel record;
+  final Color statusColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final dateStr = _shortDate(record.scheduledDate);
+    final urgency = _urgencyLabel(record);
+
+    if (urgency == null) {
+      return Text(
+        dateStr,
+        style: const TextStyle(
+          color: AppColors.onSurfaceVariant,
+          fontSize: 12,
+          fontWeight: FontWeight.w400,
+        ),
+      );
+    }
+
+    final dateColor = record.isOverdue || record.isUrgent
+        ? statusColor
+        : AppColors.onSurfaceVariant;
+
+    return RichText(
+      text: TextSpan(
+        children: [
+          TextSpan(
+            text: '$dateStr • ',
+            style: TextStyle(
+              color: dateColor,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          TextSpan(
+            text: urgency,
+            style: TextStyle(
+              color: statusColor,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   String _shortDate(String iso) {
     final dt = DateTime.tryParse(iso);
     if (dt == null) return iso;
-    return DateFormat.yMMMd().format(dt);
-  }
-
-  String _veryShortDate(String iso) {
-    final dt = DateTime.tryParse(iso);
-    if (dt == null) return '';
     return DateFormat('MMM d').format(dt);
   }
 
@@ -397,44 +511,13 @@ class MaintenanceCard extends StatelessWidget {
     final now = DateTime.now();
     if (r.isOverdue) {
       final days = now.difference(dt).inDays;
-      return days <= 0 ? 'due today' : '${days}d overdue';
+      return days <= 0 ? 'due today' : '$days days overdue';
     }
     final diff = dt.difference(now).inDays;
     if (diff == 0) return 'due today';
     if (diff == 1) return 'tomorrow';
     if (diff <= 7) return 'in $diff days';
     return null;
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Status chip — matches movements _StatusChip exactly
-// ---------------------------------------------------------------------------
-
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.info});
-
-  final _StatusInfo info;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: info.color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: info.color.withValues(alpha: 0.3)),
-      ),
-      child: Text(
-        info.label,
-        style: TextStyle(
-          color: info.color,
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.4,
-        ),
-      ),
-    );
   }
 }
 
