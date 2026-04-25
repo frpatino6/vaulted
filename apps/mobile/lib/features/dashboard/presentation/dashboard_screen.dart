@@ -1023,62 +1023,61 @@ class _ActiveOperationsCardState extends ConsumerState<_ActiveOperationsCard> {
             0,
           ),
           child: Container(
-            padding: const EdgeInsets.all(AppSpacing.md),
+            clipBehavior: Clip.hardEdge,
             decoration: BoxDecoration(
               color: AppColors.surfaceVariant,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: const Color(0xFF2196F3).withValues(alpha: 0.3),
+                color: AppColors.onSurfaceVariant.withValues(alpha: 0.1),
               ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'ACTIVE OPERATIONS',
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: AppColors.onSurfaceVariant.withValues(
-                          alpha: 0.6,
-                        ),
-                        fontSize: 10,
-                        letterSpacing: 2.0,
-                      ),
+                GestureDetector(
+                  onTap: () => context.push('/movements'),
+                  behavior: HitTestBehavior.opaque,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.md,
+                      AppSpacing.md,
+                      AppSpacing.md,
+                      0,
                     ),
-                    // D6: TextButton replaces GestureDetector
-                    TextButton(
-                      onPressed: () => context.push('/movements'),
-                      style: TextButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.padded,
-                      ),
-                      child: Text(
-                        'See all →',
-                        style: TextStyle(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'ACTIVE OPERATIONS (${active.length})',
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
+                            fontSize: 10,
+                            letterSpacing: 2.0,
+                          ),
+                        ),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          size: 16,
                           color: AppColors.accent,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
                         ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                ...active.take(2).map((m) => _OperationRow(movement: m)),
-                if (active.length > 2)
-                  Padding(
-                    padding: const EdgeInsets.only(top: AppSpacing.xs),
-                    child: Text(
-                      '+${active.length - 2} more',
-                      style: TextStyle(
-                        color: AppColors.onSurfaceVariant,
-                        fontSize: 11,
-                      ),
+                      ],
                     ),
                   ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                  itemCount: active.length,
+                  separatorBuilder: (_, __) => const Divider(
+                    color: Colors.white10,
+                    height: 1,
+                    indent: AppSpacing.md,
+                    endIndent: AppSpacing.md,
+                  ),
+                  itemBuilder: (_, i) => _OperationListItem(movement: active[i]),
+                ),
               ],
             ),
           ),
@@ -1094,8 +1093,8 @@ class _ActiveOperationsCardState extends ConsumerState<_ActiveOperationsCard> {
   }
 }
 
-class _OperationRow extends StatelessWidget {
-  const _OperationRow({required this.movement});
+class _OperationListItem extends StatelessWidget {
+  const _OperationListItem({required this.movement});
 
   final MovementModel movement;
 
@@ -1104,75 +1103,80 @@ class _OperationRow extends StatelessWidget {
     final typeIcon = _typeIcon(movement.operationType);
     final typeColor = _typeColor(movement.operationType);
     final isDraft = movement.isDraft;
+    final itemCount = movement.items.length;
+    final subtitle = isDraft
+        ? '$itemCount item${itemCount == 1 ? '' : 's'}'
+        : '$itemCount item${itemCount == 1 ? '' : 's'} · ${movement.returnedCount}/$itemCount returned';
 
-    return GestureDetector(
-      onTap:
-          () => context.push(
-            isDraft
-                ? '/movements/${movement.id}/scan'
-                : '/movements/${movement.id}',
+    return InkWell(
+      onTap: () => context.push(
+        isDraft
+            ? '/movements/${movement.id}/scan'
+            : '/movements/${movement.id}',
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.xs,
+        ),
+        leading: Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: typeColor.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(10),
           ),
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-        child: Row(
+          child: Icon(typeIcon, color: typeColor, size: 18),
+        ),
+        title: Row(
           children: [
             Container(
-              width: 32,
-              height: 32,
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: typeColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(typeIcon, color: typeColor, size: 16),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    movement.title,
-                    style: TextStyle(
-                      color: AppColors.onBackground,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Text(
-                    '${movement.items.length} item${movement.items.length == 1 ? '' : 's'} · ${isDraft ? 'Draft' : '${movement.returnedCount}/${movement.items.length} returned'}',
-                    style: TextStyle(
-                      color: AppColors.onSurfaceVariant,
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: (isDraft
-                        ? const Color(0xFF9E9E9E)
-                        : const Color(0xFF2196F3))
-                    .withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(20),
+                color: isDraft
+                    ? const Color(0xFF9E9E9E)
+                    : const Color(0xFF2196F3),
+                borderRadius: BorderRadius.circular(4),
               ),
               child: Text(
                 isDraft ? 'DRAFT' : 'ACTIVE',
-                style: TextStyle(
-                  color:
-                      isDraft
-                          ? const Color(0xFF9E9E9E)
-                          : const Color(0xFF2196F3),
+                style: const TextStyle(
+                  color: Colors.white,
                   fontSize: 9,
                   fontWeight: FontWeight.w700,
-                  letterSpacing: 0.4,
+                  letterSpacing: 0.5,
                 ),
               ),
             ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                movement.title,
+                style: const TextStyle(
+                  color: AppColors.onBackground,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
+        ),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: Text(
+            subtitle,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: AppColors.onSurfaceVariant,
+              fontSize: 11,
+            ),
+          ),
+        ),
+        trailing: const Icon(
+          Icons.chevron_right,
+          size: 16,
+          color: AppColors.onSurfaceVariant,
         ),
       ),
     );
