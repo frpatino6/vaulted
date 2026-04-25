@@ -9,6 +9,7 @@ import '../../inventory/data/models/item_model.dart';
 import '../data/wardrobe_stats_repository.dart';
 import '../domain/wardrobe_notifier.dart';
 import '../domain/wardrobe_stats_provider.dart';
+import 'at_laundry_screen.dart';
 import 'wardrobe_item_card.dart';
 
 class WardrobeScreen extends ConsumerStatefulWidget {
@@ -284,6 +285,12 @@ class _WardrobeStatsBar extends StatelessWidget {
             label: 'At cleaner',
             value: '${stats.atDryCleaner}',
             color: Colors.blue,
+            showOverdueDot: stats.overdueItems > 0,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const AtLaundryScreen(),
+              ),
+            ),
           ),
           _StatChip(label: 'Outfits', value: '${stats.outfitsCount}'),
         ],
@@ -293,43 +300,75 @@ class _WardrobeStatsBar extends StatelessWidget {
 }
 
 class _StatChip extends StatelessWidget {
-  const _StatChip({required this.label, required this.value, this.color});
+  const _StatChip({
+    required this.label,
+    required this.value,
+    this.color,
+    this.onTap,
+    this.showOverdueDot = false,
+  });
 
   final String label;
   final String value;
   final Color? color;
+  final VoidCallback? onTap;
+  final bool showOverdueDot;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: 6,
+    final Widget chip = GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: 6,
+        ),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(999),
+          color: AppColors.surfaceVariant,
+          border: Border.all(color: color ?? Colors.white10),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: AppColors.onSurfaceVariant,
+                  ),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              value,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: color ?? AppColors.onBackground,
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+          ],
+        ),
       ),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(999),
-        color: AppColors.surfaceVariant,
-        border: Border.all(color: color ?? Colors.white10),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            style: Theme.of(
-              context,
-            ).textTheme.labelSmall?.copyWith(color: AppColors.onSurfaceVariant),
-          ),
-          const SizedBox(width: 6),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: color ?? AppColors.onBackground,
-              fontWeight: FontWeight.w600,
+    );
+
+    if (!showOverdueDot) return chip;
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        chip,
+        Positioned(
+          top: -2,
+          right: -2,
+          child: Container(
+            width: 6,
+            height: 6,
+            decoration: const BoxDecoration(
+              color: AppColors.error,
+              shape: BoxShape.circle,
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
