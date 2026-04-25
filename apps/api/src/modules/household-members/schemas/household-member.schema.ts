@@ -20,7 +20,7 @@ export class HouseholdMember {
   @Prop({ default: true })
   isActive!: boolean;
 
-  @Prop({ default: null, index: true })
+  @Prop({ type: String, default: null, index: true })
   linkedUserId?: string | null;
 
   @Prop({ trim: true })
