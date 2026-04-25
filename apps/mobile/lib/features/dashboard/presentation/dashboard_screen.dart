@@ -906,71 +906,69 @@ class _MaintenanceAlertCardState extends ConsumerState<_MaintenanceAlertCard> {
             0,
           ),
           child: Container(
-            padding: const EdgeInsets.all(AppSpacing.md),
             decoration: BoxDecoration(
               color: AppColors.surfaceVariant,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: const Color(0xFFCF6679).withValues(alpha: 0.35),
+                color: AppColors.onSurfaceVariant.withValues(alpha: 0.1),
               ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'MAINTENANCE ALERTS',
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: AppColors.onSurfaceVariant.withValues(
-                          alpha: 0.6,
-                        ),
-                        fontSize: 10,
-                        letterSpacing: 2.0,
-                      ),
+                GestureDetector(
+                  onTap: () => context.push('/maintenance'),
+                  behavior: HitTestBehavior.opaque,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.md,
+                      AppSpacing.md,
+                      AppSpacing.md,
+                      0,
                     ),
-                    // D6: TextButton replaces GestureDetector
-                    TextButton(
-                      onPressed: () => context.push('/maintenance'),
-                      style: TextButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.padded,
-                      ),
-                      child: Text(
-                        'See all →',
-                        style: TextStyle(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'MAINTENANCE ALERTS',
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
+                            fontSize: 10,
+                            letterSpacing: 2.0,
+                          ),
+                        ),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          size: 16,
                           color: AppColors.accent,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
                         ),
-                      ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-                const SizedBox(height: AppSpacing.sm),
-                Row(
-                  children: [
-                    if (overdue > 0) ...[
+                Padding(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  child: Row(
+                    children: [
                       Expanded(
                         child: _AlertCountTile(
                           count: overdue,
                           label: 'Overdue',
                           color: const Color(0xFFCF6679),
+                          onTap: () => context.push('/maintenance'),
                         ),
                       ),
-                      if (dueSoon > 0) const SizedBox(width: AppSpacing.sm),
-                    ],
-                    if (dueSoon > 0)
+                      const SizedBox(width: AppSpacing.sm),
                       Expanded(
                         child: _AlertCountTile(
                           count: dueSoon,
                           label: 'Due this week',
                           color: const Color(0xFFD4AF37),
+                          onTap: () => context.push('/maintenance'),
                         ),
                       ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -1202,54 +1200,64 @@ class _AlertCountTile extends StatelessWidget {
     required this.count,
     required this.label,
     required this.color,
+    this.onTap,
   });
 
   final int count;
   final String label;
   final Color color;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.sm,
-      ),
+    return Ink(
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        splashColor: color.withValues(alpha: 0.15),
+        highlightColor: color.withValues(alpha: 0.06),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
           ),
-          const SizedBox(width: AppSpacing.sm),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
+          child: Row(
             children: [
-              Text(
-                '$count',
-                style: TextStyle(
-                  color: color,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                ),
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
               ),
-              Text(
-                label,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: AppColors.onSurfaceVariant,
-                  fontSize: 10,
-                ),
+              const SizedBox(width: AppSpacing.sm),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '$count',
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  Text(
+                    label,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: AppColors.onSurfaceVariant,
+                      fontSize: 10,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
