@@ -5,11 +5,14 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/app_bottom_nav.dart';
+import '../../household_members/data/models/household_member_model.dart';
+import '../../household_members/domain/household_members_notifier.dart';
 import '../../inventory/data/models/item_model.dart';
 import '../data/wardrobe_stats_repository.dart';
 import '../domain/wardrobe_notifier.dart';
 import '../domain/wardrobe_stats_provider.dart';
 import 'at_laundry_screen.dart';
+import 'wardrobe_filters_sheet.dart';
 import 'wardrobe_item_card.dart';
 
 class WardrobeScreen extends ConsumerStatefulWidget {
@@ -166,39 +169,31 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
   }
 
   void _showAdvancedFilters(BuildContext context) {
-    showModalBottomSheet<void>(
+    final List<HouseholdMemberModel> members = ref
+            .read(householdMembersNotifierProvider)
+            .valueOrNull
+            ?.where((HouseholdMemberModel m) => m.isActive)
+            .toList() ??
+        [];
+
+    showModalBottomSheet<WardrobeFiltersResult>(
       context: context,
-      backgroundColor: AppColors.surfaceVariant,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext ctx) => WardrobeFiltersSheet(
+        members: members,
+        selectedMemberId: _selectedMemberId,
+        selectedSeason: _selectedSeason,
+        selectedCleaningStatus: _selectedCleaningStatus,
       ),
-      builder: (BuildContext ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Advanced Filters',
-                style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
-                      color: AppColors.onBackground,
-                      fontWeight: FontWeight.w600,
-                    ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Text(
-                'Season, member, and cleaning status filters — coming soon.',
-                style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
-                      color: AppColors.onSurfaceVariant,
-                    ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-            ],
-          ),
-        ),
-      ),
-    );
+    ).then((WardrobeFiltersResult? result) {
+      if (result == null || !mounted) return;
+      setState(() {
+        _selectedMemberId = result.memberId;
+        _selectedSeason = result.season;
+        _selectedCleaningStatus = result.cleaningStatus;
+      });
+    });
   }
 
   Future<void> _showCleaningStatusPicker(ItemModel item) async {
