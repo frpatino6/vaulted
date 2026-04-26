@@ -89,14 +89,6 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Align(
-              alignment: Alignment.centerRight,
-              child: OutlinedButton.icon(
-                onPressed: () => context.push('/wardrobe/outfits'),
-                icon: const Icon(Icons.checkroom),
-                label: const Text('Outfits'),
-              ),
-            ),
             _WardrobeStatsBar(state: statsState),
             _MemberFilterRow(
               membersState: membersState,
@@ -285,29 +277,37 @@ class _WardrobeStatsBar extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.md),
-      child: Wrap(
-        spacing: AppSpacing.sm,
-        runSpacing: AppSpacing.sm,
-        children: [
-          _StatChip(label: 'Total', value: '${stats.totalItems}'),
-          _StatChip(
-            label: 'Needs cleaning',
-            value: '${stats.needsCleaning}',
-            color: Colors.amber,
-          ),
-          _StatChip(
-            label: 'At cleaner',
-            value: '${stats.atDryCleaner}',
-            color: Colors.blue,
-            showOverdueDot: stats.overdueItems > 0,
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => const AtLaundryScreen(),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            _StatChip(label: 'Total', value: '${stats.totalItems}'),
+            const SizedBox(width: AppSpacing.sm),
+            _StatChip(
+              label: 'Needs cleaning',
+              value: '${stats.needsCleaning}',
+              glowColor: stats.needsCleaning > 0 ? Colors.amber : null,
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            _StatChip(
+              label: 'At cleaner',
+              value: '${stats.atDryCleaner}',
+              color: Colors.blue,
+              showOverdueDot: stats.overdueItems > 0,
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const AtLaundryScreen(),
+                ),
               ),
             ),
-          ),
-          _StatChip(label: 'Outfits', value: '${stats.outfitsCount}'),
-        ],
+            const SizedBox(width: AppSpacing.sm),
+            _StatChip(
+              label: 'Outfits',
+              value: '${stats.outfitsCount}',
+              onTap: () => context.push('/wardrobe/outfits'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -318,6 +318,7 @@ class _StatChip extends StatelessWidget {
     required this.label,
     required this.value,
     this.color,
+    this.glowColor,
     this.onTap,
     this.showOverdueDot = false,
   });
@@ -325,11 +326,23 @@ class _StatChip extends StatelessWidget {
   final String label;
   final String value;
   final Color? color;
+  final Color? glowColor;
   final VoidCallback? onTap;
   final bool showOverdueDot;
 
   @override
   Widget build(BuildContext context) {
+    final Color borderColor = glowColor ?? color ?? Colors.white10;
+    final List<BoxShadow> shadows = glowColor != null
+        ? [
+            BoxShadow(
+              color: glowColor!.withValues(alpha: 0.45),
+              blurRadius: 8,
+              spreadRadius: 1,
+            ),
+          ]
+        : [];
+
     final Widget chip = GestureDetector(
       onTap: onTap,
       child: Container(
@@ -340,7 +353,8 @@ class _StatChip extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(999),
           color: AppColors.surfaceVariant,
-          border: Border.all(color: color ?? Colors.white10),
+          border: Border.all(color: borderColor, width: 0.8),
+          boxShadow: shadows,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -355,7 +369,7 @@ class _StatChip extends StatelessWidget {
             Text(
               value,
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: color ?? AppColors.onBackground,
+                    color: glowColor ?? color ?? AppColors.onBackground,
                     fontWeight: FontWeight.w600,
                   ),
             ),
