@@ -30,6 +30,21 @@ class HouseholdMembersNotifier extends AsyncNotifier<List<HouseholdMemberModel>>
     await refresh();
   }
 
+  Future<void> updateMember(
+    String id, {
+    String? name,
+    String? relationship,
+    bool? isMinor,
+  }) async {
+    await ref.read(householdMembersRepositoryProvider).updateMember(
+      id,
+      name: name,
+      relationship: relationship,
+      isMinor: isMinor,
+    );
+    await refresh();
+  }
+
   Future<void> archiveMember(String id) async {
     await ref.read(householdMembersRepositoryProvider).archiveMember(id);
     await refresh();

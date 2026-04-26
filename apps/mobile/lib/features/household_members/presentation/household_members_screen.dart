@@ -46,7 +46,11 @@ class HouseholdMembersScreen extends ConsumerWidget {
               padding: const EdgeInsets.all(AppSpacing.md),
               itemBuilder: (context, index) {
                 final member = members[index];
-                return _MemberTile(member: member);
+                return _MemberTile(
+                  member: member,
+                  onEdit: () => _openEditSheet(context, ref, member),
+                  onDelete: () => _confirmDelete(context, ref, member),
+                );
               },
               separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
               itemCount: members.length,
@@ -73,16 +77,77 @@ class HouseholdMembersScreen extends ConsumerWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => const _CreateHouseholdMemberSheet(),
+      builder: (_) => const _MemberFormSheet(),
     );
     ref.invalidate(householdMembersNotifierProvider);
+  }
+
+  Future<void> _openEditSheet(
+    BuildContext context,
+    WidgetRef ref,
+    HouseholdMemberModel member,
+  ) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _MemberFormSheet(member: member),
+    );
+    ref.invalidate(householdMembersNotifierProvider);
+  }
+
+  Future<void> _confirmDelete(
+    BuildContext context,
+    WidgetRef ref,
+    HouseholdMemberModel member,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surfaceVariant,
+        title: const Text('Remove member'),
+        content: Text('Remove ${member.name} from your household members?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await ref
+          .read(householdMembersNotifierProvider.notifier)
+          .archiveMember(member.id);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(HouseholdMembersNotifier.message(e)),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
   }
 }
 
 class _MemberTile extends StatelessWidget {
-  const _MemberTile({required this.member});
+  const _MemberTile({
+    required this.member,
+    required this.onEdit,
+    required this.onDelete,
+  });
 
   final HouseholdMemberModel member;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -110,25 +175,70 @@ class _MemberTile extends StatelessWidget {
             member.isMinor ? 'Minor' : 'Adult',
           ].join(' • '),
         ),
+        trailing: PopupMenuButton<String>(
+          icon: Icon(
+            Icons.more_vert,
+            color: AppColors.onSurfaceVariant.withValues(alpha: 0.7),
+          ),
+          color: AppColors.surfaceVariant,
+          onSelected: (value) {
+            if (value == 'edit') onEdit();
+            if (value == 'delete') onDelete();
+          },
+          itemBuilder: (_) => [
+            PopupMenuItem<String>(
+              value: 'edit',
+              child: Row(
+                children: [
+                  Icon(Icons.edit_outlined, size: 18, color: AppColors.onBackground),
+                  const SizedBox(width: AppSpacing.sm),
+                  const Text('Edit'),
+                ],
+              ),
+            ),
+            PopupMenuItem<String>(
+              value: 'delete',
+              child: Row(
+                children: [
+                  const Icon(Icons.person_remove_outlined, size: 18, color: AppColors.error),
+                  const SizedBox(width: AppSpacing.sm),
+                  Text('Remove', style: TextStyle(color: AppColors.error)),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _CreateHouseholdMemberSheet extends ConsumerStatefulWidget {
-  const _CreateHouseholdMemberSheet();
+class _MemberFormSheet extends ConsumerStatefulWidget {
+  const _MemberFormSheet({this.member});
+
+  final HouseholdMemberModel? member;
 
   @override
-  ConsumerState<_CreateHouseholdMemberSheet> createState() =>
-      _CreateHouseholdMemberSheetState();
+  ConsumerState<_MemberFormSheet> createState() => _MemberFormSheetState();
 }
 
-class _CreateHouseholdMemberSheetState
-    extends ConsumerState<_CreateHouseholdMemberSheet> {
-  final _nameController = TextEditingController();
-  final _relationshipController = TextEditingController();
-  bool _isMinor = false;
+class _MemberFormSheetState extends ConsumerState<_MemberFormSheet> {
+  late final TextEditingController _nameController;
+  late final TextEditingController _relationshipController;
+  late bool _isMinor;
   bool _submitting = false;
+
+  bool get _isEditing => widget.member != null;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.member?.name ?? '');
+    _relationshipController = TextEditingController(
+      text: widget.member?.relationship ?? '',
+    );
+    _isMinor = widget.member?.isMinor ?? false;
+  }
 
   @override
   void dispose() {
@@ -155,14 +265,26 @@ class _CreateHouseholdMemberSheetState
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.onSurfaceVariant.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
             Text(
-              'Add household member',
+              _isEditing ? 'Edit household member' : 'Add household member',
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: AppSpacing.md),
             TextField(
               controller: _nameController,
               decoration: const InputDecoration(labelText: 'Name'),
+              textCapitalization: TextCapitalization.words,
             ),
             const SizedBox(height: AppSpacing.md),
             TextField(
@@ -170,6 +292,7 @@ class _CreateHouseholdMemberSheetState
               decoration: const InputDecoration(
                 labelText: 'Relationship (optional)',
               ),
+              textCapitalization: TextCapitalization.words,
             ),
             const SizedBox(height: AppSpacing.sm),
             SwitchListTile.adaptive(
@@ -189,7 +312,7 @@ class _CreateHouseholdMemberSheetState
                         width: 18,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Text('Save'),
+                    : Text(_isEditing ? 'Save changes' : 'Save'),
               ),
             ),
           ],
@@ -203,17 +326,32 @@ class _CreateHouseholdMemberSheetState
     if (name.isEmpty) return;
     setState(() => _submitting = true);
     try {
-      await ref.read(householdMembersNotifierProvider.notifier).createMember(
-        name: name,
-        relationship: _relationshipController.text.trim(),
-        isMinor: _isMinor,
-      );
+      if (_isEditing) {
+        await ref.read(householdMembersNotifierProvider.notifier).updateMember(
+          widget.member!.id,
+          name: name,
+          relationship: _relationshipController.text.trim(),
+          isMinor: _isMinor,
+        );
+      } else {
+        await ref.read(householdMembersNotifierProvider.notifier).createMember(
+          name: name,
+          relationship: _relationshipController.text.trim(),
+          isMinor: _isMinor,
+        );
+      }
       if (!mounted) return;
       Navigator.of(context).pop();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(HouseholdMembersNotifier.message(e)),
+          backgroundColor: AppColors.error,
+        ),
+      );
     } finally {
-      if (mounted) {
-        setState(() => _submitting = false);
-      }
+      if (mounted) setState(() => _submitting = false);
     }
   }
 }
