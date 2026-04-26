@@ -18,5 +18,12 @@ class HouseholdMembersRepository {
     isMinor: isMinor,
   );
 
+  Future<HouseholdMemberModel> updateMember(
+    String id, {
+    String? name,
+    String? relationship,
+    bool? isMinor,
+  }) => _remote.updateMember(id, name: name, relationship: relationship, isMinor: isMinor);
+
   Future<void> archiveMember(String id) => _remote.archiveMember(id);
 }

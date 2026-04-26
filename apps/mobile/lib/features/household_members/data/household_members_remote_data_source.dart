@@ -56,6 +56,24 @@ class HouseholdMembersRemoteDataSource {
     return HouseholdMemberModel.fromJson(Map<String, dynamic>.from(data as Map));
   }
 
+  Future<HouseholdMemberModel> updateMember(
+    String id, {
+    String? name,
+    String? relationship,
+    bool? isMinor,
+  }) async {
+    final response = await _dio.patch<Map<String, dynamic>>(
+      '$_path/$id',
+      data: {
+        if (name != null) 'name': name,
+        if (relationship != null) 'relationship': relationship,
+        if (isMinor != null) 'isMinor': isMinor,
+      },
+    );
+    final data = _unwrap(response);
+    return HouseholdMemberModel.fromJson(Map<String, dynamic>.from(data as Map));
+  }
+
   Future<void> archiveMember(String id) async {
     await _dio.delete<Map<String, dynamic>>('$_path/$id');
   }
