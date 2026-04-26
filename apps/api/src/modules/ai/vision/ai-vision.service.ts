@@ -324,6 +324,13 @@ Rules:
 - tags: REQUIRED. Always return a JSON array with 3 to 5 short lowercase tags (e.g. ["samsung", "4k", "smart-tv", "television", "electronics"]). Use brand, material, style, color, or key feature as tags. Never return an empty array.
 - suggestedRoomId must be one of the id values listed above (e.g. "room_0"), or null if no rooms provided.
 - If no invoice image, set invoiceData to null.
+- WARDROBE RULE: When category is "wardrobe", the attributes object MUST include these fields (use null only if truly impossible to determine):
+  * type: "clothing" | "footwear" | "accessories" | "jewelry_watches"
+  * color: string (dominant color, e.g. "navy blue", "white")
+  * size: string | null (e.g. "M", "42", "One Size" — null if not visible)
+  * material: string | null (e.g. "cotton", "leather", "silk" — null if not visible)
+  * season: "spring_summer" | "fall_winter" | "all_season"
+  * cleaningStatus: "clean" (always "clean" for new items being cataloged)
 - Return ONLY the JSON object, no explanation.`;
   }
 
