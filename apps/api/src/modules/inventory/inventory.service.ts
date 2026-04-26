@@ -544,7 +544,9 @@ export class InventoryService {
     });
 
     const finalItems = role === Role.OWNER || role === Role.MANAGER
-      ? enrichedItems
+      ? enrichedItems.map((item) =>
+          this.withSignedUrls(item as unknown as Item, userId, tenantId),
+        )
       : enrichedItems.map((item) => this.accessControl.stripValuation(item));
 
     if (role === Role.OWNER || role === Role.MANAGER) {
