@@ -12,7 +12,7 @@ final themeModeProvider = StateProvider<ThemeMode>((ref) => ThemeMode.dark);
 Color surfaceVariantColor(BuildContext context) {
   final brightness = Theme.of(context).brightness;
   if (brightness == Brightness.light) {
-    return Theme.of(context).colorScheme.surfaceContainerHighest;
+    return AppColors.lightSurfaceVariant;
   }
   return AppColors.surfaceVariant;
 }
@@ -20,4 +20,25 @@ Color surfaceVariantColor(BuildContext context) {
 /// Resolves background color for full-screen scaffolds.
 Color scaffoldBackgroundColor(BuildContext context) {
   return Theme.of(context).scaffoldBackgroundColor;
+}
+
+/// Resolves the accent/gold color for the current theme.
+Color accentColor(BuildContext context) {
+  final brightness = Theme.of(context).brightness;
+  if (brightness == Brightness.light) return AppColors.lightAccent;
+  return AppColors.accent;
+}
+
+/// Resolves the primary text color for the current theme.
+Color onBackgroundColor(BuildContext context) {
+  final brightness = Theme.of(context).brightness;
+  if (brightness == Brightness.light) return AppColors.lightOnBackground;
+  return AppColors.onBackground;
+}
+
+/// Resolves the secondary text color for the current theme.
+Color onSurfaceVariantColor(BuildContext context) {
+  final brightness = Theme.of(context).brightness;
+  if (brightness == Brightness.light) return AppColors.lightOnSurfaceVariant;
+  return AppColors.onSurfaceVariant;
 }
