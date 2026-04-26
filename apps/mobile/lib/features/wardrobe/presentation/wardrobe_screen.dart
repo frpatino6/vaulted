@@ -5,11 +5,14 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/app_bottom_nav.dart';
+import '../../household_members/data/models/household_member_model.dart';
+import '../../household_members/domain/household_members_notifier.dart';
 import '../../inventory/data/models/item_model.dart';
 import '../data/wardrobe_stats_repository.dart';
 import '../domain/wardrobe_notifier.dart';
 import '../domain/wardrobe_stats_provider.dart';
 import 'at_laundry_screen.dart';
+import 'wardrobe_filters_sheet.dart';
 import 'wardrobe_item_card.dart';
 
 class WardrobeScreen extends ConsumerStatefulWidget {
@@ -57,42 +60,72 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
           ),
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _WardrobeStatsBar(state: statsState),
-            _PrimaryFiltersRow(
-              selectedType: _selectedType,
-              onTypeSelected: (String value) =>
-                  setState(() => _selectedType = value),
-              onFiltersPressed: () => _showAdvancedFilters(context),
+      body: RefreshIndicator(
+        onRefresh: () => ref.read(wardrobeNotifierProvider.notifier).refresh(),
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.md,
+                  AppSpacing.md,
+                  AppSpacing.md,
+                  0,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _WardrobeStatsBar(state: statsState),
+                    _PrimaryFiltersRow(
+                      selectedType: _selectedType,
+                      onTypeSelected: (String value) =>
+                          setState(() => _selectedType = value),
+                      onFiltersPressed: () => _showAdvancedFilters(context),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                  ],
+                ),
+              ),
             ),
-            const SizedBox(height: AppSpacing.sm),
-            Expanded(
-              child: state.when(
-                data: (List<ItemModel> items) {
-                  final List<ItemModel> filtered = _applyFilters(items);
-                  if (filtered.isEmpty) return const _WardrobeEmptyState();
-                  return RefreshIndicator(
-                    onRefresh:
-                        () =>
-                            ref
-                                .read(wardrobeNotifierProvider.notifier)
-                                .refresh(),
-                    child: GridView.builder(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.only(bottom: 20),
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            childAspectRatio: 0.75,
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 12,
-                          ),
-                      itemCount: filtered.length,
-                      itemBuilder: (BuildContext context, int index) {
+            state.when(
+              loading: () => const SliverFillRemaining(
+                child: AppScreenSkeleton(showHeader: false),
+              ),
+              error: (Object error, StackTrace _) => SliverFillRemaining(
+                child: Center(
+                  child: Text(
+                    'Unable to load wardrobe items',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppColors.onBackground,
+                    ),
+                  ),
+                ),
+              ),
+              data: (List<ItemModel> items) {
+                final List<ItemModel> filtered = _applyFilters(items);
+                if (filtered.isEmpty) {
+                  return const SliverFillRemaining(
+                    child: _WardrobeEmptyState(),
+                  );
+                }
+                return SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.md,
+                    0,
+                    AppSpacing.md,
+                    20,
+                  ),
+                  sliver: SliverGrid(
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          childAspectRatio: 0.75,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                        ),
+                    delegate: SliverChildBuilderDelegate(
+                      (BuildContext ctx, int index) {
                         final ItemModel item = filtered[index];
                         return WardrobeItemCard(
                           item: item,
@@ -106,20 +139,11 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
                           onStatusTap: () => _showCleaningStatusPicker(item),
                         );
                       },
+                      childCount: filtered.length,
                     ),
-                  );
-                },
-                loading: () => const AppScreenSkeleton(showHeader: false),
-                error:
-                    (Object error, StackTrace _) => Center(
-                      child: Text(
-                        'Unable to load wardrobe items',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppColors.onBackground,
-                        ),
-                      ),
-                    ),
-              ),
+                  ),
+                );
+              },
             ),
           ],
         ),
@@ -145,39 +169,31 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
   }
 
   void _showAdvancedFilters(BuildContext context) {
-    showModalBottomSheet<void>(
+    final List<HouseholdMemberModel> members = ref
+            .read(householdMembersNotifierProvider)
+            .valueOrNull
+            ?.where((HouseholdMemberModel m) => m.isActive)
+            .toList() ??
+        [];
+
+    showModalBottomSheet<WardrobeFiltersResult>(
       context: context,
-      backgroundColor: AppColors.surfaceVariant,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext ctx) => WardrobeFiltersSheet(
+        members: members,
+        selectedMemberId: _selectedMemberId,
+        selectedSeason: _selectedSeason,
+        selectedCleaningStatus: _selectedCleaningStatus,
       ),
-      builder: (BuildContext ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Advanced Filters',
-                style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
-                      color: AppColors.onBackground,
-                      fontWeight: FontWeight.w600,
-                    ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Text(
-                'Season, member, and cleaning status filters — coming soon.',
-                style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
-                      color: AppColors.onSurfaceVariant,
-                    ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-            ],
-          ),
-        ),
-      ),
-    );
+    ).then((WardrobeFiltersResult? result) {
+      if (result == null || !mounted) return;
+      setState(() {
+        _selectedMemberId = result.memberId;
+        _selectedSeason = result.season;
+        _selectedCleaningStatus = result.cleaningStatus;
+      });
+    });
   }
 
   Future<void> _showCleaningStatusPicker(ItemModel item) async {
