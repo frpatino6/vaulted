@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
@@ -25,85 +27,86 @@ class WardrobeItemCard extends StatelessWidget {
     final statusColor = _statusColor(attrs.cleaningStatus);
 
     return Material(
-      color: const Color(0xFF1A1A1A),
+      color: const Color(0xFF151515),
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: onTap,
         child: ClipRRect(
           borderRadius: BorderRadius.circular(12),
-          child: Stack(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Padding(
-                padding: const EdgeInsets.all(AppSpacing.sm),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              SizedBox(
+                height: 120,
+                width: double.infinity,
+                child: Stack(
+                  fit: StackFit.expand,
                   children: [
-                    SizedBox(
-                      height: 100,
-                      width: double.infinity,
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: item.photos.isNotEmpty
-                            ? CachedNetworkImage(
-                                imageUrl: item.photos.first,
-                                fit: BoxFit.cover,
-                                placeholder: (_, _) =>
-                                    const _WardrobePlaceholder(),
-                                errorWidget: (_, _, _) =>
-                                    const _WardrobePlaceholder(),
-                              )
-                            : const _WardrobePlaceholder(),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            title,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 13,
-                                  letterSpacing: 0.3,
-                                ),
+                    item.photos.isNotEmpty
+                        ? CachedNetworkImage(
+                            imageUrl: item.photos.first,
+                            fit: BoxFit.cover,
+                            placeholder: (_, _) => const _WardrobePlaceholder(),
+                            errorWidget: (_, _, _) =>
+                                const _WardrobePlaceholder(),
+                          )
+                        : const _WardrobePlaceholder(),
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: GestureDetector(
+                        onTap: onStatusTap,
+                        child: ClipOval(
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+                            child: Container(
+                              width: 30,
+                              height: 30,
+                              alignment: Alignment.center,
+                              color: Colors.black.withValues(alpha: 0.50),
+                              child: Icon(
+                                statusIcon,
+                                size: 15,
+                                color: statusColor,
+                              ),
+                            ),
                           ),
-                          const SizedBox(height: 6),
-                          Text(
-                            (brand != null && brand.isNotEmpty) ? brand : ' ',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(
-                                  color: const Color(0xFFC5A059),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                          ),
-                          const SizedBox(height: 12),
-                        ],
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
-              Positioned(
-                top: 12,
-                right: 12,
-                child: InkWell(
-                  onTap: onStatusTap,
-                  customBorder: const CircleBorder(),
-                  child: Padding(
-                    padding: const EdgeInsets.all(4),
-                    child: Icon(statusIcon, size: 28, color: statusColor),
-                  ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                            letterSpacing: 0.3,
+                          ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      (brand != null && brand.isNotEmpty) ? brand : ' ',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: const Color(0xFFC5A059),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -131,7 +134,7 @@ class WardrobeItemCard extends StatelessWidget {
       case 'clean':
         return const Color(0xFFC5A059);
       case 'needs_cleaning':
-        return Colors.white.withValues(alpha: 0.65);
+        return Colors.white.withValues(alpha: 0.90);
       case 'at_dry_cleaner':
         return Colors.blueGrey.shade200;
       default:
@@ -145,13 +148,13 @@ class _WardrobePlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: const Color(0xFF232323),
+    return const ColoredBox(
+      color: Color(0xFF1E1E1E),
       child: Center(
         child: Icon(
           Icons.checkroom_outlined,
-          color: Colors.white.withValues(alpha: 0.2),
-          size: 34,
+          color: Color(0xFF4A4A4A),
+          size: 36,
         ),
       ),
     );
