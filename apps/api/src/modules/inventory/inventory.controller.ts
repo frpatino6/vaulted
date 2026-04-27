@@ -136,7 +136,7 @@ export class InventoryController {
     return item;
   }
 
-  @Roles(Role.OWNER)
+  @Roles(Role.OWNER, Role.MANAGER)
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
   async delete(
