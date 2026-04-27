@@ -204,9 +204,7 @@ export class InventoryService {
       query.category = filters.category;
     }
 
-    if (filters.status) {
-      query.status = filters.status;
-    }
+    query.status = filters.status ?? { $ne: 'disposed' };
 
     const q = this.itemModel.find(query).sort({ createdAt: -1 });
     if (filters.limit && filters.limit > 0) q.limit(filters.limit);
