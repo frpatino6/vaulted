@@ -494,9 +494,7 @@ export class InventoryService {
       query.propertyId = filters.propertyId;
     }
 
-    if (filters.status) {
-      query.status = filters.status;
-    }
+    query.status = filters.status ?? { $ne: 'disposed' };
 
     const itemQuery = this.itemModel.find(query);
 
