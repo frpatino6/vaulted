@@ -9,6 +9,7 @@ import '../../properties/data/models/floor_model.dart';
 import '../../properties/data/models/room_model.dart';
 import '../../wardrobe/data/models/wardrobe_attributes.dart';
 import '../data/models/ai_scan_result_model.dart';
+import '../domain/ai_scan_notifier.dart';
 
 class AiItemReviewScreen extends ConsumerStatefulWidget {
   const AiItemReviewScreen({
@@ -438,15 +439,29 @@ class _AiItemReviewScreenState extends ConsumerState<AiItemReviewScreen> {
         ref.invalidate(unlocatedItemsProvider(widget.propertyId));
       }
 
-      // Navigate to the room where the item was saved, or to the property
-      if (_selectedRoom != null) {
-        context.go(
-          '/properties/${widget.propertyId}/rooms/${_selectedRoom!.roomId}'
-          '?name=${Uri.encodeComponent(_selectedRoom!.name)}',
-        );
-      } else {
-        context.go('/properties/${widget.propertyId}');
-      }
+      // Reset notifier before popping so scan screen listener won't re-push review
+      ref.read(aiScanNotifierProvider.notifier).reset();
+
+      final router = GoRouter.of(context);
+      final propertyId = widget.propertyId;
+      final roomId = _selectedRoom?.roomId;
+      final roomName = _selectedRoom?.name;
+
+      // Pop review → scan screen (notifier already reset, no re-push)
+      router.pop();
+
+      // Next frame: pop scan → property detail, then push room if one was selected
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        router.pop();
+        if (roomId != null && roomName != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            router.push(
+              '/properties/$propertyId/rooms/$roomId'
+              '?name=${Uri.encodeComponent(roomName)}',
+            );
+          });
+        }
+      });
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
