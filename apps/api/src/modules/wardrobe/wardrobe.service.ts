@@ -112,7 +112,7 @@ export class WardrobeService {
   ): Promise<Record<string, unknown>> {
     const outfit = await this.findOutfitOrThrow(tenantId, outfitId);
     const items = await this.itemModel
-      .find({ _id: { $in: outfit.itemIds }, tenantId })
+      .find({ _id: { $in: outfit.itemIds }, tenantId, status: { $ne: 'disposed' } })
       .select(
         '_id name photos category attributes.type attributes.cleaningStatus',
       )
@@ -323,7 +323,7 @@ export class WardrobeService {
       outfitsCount,
       outfitItemIds,
     ] = await Promise.all([
-      this.itemModel.countDocuments({ tenantId, category: 'wardrobe' }).exec(),
+      this.itemModel.countDocuments({ tenantId, category: 'wardrobe', status: { $ne: 'disposed' } }).exec(),
       this.aggregateAttributeCounts(tenantId, 'type'),
       this.aggregateAttributeCounts(tenantId, 'cleaningStatus'),
       this.aggregateAttributeCounts(tenantId, 'season'),
@@ -517,7 +517,7 @@ export class WardrobeService {
     const path = `$attributes.${field}`;
     const rows = await this.itemModel
       .aggregate<{ _id: string; count: number }>([
-        { $match: { tenantId, category: 'wardrobe' } },
+        { $match: { tenantId, category: 'wardrobe', status: { $ne: 'disposed' } } },
         {
           $group: {
             _id: {

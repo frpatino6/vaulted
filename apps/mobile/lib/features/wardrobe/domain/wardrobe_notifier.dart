@@ -34,7 +34,9 @@ class WardrobeNotifier extends AsyncNotifier<List<ItemModel>> {
   }
 
   List<ItemModel> _onlyWardrobe(List<ItemModel> items) {
-    return items.where((item) => _isWardrobeCategory(item.category)).toList();
+    return items
+        .where((item) => _isWardrobeCategory(item.category) && item.status != 'disposed')
+        .toList();
   }
 
   bool _isWardrobeCategory(String category) {
