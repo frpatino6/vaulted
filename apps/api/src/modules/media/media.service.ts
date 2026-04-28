@@ -138,7 +138,7 @@ export class MediaService {
       }
 
       res.setHeader('Content-Type', mimeType);
-      res.setHeader('Cache-Control', 'private, no-store');
+      res.setHeader('Cache-Control', 'private, max-age=7200, immutable');
 
       try {
         await pipeline(createReadStream(fullPath), res);
