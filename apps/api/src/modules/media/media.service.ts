@@ -138,9 +138,15 @@ export class MediaService {
       }
 
       res.setHeader('Content-Type', mimeType);
-      res.setHeader('Cache-Control', 'private, no-store');
+      res.setHeader('Cache-Control', 'private, max-age=7200, immutable');
 
-      await pipeline(createReadStream(fullPath), res);
+      try {
+        await pipeline(createReadStream(fullPath), res);
+      } catch (err: unknown) {
+        // Client closed the connection before the stream finished — not an error
+        if ((err as NodeJS.ErrnoException).code === 'ERR_STREAM_PREMATURE_CLOSE') return;
+        throw err;
+      }
       return;
     }
 

@@ -27,6 +27,9 @@ export class HttpExceptionFilter implements ExceptionFilter {
         ? exception.getResponse()
         : 'Internal server error';
 
+    // Stream already started — can't send JSON, headers are already sent
+    if (response.headersSent) return;
+
     if (status >= 500) {
       this.logger.error(
         `${request.method} ${request.url} - ${status}`,
