@@ -27,7 +27,7 @@ class DefaultFirebaseOptions {
   );
 
   // VAPID key used in getToken() calls for web push — not part of FirebaseOptions
-  static const String webVapidKey = 'VNLMAPj51JhaAuqj_8s4SAOYVhuHT37VwEPnuF_Ptys';
+  static const String webVapidKey = 'BB3s8Z0zRMs0rkLG7qh1nR3uKFqB0SerPCQcSr9YBE-BJdV6DMI3t84oSs6XMVKigeg0lLqPId4rAbgeA08oCSY';
 
   // TODO: replace with values from google-services.json once available
   static const FirebaseOptions android = FirebaseOptions(
