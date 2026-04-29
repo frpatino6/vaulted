@@ -3,18 +3,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../inventory/data/models/item_model.dart';
+import '../../inventory/domain/search_notifier.dart';
 import '../data/models/maintenance_model.dart';
 import '../domain/maintenance_notifier.dart';
 
 class AddMaintenanceSheet extends ConsumerStatefulWidget {
   const AddMaintenanceSheet({
     super.key,
-    required this.itemId,
+    this.itemId,
     this.initialTitle,
     this.initialNotes,
   });
 
-  final String itemId;
+  final String? itemId;
   final String? initialTitle;
   final String? initialNotes;
 
@@ -35,10 +37,18 @@ class _AddMaintenanceSheetState extends ConsumerState<AddMaintenanceSheet> {
   final _costController = TextEditingController();
   final _notesController = TextEditingController();
   final _intervalController = TextEditingController();
+  final _itemSearchController = TextEditingController();
 
   DateTime _scheduledDate = DateTime.now().add(const Duration(days: 7));
   bool _isRecurring = false;
   bool _isSaving = false;
+
+  // Only used when no itemId is pre-set
+  String? _selectedItemId;
+  String? _selectedItemName;
+  bool _showItemResults = false;
+
+  bool get _needsItemSelection => widget.itemId == null;
 
   @override
   void dispose() {
@@ -49,6 +59,7 @@ class _AddMaintenanceSheetState extends ConsumerState<AddMaintenanceSheet> {
     _costController.dispose();
     _notesController.dispose();
     _intervalController.dispose();
+    _itemSearchController.dispose();
     super.dispose();
   }
 
@@ -113,6 +124,39 @@ class _AddMaintenanceSheetState extends ConsumerState<AddMaintenanceSheet> {
                         horizontal: AppSpacing.md,
                       ),
                       children: [
+                        if (_needsItemSelection) ...[
+                          _SectionLabel('Item'),
+                          const SizedBox(height: AppSpacing.sm),
+                          _ItemPickerField(
+                            searchController: _itemSearchController,
+                            selectedItemName: _selectedItemName,
+                            showResults: _showItemResults,
+                            onSearchChanged: (query) {
+                              setState(() => _showItemResults = query.isNotEmpty);
+                              if (query.isNotEmpty) {
+                                ref
+                                    .read(searchNotifierProvider.notifier)
+                                    .search(query);
+                              } else {
+                                ref
+                                    .read(searchNotifierProvider.notifier)
+                                    .clear();
+                              }
+                            },
+                            onItemSelected: (item) {
+                              setState(() {
+                                _selectedItemId = item.id;
+                                _selectedItemName = item.name;
+                                _showItemResults = false;
+                                _itemSearchController.text = item.name;
+                              });
+                              ref
+                                  .read(searchNotifierProvider.notifier)
+                                  .clear();
+                            },
+                          ),
+                          const SizedBox(height: AppSpacing.lg),
+                        ],
                         _buildField(
                           controller: _titleController,
                           label: 'Title',
@@ -249,10 +293,18 @@ class _AddMaintenanceSheetState extends ConsumerState<AddMaintenanceSheet> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
+    final effectiveItemId = widget.itemId ?? _selectedItemId;
+    if (effectiveItemId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select an item first')),
+      );
+      return;
+    }
+
     setState(() => _isSaving = true);
 
     final record = await ref
-        .read(itemMaintenanceNotifierProvider(widget.itemId).notifier)
+        .read(itemMaintenanceNotifierProvider(effectiveItemId).notifier)
         .schedule(
           title: _titleController.text.trim(),
           scheduledDate: _scheduledDate,
@@ -339,6 +391,163 @@ class _AddMaintenanceSheetState extends ConsumerState<AddMaintenanceSheet> {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Item picker with inline search results
+// ---------------------------------------------------------------------------
+
+class _ItemPickerField extends ConsumerWidget {
+  const _ItemPickerField({
+    required this.searchController,
+    required this.selectedItemName,
+    required this.showResults,
+    required this.onSearchChanged,
+    required this.onItemSelected,
+  });
+
+  final TextEditingController searchController;
+  final String? selectedItemName;
+  final bool showResults;
+  final ValueChanged<String> onSearchChanged;
+  final ValueChanged<ItemModel> onItemSelected;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final searchState = ref.watch(searchNotifierProvider);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextFormField(
+          controller: searchController,
+          style: TextStyle(color: AppColors.onBackground),
+          decoration: InputDecoration(
+            labelText: selectedItemName != null ? 'Item selected' : 'Search item',
+            hintText: 'Type to search your inventory…',
+            labelStyle: TextStyle(
+              color: selectedItemName != null
+                  ? AppColors.accent
+                  : AppColors.onSurfaceVariant,
+            ),
+            hintStyle: TextStyle(
+                color: AppColors.onSurfaceVariant.withValues(alpha: 0.6)),
+            prefixIcon: Icon(
+              selectedItemName != null
+                  ? Icons.check_circle_outline_rounded
+                  : Icons.search_rounded,
+              color: selectedItemName != null
+                  ? AppColors.accent
+                  : AppColors.onSurfaceVariant,
+            ),
+            suffixIcon: searchController.text.isNotEmpty
+                ? IconButton(
+                    icon: const Icon(Icons.clear_rounded),
+                    color: AppColors.onSurfaceVariant,
+                    onPressed: () {
+                      searchController.clear();
+                      onSearchChanged('');
+                    },
+                  )
+                : null,
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(
+                color: selectedItemName != null
+                    ? AppColors.accent.withValues(alpha: 0.5)
+                    : AppColors.surfaceVariant.withValues(alpha: 0.8),
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: AppColors.accent),
+            ),
+            filled: true,
+            fillColor: AppColors.surfaceVariant.withValues(alpha: 0.4),
+          ),
+          onChanged: onSearchChanged,
+          validator: (_) =>
+              selectedItemName == null ? 'Please select an item' : null,
+        ),
+        if (showResults) ...[
+          const SizedBox(height: AppSpacing.xs),
+          Container(
+            constraints: const BoxConstraints(maxHeight: 220),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                  color: AppColors.surfaceVariant.withValues(alpha: 0.8)),
+            ),
+            child: searchState.when(
+              data: (items) {
+                if (items.isEmpty) {
+                  return Padding(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    child: Text(
+                      'No items found',
+                      style:
+                          TextStyle(color: AppColors.onSurfaceVariant),
+                      textAlign: TextAlign.center,
+                    ),
+                  );
+                }
+                return ListView.separated(
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+                  shrinkWrap: true,
+                  itemCount: items.length,
+                  separatorBuilder: (_, __) => Divider(
+                    height: 1,
+                    color: AppColors.surfaceVariant.withValues(alpha: 0.5),
+                  ),
+                  itemBuilder: (context, i) {
+                    final item = items[i];
+                    return ListTile(
+                      dense: true,
+                      title: Text(
+                        item.name,
+                        style: TextStyle(
+                          color: AppColors.onBackground,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      subtitle: Text(
+                        item.category,
+                        style: TextStyle(
+                          color: AppColors.onSurfaceVariant,
+                          fontSize: 12,
+                        ),
+                      ),
+                      onTap: () => onItemSelected(item),
+                    );
+                  },
+                );
+              },
+              loading: () => const Padding(
+                padding: EdgeInsets.all(AppSpacing.md),
+                child: Center(
+                  child: SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
+              ),
+              error: (_, __) => Padding(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                child: Text(
+                  'Search failed. Try again.',
+                  style: TextStyle(color: AppColors.onSurfaceVariant),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
 class _DatePickerField extends StatelessWidget {
   const _DatePickerField({
     required this.label,
@@ -421,8 +630,8 @@ class _SectionLabel extends StatelessWidget {
 
 /// Helper to show AddMaintenanceSheet and return the created record.
 Future<MaintenanceModel?> showAddMaintenanceSheet(
-  BuildContext context,
-  String itemId, {
+  BuildContext context, {
+  String? itemId,
   String? initialTitle,
   String? initialNotes,
 }) {
