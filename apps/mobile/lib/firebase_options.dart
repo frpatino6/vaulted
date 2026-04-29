@@ -24,8 +24,10 @@ class DefaultFirebaseOptions {
     storageBucket: 'vaulted-prod-2026.firebasestorage.app',
     messagingSenderId: '729564960430',
     appId: '1:729564960430:web:e502f79b1b66c7b8a47f3f',
-    vapidKey: 'VNLMAPj51JhaAuqj_8s4SAOYVhuHT37VwEPnuF_Ptys',
   );
+
+  // VAPID key used in getToken() calls for web push — not part of FirebaseOptions
+  static const String webVapidKey = 'VNLMAPj51JhaAuqj_8s4SAOYVhuHT37VwEPnuF_Ptys';
 
   // TODO: replace with values from google-services.json once available
   static const FirebaseOptions android = FirebaseOptions(
