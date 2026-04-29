@@ -11,6 +11,7 @@ import 'core/router/app_router_provider.dart';
 import 'core/storage/auth_token_store.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_mode_provider.dart';
+import 'features/notifications/presentation/providers/notifications_provider.dart';
 import 'features/presence/presentation/providers/presence_provider.dart';
 import 'firebase_options.dart';
 
@@ -136,6 +137,9 @@ class _VaultedAppState extends ConsumerState<VaultedApp>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // Best-effort: silently fails if user is not yet authenticated.
+    // Retries automatically on token refresh and after each login.
+    ref.read(fcmTokenRegistrationProvider);
   }
 
   @override
