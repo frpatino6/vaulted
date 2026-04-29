@@ -34,4 +34,17 @@ sed -i \
   "$SW"
 
 echo "Build complete → apps/mobile/build/web"
-firebase deploy --only hosting --project vaulted-prod-2026
+
+# Deploy to VM — served by Caddy at https://vaulted.casacam.net
+REMOTE_DIR="/home/frpatino6/vaulted-web"
+VM="tennis-backend"
+ZONE="us-central1-c"
+PROJECT="tennis-management-fcd54"
+
+echo "Deploying to VM at ${VM}:${REMOTE_DIR} ..."
+gcloud compute ssh "$VM" --zone "$ZONE" --project "$PROJECT" \
+  --command "mkdir -p ${REMOTE_DIR} && rm -rf ${REMOTE_DIR:?}/*"
+gcloud compute scp --recurse build/web/. \
+  "${VM}:${REMOTE_DIR}" \
+  --zone "$ZONE" --project "$PROJECT"
+echo "Deploy complete → https://vaulted.casacam.net"

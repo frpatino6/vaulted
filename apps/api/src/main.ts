@@ -23,6 +23,7 @@ async function bootstrap(): Promise<void> {
     'http://localhost:8080',
     'https://vaulted-prod-2026.web.app',
     'https://vaulted-prod-2026.firebaseapp.com',
+    'https://vaulted.casacam.net',
     // Allow the canonical API domain so Flutter Web (CanvasKit) can fetch
     // /uploads/* when the web app and API share the same hostname.
     'https://api-vaulted.casacam.net',

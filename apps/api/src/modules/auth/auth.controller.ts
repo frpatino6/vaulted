@@ -25,10 +25,9 @@ import { JwtRefreshPayload } from './strategies/jwt-refresh.strategy';
 const REFRESH_COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env['NODE_ENV'] === 'production',
-  // SameSite=None required for cross-origin requests from the web app
-  // (web app on web.app, API on casacam.net — different origins).
-  // SameSite=Lax for local dev where secure=false.
-  sameSite: (process.env['NODE_ENV'] === 'production' ? 'none' : 'lax') as 'none' | 'lax',
+  // SameSite=Lax: web app (vaulted.casacam.net) and API (api-vaulted.casacam.net)
+  // share the same eTLD+1 (casacam.net) — same-site, so Lax works and Safari ITP won't block it.
+  sameSite: 'lax' as const,
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in ms
   path: '/api/auth/refresh',
 };
@@ -36,7 +35,7 @@ const REFRESH_COOKIE_OPTIONS = {
 const CLEAR_COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env['NODE_ENV'] === 'production',
-  sameSite: (process.env['NODE_ENV'] === 'production' ? 'none' : 'lax') as 'none' | 'lax',
+  sameSite: 'lax' as const,
   path: '/api/auth/refresh',
 };
 
