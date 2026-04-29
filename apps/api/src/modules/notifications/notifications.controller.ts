@@ -19,6 +19,17 @@ import { NotificationsService } from './notifications.service';
 export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
 
+  @Post('test-push')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async testPush(@CurrentUser() user: JwtPayload): Promise<void> {
+    await this.notificationsService.sendPush({
+      tenantId: user.tenantId,
+      userIds: [user.sub],
+      title: 'Vaulted test',
+      body: 'Push notifications are working!',
+    });
+  }
+
   @Post('device-token')
   @HttpCode(HttpStatus.NO_CONTENT)
   async registerDeviceToken(
