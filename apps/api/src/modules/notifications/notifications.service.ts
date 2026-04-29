@@ -43,6 +43,7 @@ interface ResendErrorBody {
 @Injectable()
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
+  private readonly fcmEnabled: boolean;
 
   constructor(
     @InjectRepository(UserDeviceToken)
@@ -53,16 +54,26 @@ export class NotificationsService {
     private readonly auditService: AuditService,
     private readonly usersService: UsersService,
   ) {
-    if (!admin.apps.length) {
-      admin.initializeApp({
-        credential: admin.credential.cert({
-          projectId: this.configService.get<string>('FIREBASE_PROJECT_ID'),
-          privateKey: this.configService
-            .get<string>('FIREBASE_PRIVATE_KEY')
-            ?.replace(/\\n/g, '\n'),
-          clientEmail: this.configService.get<string>('FIREBASE_CLIENT_EMAIL'),
-        }),
-      });
+    const projectId = this.configService.get<string>('FIREBASE_PROJECT_ID');
+    const privateKey = this.configService.get<string>('FIREBASE_PRIVATE_KEY');
+    const clientEmail = this.configService.get<string>('FIREBASE_CLIENT_EMAIL');
+
+    if (projectId && privateKey && clientEmail) {
+      if (!admin.apps.length) {
+        admin.initializeApp({
+          credential: admin.credential.cert({
+            projectId,
+            privateKey: privateKey.replace(/\\n/g, '\n'),
+            clientEmail,
+          }),
+        });
+      }
+      this.fcmEnabled = true;
+    } else {
+      this.logger.warn(
+        'Firebase credentials not configured — push notifications disabled.',
+      );
+      this.fcmEnabled = false;
     }
   }
 
@@ -143,6 +154,11 @@ export class NotificationsService {
     }
 
     const tokens = deviceTokenRows.map((row) => row.token);
+
+    if (!this.fcmEnabled) {
+      this.logger.warn('FCM not configured — push skipped.');
+      return { successCount: 0, failureCount: 0 };
+    }
 
     try {
       const response = await admin.messaging().sendEachForMulticast({
