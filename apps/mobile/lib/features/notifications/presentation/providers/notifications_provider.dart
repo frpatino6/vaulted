@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/api_client_provider.dart';
+import '../../../../firebase_options.dart';
 import '../../data/datasources/notification_remote_datasource.dart';
 import '../../domain/entities/notification_preference.dart';
 
@@ -80,9 +81,7 @@ Future<void> _registerToken(Ref ref, {String? token}) async {
     final messaging = FirebaseMessaging.instance;
     final resolvedToken = token ??
         await messaging.getToken(
-          vapidKey: kIsWeb
-              ? 'VNLMAPj51JhaAuqj_8s4SAOYVhuHT37VwEPnuF_Ptys'
-              : null,
+          vapidKey: kIsWeb ? DefaultFirebaseOptions.webVapidKey : null,
         );
     if (resolvedToken == null) return;
 
