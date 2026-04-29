@@ -18,16 +18,16 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyB-HgQixM9sZG6MNzgpIQbJxzHsyQ7RmGE',
-    authDomain: 'vaulted-prod-2026.firebaseapp.com',
-    projectId: 'vaulted-prod-2026',
-    storageBucket: 'vaulted-prod-2026.firebasestorage.app',
-    messagingSenderId: '729564960430',
-    appId: '1:729564960430:web:e502f79b1b66c7b8a47f3f',
+    apiKey: String.fromEnvironment('FIREBASE_WEB_API_KEY'),
+    authDomain: String.fromEnvironment('FIREBASE_AUTH_DOMAIN'),
+    projectId: String.fromEnvironment('FIREBASE_PROJECT_ID'),
+    storageBucket: String.fromEnvironment('FIREBASE_STORAGE_BUCKET'),
+    messagingSenderId: String.fromEnvironment('FIREBASE_MESSAGING_SENDER_ID'),
+    appId: String.fromEnvironment('FIREBASE_WEB_APP_ID'),
   );
 
-  // VAPID key used in getToken() calls for web push — not part of FirebaseOptions
-  static const String webVapidKey = 'BB3s8Z0zRMs0rkLG7qh1nR3uKFqB0SerPCQcSr9YBE-BJdV6DMI3t84oSs6XMVKigeg0lLqPId4rAbgeA08oCSY';
+  // Passed to getToken() for web push — injected at build time via --dart-define
+  static const String webVapidKey = String.fromEnvironment('FIREBASE_WEB_VAPID_KEY');
 
   // TODO: replace with values from google-services.json once available
   static const FirebaseOptions android = FirebaseOptions(

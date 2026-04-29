@@ -42,22 +42,5 @@
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
   <script src="flutter_bootstrap.js" async></script>
-
-  <!-- Firebase -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-    import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-messaging.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyB-HgQixM9sZG6MNzgpIQbJxzHsyQ7RmGE",
-      authDomain: "vaulted-prod-2026.firebaseapp.com",
-      projectId: "vaulted-prod-2026",
-      storageBucket: "vaulted-prod-2026.firebasestorage.app",
-      messagingSenderId: "729564960430",
-      appId: "1:729564960430:web:e502f79b1b66c7b8a47f3f"
-    };
-
-    window._firebaseApp = initializeApp(firebaseConfig);
-  </script>
 </body>
 </html>
