@@ -1,4 +1,6 @@
 import 'package:dio/dio.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,16 +11,42 @@ import 'core/router/app_router_provider.dart';
 import 'core/storage/auth_token_store.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_mode_provider.dart';
+import 'features/notifications/presentation/providers/notifications_provider.dart';
 import 'features/presence/presentation/providers/presence_provider.dart';
+import 'firebase_options.dart';
+
+@pragma('vm:entry-point')
+Future<void> _firebaseBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await _initFirebase();
   await _tryRestoreSession();
   runApp(
     const ProviderScope(
       child: VaultedApp(),
     ),
   );
+}
+
+Future<void> _initFirebase() async {
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    final messaging = FirebaseMessaging.instance;
+    await messaging.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+    FirebaseMessaging.onBackgroundMessage(_firebaseBackgroundHandler);
+  } catch (e) {
+    // Firebase not configured yet for this platform (missing google-services.json / GoogleService-Info.plist)
+    debugPrint('[Firebase] Init skipped: $e');
+  }
 }
 
 /// Attempts to restore a previous authenticated session using the stored refresh token.
@@ -109,6 +137,9 @@ class _VaultedAppState extends ConsumerState<VaultedApp>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // Best-effort: silently fails if user is not yet authenticated.
+    // Retries automatically on token refresh and after each login.
+    ref.read(fcmTokenRegistrationProvider);
   }
 
   @override
