@@ -8,6 +8,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../data/models/maintenance_model.dart';
 import '../domain/maintenance_notifier.dart';
+import 'add_maintenance_sheet.dart';
 
 class MaintenanceListScreen extends ConsumerStatefulWidget {
   const MaintenanceListScreen({super.key});
@@ -90,6 +91,18 @@ class _MaintenanceListScreenState extends ConsumerState<MaintenanceListScreen>
             Tab(text: 'Completed'),
           ],
         ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: AppColors.accent,
+        foregroundColor: Colors.black,
+        tooltip: 'Schedule maintenance',
+        onPressed: () async {
+          final record = await showAddMaintenanceSheet(context);
+          if (record != null && mounted) {
+            ref.read(maintenanceListNotifierProvider.notifier).load();
+          }
+        },
+        child: const Icon(Icons.add_rounded),
       ),
       body: renderState.when(
         data: (_) => TabBarView(
