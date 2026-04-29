@@ -25,6 +25,9 @@ import { WardrobeModule } from './modules/wardrobe/wardrobe.module';
 import { InsuranceModule } from './modules/insurance/insurance.module';
 import { PresenceModule } from './modules/presence/presence.module';
 import { HouseholdMembersModule } from './modules/household-members/household-members.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
+import { UserDeviceToken } from './modules/notifications/entities/user-device-token.entity';
+import { NotificationPreference } from './modules/notifications/entities/notification-preference.entity';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { MfaVerifiedGuard } from './common/guards/mfa-verified.guard';
@@ -65,7 +68,7 @@ import { InsuredItem } from './modules/insurance/entities/insured-item.entity';
         const isProd = config.get<string>('NODE_ENV') === 'production';
         const base = {
           type: 'postgres' as const,
-          entities: [Tenant, User, AuditLog, InsurancePolicy, InsuredItem],
+          entities: [Tenant, User, AuditLog, InsurancePolicy, InsuredItem, UserDeviceToken, NotificationPreference],
           synchronize: config.get<string>('TYPEORM_SYNC') === 'true' || !isProd,
           logging: !isProd,
         };
@@ -106,6 +109,7 @@ import { InsuredItem } from './modules/insurance/entities/insured-item.entity';
     InsuranceModule,
     PresenceModule,
     HouseholdMembersModule,
+    NotificationsModule,
   ],
   providers: [
     AnomalyGuard,

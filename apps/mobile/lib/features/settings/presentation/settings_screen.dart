@@ -137,12 +137,11 @@ class SettingsScreen extends ConsumerWidget {
           _SectionCard(
             borderColor: AppColors.error.withValues(alpha: 0.2),
             children: [
-              // S6: Notifications placeholder
               ListTile(
                 tileColor: Colors.transparent,
                 leading: Icon(
                   Icons.notifications_outlined,
-                  color: AppColors.onSurfaceVariant,
+                  color: AppColors.accent,
                 ),
                 title: Text(
                   'Notifications',
@@ -154,9 +153,7 @@ class SettingsScreen extends ConsumerWidget {
                   Icons.chevron_right,
                   color: AppColors.onSurfaceVariant,
                 ),
-                onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Coming soon')),
-                ),
+                onTap: () => context.push('/settings/notifications'),
               ),
               const Divider(color: Colors.white10, height: 1),
               // S6: Support placeholder

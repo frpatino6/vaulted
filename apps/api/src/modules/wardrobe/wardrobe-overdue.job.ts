@@ -6,6 +6,8 @@ import {
   DryCleaningRecord,
   DryCleaningRecordDocument,
 } from './schemas/dry-cleaning-record.schema';
+import { NotificationsService } from '../notifications/notifications.service';
+import { Role } from '../../common/enums/role.enum';
 
 const OVERDUE_THRESHOLD_DAYS = 7;
 
@@ -22,6 +24,7 @@ export class WardrobeOverdueJob {
   constructor(
     @InjectModel(DryCleaningRecord.name)
     private readonly dryCleaningRecordModel: Model<DryCleaningRecordDocument>,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   @Cron(CronExpression.EVERY_DAY_AT_9AM)
@@ -73,8 +76,16 @@ export class WardrobeOverdueJob {
       `[WardrobeOverdueJob] Summary: ${overdueRecords.length} total overdue record(s) across ${byTenant.size} tenant(s).`,
     );
 
-    // TODO: Integrate with notifications module (FCM) once available.
-    // For each tenant summary, send a push notification to Owner/Manager roles
-    // via NotificationsService.sendPush({ tenantId, title: 'Dry cleaning overdue', ... })
+    await Promise.allSettled(
+      Array.from(byTenant.values()).map((summary) =>
+        this.notificationsService.notifyTenantRoles({
+          tenantId: summary.tenantId,
+          roles: [Role.OWNER, Role.MANAGER],
+          title: 'Dry cleaning overdue',
+          body: `${summary.overdueCount} item(s) have been at the cleaner for over ${OVERDUE_THRESHOLD_DAYS} days.`,
+          data: { recordIds: summary.recordIds.join(',') },
+        }),
+      ),
+    );
   }
 }
