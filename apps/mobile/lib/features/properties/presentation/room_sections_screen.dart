@@ -242,30 +242,7 @@ class _SectionTile extends StatelessWidget {
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        leading: section.photo != null
-            ? ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: CachedNetworkImage(
-                  imageUrl: section.photo!,
-                  width: 44,
-                  height: 44,
-                  fit: BoxFit.cover,
-                  placeholder: (_, __) => Container(
-                    width: 44,
-                    height: 44,
-                    color: AppColors.accent.withAlpha(25),
-                    child: const Center(
-                      child: SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 1.5),
-                      ),
-                    ),
-                  ),
-                  errorWidget: (_, __, ___) => _codeChip,
-                ),
-              )
-            : _codeChip,
+        leading: _codeChip,
         title: Text(
           section.name,
           style: const TextStyle(
