@@ -410,6 +410,7 @@ class _SectionFormSheetState extends ConsumerState<_SectionFormSheet> {
 
   XFile? _pendingPhoto;
   String? _existingPhotoUrl;
+  bool _photoCleared = false;
 
   static const _types = [
     ('drawer', 'Drawer'),
@@ -457,6 +458,7 @@ class _SectionFormSheetState extends ConsumerState<_SectionFormSheet> {
         await notifier.updateSection(
           widget.floorId, widget.roomId, widget.editing!.sectionId,
           code: code, name: name, type: _type, notes: notes, photo: photoUrl,
+          clearPhoto: _photoCleared && _pendingPhoto == null,
         );
       } else {
         await notifier.addSection(
@@ -590,6 +592,7 @@ class _SectionFormSheetState extends ConsumerState<_SectionFormSheet> {
               onRemove: () => setState(() {
                 _pendingPhoto = null;
                 _existingPhotoUrl = null;
+                _photoCleared = true;
               }),
             ),
             const SizedBox(height: 20),

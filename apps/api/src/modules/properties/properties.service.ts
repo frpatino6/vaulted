@@ -389,7 +389,7 @@ export class PropertiesService {
     const sectionExists = (room.sections ?? []).some((s) => s.sectionId === sectionId);
     if (!sectionExists) throw new NotFoundException('Section not found');
 
-    const setFields: Record<string, string> = {};
+    const setFields: Record<string, string | null> = {};
     if (dto.code !== undefined)
       setFields['floors.$[floor].rooms.$[room].sections.$[section].code'] = dto.code;
     if (dto.name !== undefined)

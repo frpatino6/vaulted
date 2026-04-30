@@ -125,12 +125,14 @@ class PropertyRepository {
     String? type,
     String? notes,
     String? photo,
+    bool clearPhoto = false,
   }) => _remote.updateSection(propertyId, floorId, roomId, sectionId, {
     if (code != null) 'code': code,
     if (name != null) 'name': name,
     if (type != null) 'type': type,
     if (notes != null) 'notes': notes,
     if (photo != null) 'photo': photo,
+    if (clearPhoto) 'photo': null,
   });
 
   Future<PropertyModel> deleteSection(

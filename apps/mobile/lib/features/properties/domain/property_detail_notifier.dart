@@ -176,6 +176,7 @@ class PropertyDetailNotifier extends AsyncNotifier<PropertyModel?> {
     String? type,
     String? notes,
     String? photo,
+    bool clearPhoto = false,
   }) async {
     final id = _propertyId;
     if (id == null) return null;
@@ -183,6 +184,7 @@ class PropertyDetailNotifier extends AsyncNotifier<PropertyModel?> {
       final property = await ref.read(propertyRepositoryProvider).updateSection(
         id, floorId, roomId, sectionId,
         code: code, name: name, type: type, notes: notes, photo: photo,
+        clearPhoto: clearPhoto,
       );
       state = AsyncData(property);
       return property;

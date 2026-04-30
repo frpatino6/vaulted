@@ -4,12 +4,14 @@ import {
   IsArray,
   IsDate,
   IsEnum,
+  IsInt,
   IsNumber,
   IsObject,
   IsOptional,
   IsString,
   IsUrl,
   MaxLength,
+  Min,
   ValidateNested,
 } from 'class-validator';
 
@@ -125,7 +127,8 @@ export class CreateItemDto {
   sectionId?: string;
 
   @IsOptional()
-  @IsNumber()
+  @IsInt()
+  @Min(1)
   @Type(() => Number)
   quantity?: number;
 }
