@@ -283,6 +283,9 @@ mixin _$ItemModel {
   String? get locationDetail => throw _privateConstructorUsedError;
   String? get sectionId => throw _privateConstructorUsedError;
   String? get sectionPhoto => throw _privateConstructorUsedError;
+  @JsonKey(fromJson: _itemBoundingBoxFromJson, toJson: _itemBoundingBoxToJson)
+  SectionBoundingBox? get sectionBoundingBox =>
+      throw _privateConstructorUsedError;
   int get quantity => throw _privateConstructorUsedError;
   ItemValuationModel? get valuation =>
       throw _privateConstructorUsedError; // ignore: invalid_annotation_target
@@ -323,6 +326,8 @@ abstract class $ItemModelCopyWith<$Res> {
     String? locationDetail,
     String? sectionId,
     String? sectionPhoto,
+    @JsonKey(fromJson: _itemBoundingBoxFromJson, toJson: _itemBoundingBoxToJson)
+    SectionBoundingBox? sectionBoundingBox,
     int quantity,
     ItemValuationModel? valuation,
     @JsonKey(includeIfNull: false) Map<String, dynamic>? attributes,

@@ -1,9 +1,17 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import '../../../wardrobe/data/models/wardrobe_attributes.dart';
+import '../../properties/data/models/room_section_model.dart';
 
 part 'item_model.freezed.dart';
 part 'item_model.g.dart';
+
+SectionBoundingBox? _itemBoundingBoxFromJson(Object? json) {
+  if (json == null) return null;
+  return SectionBoundingBox.fromJson(Map<String, dynamic>.from(json as Map));
+}
+
+Object? _itemBoundingBoxToJson(SectionBoundingBox? bb) => bb?.toJson();
 
 @freezed
 class ItemValuationModel with _$ItemValuationModel {
@@ -36,6 +44,8 @@ class ItemModel with _$ItemModel {
     String? locationDetail,
     String? sectionId,
     String? sectionPhoto,
+    @JsonKey(fromJson: _itemBoundingBoxFromJson, toJson: _itemBoundingBoxToJson)
+    SectionBoundingBox? sectionBoundingBox,
     @Default(1) int quantity,
     ItemValuationModel? valuation,
     // ignore: invalid_annotation_target

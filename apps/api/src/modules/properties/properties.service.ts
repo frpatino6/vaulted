@@ -317,6 +317,7 @@ export class PropertiesService {
       type: dto.type,
       notes: dto.notes,
       photo: dto.photo,
+      boundingBox: dto.boundingBox ?? null,
     };
 
     const updatedProperty = await this.propertyModel
@@ -355,6 +356,7 @@ export class PropertiesService {
       type: dto.type,
       notes: dto.notes,
       photo: dto.photo,
+      boundingBox: dto.boundingBox ?? null,
     }));
 
     const updatedProperty = await this.propertyModel

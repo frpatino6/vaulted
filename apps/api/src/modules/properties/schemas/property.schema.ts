@@ -4,6 +4,22 @@ import { HydratedDocument } from 'mongoose';
 export type PropertyDocument = HydratedDocument<Property>;
 
 @Schema({ _id: false })
+export class BoundingBox {
+  @Prop({ required: true })
+  x!: number;
+
+  @Prop({ required: true })
+  y!: number;
+
+  @Prop({ required: true })
+  width!: number;
+
+  @Prop({ required: true })
+  height!: number;
+}
+export const BoundingBoxSchema = SchemaFactory.createForClass(BoundingBox);
+
+@Schema({ _id: false })
 export class Address {
   @Prop({ required: true, trim: true })
   street!: string;
@@ -44,6 +60,9 @@ export class RoomSection {
 
   @Prop({ trim: true })
   photo?: string;
+
+  @Prop({ type: BoundingBoxSchema, required: false, default: null })
+  boundingBox?: BoundingBox | null;
 }
 
 @Schema({ _id: false })
