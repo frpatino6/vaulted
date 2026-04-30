@@ -328,6 +328,9 @@ class _SearchResultCard extends StatelessWidget {
     ].whereType<String>().join(' › ');
     final hasLocation = locationText.isNotEmpty;
 
+    final sectionName = item.locationDetail;
+    final hasSectionPhoto = item.sectionPhoto != null;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -339,31 +342,10 @@ class _SearchResultCard extends StatelessWidget {
         ),
         if (hasLocation)
           Padding(
-            padding: const EdgeInsets.only(left: 12, top: 4, bottom: 4),
+            padding: const EdgeInsets.only(left: 12, top: 4),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                if (item.sectionPhoto != null) ...[
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(6),
-                    child: CachedNetworkImage(
-                      imageUrl: item.sectionPhoto!,
-                      width: 28,
-                      height: 28,
-                      fit: BoxFit.cover,
-                      placeholder: (_, __) => Container(
-                        width: 28,
-                        height: 28,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFC5A059).withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                      ),
-                      errorWidget: (_, __, ___) => const SizedBox.shrink(),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                ],
                 Icon(
                   Icons.location_on_outlined,
                   size: 10,
@@ -381,6 +363,65 @@ class _SearchResultCard extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ),
+        if (hasSectionPhoto)
+          Padding(
+            padding: const EdgeInsets.only(left: 12, right: 12, top: 8),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Stack(
+                alignment: Alignment.bottomLeft,
+                children: [
+                  CachedNetworkImage(
+                    imageUrl: item.sectionPhoto!,
+                    width: double.infinity,
+                    height: 110,
+                    fit: BoxFit.cover,
+                    placeholder: (_, __) => Container(
+                      width: double.infinity,
+                      height: 110,
+                      color: const Color(0xFFC5A059).withValues(alpha: 0.08),
+                    ),
+                    errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                  ),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          Colors.black.withValues(alpha: 0.65),
+                        ],
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.place_outlined,
+                          size: 12,
+                          color: Color(0xFFC5A059),
+                        ),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            sectionName ?? 'Section',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Colors.white,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         const SizedBox(height: 12),
