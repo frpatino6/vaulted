@@ -51,7 +51,9 @@ class _AiSectionScanScreenState extends ConsumerState<AiSectionScanScreen> {
   Future<void> _pickImage(ImageSource source) async {
     final file = await _picker.pickImage(
       source: source,
-      imageQuality: 85,
+      imageQuality: 80,
+      maxWidth: 1920,
+      maxHeight: 1920,
     );
     if (file == null || !mounted) return;
 
