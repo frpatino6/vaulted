@@ -46,6 +46,9 @@ async function bootstrap(): Promise<void> {
 
   app.use(cookieParser());
 
+  // Increase JSON body limit for base64 image payloads (AI vision endpoints)
+  app.useBodyParser('json', { limit: '20mb' });
+
   // Serve uploaded files at /uploads/*.
   // CORS for /uploads is handled per-request: only set the header when
   // the request Origin is in the allowedOrigins list. This prevents any
