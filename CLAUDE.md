@@ -290,6 +290,8 @@ BRAVE_SEARCH_API_KEY · VALUATION_SEARCH_ENGINE=brave
 - All responses through `ResponseInterceptor`
 - TypeScript strict mode always on — no `any`
 - Test files `.spec.ts` co-located
+- **`@nestjs/swagger` is NOT installed — never add `@ApiProperty`, `@ApiPropertyOptional`, `@ApiOperation`, `@ApiTags` or any import from `@nestjs/swagger`. This breaks the build.**
+- **Only add what was explicitly asked. Never add extra decorators, extra validations, extra comments, or extra methods beyond the minimum required to complete the task.**
 
 ### Mobile (Flutter)
 - Feature-first + Riverpod — snake_case files, PascalCase classes
