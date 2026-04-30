@@ -339,6 +339,7 @@ class _AiSectionScanScreenState extends ConsumerState<AiSectionScanScreen> {
             confidence: _confidence,
             sections: _detected,
             saving: _saving,
+            annotatedKey: _annotatedKey,
             onToggle: (i) => setState(
                 () => _detected[i] = _detected[i].copyWith(selected: !_detected[i].selected)),
             onEdit: (i) => _showEditSheet(i),
@@ -558,6 +559,7 @@ class _AnnotatedReviewView extends StatefulWidget {
     required this.confidence,
     required this.sections,
     required this.saving,
+    required this.annotatedKey,
     required this.onToggle,
     required this.onEdit,
     required this.onRemove,
@@ -573,6 +575,7 @@ class _AnnotatedReviewView extends StatefulWidget {
   final double confidence;
   final List<_EditableSection> sections;
   final bool saving;
+  final GlobalKey annotatedKey;
   final void Function(int) onToggle;
   final void Function(int) onEdit;
   final void Function(int) onRemove;
@@ -797,7 +800,7 @@ class _AnnotatedReviewViewState extends State<_AnnotatedReviewView> {
             child: Stack(
               children: [
                 RepaintBoundary(
-                  key: _annotatedKey,
+                  key: widget.annotatedKey,
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
                     child: _moveMode
