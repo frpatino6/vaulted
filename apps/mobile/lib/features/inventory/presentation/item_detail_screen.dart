@@ -137,6 +137,13 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                         resolvedRoomName: item.roomName ?? _resolveRoomName(item.roomId),
                         resolvedSectionLabel: _resolveSectionLabel(item.roomId, item.sectionId),
                       ),
+                      if (item.sectionPhoto != null) ...[
+                        const SizedBox(height: AppSpacing.md),
+                        _SectionPhotoPreview(
+                          photoUrl: item.sectionPhoto!,
+                          sectionLabel: _resolveSectionLabel(item.roomId, item.sectionId),
+                        ),
+                      ],
                       if (item.isWardrobe && item.hasWardrobeDetails) ...[
                         const SizedBox(height: AppSpacing.lg),
                         _WardrobeDetailSection(
@@ -1661,6 +1668,68 @@ class _SpecsTable extends StatelessWidget {
     }
 
     return Column(children: rows);
+  }
+}
+
+class _SectionPhotoPreview extends StatelessWidget {
+  const _SectionPhotoPreview({required this.photoUrl, this.sectionLabel});
+
+  final String photoUrl;
+  final String? sectionLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: Stack(
+        alignment: Alignment.bottomLeft,
+        children: [
+          CachedNetworkImage(
+            imageUrl: photoUrl,
+            width: double.infinity,
+            height: 160,
+            fit: BoxFit.cover,
+            placeholder: (_, __) => Container(
+              width: double.infinity,
+              height: 160,
+              color: _kCatalogGold.withValues(alpha: 0.08),
+            ),
+            errorWidget: (_, __, ___) => const SizedBox.shrink(),
+          ),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.transparent,
+                  Colors.black.withValues(alpha: 0.65),
+                ],
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.place_outlined, size: 13, color: _kCatalogGold),
+                const SizedBox(width: 5),
+                Flexible(
+                  child: Text(
+                    sectionLabel ?? 'Section location',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
