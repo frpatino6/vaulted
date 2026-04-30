@@ -257,11 +257,16 @@ export class InventoryService {
 
     const propertyName = property?.name ?? null;
     let roomName: string | null = null;
+    let sectionPhoto: string | null = null;
     if (property && item.roomId) {
       for (const floor of property.floors ?? []) {
         const room = floor.rooms?.find((r) => r.roomId === String(item.roomId));
         if (room) {
           roomName = room.name;
+          if (item.sectionId) {
+            const section = room.sections?.find((s) => s.sectionId === String(item.sectionId));
+            sectionPhoto = section?.photo ?? null;
+          }
           break;
         }
       }
@@ -285,10 +290,10 @@ export class InventoryService {
           ),
         },
       });
-      return this.withSignedUrls({ ...plain, propertyName, roomName } as Item, userId, tenantId);
+      return this.withSignedUrls({ ...plain, propertyName, roomName, sectionPhoto } as Item, userId, tenantId);
     }
     const stripped = this.accessControl.stripValuation(item.toObject()) as Item;
-    return { ...stripped, propertyName, roomName } as Item;
+    return { ...stripped, propertyName, roomName, sectionPhoto } as Item;
   }
 
   async update(tenantId: string, itemId: string, dto: UpdateItemDto): Promise<Item> {
