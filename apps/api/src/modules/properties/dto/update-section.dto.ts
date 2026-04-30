@@ -20,4 +20,8 @@ export class UpdateSectionDto {
   @IsString()
   @MaxLength(255)
   notes?: string;
+
+  @IsOptional()
+  @IsString()
+  photo?: string;
 }

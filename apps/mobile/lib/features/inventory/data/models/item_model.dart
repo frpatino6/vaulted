@@ -35,6 +35,8 @@ class ItemModel with _$ItemModel {
     String? serialNumber,
     String? locationDetail,
     String? sectionId,
+    String? sectionPhoto,
+    @Default(1) int quantity,
     ItemValuationModel? valuation,
     // ignore: invalid_annotation_target
     @JsonKey(includeIfNull: false) Map<String, dynamic>? attributes,

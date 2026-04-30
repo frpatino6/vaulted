@@ -14,6 +14,7 @@ _$RoomSectionModelImpl _$$RoomSectionModelImplFromJson(
   name: json['name'] as String,
   type: json['type'] as String,
   notes: json['notes'] as String?,
+  photo: json['photo'] as String?,
 );
 
 Map<String, dynamic> _$$RoomSectionModelImplToJson(
@@ -24,4 +25,5 @@ Map<String, dynamic> _$$RoomSectionModelImplToJson(
   'name': instance.name,
   'type': instance.type,
   'notes': instance.notes,
+  'photo': instance.photo,
 };

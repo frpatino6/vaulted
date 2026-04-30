@@ -123,4 +123,9 @@ export class CreateItemDto {
   @IsOptional()
   @IsString()
   sectionId?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  quantity?: number;
 }

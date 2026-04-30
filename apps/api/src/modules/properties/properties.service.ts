@@ -316,6 +316,7 @@ export class PropertiesService {
       name: dto.name,
       type: dto.type,
       notes: dto.notes,
+      photo: dto.photo,
     };
 
     const updatedProperty = await this.propertyModel
@@ -353,6 +354,7 @@ export class PropertiesService {
       name: dto.name,
       type: dto.type,
       notes: dto.notes,
+      photo: dto.photo,
     }));
 
     const updatedProperty = await this.propertyModel
@@ -396,6 +398,8 @@ export class PropertiesService {
       setFields['floors.$[floor].rooms.$[room].sections.$[section].type'] = dto.type;
     if (dto.notes !== undefined)
       setFields['floors.$[floor].rooms.$[room].sections.$[section].notes'] = dto.notes;
+    if (dto.photo !== undefined)
+      setFields['floors.$[floor].rooms.$[room].sections.$[section].photo'] = dto.photo;
 
     const updatedProperty = await this.propertyModel
       .findOneAndUpdate(

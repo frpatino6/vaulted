@@ -40,7 +40,7 @@ interface InventorySearchFilters {
 }
 
 export interface InventorySearchResponse {
-  items: Array<ItemDocument & { propertyName: string | null; roomName: string | null }>;
+  items: Array<ItemDocument & { propertyName: string | null; roomName: string | null; sectionPhoto: string | null }>;
   total: number;
   page: number;
   limit: number;
@@ -94,6 +94,7 @@ export class InventoryService {
       serialNumber: dto.serialNumber,
       locationDetail: dto.locationDetail,
       sectionId: dto.sectionId ?? null,
+      quantity: dto.quantity ?? 1,
       createdBy: userId,
     });
 
@@ -316,6 +317,7 @@ export class InventoryService {
             ...(dto.serialNumber !== undefined ? { serialNumber: dto.serialNumber } : {}),
             ...(dto.locationDetail !== undefined ? { locationDetail: dto.locationDetail } : {}),
             ...(dto.sectionId !== undefined ? { sectionId: dto.sectionId } : {}),
+            ...(dto.quantity !== undefined ? { quantity: dto.quantity } : {}),
           },
         },
         { new: true, runValidators: true },
@@ -519,11 +521,16 @@ export class InventoryService {
       const propertyName = property?.name ?? null;
 
       let roomName: string | null = null;
+      let sectionPhoto: string | null = null;
       if (property && item.roomId) {
         for (const floor of property.floors ?? []) {
           const room = floor.rooms?.find((candidate) => candidate.roomId === String(item.roomId));
           if (room) {
             roomName = room.name;
+            if (item.sectionId) {
+              const section = room.sections?.find((s) => s.sectionId === String(item.sectionId));
+              sectionPhoto = section?.photo ?? null;
+            }
             break;
           }
         }
@@ -536,7 +543,8 @@ export class InventoryService {
         ...plain,
         propertyName,
         roomName,
-      } as ItemDocument & { propertyName: string | null; roomName: string | null };
+        sectionPhoto,
+      } as ItemDocument & { propertyName: string | null; roomName: string | null; sectionPhoto: string | null };
     });
 
     const finalItems = role === Role.OWNER || role === Role.MANAGER

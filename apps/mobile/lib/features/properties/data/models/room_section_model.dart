@@ -11,6 +11,7 @@ class RoomSectionModel with _$RoomSectionModel {
     required String name,
     required String type,
     String? notes,
+    String? photo,
   }) = _RoomSectionModel;
 
   factory RoomSectionModel.fromJson(Map<String, dynamic> json) =>

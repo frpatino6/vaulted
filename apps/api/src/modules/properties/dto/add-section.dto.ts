@@ -18,4 +18,8 @@ export class AddSectionDto {
   @IsString()
   @MaxLength(255)
   notes?: string;
+
+  @IsOptional()
+  @IsString()
+  photo?: string;
 }

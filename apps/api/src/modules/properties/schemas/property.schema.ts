@@ -41,6 +41,9 @@ export class RoomSection {
 
   @Prop({ trim: true })
   notes?: string;
+
+  @Prop({ trim: true })
+  photo?: string;
 }
 
 @Schema({ _id: false })
