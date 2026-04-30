@@ -259,6 +259,12 @@ class _AiSectionScanScreenState extends ConsumerState<AiSectionScanScreen> {
                   'type': s.type,
                   if (s.notes != null && s.notes!.isNotEmpty) 'notes': s.notes,
                   if (_imageUrl != null) 'photo': _imageUrl,
+                  if (s.boundingBox != null) 'boundingBox': {
+                    'x': s.boundingBox!.x,
+                    'y': s.boundingBox!.y,
+                    'width': s.boundingBox!.width,
+                    'height': s.boundingBox!.height,
+                  },
                 }).toList(),
           );
       if (mounted) Navigator.of(context).pop(true);

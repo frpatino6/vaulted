@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -18,6 +19,7 @@ import '../../maintenance/domain/maintenance_notifier.dart';
 import '../../maintenance/presentation/add_maintenance_sheet.dart';
 import '../data/item_repository_provider.dart';
 import '../data/models/item_model.dart';
+import '../../properties/data/models/room_section_model.dart';
 import '../domain/item_detail_notifier.dart';
 import '../../properties/domain/property_detail_notifier.dart';
 import '../../household_members/data/models/household_member_model.dart';
@@ -142,6 +144,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                         _SectionPhotoPreview(
                           photoUrl: item.sectionPhoto!,
                           sectionLabel: _resolveSectionLabel(item.roomId, item.sectionId),
+                          boundingBox: item.sectionBoundingBox,
                         ),
                       ],
                       if (item.isWardrobe && item.hasWardrobeDetails) ...[
@@ -1671,63 +1674,144 @@ class _SpecsTable extends StatelessWidget {
   }
 }
 
-class _SectionPhotoPreview extends StatelessWidget {
-  const _SectionPhotoPreview({required this.photoUrl, this.sectionLabel});
+class _SectionPhotoPreview extends StatefulWidget {
+  const _SectionPhotoPreview({
+    required this.photoUrl,
+    this.sectionLabel,
+    this.boundingBox,
+  });
 
   final String photoUrl;
   final String? sectionLabel;
+  final SectionBoundingBox? boundingBox;
+
+  @override
+  State<_SectionPhotoPreview> createState() => _SectionPhotoPreviewState();
+}
+
+class _SectionPhotoPreviewState extends State<_SectionPhotoPreview> {
+  Size? _naturalSize;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.boundingBox != null) _loadImageSize();
+  }
+
+  void _loadImageSize() {
+    NetworkImage(widget.photoUrl)
+        .resolve(const ImageConfiguration())
+        .addListener(ImageStreamListener((info, _) {
+      if (mounted) {
+        setState(() => _naturalSize = Size(
+              info.image.width.toDouble(),
+              info.image.height.toDouble(),
+            ));
+      }
+    }));
+  }
 
   @override
   Widget build(BuildContext context) {
+    const double h = 200;
     return ClipRRect(
       borderRadius: BorderRadius.circular(14),
-      child: Stack(
-        alignment: Alignment.bottomLeft,
-        children: [
-          CachedNetworkImage(
-            imageUrl: photoUrl,
-            width: double.infinity,
-            height: 160,
-            fit: BoxFit.cover,
-            placeholder: (_, __) => Container(
-              width: double.infinity,
-              height: 160,
-              color: _kCatalogGold.withValues(alpha: 0.08),
-            ),
-            errorWidget: (_, __, ___) => const SizedBox.shrink(),
-          ),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.transparent,
-                  Colors.black.withValues(alpha: 0.65),
-                ],
-              ),
-            ),
-            child: Row(
+      child: SizedBox(
+        width: double.infinity,
+        height: h,
+        child: LayoutBuilder(
+          builder: (_, constraints) {
+            final w = constraints.maxWidth;
+            return Stack(
+              fit: StackFit.expand,
               children: [
-                const Icon(Icons.place_outlined, size: 13, color: _kCatalogGold),
-                const SizedBox(width: 5),
-                Flexible(
-                  child: Text(
-                    sectionLabel ?? 'Section location',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Colors.white,
-                      fontWeight: FontWeight.w500,
+                CachedNetworkImage(
+                  imageUrl: widget.photoUrl,
+                  width: w,
+                  height: h,
+                  fit: BoxFit.cover,
+                  placeholder: (_, __) => Container(color: _kCatalogGold.withValues(alpha: 0.08)),
+                  errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                ),
+                if (widget.boundingBox != null && _naturalSize != null)
+                  _BoundingBoxOverlay(
+                    bbox: widget.boundingBox!,
+                    naturalSize: _naturalSize!,
+                    containerW: w,
+                    containerH: h,
+                  ),
+                Positioned(
+                  left: 0, right: 0, bottom: 0,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Colors.transparent, Colors.black.withValues(alpha: 0.65)],
+                      ),
                     ),
-                    overflow: TextOverflow.ellipsis,
+                    child: Row(
+                      children: [
+                        const Icon(Icons.place_outlined, size: 13, color: _kCatalogGold),
+                        const SizedBox(width: 5),
+                        Flexible(
+                          child: Text(
+                            widget.sectionLabel ?? 'Section location',
+                            style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w500),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
-            ),
-          ),
-        ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _BoundingBoxOverlay extends StatelessWidget {
+  const _BoundingBoxOverlay({
+    required this.bbox,
+    required this.naturalSize,
+    required this.containerW,
+    required this.containerH,
+  });
+
+  final SectionBoundingBox bbox;
+  final Size naturalSize;
+  final double containerW, containerH;
+
+  @override
+  Widget build(BuildContext context) {
+    // BoxFit.cover: scale so image fills container, centered
+    final scale = max(containerW / naturalSize.width, containerH / naturalSize.height);
+    final renderedW = naturalSize.width * scale;
+    final renderedH = naturalSize.height * scale;
+    final offsetX = (containerW - renderedW) / 2;
+    final offsetY = (containerH - renderedH) / 2;
+
+    final left = offsetX + bbox.x * renderedW;
+    final top = offsetY + bbox.y * renderedH;
+    final width = bbox.width * renderedW;
+    final height = bbox.height * renderedH;
+
+    return Positioned(
+      left: left,
+      top: top,
+      width: width,
+      height: height,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: _kCatalogGold, width: 2.5),
+          color: _kCatalogGold.withValues(alpha: 0.18),
+        ),
       ),
     );
   }

@@ -369,6 +369,7 @@ class _$ItemModelCopyWithImpl<$Res, $Val extends ItemModel>
     Object? locationDetail = freezed,
     Object? sectionId = freezed,
     Object? sectionPhoto = freezed,
+    Object? sectionBoundingBox = freezed,
     Object? quantity = null,
     Object? valuation = freezed,
     Object? attributes = freezed,
@@ -453,6 +454,11 @@ class _$ItemModelCopyWithImpl<$Res, $Val extends ItemModel>
                     ? _value.sectionPhoto
                     : sectionPhoto // ignore: cast_nullable_to_non_nullable
                         as String?,
+            sectionBoundingBox:
+                freezed == sectionBoundingBox
+                    ? _value.sectionBoundingBox
+                    : sectionBoundingBox // ignore: cast_nullable_to_non_nullable
+                        as SectionBoundingBox?,
             quantity:
                 null == quantity
                     ? _value.quantity
@@ -528,6 +534,8 @@ abstract class _$$ItemModelImplCopyWith<$Res>
     String? locationDetail,
     String? sectionId,
     String? sectionPhoto,
+    @JsonKey(fromJson: _itemBoundingBoxFromJson, toJson: _itemBoundingBoxToJson)
+    SectionBoundingBox? sectionBoundingBox,
     int quantity,
     ItemValuationModel? valuation,
     @JsonKey(includeIfNull: false) Map<String, dynamic>? attributes,
@@ -569,6 +577,7 @@ class __$$ItemModelImplCopyWithImpl<$Res>
     Object? locationDetail = freezed,
     Object? sectionId = freezed,
     Object? sectionPhoto = freezed,
+    Object? sectionBoundingBox = freezed,
     Object? quantity = null,
     Object? valuation = freezed,
     Object? attributes = freezed,
@@ -653,6 +662,11 @@ class __$$ItemModelImplCopyWithImpl<$Res>
                 ? _value.sectionPhoto
                 : sectionPhoto // ignore: cast_nullable_to_non_nullable
                     as String?,
+        sectionBoundingBox:
+            freezed == sectionBoundingBox
+                ? _value.sectionBoundingBox
+                : sectionBoundingBox // ignore: cast_nullable_to_non_nullable
+                    as SectionBoundingBox?,
         quantity:
             null == quantity
                 ? _value.quantity
@@ -707,6 +721,8 @@ class _$ItemModelImpl implements _ItemModel {
     this.locationDetail,
     this.sectionId,
     this.sectionPhoto,
+    @JsonKey(fromJson: _itemBoundingBoxFromJson, toJson: _itemBoundingBoxToJson)
+    this.sectionBoundingBox,
     this.quantity = 1,
     this.valuation,
     @JsonKey(includeIfNull: false) final Map<String, dynamic>? attributes,
@@ -768,6 +784,9 @@ class _$ItemModelImpl implements _ItemModel {
   @override
   final String? sectionPhoto;
   @override
+  @JsonKey(fromJson: _itemBoundingBoxFromJson, toJson: _itemBoundingBoxToJson)
+  final SectionBoundingBox? sectionBoundingBox;
+  @override
   @JsonKey()
   final int quantity;
   @override
@@ -801,7 +820,7 @@ class _$ItemModelImpl implements _ItemModel {
 
   @override
   String toString() {
-    return 'ItemModel(id: $id, name: $name, propertyId: $propertyId, propertyName: $propertyName, roomId: $roomId, roomName: $roomName, category: $category, subcategory: $subcategory, status: $status, photos: $photos, tags: $tags, serialNumber: $serialNumber, locationDetail: $locationDetail, sectionId: $sectionId, sectionPhoto: $sectionPhoto, quantity: $quantity, valuation: $valuation, attributes: $attributes, documents: $documents, createdAt: $createdAt, qrCode: $qrCode)';
+    return 'ItemModel(id: $id, name: $name, propertyId: $propertyId, propertyName: $propertyName, roomId: $roomId, roomName: $roomName, category: $category, subcategory: $subcategory, status: $status, photos: $photos, tags: $tags, serialNumber: $serialNumber, locationDetail: $locationDetail, sectionId: $sectionId, sectionPhoto: $sectionPhoto, sectionBoundingBox: $sectionBoundingBox, quantity: $quantity, valuation: $valuation, attributes: $attributes, documents: $documents, createdAt: $createdAt, qrCode: $qrCode)';
   }
 
   @override
@@ -833,6 +852,8 @@ class _$ItemModelImpl implements _ItemModel {
                 other.sectionId == sectionId) &&
             (identical(other.sectionPhoto, sectionPhoto) ||
                 other.sectionPhoto == sectionPhoto) &&
+            (identical(other.sectionBoundingBox, sectionBoundingBox) ||
+                other.sectionBoundingBox == sectionBoundingBox) &&
             (identical(other.quantity, quantity) ||
                 other.quantity == quantity) &&
             (identical(other.valuation, valuation) ||
@@ -869,6 +890,7 @@ class _$ItemModelImpl implements _ItemModel {
     locationDetail,
     sectionId,
     sectionPhoto,
+    sectionBoundingBox,
     quantity,
     valuation,
     const DeepCollectionEquality().hash(_attributes),
@@ -908,6 +930,8 @@ abstract class _ItemModel implements ItemModel {
     final String? locationDetail,
     final String? sectionId,
     final String? sectionPhoto,
+    @JsonKey(fromJson: _itemBoundingBoxFromJson, toJson: _itemBoundingBoxToJson)
+    final SectionBoundingBox? sectionBoundingBox,
     final int quantity,
     final ItemValuationModel? valuation,
     @JsonKey(includeIfNull: false) final Map<String, dynamic>? attributes,
@@ -949,6 +973,9 @@ abstract class _ItemModel implements ItemModel {
   String? get sectionId;
   @override
   String? get sectionPhoto;
+  @override
+  @JsonKey(fromJson: _itemBoundingBoxFromJson, toJson: _itemBoundingBoxToJson)
+  SectionBoundingBox? get sectionBoundingBox;
   @override
   int get quantity;
   @override
