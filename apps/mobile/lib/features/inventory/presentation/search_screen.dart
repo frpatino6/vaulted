@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -340,18 +341,43 @@ class _SearchResultCard extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(left: 12, top: 4, bottom: 4),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
+                if (item.sectionPhoto != null) ...[
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: CachedNetworkImage(
+                      imageUrl: item.sectionPhoto!,
+                      width: 28,
+                      height: 28,
+                      fit: BoxFit.cover,
+                      placeholder: (_, __) => Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFC5A059).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                      ),
+                      errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                ],
                 Icon(
                   Icons.location_on_outlined,
                   size: 10,
                   color: const Color(0xFFC5A059),
                 ),
                 const SizedBox(width: 4),
-                Text(
-                  locationText,
-                  style: TextStyle(
-                    fontSize: 11.0,
-                    color: Colors.white.withValues(alpha: 0.38),
+                Flexible(
+                  child: Text(
+                    locationText,
+                    style: TextStyle(
+                      fontSize: 11.0,
+                      color: Colors.white.withValues(alpha: 0.38),
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
