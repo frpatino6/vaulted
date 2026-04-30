@@ -35,6 +35,7 @@ class ItemRepository {
     String? serialNumber,
     String? locationDetail,
     String? sectionId,
+    int quantity = 1,
     int purchasePrice = 0,
     int currentValue = 0,
     String currency = 'USD',
@@ -55,6 +56,7 @@ class ItemRepository {
       if (locationDetail != null && locationDetail.isNotEmpty)
         'locationDetail': locationDetail,
       if (sectionId != null && sectionId.isNotEmpty) 'sectionId': sectionId,
+      'quantity': quantity,
       'valuation': {
         'purchasePrice': purchasePrice,
         'currentValue': currentValue,
@@ -78,6 +80,7 @@ class ItemRepository {
     String? serialNumber,
     String? locationDetail,
     String? sectionId,
+    int? quantity,
     Map<String, dynamic>? valuation,
     List<String>? tags,
     List<String>? photos,
@@ -93,6 +96,7 @@ class ItemRepository {
     if (serialNumber != null) body['serialNumber'] = serialNumber;
     if (locationDetail != null) body['locationDetail'] = locationDetail;
     if (sectionId != null) body['sectionId'] = sectionId;
+    if (quantity != null) body['quantity'] = quantity;
     if (valuation != null) body['valuation'] = valuation;
     if (tags != null) body['tags'] = tags;
     if (photos != null) body['photos'] = photos;

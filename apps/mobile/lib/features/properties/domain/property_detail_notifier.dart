@@ -134,13 +134,14 @@ class PropertyDetailNotifier extends AsyncNotifier<PropertyModel?> {
     required String name,
     required String type,
     String? notes,
+    String? photo,
   }) async {
     final id = _propertyId;
     if (id == null) return null;
     try {
       final property = await ref.read(propertyRepositoryProvider).addSection(
         id, floorId, roomId,
-        code: code, name: name, type: type, notes: notes,
+        code: code, name: name, type: type, notes: notes, photo: photo,
       );
       state = AsyncData(property);
       return property;
@@ -174,13 +175,14 @@ class PropertyDetailNotifier extends AsyncNotifier<PropertyModel?> {
     String? name,
     String? type,
     String? notes,
+    String? photo,
   }) async {
     final id = _propertyId;
     if (id == null) return null;
     try {
       final property = await ref.read(propertyRepositoryProvider).updateSection(
         id, floorId, roomId, sectionId,
-        code: code, name: name, type: type, notes: notes,
+        code: code, name: name, type: type, notes: notes, photo: photo,
       );
       state = AsyncData(property);
       return property;

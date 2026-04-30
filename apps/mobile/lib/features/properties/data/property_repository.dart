@@ -99,11 +99,13 @@ class PropertyRepository {
     required String name,
     required String type,
     String? notes,
+    String? photo,
   }) => _remote.addSection(propertyId, floorId, roomId, {
     'code': code,
     'name': name,
     'type': type,
     if (notes != null) 'notes': notes,
+    if (photo != null) 'photo': photo,
   });
 
   Future<PropertyModel> addSectionsBulk(
@@ -122,11 +124,13 @@ class PropertyRepository {
     String? name,
     String? type,
     String? notes,
+    String? photo,
   }) => _remote.updateSection(propertyId, floorId, roomId, sectionId, {
     if (code != null) 'code': code,
     if (name != null) 'name': name,
     if (type != null) 'type': type,
     if (notes != null) 'notes': notes,
+    if (photo != null) 'photo': photo,
   });
 
   Future<PropertyModel> deleteSection(
