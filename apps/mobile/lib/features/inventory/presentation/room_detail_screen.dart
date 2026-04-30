@@ -13,6 +13,7 @@ import '../domain/item_list_notifier.dart';
 import '../../../shared/widgets/room_inventory_asset_card.dart';
 import '../../properties/data/models/floor_model.dart';
 import '../../properties/data/models/room_model.dart';
+import '../../properties/data/models/room_section_model.dart';
 import '../../properties/domain/property_detail_notifier.dart';
 import 'add_item_sheet.dart';
 import 'section_qr_sheet.dart';
@@ -146,8 +147,8 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
               if (roomSections.isNotEmpty)
                 IconButton(
                   onPressed: () {
-                    final sections = roomSections.map((s) => s.name).toList()
-                      ..sort();
+                    final sections = [...roomSections]
+                      ..sort((a, b) => a.name.compareTo(b.name));
                     showSectionQrSheet(
                       context,
                       widget.roomId,

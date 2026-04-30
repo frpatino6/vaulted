@@ -1,18 +1,20 @@
 import 'dart:ui' as ui;
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../properties/data/models/room_section_model.dart';
 
-/// Shows all unique sections in a room with their printable QR codes.
+/// Shows all sections in a room with their QR codes and optional photo preview.
 void showSectionQrSheet(
   BuildContext context,
   String roomId,
   String roomName,
-  List<String> sections,
+  List<RoomSectionModel> sections,
 ) {
   if (sections.isEmpty) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -41,7 +43,7 @@ class _SectionQrSheet extends StatefulWidget {
 
   final String roomId;
   final String roomName;
-  final List<String> sections;
+  final List<RoomSectionModel> sections;
 
   @override
   State<_SectionQrSheet> createState() => _SectionQrSheetState();
@@ -50,8 +52,8 @@ class _SectionQrSheet extends StatefulWidget {
 class _SectionQrSheetState extends State<_SectionQrSheet> {
   int _selectedIndex = 0;
 
-  String _qrData(String section) =>
-      'vaulted://rooms/${widget.roomId}?section=${Uri.encodeComponent(section)}';
+  String _qrData(RoomSectionModel section) =>
+      'vaulted://rooms/${widget.roomId}?section=${Uri.encodeComponent(section.name)}';
 
   @override
   Widget build(BuildContext context) {
@@ -121,43 +123,169 @@ class _SectionQrSheetState extends State<_SectionQrSheet> {
                   padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
                   itemCount: widget.sections.length,
                   separatorBuilder: (_, _) => const SizedBox(width: 8),
-                  itemBuilder: (_, i) => ChoiceChip(
-                    label: Text(
-                      widget.sections[i],
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: _selectedIndex == i
-                            ? AppColors.background
-                            : AppColors.onSurfaceVariant,
+                  itemBuilder: (_, i) {
+                    final s = widget.sections[i];
+                    return ChoiceChip(
+                      label: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (s.photo != null) ...[
+                            Icon(
+                              Icons.image_outlined,
+                              size: 12,
+                              color: _selectedIndex == i
+                                  ? AppColors.background
+                                  : AppColors.accent,
+                            ),
+                            const SizedBox(width: 3),
+                          ],
+                          Text(
+                            s.name,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: _selectedIndex == i
+                                  ? AppColors.background
+                                  : AppColors.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    selected: _selectedIndex == i,
-                    selectedColor: AppColors.accent,
-                    backgroundColor:
-                        AppColors.surfaceVariant.withValues(alpha: 0.4),
-                    onSelected: (_) =>
-                        setState(() => _selectedIndex = i),
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                  ),
+                      selected: _selectedIndex == i,
+                      selectedColor: AppColors.accent,
+                      backgroundColor:
+                          AppColors.surfaceVariant.withValues(alpha: 0.4),
+                      onSelected: (_) => setState(() => _selectedIndex = i),
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                    );
+                  },
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
             ],
-            // QR display
+            // QR + photo
             Expanded(
               child: SingleChildScrollView(
                 controller: scrollController,
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                child: _QrCard(
-                  section: section,
-                  roomName: widget.roomName,
-                  qrData: _qrData(section),
+                child: Column(
+                  children: [
+                    _QrCard(
+                      section: section,
+                      roomName: widget.roomName,
+                      qrData: _qrData(section),
+                    ),
+                    if (section.photo != null) ...[
+                      const SizedBox(height: AppSpacing.md),
+                      _SectionPhotoPreview(
+                        photoUrl: section.photo!,
+                        sectionName: '${section.code} · ${section.name}',
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                    ],
+                  ],
                 ),
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _SectionPhotoPreview extends StatelessWidget {
+  const _SectionPhotoPreview({
+    required this.photoUrl,
+    required this.sectionName,
+  });
+
+  final String photoUrl;
+  final String sectionName;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Row(
+            children: [
+              const Icon(Icons.map_outlined, size: 14, color: AppColors.accent),
+              const SizedBox(width: 6),
+              Text(
+                'Location map',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: AppColors.accent,
+                      letterSpacing: 1.1,
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+            ],
+          ),
+        ),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: Stack(
+            alignment: Alignment.bottomLeft,
+            children: [
+              CachedNetworkImage(
+                imageUrl: photoUrl,
+                width: double.infinity,
+                height: 200,
+                fit: BoxFit.cover,
+                placeholder: (_, __) => Container(
+                  width: double.infinity,
+                  height: 200,
+                  color: AppColors.accent.withValues(alpha: 0.08),
+                  child: const Center(
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
+                errorWidget: (_, __, ___) => Container(
+                  width: double.infinity,
+                  height: 80,
+                  color: AppColors.surfaceVariant,
+                  child: const Center(
+                    child: Icon(Icons.broken_image_outlined, color: Colors.white24),
+                  ),
+                ),
+              ),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.65),
+                    ],
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.place_outlined, size: 13, color: Color(0xFFC5A059)),
+                    const SizedBox(width: 5),
+                    Flexible(
+                      child: Text(
+                        sectionName,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -169,7 +297,7 @@ class _QrCard extends StatefulWidget {
     required this.qrData,
   });
 
-  final String section;
+  final RoomSectionModel section;
   final String roomName;
   final String qrData;
 
@@ -234,7 +362,7 @@ class _QrCardState extends State<_QrCard> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  widget.section,
+                  widget.section.name,
                   style: const TextStyle(
                     color: Colors.black,
                     fontSize: 16,
