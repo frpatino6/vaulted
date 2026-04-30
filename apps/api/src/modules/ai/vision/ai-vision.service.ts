@@ -101,7 +101,12 @@ export class AiVisionService {
     userId: string,
     dto: AnalyzeSectionsDto,
   ): Promise<AnalyzeSectionsResult> {
-    const imagePart = this.resolveImageToPart(dto.imageUrl);
+    if (!dto.imageUrl && !dto.imageData) {
+      throw new BadRequestException('imageUrl or imageData is required');
+    }
+    const imagePart: Part = dto.imageData
+      ? { inlineData: { mimeType: dto.mimeType ?? 'image/jpeg', data: dto.imageData } }
+      : this.resolveImageToPart(dto.imageUrl!);
     const prompt = this.buildSectionsPrompt();
     const parts: Part[] = [imagePart, { text: prompt }];
 

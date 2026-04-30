@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -213,6 +215,11 @@ class PropertyDetailNotifier extends AsyncNotifier<PropertyModel?> {
 
   Future<Map<String, dynamic>> analyzeSections(String imageUrl) =>
       ref.read(propertyRepositoryProvider).analyzeSections(imageUrl);
+
+  Future<Map<String, dynamic>> analyzeSectionsFromBytes(
+    Uint8List bytes,
+    String mimeType,
+  ) => ref.read(propertyRepositoryProvider).analyzeSectionsFromBytes(bytes, mimeType);
 
   static String message(Object e) {
     if (e is DioException) {

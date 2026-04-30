@@ -1,8 +1,17 @@
-import { IsString } from 'class-validator';
+import { IsOptional, IsString } from 'class-validator';
 
 export class AnalyzeSectionsDto {
+  @IsOptional()
   @IsString()
-  imageUrl!: string;
+  imageUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  imageData?: string;
+
+  @IsOptional()
+  @IsString()
+  mimeType?: string;
 }
 
 export interface BoundingBox {

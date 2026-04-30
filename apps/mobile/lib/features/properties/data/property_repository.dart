@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'models/property_model.dart';
 import 'models/room_section_model.dart';
 import 'property_remote_data_source.dart';
@@ -144,4 +146,9 @@ class PropertyRepository {
 
   Future<Map<String, dynamic>> analyzeSections(String imageUrl) =>
       _remote.analyzeSections(imageUrl);
+
+  Future<Map<String, dynamic>> analyzeSectionsFromBytes(
+    Uint8List bytes,
+    String mimeType,
+  ) => _remote.analyzeSectionsFromBytes(bytes, mimeType);
 }
