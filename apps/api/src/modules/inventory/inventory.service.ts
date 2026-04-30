@@ -591,6 +591,9 @@ export class InventoryService {
       ...item,
       photos: (item.photos ?? []).map(sign),
       documents: (item.documents ?? []).map(sign),
+      ...((item as unknown as Record<string, unknown>)['sectionPhoto']
+        ? { sectionPhoto: sign((item as unknown as Record<string, unknown>)['sectionPhoto'] as string) }
+        : {}),
     };
   }
 
