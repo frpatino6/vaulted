@@ -1695,7 +1695,7 @@ class _SectionPhotoPreviewState extends State<_SectionPhotoPreview> {
   @override
   void initState() {
     super.initState();
-    if (widget.boundingBox != null) _loadImageSize();
+    _loadImageSize();
   }
 
   void _loadImageSize() {
@@ -1711,65 +1711,220 @@ class _SectionPhotoPreviewState extends State<_SectionPhotoPreview> {
     }));
   }
 
+  void _openFullScreen() {
+    showDialog<void>(
+      context: context,
+      barrierColor: Colors.black87,
+      builder: (_) => _SectionPhotoFullScreen(
+        photoUrl: widget.photoUrl,
+        sectionLabel: widget.sectionLabel,
+        boundingBox: widget.boundingBox,
+        naturalSize: _naturalSize,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    const double h = 200;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(14),
-      child: SizedBox(
-        width: double.infinity,
-        height: h,
-        child: LayoutBuilder(
-          builder: (_, constraints) {
-            final w = constraints.maxWidth;
-            return Stack(
-              fit: StackFit.expand,
-              children: [
-                CachedNetworkImage(
-                  imageUrl: widget.photoUrl,
-                  width: w,
-                  height: h,
-                  fit: BoxFit.cover,
-                  placeholder: (_, __) => Container(color: _kCatalogGold.withValues(alpha: 0.08)),
-                  errorWidget: (_, __, ___) => const SizedBox.shrink(),
-                ),
-                if (widget.boundingBox != null && _naturalSize != null)
-                  _BoundingBoxOverlay(
-                    bbox: widget.boundingBox!,
-                    naturalSize: _naturalSize!,
-                    containerW: w,
-                    containerH: h,
+    const double h = 160;
+    return GestureDetector(
+      onTap: _openFullScreen,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: SizedBox(
+          width: double.infinity,
+          height: h,
+          child: LayoutBuilder(
+            builder: (_, constraints) {
+              final w = constraints.maxWidth;
+              return Stack(
+                fit: StackFit.expand,
+                children: [
+                  Container(color: Colors.black),
+                  CachedNetworkImage(
+                    imageUrl: widget.photoUrl,
+                    width: w,
+                    height: h,
+                    fit: BoxFit.contain,
+                    placeholder: (_, __) => Container(color: _kCatalogGold.withValues(alpha: 0.08)),
+                    errorWidget: (_, __, ___) => const SizedBox.shrink(),
                   ),
-                Positioned(
-                  left: 0, right: 0, bottom: 0,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [Colors.transparent, Colors.black.withValues(alpha: 0.65)],
+                  if (widget.boundingBox != null && _naturalSize != null)
+                    _BoundingBoxOverlay(
+                      bbox: widget.boundingBox!,
+                      naturalSize: _naturalSize!,
+                      containerW: w,
+                      containerH: h,
+                      fit: BoxFit.contain,
+                    ),
+                  // Tap hint
+                  Positioned(
+                    top: 8, right: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.fullscreen, size: 14, color: Colors.white),
+                          SizedBox(width: 4),
+                          Text('View', style: TextStyle(fontSize: 11, color: Colors.white)),
+                        ],
                       ),
                     ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.place_outlined, size: 13, color: _kCatalogGold),
-                        const SizedBox(width: 5),
-                        Flexible(
-                          child: Text(
-                            widget.sectionLabel ?? 'Section location',
-                            style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w500),
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                  ),
+                  Positioned(
+                    left: 0, right: 0, bottom: 0,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [Colors.transparent, Colors.black.withValues(alpha: 0.65)],
                         ),
-                      ],
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.place_outlined, size: 13, color: _kCatalogGold),
+                          const SizedBox(width: 5),
+                          Flexible(
+                            child: Text(
+                              widget.sectionLabel ?? 'Section location',
+                              style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w500),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ],
-            );
-          },
+                ],
+              );
+            },
+          ),
         ),
+      ),
+    );
+  }
+}
+
+class _SectionPhotoFullScreen extends StatefulWidget {
+  const _SectionPhotoFullScreen({
+    required this.photoUrl,
+    this.sectionLabel,
+    this.boundingBox,
+    this.naturalSize,
+  });
+
+  final String photoUrl;
+  final String? sectionLabel;
+  final SectionBoundingBox? boundingBox;
+  final Size? naturalSize;
+
+  @override
+  State<_SectionPhotoFullScreen> createState() => _SectionPhotoFullScreenState();
+}
+
+class _SectionPhotoFullScreenState extends State<_SectionPhotoFullScreen> {
+  Size? _naturalSize;
+
+  @override
+  void initState() {
+    super.initState();
+    _naturalSize = widget.naturalSize;
+    if (_naturalSize == null) {
+      NetworkImage(widget.photoUrl)
+          .resolve(const ImageConfiguration())
+          .addListener(ImageStreamListener((info, _) {
+        if (mounted) {
+          setState(() => _naturalSize = Size(
+                info.image.width.toDouble(),
+                info.image.height.toDouble(),
+              ));
+        }
+      }));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog.fullscreen(
+      backgroundColor: Colors.black,
+      child: Stack(
+        children: [
+          InteractiveViewer(
+            minScale: 0.5,
+            maxScale: 5.0,
+            child: Center(
+              child: LayoutBuilder(
+                builder: (_, constraints) {
+                  final w = constraints.maxWidth;
+                  final h = constraints.maxHeight;
+                  return Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      CachedNetworkImage(
+                        imageUrl: widget.photoUrl,
+                        width: w,
+                        height: h,
+                        fit: BoxFit.contain,
+                        placeholder: (_, __) => const Center(
+                          child: CircularProgressIndicator(color: _kCatalogGold),
+                        ),
+                        errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                      ),
+                      if (widget.boundingBox != null && _naturalSize != null)
+                        _BoundingBoxOverlay(
+                          bbox: widget.boundingBox!,
+                          naturalSize: _naturalSize!,
+                          containerW: w,
+                          containerH: h,
+                          fit: BoxFit.contain,
+                        ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
+          // Close button
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 8,
+            right: 12,
+            child: GestureDetector(
+              onTap: () => Navigator.of(context).pop(),
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: const Icon(Icons.close, color: Colors.white, size: 20),
+              ),
+            ),
+          ),
+          if (widget.sectionLabel != null)
+            Positioned(
+              bottom: MediaQuery.of(context).padding.bottom + 16,
+              left: 16, right: 16,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.place_outlined, size: 14, color: _kCatalogGold),
+                  const SizedBox(width: 6),
+                  Text(
+                    widget.sectionLabel!,
+                    style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
+                  ),
+                ],
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -1781,16 +1936,22 @@ class _BoundingBoxOverlay extends StatelessWidget {
     required this.naturalSize,
     required this.containerW,
     required this.containerH,
+    this.fit = BoxFit.contain,
   });
 
   final SectionBoundingBox bbox;
   final Size naturalSize;
   final double containerW, containerH;
+  final BoxFit fit;
 
   @override
   Widget build(BuildContext context) {
-    // BoxFit.cover: scale so image fills container, centered
-    final scale = max(containerW / naturalSize.width, containerH / naturalSize.height);
+    final double scale;
+    if (fit == BoxFit.cover) {
+      scale = max(containerW / naturalSize.width, containerH / naturalSize.height);
+    } else {
+      scale = min(containerW / naturalSize.width, containerH / naturalSize.height);
+    }
     final renderedW = naturalSize.width * scale;
     final renderedH = naturalSize.height * scale;
     final offsetX = (containerW - renderedW) / 2;
