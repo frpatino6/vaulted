@@ -548,7 +548,7 @@ class _SectionFormSheetState extends ConsumerState<_SectionFormSheet> {
               existingPhotoUrl: _existingPhotoUrl,
               onPick: () async {
                 final picker = ImagePicker();
-                final file = await picker.pickImage(source: ImageSource.camera);
+                final file = await picker.pickImage(source: ImageSource.camera, imageQuality: 80, maxWidth: 1920, maxHeight: 1920);
                 if (file != null && mounted) {
                   setState(() {
                     _pendingPhoto = file;
@@ -558,7 +558,7 @@ class _SectionFormSheetState extends ConsumerState<_SectionFormSheet> {
               },
               onPickGallery: () async {
                 final picker = ImagePicker();
-                final file = await picker.pickImage(source: ImageSource.gallery);
+                final file = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80, maxWidth: 1920, maxHeight: 1920);
                 if (file != null && mounted) {
                   setState(() {
                     _pendingPhoto = file;

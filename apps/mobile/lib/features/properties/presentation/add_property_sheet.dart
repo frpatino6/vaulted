@@ -113,7 +113,9 @@ class _AddPropertySheetState extends ConsumerState<AddPropertySheet> {
 
     final file = await ImagePicker().pickImage(
       source: source,
-      imageQuality: 85,
+      imageQuality: 80,
+      maxWidth: 1920,
+      maxHeight: 1920,
     );
     if (file == null || !mounted) return;
 

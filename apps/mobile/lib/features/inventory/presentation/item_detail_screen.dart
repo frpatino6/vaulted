@@ -377,7 +377,9 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
       // Use gallery (file picker) directly — it works in all modern browsers.
       file = await picker.pickImage(
         source: ImageSource.gallery,
-        imageQuality: 85,
+        imageQuality: 80,
+        maxWidth: 1920,
+        maxHeight: 1920,
       );
     } else {
       final source = await showModalBottomSheet<ImageSource?>(
@@ -432,7 +434,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
             ),
       );
       if (source == null || !context.mounted) return;
-      file = await picker.pickImage(source: source, imageQuality: 85);
+      file = await picker.pickImage(source: source, imageQuality: 80, maxWidth: 1920, maxHeight: 1920);
     }
     if (file == null || !context.mounted) return;
     try {
