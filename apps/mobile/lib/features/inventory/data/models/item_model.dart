@@ -1,7 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import '../../../wardrobe/data/models/wardrobe_attributes.dart';
-import '../../properties/data/models/room_section_model.dart';
+import '../../../properties/data/models/room_section_model.dart';
 
 part 'item_model.freezed.dart';
 part 'item_model.g.dart';
