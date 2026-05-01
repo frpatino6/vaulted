@@ -39,7 +39,7 @@ class _RoomSectionsScreenState extends ConsumerState<RoomSectionsScreen> {
     final grouped = <String, List<RoomSectionModel>>{};
     for (final section in _sections) {
       final rawLabel = section.furnitureName?.trim() ?? '';
-      final label = rawLabel.isEmpty ? 'Sin asignar' : rawLabel;
+      final label = rawLabel.isEmpty ? 'Unassigned' : rawLabel;
       grouped.putIfAbsent(label, () => <RoomSectionModel>[]).add(section);
     }
     return grouped.entries
