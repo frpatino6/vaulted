@@ -496,6 +496,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
               final parts = <String>[
                 if (section.furnitureName?.isNotEmpty == true) section.furnitureName!,
                 section.code,
+                if (section.name.isNotEmpty) section.name,
               ];
               return parts.join(' · ');
             }
