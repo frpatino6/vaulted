@@ -282,6 +282,11 @@ mixin _$ItemModel {
   String? get serialNumber => throw _privateConstructorUsedError;
   String? get locationDetail => throw _privateConstructorUsedError;
   String? get sectionId => throw _privateConstructorUsedError;
+  String? get sectionPhoto => throw _privateConstructorUsedError;
+  @JsonKey(fromJson: _itemBoundingBoxFromJson, toJson: _itemBoundingBoxToJson)
+  SectionBoundingBox? get sectionBoundingBox =>
+      throw _privateConstructorUsedError;
+  int get quantity => throw _privateConstructorUsedError;
   ItemValuationModel? get valuation =>
       throw _privateConstructorUsedError; // ignore: invalid_annotation_target
   @JsonKey(includeIfNull: false)
@@ -320,6 +325,10 @@ abstract class $ItemModelCopyWith<$Res> {
     String? serialNumber,
     String? locationDetail,
     String? sectionId,
+    String? sectionPhoto,
+    @JsonKey(fromJson: _itemBoundingBoxFromJson, toJson: _itemBoundingBoxToJson)
+    SectionBoundingBox? sectionBoundingBox,
+    int quantity,
     ItemValuationModel? valuation,
     @JsonKey(includeIfNull: false) Map<String, dynamic>? attributes,
     List<String> documents,
@@ -359,6 +368,9 @@ class _$ItemModelCopyWithImpl<$Res, $Val extends ItemModel>
     Object? serialNumber = freezed,
     Object? locationDetail = freezed,
     Object? sectionId = freezed,
+    Object? sectionPhoto = freezed,
+    Object? sectionBoundingBox = freezed,
+    Object? quantity = null,
     Object? valuation = freezed,
     Object? attributes = freezed,
     Object? documents = null,
@@ -437,6 +449,21 @@ class _$ItemModelCopyWithImpl<$Res, $Val extends ItemModel>
                     ? _value.sectionId
                     : sectionId // ignore: cast_nullable_to_non_nullable
                         as String?,
+            sectionPhoto:
+                freezed == sectionPhoto
+                    ? _value.sectionPhoto
+                    : sectionPhoto // ignore: cast_nullable_to_non_nullable
+                        as String?,
+            sectionBoundingBox:
+                freezed == sectionBoundingBox
+                    ? _value.sectionBoundingBox
+                    : sectionBoundingBox // ignore: cast_nullable_to_non_nullable
+                        as SectionBoundingBox?,
+            quantity:
+                null == quantity
+                    ? _value.quantity
+                    : quantity // ignore: cast_nullable_to_non_nullable
+                        as int,
             valuation:
                 freezed == valuation
                     ? _value.valuation
@@ -506,6 +533,10 @@ abstract class _$$ItemModelImplCopyWith<$Res>
     String? serialNumber,
     String? locationDetail,
     String? sectionId,
+    String? sectionPhoto,
+    @JsonKey(fromJson: _itemBoundingBoxFromJson, toJson: _itemBoundingBoxToJson)
+    SectionBoundingBox? sectionBoundingBox,
+    int quantity,
     ItemValuationModel? valuation,
     @JsonKey(includeIfNull: false) Map<String, dynamic>? attributes,
     List<String> documents,
@@ -545,6 +576,9 @@ class __$$ItemModelImplCopyWithImpl<$Res>
     Object? serialNumber = freezed,
     Object? locationDetail = freezed,
     Object? sectionId = freezed,
+    Object? sectionPhoto = freezed,
+    Object? sectionBoundingBox = freezed,
+    Object? quantity = null,
     Object? valuation = freezed,
     Object? attributes = freezed,
     Object? documents = null,
@@ -623,6 +657,21 @@ class __$$ItemModelImplCopyWithImpl<$Res>
                 ? _value.sectionId
                 : sectionId // ignore: cast_nullable_to_non_nullable
                     as String?,
+        sectionPhoto:
+            freezed == sectionPhoto
+                ? _value.sectionPhoto
+                : sectionPhoto // ignore: cast_nullable_to_non_nullable
+                    as String?,
+        sectionBoundingBox:
+            freezed == sectionBoundingBox
+                ? _value.sectionBoundingBox
+                : sectionBoundingBox // ignore: cast_nullable_to_non_nullable
+                    as SectionBoundingBox?,
+        quantity:
+            null == quantity
+                ? _value.quantity
+                : quantity // ignore: cast_nullable_to_non_nullable
+                    as int,
         valuation:
             freezed == valuation
                 ? _value.valuation
@@ -671,6 +720,10 @@ class _$ItemModelImpl implements _ItemModel {
     this.serialNumber,
     this.locationDetail,
     this.sectionId,
+    this.sectionPhoto,
+    @JsonKey(fromJson: _itemBoundingBoxFromJson, toJson: _itemBoundingBoxToJson)
+    this.sectionBoundingBox,
+    this.quantity = 1,
     this.valuation,
     @JsonKey(includeIfNull: false) final Map<String, dynamic>? attributes,
     final List<String> documents = const [],
@@ -729,6 +782,14 @@ class _$ItemModelImpl implements _ItemModel {
   @override
   final String? sectionId;
   @override
+  final String? sectionPhoto;
+  @override
+  @JsonKey(fromJson: _itemBoundingBoxFromJson, toJson: _itemBoundingBoxToJson)
+  final SectionBoundingBox? sectionBoundingBox;
+  @override
+  @JsonKey()
+  final int quantity;
+  @override
   final ItemValuationModel? valuation;
   // ignore: invalid_annotation_target
   final Map<String, dynamic>? _attributes;
@@ -759,7 +820,7 @@ class _$ItemModelImpl implements _ItemModel {
 
   @override
   String toString() {
-    return 'ItemModel(id: $id, name: $name, propertyId: $propertyId, propertyName: $propertyName, roomId: $roomId, roomName: $roomName, category: $category, subcategory: $subcategory, status: $status, photos: $photos, tags: $tags, serialNumber: $serialNumber, locationDetail: $locationDetail, sectionId: $sectionId, valuation: $valuation, attributes: $attributes, documents: $documents, createdAt: $createdAt, qrCode: $qrCode)';
+    return 'ItemModel(id: $id, name: $name, propertyId: $propertyId, propertyName: $propertyName, roomId: $roomId, roomName: $roomName, category: $category, subcategory: $subcategory, status: $status, photos: $photos, tags: $tags, serialNumber: $serialNumber, locationDetail: $locationDetail, sectionId: $sectionId, sectionPhoto: $sectionPhoto, sectionBoundingBox: $sectionBoundingBox, quantity: $quantity, valuation: $valuation, attributes: $attributes, documents: $documents, createdAt: $createdAt, qrCode: $qrCode)';
   }
 
   @override
@@ -789,6 +850,12 @@ class _$ItemModelImpl implements _ItemModel {
                 other.locationDetail == locationDetail) &&
             (identical(other.sectionId, sectionId) ||
                 other.sectionId == sectionId) &&
+            (identical(other.sectionPhoto, sectionPhoto) ||
+                other.sectionPhoto == sectionPhoto) &&
+            (identical(other.sectionBoundingBox, sectionBoundingBox) ||
+                other.sectionBoundingBox == sectionBoundingBox) &&
+            (identical(other.quantity, quantity) ||
+                other.quantity == quantity) &&
             (identical(other.valuation, valuation) ||
                 other.valuation == valuation) &&
             const DeepCollectionEquality().equals(
@@ -822,6 +889,9 @@ class _$ItemModelImpl implements _ItemModel {
     serialNumber,
     locationDetail,
     sectionId,
+    sectionPhoto,
+    sectionBoundingBox,
+    quantity,
     valuation,
     const DeepCollectionEquality().hash(_attributes),
     const DeepCollectionEquality().hash(_documents),
@@ -859,6 +929,10 @@ abstract class _ItemModel implements ItemModel {
     final String? serialNumber,
     final String? locationDetail,
     final String? sectionId,
+    final String? sectionPhoto,
+    @JsonKey(fromJson: _itemBoundingBoxFromJson, toJson: _itemBoundingBoxToJson)
+    final SectionBoundingBox? sectionBoundingBox,
+    final int quantity,
     final ItemValuationModel? valuation,
     @JsonKey(includeIfNull: false) final Map<String, dynamic>? attributes,
     final List<String> documents,
@@ -897,6 +971,13 @@ abstract class _ItemModel implements ItemModel {
   String? get locationDetail;
   @override
   String? get sectionId;
+  @override
+  String? get sectionPhoto;
+  @override
+  @JsonKey(fromJson: _itemBoundingBoxFromJson, toJson: _itemBoundingBoxToJson)
+  SectionBoundingBox? get sectionBoundingBox;
+  @override
+  int get quantity;
   @override
   ItemValuationModel? get valuation; // ignore: invalid_annotation_target
   @override

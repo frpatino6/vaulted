@@ -1,6 +1,9 @@
 import 'dart:math';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -33,37 +36,45 @@ class _AiSectionScanScreenState extends ConsumerState<AiSectionScanScreen> {
   final _picker = ImagePicker();
 
   _ScanStep _step = _ScanStep.capture;
-  String? _imageUrl;
+  String? _imageUrl;         // local preview URL (never uploaded)
+  Uint8List? _imageBytes;    // raw bytes for base64 → AI
+  String? _imageMimeType;
   List<_EditableSection> _detected = [];
   String _furnitureDescription = '';
   double _confidence = 0;
   bool _saving = false;
   bool _isAddingMore = false;
+  final _annotatedKey = GlobalKey();
 
   // ── Image pick & upload ───────────────────────────────────────────────────
 
   Future<void> _pickImage(ImageSource source) async {
     final file = await _picker.pickImage(
       source: source,
-      imageQuality: 85,
-      // imageQuality triggers EXIF orientation normalization on iOS/Android
+      imageQuality: 80,
+      maxWidth: 1920,
+      maxHeight: 1920,
     );
     if (file == null || !mounted) return;
 
-    setState(() => _step = _ScanStep.uploading);
+    setState(() => _step = _ScanStep.analyzing);
     try {
-      final url = await ref.read(mediaRepositoryProvider).uploadPhoto(file);
+      final bytes = await file.readAsBytes();
+      final mime = file.mimeType ?? 'image/jpeg';
+      // Use object URL for local preview only — no upload
+      final localUrl = file.path.isNotEmpty ? file.path : '';
       if (!mounted) return;
       setState(() {
-        _imageUrl = url;
-        _step = _ScanStep.analyzing;
+        _imageBytes = bytes;
+        _imageMimeType = mime;
+        _imageUrl = localUrl;
       });
-      await _analyze(url);
+      await _analyze(bytes, mime);
     } catch (e) {
       if (mounted) {
         setState(() => _step = _ScanStep.capture);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Upload failed: $e'), backgroundColor: AppColors.error),
+          SnackBar(content: Text('Failed to read image: $e'), backgroundColor: AppColors.error),
         );
       }
     }
@@ -71,11 +82,11 @@ class _AiSectionScanScreenState extends ConsumerState<AiSectionScanScreen> {
 
   // ── AI analysis ───────────────────────────────────────────────────────────
 
-  Future<void> _analyze(String imageUrl) async {
+  Future<void> _analyze(Uint8List bytes, String mimeType) async {
     try {
       final result = await ref
           .read(propertyDetailNotifierProvider.notifier)
-          .analyzeSections(imageUrl);
+          .analyzeSectionsFromBytes(bytes, mimeType);
 
       final rawSections = (result['sections'] as List?) ?? [];
       final incoming = rawSections.map((s) {
@@ -248,6 +259,25 @@ class _AiSectionScanScreenState extends ConsumerState<AiSectionScanScreen> {
     if (toSave.isEmpty || _saving) return;
     setState(() => _saving = true);
     try {
+      // Capture the annotated view (photo + overlaid boxes) as PNG
+      String? annotatedPhotoUrl;
+      try {
+        final boundary = _annotatedKey.currentContext?.findRenderObject()
+            as RenderRepaintBoundary?;
+        if (boundary != null) {
+          final image = await boundary.toImage(pixelRatio: 2.0);
+          final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+          if (byteData != null) {
+            final pngBytes = byteData.buffer.asUint8List();
+            annotatedPhotoUrl = await ref
+                .read(mediaRepositoryProvider)
+                .uploadPhotoBytes(pngBytes, 'section_map.png');
+          }
+        }
+      } catch (_) {
+        // If capture fails, proceed without photo
+      }
+
       await ref
           .read(propertyDetailNotifierProvider.notifier)
           .addSectionsBulk(
@@ -258,6 +288,13 @@ class _AiSectionScanScreenState extends ConsumerState<AiSectionScanScreen> {
                   'name': s.name,
                   'type': s.type,
                   if (s.notes != null && s.notes!.isNotEmpty) 'notes': s.notes,
+                  if (annotatedPhotoUrl != null) 'photo': annotatedPhotoUrl,
+                  if (s.boundingBox != null) 'boundingBox': {
+                    'x': s.boundingBox!.x,
+                    'y': s.boundingBox!.y,
+                    'width': s.boundingBox!.width,
+                    'height': s.boundingBox!.height,
+                  },
                 }).toList(),
           );
       if (mounted) Navigator.of(context).pop(true);
@@ -298,12 +335,13 @@ class _AiSectionScanScreenState extends ConsumerState<AiSectionScanScreen> {
         _ScanStep.uploading => const _ProgressView(message: 'Uploading photo…'),
         _ScanStep.analyzing => const _ProgressView(message: 'AI is mapping sections…'),
         _ScanStep.review => _AnnotatedReviewView(
-            imageUrl: _imageUrl!,
+            imageBytes: _imageBytes!,
             roomName: widget.roomName,
             furnitureDescription: _furnitureDescription,
             confidence: _confidence,
             sections: _detected,
             saving: _saving,
+            annotatedKey: _annotatedKey,
             onToggle: (i) => setState(
                 () => _detected[i] = _detected[i].copyWith(selected: !_detected[i].selected)),
             onEdit: (i) => _showEditSheet(i),
@@ -517,12 +555,13 @@ class _ProgressView extends StatelessWidget {
 
 class _AnnotatedReviewView extends StatefulWidget {
   const _AnnotatedReviewView({
-    required this.imageUrl,
+    required this.imageBytes,
     required this.roomName,
     required this.furnitureDescription,
     required this.confidence,
     required this.sections,
     required this.saving,
+    required this.annotatedKey,
     required this.onToggle,
     required this.onEdit,
     required this.onRemove,
@@ -533,10 +572,12 @@ class _AnnotatedReviewView extends StatefulWidget {
     required this.onSave,
   });
 
-  final String imageUrl, roomName, furnitureDescription;
+  final Uint8List imageBytes;
+  final String roomName, furnitureDescription;
   final double confidence;
   final List<_EditableSection> sections;
   final bool saving;
+  final GlobalKey annotatedKey;
   final void Function(int) onToggle;
   final void Function(int) onEdit;
   final void Function(int) onRemove;
@@ -569,14 +610,14 @@ class _AnnotatedReviewViewState extends State<_AnnotatedReviewView> {
   @override
   void didUpdateWidget(_AnnotatedReviewView old) {
     super.didUpdateWidget(old);
-    if (old.imageUrl != widget.imageUrl) {
+    if (old.imageBytes != widget.imageBytes) {
       setState(() => _naturalImageSize = null);
       _loadImageSize();
     }
   }
 
   void _loadImageSize() {
-    NetworkImage(widget.imageUrl).resolve(const ImageConfiguration()).addListener(
+    MemoryImage(widget.imageBytes).resolve(const ImageConfiguration()).addListener(
       ImageStreamListener((info, _) {
         if (mounted) {
           setState(() => _naturalImageSize = Size(
@@ -760,15 +801,18 @@ class _AnnotatedReviewViewState extends State<_AnnotatedReviewView> {
             padding: const EdgeInsets.all(12),
             child: Stack(
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: _moveMode
-                      ? _buildImageStack()
-                      : InteractiveViewer(
-                          minScale: 1.0,
-                          maxScale: 4.0,
-                          child: _buildImageStack(),
-                        ),
+                RepaintBoundary(
+                  key: widget.annotatedKey,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: _moveMode
+                        ? _buildImageStack()
+                        : InteractiveViewer(
+                            minScale: 1.0,
+                            maxScale: 4.0,
+                            child: _buildImageStack(),
+                          ),
+                  ),
                 ),
                 // Move mode toggle button
                 if (_layoutReady)
@@ -883,8 +927,8 @@ class _AnnotatedReviewViewState extends State<_AnnotatedReviewView> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              Image.network(
-                widget.imageUrl,
+              Image.memory(
+                widget.imageBytes,
                 fit: BoxFit.contain,
                 width: constraints.maxWidth,
                 height: constraints.maxHeight,

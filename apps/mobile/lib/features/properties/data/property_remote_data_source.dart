@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 
 import 'models/property_model.dart';
@@ -238,6 +241,19 @@ class PropertyRemoteDataSource {
     final response = await _dio.post<Map<String, dynamic>>(
       'ai/vision/analyze-sections',
       data: {'imageUrl': imageUrl},
+    );
+    final data = _unwrapData(response);
+    return Map<String, dynamic>.from(data is Map ? data : {});
+  }
+
+  Future<Map<String, dynamic>> analyzeSectionsFromBytes(
+    Uint8List bytes,
+    String mimeType,
+  ) async {
+    final base64Data = base64Encode(bytes);
+    final response = await _dio.post<Map<String, dynamic>>(
+      'ai/vision/analyze-sections',
+      data: {'imageData': base64Data, 'mimeType': mimeType},
     );
     final data = _unwrapData(response);
     return Map<String, dynamic>.from(data is Map ? data : {});

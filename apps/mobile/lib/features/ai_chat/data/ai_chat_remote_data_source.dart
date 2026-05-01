@@ -75,6 +75,14 @@ class AiChatRemoteDataSource {
   static Map<String, dynamic> _normalizeItemJson(Map<String, dynamic> json) {
     final id = json['id'] ?? json['_id'];
     if (id != null) json['id'] = id is String ? id : id.toString();
+
+    // currentValue may arrive as an encrypted string when the caller lacks
+    // valuation access; drop the valuation object to avoid a cast exception.
+    final valuation = json['valuation'];
+    if (valuation is Map && valuation['currentValue'] is! num) {
+      json['valuation'] = null;
+    }
+
     return json;
   }
 }

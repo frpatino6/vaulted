@@ -1,4 +1,4 @@
-import { IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsEnum, IsOptional, IsString, MaxLength, ValidateIf } from 'class-validator';
 import { SectionType } from './add-section.dto';
 
 export class UpdateSectionDto {
@@ -20,4 +20,9 @@ export class UpdateSectionDto {
   @IsString()
   @MaxLength(255)
   notes?: string;
+
+  @IsOptional()
+  @ValidateIf((o: UpdateSectionDto) => o.photo !== null)
+  @IsString()
+  photo?: string | null;
 }

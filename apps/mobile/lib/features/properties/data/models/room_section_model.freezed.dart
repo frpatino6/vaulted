@@ -26,6 +26,9 @@ mixin _$RoomSectionModel {
   String get name => throw _privateConstructorUsedError;
   String get type => throw _privateConstructorUsedError;
   String? get notes => throw _privateConstructorUsedError;
+  String? get photo => throw _privateConstructorUsedError;
+  @JsonKey(fromJson: _boundingBoxFromJson, toJson: _boundingBoxToJson)
+  SectionBoundingBox? get boundingBox => throw _privateConstructorUsedError;
 
   /// Serializes this RoomSectionModel to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -50,6 +53,9 @@ abstract class $RoomSectionModelCopyWith<$Res> {
     String name,
     String type,
     String? notes,
+    String? photo,
+    @JsonKey(fromJson: _boundingBoxFromJson, toJson: _boundingBoxToJson)
+    SectionBoundingBox? boundingBox,
   });
 }
 
@@ -73,6 +79,8 @@ class _$RoomSectionModelCopyWithImpl<$Res, $Val extends RoomSectionModel>
     Object? name = null,
     Object? type = null,
     Object? notes = freezed,
+    Object? photo = freezed,
+    Object? boundingBox = freezed,
   }) {
     return _then(
       _value.copyWith(
@@ -101,6 +109,16 @@ class _$RoomSectionModelCopyWithImpl<$Res, $Val extends RoomSectionModel>
                     ? _value.notes
                     : notes // ignore: cast_nullable_to_non_nullable
                         as String?,
+            photo:
+                freezed == photo
+                    ? _value.photo
+                    : photo // ignore: cast_nullable_to_non_nullable
+                        as String?,
+            boundingBox:
+                freezed == boundingBox
+                    ? _value.boundingBox
+                    : boundingBox // ignore: cast_nullable_to_non_nullable
+                        as SectionBoundingBox?,
           )
           as $Val,
     );
@@ -122,6 +140,9 @@ abstract class _$$RoomSectionModelImplCopyWith<$Res>
     String name,
     String type,
     String? notes,
+    String? photo,
+    @JsonKey(fromJson: _boundingBoxFromJson, toJson: _boundingBoxToJson)
+    SectionBoundingBox? boundingBox,
   });
 }
 
@@ -144,6 +165,8 @@ class __$$RoomSectionModelImplCopyWithImpl<$Res>
     Object? name = null,
     Object? type = null,
     Object? notes = freezed,
+    Object? photo = freezed,
+    Object? boundingBox = freezed,
   }) {
     return _then(
       _$RoomSectionModelImpl(
@@ -172,6 +195,16 @@ class __$$RoomSectionModelImplCopyWithImpl<$Res>
                 ? _value.notes
                 : notes // ignore: cast_nullable_to_non_nullable
                     as String?,
+        photo:
+            freezed == photo
+                ? _value.photo
+                : photo // ignore: cast_nullable_to_non_nullable
+                    as String?,
+        boundingBox:
+            freezed == boundingBox
+                ? _value.boundingBox
+                : boundingBox // ignore: cast_nullable_to_non_nullable
+                    as SectionBoundingBox?,
       ),
     );
   }
@@ -186,6 +219,9 @@ class _$RoomSectionModelImpl implements _RoomSectionModel {
     required this.name,
     required this.type,
     this.notes,
+    this.photo,
+    @JsonKey(fromJson: _boundingBoxFromJson, toJson: _boundingBoxToJson)
+    this.boundingBox,
   });
 
   factory _$RoomSectionModelImpl.fromJson(Map<String, dynamic> json) =>
@@ -201,10 +237,15 @@ class _$RoomSectionModelImpl implements _RoomSectionModel {
   final String type;
   @override
   final String? notes;
+  @override
+  final String? photo;
+  @override
+  @JsonKey(fromJson: _boundingBoxFromJson, toJson: _boundingBoxToJson)
+  final SectionBoundingBox? boundingBox;
 
   @override
   String toString() {
-    return 'RoomSectionModel(sectionId: $sectionId, code: $code, name: $name, type: $type, notes: $notes)';
+    return 'RoomSectionModel(sectionId: $sectionId, code: $code, name: $name, type: $type, notes: $notes, photo: $photo, boundingBox: $boundingBox)';
   }
 
   @override
@@ -217,13 +258,16 @@ class _$RoomSectionModelImpl implements _RoomSectionModel {
             (identical(other.code, code) || other.code == code) &&
             (identical(other.name, name) || other.name == name) &&
             (identical(other.type, type) || other.type == type) &&
-            (identical(other.notes, notes) || other.notes == notes));
+            (identical(other.notes, notes) || other.notes == notes) &&
+            (identical(other.photo, photo) || other.photo == photo) &&
+            (identical(other.boundingBox, boundingBox) ||
+                other.boundingBox == boundingBox));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode =>
-      Object.hash(runtimeType, sectionId, code, name, type, notes);
+      Object.hash(runtimeType, sectionId, code, name, type, notes, photo, boundingBox);
 
   /// Create a copy of RoomSectionModel
   /// with the given fields replaced by the non-null parameter values.
@@ -249,6 +293,9 @@ abstract class _RoomSectionModel implements RoomSectionModel {
     required final String name,
     required final String type,
     final String? notes,
+    final String? photo,
+    @JsonKey(fromJson: _boundingBoxFromJson, toJson: _boundingBoxToJson)
+    final SectionBoundingBox? boundingBox,
   }) = _$RoomSectionModelImpl;
 
   factory _RoomSectionModel.fromJson(Map<String, dynamic> json) =
@@ -264,6 +311,11 @@ abstract class _RoomSectionModel implements RoomSectionModel {
   String get type;
   @override
   String? get notes;
+  @override
+  String? get photo;
+  @override
+  @JsonKey(fromJson: _boundingBoxFromJson, toJson: _boundingBoxToJson)
+  SectionBoundingBox? get boundingBox;
 
   /// Create a copy of RoomSectionModel
   /// with the given fields replaced by the non-null parameter values.

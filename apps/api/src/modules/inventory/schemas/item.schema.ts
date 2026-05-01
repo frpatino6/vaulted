@@ -107,6 +107,9 @@ export class Item {
   @Prop({ type: String, required: false, default: null, index: true })
   sectionId?: string | null;
 
+  @Prop({ default: 1, min: 1 })
+  quantity!: number;
+
   @Prop({ required: true })
   createdBy!: string;
 

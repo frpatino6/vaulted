@@ -62,6 +62,8 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
   final _currentValueController = TextEditingController();
   final _tagsController = TextEditingController();
 
+  int _quantity = 1;
+
   final List<XFile> _pendingPhotos = [];
   final GlobalKey<_WardrobeFieldsSectionState> _wardrobeSectionKey =
       GlobalKey<_WardrobeFieldsSectionState>();
@@ -203,6 +205,7 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
             ? _locationDetailController.text.trim()
             : null,
         sectionId: _selectedSectionId,
+        quantity: _quantity,
         purchasePrice: purchasePrice,
         currentValue: currentValue,
         tags: tags,
@@ -297,6 +300,9 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
                       final picker = ImagePicker();
                       final file = await picker.pickImage(
                         source: ImageSource.camera,
+                        imageQuality: 80,
+                        maxWidth: 1920,
+                        maxHeight: 1920,
                       );
                       if (file == null || !mounted) return;
                       setState(() {
@@ -319,6 +325,11 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
                     hintText: 'e.g. Chesterfield Sofa',
                   ),
                   onFieldSubmitted: (_) => _submit(),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                _QuantityStepper(
+                  value: _quantity,
+                  onChanged: (v) => setState(() => _quantity = v),
                 ),
                 const SizedBox(height: AppSpacing.md),
                 DropdownButtonFormField<String>(
@@ -671,6 +682,71 @@ class _LocationSection extends StatelessWidget {
               ],
             ],
           ),
+      ],
+    );
+  }
+}
+
+// ── Quantity stepper ──────────────────────────────────────────────────────
+
+class _QuantityStepper extends StatelessWidget {
+  const _QuantityStepper({required this.value, required this.onChanged});
+
+  final int value;
+  final void Function(int) onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Text(
+          'Quantity',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: AppColors.onSurfaceVariant,
+          ),
+        ),
+        const Spacer(),
+        SizedBox(
+          width: 36,
+          height: 36,
+          child: IconButton.outlined(
+            padding: EdgeInsets.zero,
+            icon: const Icon(Icons.remove, size: 16),
+            style: IconButton.styleFrom(
+              foregroundColor: value > 1 ? AppColors.accent : AppColors.onSurfaceVariant,
+              side: BorderSide(
+                color: value > 1
+                    ? AppColors.accent.withValues(alpha: 0.5)
+                    : AppColors.onSurfaceVariant.withValues(alpha: 0.3),
+              ),
+            ),
+            onPressed: value > 1 ? () => onChanged(value - 1) : null,
+          ),
+        ),
+        SizedBox(
+          width: 40,
+          child: Text(
+            '$value',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+              color: AppColors.onBackground,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        SizedBox(
+          width: 36,
+          height: 36,
+          child: IconButton.outlined(
+            padding: EdgeInsets.zero,
+            icon: const Icon(Icons.add, size: 16),
+            style: IconButton.styleFrom(
+              foregroundColor: AppColors.accent,
+              side: BorderSide(color: AppColors.accent.withValues(alpha: 0.5)),
+            ),
+            onPressed: () => onChanged(value + 1),
+          ),
+        ),
       ],
     );
   }

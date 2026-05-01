@@ -34,6 +34,7 @@ export interface AnalyzeItemResult {
   attributes: Record<string, unknown>;
   confidence: number;
   tags: string[];
+  quantity: number;
   suggestedRoom: RoomSuggestion | null;
   invoiceData: InvoiceData | null;
 }
@@ -100,7 +101,12 @@ export class AiVisionService {
     userId: string,
     dto: AnalyzeSectionsDto,
   ): Promise<AnalyzeSectionsResult> {
-    const imagePart = this.resolveImageToPart(dto.imageUrl);
+    if (!dto.imageUrl && !dto.imageData) {
+      throw new BadRequestException('imageUrl or imageData is required');
+    }
+    const imagePart: Part = dto.imageData
+      ? { inlineData: { mimeType: dto.mimeType ?? 'image/jpeg', data: dto.imageData } }
+      : this.resolveImageToPart(dto.imageUrl!);
     const prompt = this.buildSectionsPrompt();
     const parts: Part[] = [imagePart, { text: prompt }];
 
@@ -305,6 +311,7 @@ JSON schema:
   "subcategory": string,
   "brand": string | null,
   "estimatedValue": number,
+  "quantity": number,
   "attributes": object,
   "confidence": number (0-1),
   "tags": string[],
@@ -321,6 +328,7 @@ JSON schema:
 
 Rules:
 - estimatedValue: always provide a conservative USD market value estimate based on the item's category, visible brand, condition, and approximate age. Never return null — if uncertain, provide a reasonable range midpoint for that item category.
+- quantity: count the number of identical units visible in the image (e.g. 12 plates, 6 wine glasses, 1 chair). Default to 1 if only one item is visible or items are not countable.
 - tags: REQUIRED. Always return a JSON array with 3 to 5 short lowercase tags (e.g. ["samsung", "4k", "smart-tv", "television", "electronics"]). Use brand, material, style, color, or key feature as tags. Never return an empty array.
 - suggestedRoomId must be one of the id values listed above (e.g. "room_0"), or null if no rooms provided.
 - If no invoice image, set invoiceData to null.
@@ -363,6 +371,7 @@ Rules:
       estimatedValue: (parsed['estimatedValue'] as number) ?? null,
       attributes: (parsed['attributes'] as Record<string, unknown>) ?? {},
       confidence: (parsed['confidence'] as number) ?? 0.5,
+      quantity: Math.max(1, Math.round((parsed['quantity'] as number) ?? 1)),
       tags: (() => {
         const raw = parsed['tags'];
         if (Array.isArray(raw)) return (raw as string[]).slice(0, 5);

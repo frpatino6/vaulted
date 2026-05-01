@@ -40,7 +40,7 @@ interface InventorySearchFilters {
 }
 
 export interface InventorySearchResponse {
-  items: Array<ItemDocument & { propertyName: string | null; roomName: string | null }>;
+  items: Array<ItemDocument & { propertyName: string | null; roomName: string | null; sectionPhoto: string | null }>;
   total: number;
   page: number;
   limit: number;
@@ -94,6 +94,7 @@ export class InventoryService {
       serialNumber: dto.serialNumber,
       locationDetail: dto.locationDetail,
       sectionId: dto.sectionId ?? null,
+      quantity: dto.quantity ?? 1,
       createdBy: userId,
     });
 
@@ -256,11 +257,20 @@ export class InventoryService {
 
     const propertyName = property?.name ?? null;
     let roomName: string | null = null;
+    let sectionPhoto: string | null = null;
+    let sectionBoundingBox: { x: number; y: number; width: number; height: number } | null = null;
     if (property && item.roomId) {
       for (const floor of property.floors ?? []) {
         const room = floor.rooms?.find((r) => r.roomId === String(item.roomId));
         if (room) {
           roomName = room.name;
+          if (item.sectionId) {
+            const section = room.sections?.find((s) => s.sectionId === String(item.sectionId));
+            sectionPhoto = section?.photo ?? null;
+            sectionBoundingBox = section?.boundingBox
+              ? { x: section.boundingBox.x, y: section.boundingBox.y, width: section.boundingBox.width, height: section.boundingBox.height }
+              : null;
+          }
           break;
         }
       }
@@ -284,10 +294,10 @@ export class InventoryService {
           ),
         },
       });
-      return this.withSignedUrls({ ...plain, propertyName, roomName } as Item, userId, tenantId);
+      return this.withSignedUrls({ ...plain, propertyName, roomName, sectionPhoto, sectionBoundingBox } as Item & { propertyName: string | null; roomName: string | null; sectionPhoto: string | null; sectionBoundingBox: { x: number; y: number; width: number; height: number } | null }, userId, tenantId);
     }
     const stripped = this.accessControl.stripValuation(item.toObject()) as Item;
-    return { ...stripped, propertyName, roomName } as Item;
+    return { ...stripped, propertyName, roomName, sectionPhoto, sectionBoundingBox } as Item & { propertyName: string | null; roomName: string | null; sectionPhoto: string | null; sectionBoundingBox: { x: number; y: number; width: number; height: number } | null };
   }
 
   async update(tenantId: string, itemId: string, dto: UpdateItemDto): Promise<Item> {
@@ -316,6 +326,7 @@ export class InventoryService {
             ...(dto.serialNumber !== undefined ? { serialNumber: dto.serialNumber } : {}),
             ...(dto.locationDetail !== undefined ? { locationDetail: dto.locationDetail } : {}),
             ...(dto.sectionId !== undefined ? { sectionId: dto.sectionId } : {}),
+            ...(dto.quantity !== undefined ? { quantity: dto.quantity } : {}),
           },
         },
         { new: true, runValidators: true },
@@ -519,11 +530,20 @@ export class InventoryService {
       const propertyName = property?.name ?? null;
 
       let roomName: string | null = null;
+      let sectionPhoto: string | null = null;
+      let sectionBoundingBox: { x: number; y: number; width: number; height: number } | null = null;
       if (property && item.roomId) {
         for (const floor of property.floors ?? []) {
           const room = floor.rooms?.find((candidate) => candidate.roomId === String(item.roomId));
           if (room) {
             roomName = room.name;
+            if (item.sectionId) {
+              const section = room.sections?.find((s) => s.sectionId === String(item.sectionId));
+              sectionPhoto = section?.photo ?? null;
+              sectionBoundingBox = section?.boundingBox
+                ? { x: section.boundingBox.x, y: section.boundingBox.y, width: section.boundingBox.width, height: section.boundingBox.height }
+                : null;
+            }
             break;
           }
         }
@@ -536,7 +556,9 @@ export class InventoryService {
         ...plain,
         propertyName,
         roomName,
-      } as ItemDocument & { propertyName: string | null; roomName: string | null };
+        sectionPhoto,
+        sectionBoundingBox,
+      } as ItemDocument & { propertyName: string | null; roomName: string | null; sectionPhoto: string | null; sectionBoundingBox: { x: number; y: number; width: number; height: number } | null };
     });
 
     const finalItems = role === Role.OWNER || role === Role.MANAGER
@@ -578,6 +600,9 @@ export class InventoryService {
       ...item,
       photos: (item.photos ?? []).map(sign),
       documents: (item.documents ?? []).map(sign),
+      ...((item as unknown as Record<string, unknown>)['sectionPhoto']
+        ? { sectionPhoto: sign((item as unknown as Record<string, unknown>)['sectionPhoto'] as string) }
+        : {}),
     };
   }
 

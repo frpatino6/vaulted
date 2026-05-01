@@ -79,7 +79,9 @@ class _AiScanScreenState extends ConsumerState<AiScanScreen> {
   Future<void> _captureProduct() async {
     final photo = await _picker.pickImage(
       source: ImageSource.camera,
-      imageQuality: 85,
+      imageQuality: 80,
+      maxWidth: 1920,
+      maxHeight: 1920,
     );
     if (photo == null || !mounted) return;
     ref.read(aiScanNotifierProvider.notifier).onProductPhotoCaptured(photo);
@@ -88,7 +90,9 @@ class _AiScanScreenState extends ConsumerState<AiScanScreen> {
   Future<void> _pickProductFromGallery() async {
     final photo = await _picker.pickImage(
       source: ImageSource.gallery,
-      imageQuality: 85,
+      imageQuality: 80,
+      maxWidth: 1920,
+      maxHeight: 1920,
     );
     if (photo == null || !mounted) return;
     ref.read(aiScanNotifierProvider.notifier).onProductPhotoCaptured(photo);
@@ -97,7 +101,9 @@ class _AiScanScreenState extends ConsumerState<AiScanScreen> {
   Future<void> _captureInvoice() async {
     final photo = await _picker.pickImage(
       source: ImageSource.camera,
-      imageQuality: 85,
+      imageQuality: 80,
+      maxWidth: 1920,
+      maxHeight: 1920,
     );
     if (photo == null || !mounted) return;
     await ref
@@ -108,7 +114,9 @@ class _AiScanScreenState extends ConsumerState<AiScanScreen> {
   Future<void> _pickInvoiceFromGallery() async {
     final photo = await _picker.pickImage(
       source: ImageSource.gallery,
-      imageQuality: 85,
+      imageQuality: 80,
+      maxWidth: 1920,
+      maxHeight: 1920,
     );
     if (photo == null || !mounted) return;
     await ref

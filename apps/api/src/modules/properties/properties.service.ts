@@ -316,6 +316,8 @@ export class PropertiesService {
       name: dto.name,
       type: dto.type,
       notes: dto.notes,
+      photo: dto.photo,
+      boundingBox: dto.boundingBox ?? null,
     };
 
     const updatedProperty = await this.propertyModel
@@ -353,6 +355,8 @@ export class PropertiesService {
       name: dto.name,
       type: dto.type,
       notes: dto.notes,
+      photo: dto.photo,
+      boundingBox: dto.boundingBox ?? null,
     }));
 
     const updatedProperty = await this.propertyModel
@@ -387,7 +391,7 @@ export class PropertiesService {
     const sectionExists = (room.sections ?? []).some((s) => s.sectionId === sectionId);
     if (!sectionExists) throw new NotFoundException('Section not found');
 
-    const setFields: Record<string, string> = {};
+    const setFields: Record<string, string | null> = {};
     if (dto.code !== undefined)
       setFields['floors.$[floor].rooms.$[room].sections.$[section].code'] = dto.code;
     if (dto.name !== undefined)
@@ -396,6 +400,8 @@ export class PropertiesService {
       setFields['floors.$[floor].rooms.$[room].sections.$[section].type'] = dto.type;
     if (dto.notes !== undefined)
       setFields['floors.$[floor].rooms.$[room].sections.$[section].notes'] = dto.notes;
+    if (dto.photo !== undefined)
+      setFields['floors.$[floor].rooms.$[room].sections.$[section].photo'] = dto.photo;
 
     const updatedProperty = await this.propertyModel
       .findOneAndUpdate(
