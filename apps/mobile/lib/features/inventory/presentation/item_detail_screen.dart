@@ -1976,8 +1976,8 @@ class _BoundingBoxOverlay extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: Colors.white, width: 2.5),
-          color: Colors.white.withValues(alpha: 0.15),
+          border: Border.all(color: const Color(0xFFE53935), width: 2.5),
+          color: const Color(0xFFE53935).withValues(alpha: 0.15),
         ),
       ),
     );
