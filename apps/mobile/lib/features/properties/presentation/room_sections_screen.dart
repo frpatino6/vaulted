@@ -39,7 +39,7 @@ class _RoomSectionsScreenState extends ConsumerState<RoomSectionsScreen> {
     final grouped = <String, List<RoomSectionModel>>{};
     for (final section in _sections) {
       final rawLabel = section.furnitureName?.trim() ?? '';
-      final label = rawLabel.isEmpty ? 'Sin etiqueta' : rawLabel;
+      final label = rawLabel.isEmpty ? 'Unassigned' : rawLabel;
       grouped.putIfAbsent(label, () => <RoomSectionModel>[]).add(section);
     }
     return grouped.entries
@@ -226,19 +226,47 @@ class _GroupHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        const Icon(Icons.label_outline, size: 13, color: AppColors.accent),
-        const SizedBox(width: 6),
-        Text(
-          '$label · $count',
-          style: const TextStyle(
-            color: AppColors.onSurfaceVariant,
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
+    final countLabel = '$count section${count == 1 ? '' : 's'}';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.accent.withAlpha(20),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.label_outline, size: 15, color: AppColors.accent),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: AppColors.onBackground,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
-        ),
-      ],
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppColors.background,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              countLabel,
+              style: const TextStyle(
+                color: AppColors.onSurfaceVariant,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
