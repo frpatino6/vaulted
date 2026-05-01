@@ -137,13 +137,13 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                       _SpecsGrid(
                         item: item,
                         resolvedRoomName: item.roomName ?? _resolveRoomName(item.roomId),
-                        resolvedSectionLabel: _resolveSectionLabel(item.roomId, item.sectionId),
+                        resolvedSectionLabel: _resolveSectionLabel(item.roomId, item.sectionId, item: item),
                       ),
                       if (item.sectionPhoto != null) ...[
                         const SizedBox(height: AppSpacing.md),
                         _SectionPhotoPreview(
                           photoUrl: item.sectionPhoto!,
-                          sectionLabel: _resolveSectionLabel(item.roomId, item.sectionId),
+                          sectionLabel: _resolveSectionLabel(item.roomId, item.sectionId, item: item),
                           boundingBox: item.sectionBoundingBox,
                         ),
                       ],
@@ -482,20 +482,38 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
     return null;
   }
 
-  String? _resolveSectionLabel(String? roomId, String? sectionId) {
+  String? _resolveSectionLabel(String? roomId, String? sectionId, {ItemModel? item}) {
     if (sectionId == null || sectionId.isEmpty) return null;
+
+    // Try local property cache first
     final property = ref.read(propertyDetailNotifierProvider).valueOrNull;
-    if (property == null) return null;
-    for (final floor in property.floors) {
-      for (final room in floor.rooms) {
-        if (roomId != null && room.roomId != roomId) continue;
-        for (final section in room.sections) {
-          if (section.sectionId == sectionId) {
-            return '${section.code} · ${section.name}';
+    if (property != null) {
+      for (final floor in property.floors) {
+        for (final room in floor.rooms) {
+          if (roomId != null && room.roomId != roomId) continue;
+          for (final section in room.sections) {
+            if (section.sectionId == sectionId) {
+              final parts = <String>[
+                if (section.furnitureName?.isNotEmpty == true) section.furnitureName!,
+                section.code,
+              ];
+              return parts.join(' · ');
+            }
           }
         }
       }
     }
+
+    // Fall back to fields returned directly by the API on the item
+    if (item != null) {
+      final code = item.sectionCode;
+      final furniture = item.sectionFurnitureName;
+      if (code != null && code.isNotEmpty) {
+        if (furniture != null && furniture.isNotEmpty) return '$furniture · $code';
+        return code;
+      }
+    }
+
     return null;
   }
 

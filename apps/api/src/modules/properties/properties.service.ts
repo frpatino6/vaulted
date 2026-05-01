@@ -317,6 +317,7 @@ export class PropertiesService {
       type: dto.type,
       notes: dto.notes,
       photo: dto.photo,
+      furnitureName: dto.furnitureName,
       boundingBox: dto.boundingBox ?? null,
     };
 
@@ -356,6 +357,7 @@ export class PropertiesService {
       type: dto.type,
       notes: dto.notes,
       photo: dto.photo,
+      furnitureName: dto.furnitureName,
       boundingBox: dto.boundingBox ?? null,
     }));
 

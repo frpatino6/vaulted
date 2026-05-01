@@ -44,6 +44,8 @@ class ItemModel with _$ItemModel {
     String? locationDetail,
     String? sectionId,
     String? sectionPhoto,
+    String? sectionCode,
+    String? sectionFurnitureName,
     @JsonKey(fromJson: _itemBoundingBoxFromJson, toJson: _itemBoundingBoxToJson)
     SectionBoundingBox? sectionBoundingBox,
     @Default(1) int quantity,
