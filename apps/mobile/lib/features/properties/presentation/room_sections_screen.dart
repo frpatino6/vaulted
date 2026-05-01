@@ -36,37 +36,15 @@ class _RoomSectionsScreenState extends ConsumerState<RoomSectionsScreen> {
   bool _loading = true;
 
   List<_SectionGroup> get _groupedSections {
-    final labeledGroups = <String, List<RoomSectionModel>>{};
-    final unlabeledSections = <RoomSectionModel>[];
+    final grouped = <String, List<RoomSectionModel>>{};
     for (final section in _sections) {
       final rawLabel = section.furnitureName?.trim() ?? '';
-      if (rawLabel.isEmpty) {
-        unlabeledSections.add(section);
-        continue;
-      }
-      labeledGroups.putIfAbsent(rawLabel, () => <RoomSectionModel>[]).add(section);
+      final label = rawLabel.isEmpty ? 'Sin etiqueta' : rawLabel;
+      grouped.putIfAbsent(label, () => <RoomSectionModel>[]).add(section);
     }
-    final sortedLabeled = labeledGroups.entries.toList()
-      ..sort((a, b) => a.key.toLowerCase().compareTo(b.key.toLowerCase()));
-
-    final groups = sortedLabeled
-        .map((entry) => _SectionGroup(
-              label: entry.key,
-              sections: entry.value,
-              isUnlabeled: false,
-            ))
+    return grouped.entries
+        .map((entry) => _SectionGroup(label: entry.key, sections: entry.value))
         .toList();
-
-    if (unlabeledSections.isNotEmpty) {
-      groups.add(
-        _SectionGroup(
-          label: 'Needs label',
-          sections: unlabeledSections,
-          isUnlabeled: true,
-        ),
-      );
-    }
-    return groups;
   }
 
   @override
@@ -206,7 +184,6 @@ class _RoomSectionsScreenState extends ConsumerState<RoomSectionsScreen> {
                             _GroupHeader(
                               label: group.label,
                               count: group.sections.length,
-                              isUnlabeled: group.isUnlabeled,
                             ),
                             const SizedBox(height: 8),
                             for (final section in group.sections) ...[
@@ -217,7 +194,7 @@ class _RoomSectionsScreenState extends ConsumerState<RoomSectionsScreen> {
                               ),
                               const SizedBox(height: 8),
                             ],
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 4),
                           ],
                         ],
                       ),
@@ -232,77 +209,36 @@ class _SectionGroup {
   const _SectionGroup({
     required this.label,
     required this.sections,
-    required this.isUnlabeled,
   });
 
   final String label;
   final List<RoomSectionModel> sections;
-  final bool isUnlabeled;
 }
 
 class _GroupHeader extends StatelessWidget {
   const _GroupHeader({
     required this.label,
     required this.count,
-    required this.isUnlabeled,
   });
 
   final String label;
   final int count;
-  final bool isUnlabeled;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: isUnlabeled
-            ? AppColors.surfaceVariant.withValues(alpha: 0.75)
-            : AppColors.surfaceVariant,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isUnlabeled
-              ? AppColors.onSurfaceVariant.withValues(alpha: 0.25)
-              : AppColors.accent.withValues(alpha: 0.2),
+    return Row(
+      children: [
+        const Icon(Icons.label_outline, size: 13, color: AppColors.accent),
+        const SizedBox(width: 6),
+        Text(
+          '$label · $count',
+          style: const TextStyle(
+            color: AppColors.onSurfaceVariant,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
         ),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            isUnlabeled ? Icons.edit_note_outlined : Icons.label_outline,
-            size: 16,
-            color: isUnlabeled ? AppColors.onSurfaceVariant : AppColors.accent,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: AppColors.onBackground,
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: isUnlabeled
-                  ? AppColors.onSurfaceVariant.withValues(alpha: 0.15)
-                  : AppColors.accent.withValues(alpha: 0.16),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(
-              '$count section${count == 1 ? '' : 's'}',
-              style: TextStyle(
-                color: isUnlabeled ? AppColors.onSurfaceVariant : AppColors.accent,
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
+      ],
     );
   }
 }
