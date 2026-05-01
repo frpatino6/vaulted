@@ -35,6 +35,18 @@ class _RoomSectionsScreenState extends ConsumerState<RoomSectionsScreen> {
   List<RoomSectionModel> _sections = [];
   bool _loading = true;
 
+  List<_SectionGroup> get _groupedSections {
+    final grouped = <String, List<RoomSectionModel>>{};
+    for (final section in _sections) {
+      final rawLabel = section.furnitureName?.trim() ?? '';
+      final label = rawLabel.isEmpty ? 'Sin etiqueta' : rawLabel;
+      grouped.putIfAbsent(label, () => <RoomSectionModel>[]).add(section);
+    }
+    return grouped.entries
+        .map((entry) => _SectionGroup(label: entry.key, sections: entry.value))
+        .toList();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -165,19 +177,68 @@ class _RoomSectionsScreenState extends ConsumerState<RoomSectionsScreen> {
                       ),
                     ),
                     Expanded(
-                      child: ListView.separated(
+                      child: ListView(
                         padding: const EdgeInsets.all(16),
-                        itemCount: _sections.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 8),
-                        itemBuilder: (_, i) => _SectionTile(
-                          section: _sections[i],
-                          onEdit: () => _showAddSheet(editing: _sections[i]),
-                          onDelete: () => _delete(_sections[i]),
-                        ),
+                        children: [
+                          for (final group in _groupedSections) ...[
+                            _GroupHeader(
+                              label: group.label,
+                              count: group.sections.length,
+                            ),
+                            const SizedBox(height: 8),
+                            for (final section in group.sections) ...[
+                              _SectionTile(
+                                section: section,
+                                onEdit: () => _showAddSheet(editing: section),
+                                onDelete: () => _delete(section),
+                              ),
+                              const SizedBox(height: 8),
+                            ],
+                            const SizedBox(height: 4),
+                          ],
+                        ],
                       ),
                     ),
                   ],
                 ),
+    );
+  }
+}
+
+class _SectionGroup {
+  const _SectionGroup({
+    required this.label,
+    required this.sections,
+  });
+
+  final String label;
+  final List<RoomSectionModel> sections;
+}
+
+class _GroupHeader extends StatelessWidget {
+  const _GroupHeader({
+    required this.label,
+    required this.count,
+  });
+
+  final String label;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const Icon(Icons.label_outline, size: 13, color: AppColors.accent),
+        const SizedBox(width: 6),
+        Text(
+          '$label · $count',
+          style: const TextStyle(
+            color: AppColors.onSurfaceVariant,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
     );
   }
 }
