@@ -993,17 +993,17 @@ class _AnnotatedReviewViewState extends State<_AnnotatedReviewView> {
                 decoration: BoxDecoration(
                   border: Border.all(
                     color: isDragging
-                        ? AppColors.accent
+                        ? Colors.white
                         : s.selected
-                            ? AppColors.accent.withAlpha(180)
-                            : AppColors.onSurfaceVariant.withAlpha(100),
-                    width: isDragging ? 2.5 : 1.5,
+                            ? Colors.white.withAlpha(220)
+                            : Colors.white.withAlpha(100),
+                    width: isDragging ? 2.5 : 2.0,
                   ),
                   borderRadius: BorderRadius.circular(4),
                   color: isDragging
-                      ? AppColors.accent.withAlpha(40)
+                      ? Colors.white.withAlpha(30)
                       : s.selected
-                          ? AppColors.accent.withAlpha(20)
+                          ? Colors.white.withAlpha(15)
                           : Colors.black.withAlpha(20),
                 ),
               ),
