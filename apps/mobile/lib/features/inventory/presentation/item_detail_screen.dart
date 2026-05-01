@@ -501,10 +501,11 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
 
   Future<void> _showEditSheet(BuildContext context, ItemModel item) async {
     var property = ref.read(propertyDetailNotifierProvider).valueOrNull;
-    if (property == null || property.id != item.propertyId) {
+    final propertyId = item.propertyId;
+    if (propertyId != null && (property == null || property.id != propertyId)) {
       property = await ref
           .read(propertyDetailNotifierProvider.notifier)
-          .load(item.propertyId);
+          .load(propertyId);
     }
     if (!context.mounted) return;
     showModalBottomSheet<bool>(
