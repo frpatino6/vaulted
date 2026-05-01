@@ -226,7 +226,7 @@ class _GroupHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final countLabel = '$count sección${count == 1 ? '' : 'es'}';
+    final countLabel = '$count section${count == 1 ? '' : 's'}';
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
