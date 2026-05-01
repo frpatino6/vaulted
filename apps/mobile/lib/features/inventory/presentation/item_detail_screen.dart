@@ -499,20 +499,23 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
     return null;
   }
 
-  void _showEditSheet(BuildContext context, ItemModel item) {
-    final property = ref.read(propertyDetailNotifierProvider).valueOrNull;
+  Future<void> _showEditSheet(BuildContext context, ItemModel item) async {
+    var property = ref.read(propertyDetailNotifierProvider).valueOrNull;
+    if (property == null || property.id != item.propertyId) {
+      property = await ref
+          .read(propertyDetailNotifierProvider.notifier)
+          .load(item.propertyId);
+    }
+    if (!context.mounted) return;
     showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder:
-          (ctx) => EditItemSheet(
-            item: item,
-            floors: property?.floors,
-            onUpdated:
-                () =>
-                    ref.read(itemDetailNotifierProvider.notifier).load(item.id),
-          ),
+      builder: (ctx) => EditItemSheet(
+        item: item,
+        floors: property?.floors,
+        onUpdated: () => ref.read(itemDetailNotifierProvider.notifier).load(item.id),
+      ),
     );
   }
 }
