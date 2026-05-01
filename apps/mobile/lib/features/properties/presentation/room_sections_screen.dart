@@ -35,6 +35,40 @@ class _RoomSectionsScreenState extends ConsumerState<RoomSectionsScreen> {
   List<RoomSectionModel> _sections = [];
   bool _loading = true;
 
+  List<_SectionGroup> get _groupedSections {
+    final labeledGroups = <String, List<RoomSectionModel>>{};
+    final unlabeledSections = <RoomSectionModel>[];
+    for (final section in _sections) {
+      final rawLabel = section.furnitureName?.trim() ?? '';
+      if (rawLabel.isEmpty) {
+        unlabeledSections.add(section);
+        continue;
+      }
+      labeledGroups.putIfAbsent(rawLabel, () => <RoomSectionModel>[]).add(section);
+    }
+    final sortedLabeled = labeledGroups.entries.toList()
+      ..sort((a, b) => a.key.toLowerCase().compareTo(b.key.toLowerCase()));
+
+    final groups = sortedLabeled
+        .map((entry) => _SectionGroup(
+              label: entry.key,
+              sections: entry.value,
+              isUnlabeled: false,
+            ))
+        .toList();
+
+    if (unlabeledSections.isNotEmpty) {
+      groups.add(
+        _SectionGroup(
+          label: 'Needs label',
+          sections: unlabeledSections,
+          isUnlabeled: true,
+        ),
+      );
+    }
+    return groups;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -165,19 +199,110 @@ class _RoomSectionsScreenState extends ConsumerState<RoomSectionsScreen> {
                       ),
                     ),
                     Expanded(
-                      child: ListView.separated(
+                      child: ListView(
                         padding: const EdgeInsets.all(16),
-                        itemCount: _sections.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 8),
-                        itemBuilder: (_, i) => _SectionTile(
-                          section: _sections[i],
-                          onEdit: () => _showAddSheet(editing: _sections[i]),
-                          onDelete: () => _delete(_sections[i]),
-                        ),
+                        children: [
+                          for (final group in _groupedSections) ...[
+                            _GroupHeader(
+                              label: group.label,
+                              count: group.sections.length,
+                              isUnlabeled: group.isUnlabeled,
+                            ),
+                            const SizedBox(height: 8),
+                            for (final section in group.sections) ...[
+                              _SectionTile(
+                                section: section,
+                                onEdit: () => _showAddSheet(editing: section),
+                                onDelete: () => _delete(section),
+                              ),
+                              const SizedBox(height: 8),
+                            ],
+                            const SizedBox(height: 12),
+                          ],
+                        ],
                       ),
                     ),
                   ],
                 ),
+    );
+  }
+}
+
+class _SectionGroup {
+  const _SectionGroup({
+    required this.label,
+    required this.sections,
+    required this.isUnlabeled,
+  });
+
+  final String label;
+  final List<RoomSectionModel> sections;
+  final bool isUnlabeled;
+}
+
+class _GroupHeader extends StatelessWidget {
+  const _GroupHeader({
+    required this.label,
+    required this.count,
+    required this.isUnlabeled,
+  });
+
+  final String label;
+  final int count;
+  final bool isUnlabeled;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: isUnlabeled
+            ? AppColors.surfaceVariant.withValues(alpha: 0.75)
+            : AppColors.surfaceVariant,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isUnlabeled
+              ? AppColors.onSurfaceVariant.withValues(alpha: 0.25)
+              : AppColors.accent.withValues(alpha: 0.2),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isUnlabeled ? Icons.edit_note_outlined : Icons.label_outline,
+            size: 16,
+            color: isUnlabeled ? AppColors.onSurfaceVariant : AppColors.accent,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: AppColors.onBackground,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: isUnlabeled
+                  ? AppColors.onSurfaceVariant.withValues(alpha: 0.15)
+                  : AppColors.accent.withValues(alpha: 0.16),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              '$count section${count == 1 ? '' : 's'}',
+              style: TextStyle(
+                color: isUnlabeled ? AppColors.onSurfaceVariant : AppColors.accent,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
