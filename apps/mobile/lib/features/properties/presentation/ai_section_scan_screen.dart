@@ -263,7 +263,7 @@ class _AiSectionScanScreenState extends ConsumerState<AiSectionScanScreen> {
 
     final furnitureNames = {
       for (final g in _groups.where((g) => g.sections.any((s) => s.selected)))
-        g: g.furnitureName,
+        g: '',
     };
 
     final confirmed = await showModalBottomSheet<Map<_ScanGroup, String>?>(
@@ -1315,21 +1315,27 @@ class _SaveSummarySheetState extends State<_SaveSummarySheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.surfaceVariant,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(24),
-          topRight: Radius.circular(24),
-        ),
-      ),
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOut,
       padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).padding.bottom + 16,
+        bottom: MediaQuery.of(context).viewInsets.bottom,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+      child: Container(
+        decoration: const BoxDecoration(
+          color: AppColors.surfaceVariant,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(24),
+            topRight: Radius.circular(24),
+          ),
+        ),
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).padding.bottom + 16,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
           const SizedBox(height: 12),
           Center(
             child: Container(
@@ -1501,7 +1507,8 @@ class _SaveSummarySheetState extends State<_SaveSummarySheet> {
               ],
             ),
           ),
-        ],
+          ],
+        ),
       ),
     );
   }
