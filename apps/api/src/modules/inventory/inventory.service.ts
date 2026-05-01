@@ -259,6 +259,8 @@ export class InventoryService {
     let roomName: string | null = null;
     let sectionPhoto: string | null = null;
     let sectionBoundingBox: { x: number; y: number; width: number; height: number } | null = null;
+    let sectionCode: string | null = null;
+    let sectionFurnitureName: string | null = null;
     if (property && item.roomId) {
       for (const floor of property.floors ?? []) {
         const room = floor.rooms?.find((r) => r.roomId === String(item.roomId));
@@ -267,6 +269,8 @@ export class InventoryService {
           if (item.sectionId) {
             const section = room.sections?.find((s) => s.sectionId === String(item.sectionId));
             sectionPhoto = section?.photo ?? null;
+            sectionCode = section?.code ?? null;
+            sectionFurnitureName = section?.furnitureName ?? null;
             sectionBoundingBox = section?.boundingBox
               ? { x: section.boundingBox.x, y: section.boundingBox.y, width: section.boundingBox.width, height: section.boundingBox.height }
               : null;
@@ -294,10 +298,10 @@ export class InventoryService {
           ),
         },
       });
-      return this.withSignedUrls({ ...plain, propertyName, roomName, sectionPhoto, sectionBoundingBox } as Item & { propertyName: string | null; roomName: string | null; sectionPhoto: string | null; sectionBoundingBox: { x: number; y: number; width: number; height: number } | null }, userId, tenantId);
+      return this.withSignedUrls({ ...plain, propertyName, roomName, sectionPhoto, sectionBoundingBox, sectionCode, sectionFurnitureName } as Item & { propertyName: string | null; roomName: string | null; sectionPhoto: string | null; sectionBoundingBox: { x: number; y: number; width: number; height: number } | null; sectionCode: string | null; sectionFurnitureName: string | null }, userId, tenantId);
     }
     const stripped = this.accessControl.stripValuation(item.toObject()) as Item;
-    return { ...stripped, propertyName, roomName, sectionPhoto, sectionBoundingBox } as Item & { propertyName: string | null; roomName: string | null; sectionPhoto: string | null; sectionBoundingBox: { x: number; y: number; width: number; height: number } | null };
+    return { ...stripped, propertyName, roomName, sectionPhoto, sectionBoundingBox, sectionCode, sectionFurnitureName } as Item & { propertyName: string | null; roomName: string | null; sectionPhoto: string | null; sectionBoundingBox: { x: number; y: number; width: number; height: number } | null; sectionCode: string | null; sectionFurnitureName: string | null };
   }
 
   async update(tenantId: string, itemId: string, dto: UpdateItemDto): Promise<Item> {
@@ -532,6 +536,8 @@ export class InventoryService {
       let roomName: string | null = null;
       let sectionPhoto: string | null = null;
       let sectionBoundingBox: { x: number; y: number; width: number; height: number } | null = null;
+      let sectionCode: string | null = null;
+      let sectionFurnitureName: string | null = null;
       if (property && item.roomId) {
         for (const floor of property.floors ?? []) {
           const room = floor.rooms?.find((candidate) => candidate.roomId === String(item.roomId));
@@ -540,6 +546,8 @@ export class InventoryService {
             if (item.sectionId) {
               const section = room.sections?.find((s) => s.sectionId === String(item.sectionId));
               sectionPhoto = section?.photo ?? null;
+              sectionCode = section?.code ?? null;
+              sectionFurnitureName = section?.furnitureName ?? null;
               sectionBoundingBox = section?.boundingBox
                 ? { x: section.boundingBox.x, y: section.boundingBox.y, width: section.boundingBox.width, height: section.boundingBox.height }
                 : null;
@@ -558,7 +566,9 @@ export class InventoryService {
         roomName,
         sectionPhoto,
         sectionBoundingBox,
-      } as ItemDocument & { propertyName: string | null; roomName: string | null; sectionPhoto: string | null; sectionBoundingBox: { x: number; y: number; width: number; height: number } | null };
+        sectionCode,
+        sectionFurnitureName,
+      } as ItemDocument & { propertyName: string | null; roomName: string | null; sectionPhoto: string | null; sectionBoundingBox: { x: number; y: number; width: number; height: number } | null; sectionCode: string | null; sectionFurnitureName: string | null };
     });
 
     const finalItems = role === Role.OWNER || role === Role.MANAGER

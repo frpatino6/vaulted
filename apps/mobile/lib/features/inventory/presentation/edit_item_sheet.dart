@@ -117,6 +117,21 @@ class _EditItemSheetState extends ConsumerState<EditItemSheet> {
     return widget.item.roomName ?? roomId;
   }
 
+  Future<void> _openSectionPicker() async {
+    final picked = await showModalBottomSheet<String?>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _SectionPickerSheet(
+        sections: _availableSections,
+        selectedSectionId: _selectedSectionId,
+      ),
+    );
+    // picked == '' means "No section" was chosen; null means dismissed
+    if (!mounted) return;
+    if (picked != null) setState(() => _selectedSectionId = picked.isEmpty ? null : picked);
+  }
+
   Future<void> _openRoomPicker() async {
     final floors = widget.floors;
     if (floors == null || floors.isEmpty) return;
@@ -416,39 +431,11 @@ class _EditItemSheetState extends ConsumerState<EditItemSheet> {
                   ),
                   if (_availableSections.isNotEmpty) ...[
                     const SizedBox(height: AppSpacing.md),
-                    DropdownButtonFormField<String>(
-                      value: _selectedSectionId,
-                      decoration: InputDecoration(
-                        labelText: 'Section (optional)',
-                        hintText: 'Select section',
-                        prefixIcon: const Icon(
-                          Icons.grid_view_outlined,
-                          size: 18,
-                        ),
-                        suffixIcon: _selectedSectionId != null
-                            ? IconButton(
-                                icon: const Icon(Icons.close, size: 16),
-                                onPressed: () => setState(
-                                  () => _selectedSectionId = null,
-                                ),
-                              )
-                            : null,
-                      ),
-                      dropdownColor: AppColors.surfaceVariant,
-                      items: [
-                        const DropdownMenuItem<String>(
-                          value: null,
-                          child: Text('No section'),
-                        ),
-                        ..._availableSections.map(
-                          (s) => DropdownMenuItem<String>(
-                            value: s.sectionId,
-                            child: Text('${s.code} – ${s.name}'),
-                          ),
-                        ),
-                      ],
-                      onChanged: (v) =>
-                          setState(() => _selectedSectionId = v),
+                    _SectionPickerField(
+                      sections: _availableSections,
+                      selectedSectionId: _selectedSectionId,
+                      onTap: _openSectionPicker,
+                      onClear: () => setState(() => _selectedSectionId = null),
                     ),
                   ] else ...[
                     const SizedBox(height: AppSpacing.md),
@@ -678,6 +665,310 @@ class _RoomPickerField extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+// ── Section picker field ───────────────────────────────────────────────────
+
+class _SectionPickerField extends StatelessWidget {
+  const _SectionPickerField({
+    required this.sections,
+    required this.selectedSectionId,
+    required this.onTap,
+    required this.onClear,
+  });
+
+  final List<RoomSectionModel> sections;
+  final String? selectedSectionId;
+  final VoidCallback onTap;
+  final VoidCallback onClear;
+
+  RoomSectionModel? get _selected =>
+      selectedSectionId != null
+          ? sections.where((s) => s.sectionId == selectedSectionId).firstOrNull
+          : null;
+
+  String _label(RoomSectionModel s) {
+    final parts = <String>[
+      if (s.furnitureName?.isNotEmpty == true) s.furnitureName!,
+      s.code,
+      if (s.name.isNotEmpty) s.name,
+    ];
+    return parts.join(' · ');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final sel = _selected;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'SECTION',
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
+            letterSpacing: 1.5,
+            fontSize: 10,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        GestureDetector(
+          onTap: onTap,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.sm,
+            ),
+            decoration: BoxDecoration(
+              color: sel != null
+                  ? AppColors.accent.withValues(alpha: 0.12)
+                  : AppColors.onSurfaceVariant.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: sel != null
+                    ? AppColors.accent.withValues(alpha: 0.4)
+                    : AppColors.onSurfaceVariant.withValues(alpha: 0.2),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.grid_view_outlined,
+                  size: 18,
+                  color: sel != null
+                      ? AppColors.accent
+                      : AppColors.onSurfaceVariant.withValues(alpha: 0.5),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    sel != null ? _label(sel) : 'Select section (optional)',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: sel != null
+                          ? AppColors.accent
+                          : AppColors.onSurfaceVariant.withValues(alpha: 0.5),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (sel != null)
+                  GestureDetector(
+                    onTap: onClear,
+                    behavior: HitTestBehavior.opaque,
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 6),
+                      child: Icon(
+                        Icons.close,
+                        size: 16,
+                        color: AppColors.accent.withValues(alpha: 0.7),
+                      ),
+                    ),
+                  )
+                else
+                  Icon(
+                    Icons.keyboard_arrow_down,
+                    size: 18,
+                    color: AppColors.onSurfaceVariant.withValues(alpha: 0.4),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Section picker sheet ───────────────────────────────────────────────────
+
+class _SectionPickerSheet extends StatelessWidget {
+  const _SectionPickerSheet({
+    required this.sections,
+    required this.selectedSectionId,
+  });
+
+  final List<RoomSectionModel> sections;
+  final String? selectedSectionId;
+
+  Map<String, List<RoomSectionModel>> get _grouped {
+    final map = <String, List<RoomSectionModel>>{};
+    for (final s in sections) {
+      final key = s.furnitureName?.isNotEmpty == true ? s.furnitureName! : '';
+      map.putIfAbsent(key, () => []).add(s);
+    }
+    return map;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final groups = _grouped;
+    final groupKeys = groups.keys.toList()
+      ..sort((a, b) {
+        if (a.isEmpty) return 1;
+        if (b.isEmpty) return -1;
+        return a.compareTo(b);
+      });
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.surfaceVariant,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(24),
+          topRight: Radius.circular(24),
+        ),
+      ),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).padding.bottom + 8,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: 12),
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.onSurfaceVariant,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              children: [
+                const Icon(Icons.grid_view_outlined,
+                    color: AppColors.accent, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  'Select section',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: AppColors.onBackground,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.55,
+            ),
+            child: ListView(
+              shrinkWrap: true,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              children: [
+                // "No section" option
+                ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                  leading: Icon(
+                    Icons.block_outlined,
+                    size: 18,
+                    color: selectedSectionId == null
+                        ? AppColors.accent
+                        : AppColors.onSurfaceVariant.withValues(alpha: 0.5),
+                  ),
+                  title: Text(
+                    'No section',
+                    style: TextStyle(
+                      color: selectedSectionId == null
+                          ? AppColors.accent
+                          : AppColors.onBackground,
+                      fontWeight: selectedSectionId == null
+                          ? FontWeight.w600
+                          : FontWeight.normal,
+                    ),
+                  ),
+                  trailing: selectedSectionId == null
+                      ? const Icon(Icons.check, color: AppColors.accent, size: 18)
+                      : null,
+                  onTap: () => Navigator.of(context).pop(''),
+                ),
+                const Divider(height: 8),
+                for (final key in groupKeys) ...[
+                  if (key.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(8, 12, 8, 4),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.door_front_door_outlined,
+                              size: 14, color: AppColors.accent),
+                          const SizedBox(width: 6),
+                          Text(
+                            key,
+                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: AppColors.accent,
+                              letterSpacing: 1.2,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  for (final section in groups[key]!)
+                    ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                      leading: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: selectedSectionId == section.sectionId
+                              ? AppColors.accent.withValues(alpha: 0.18)
+                              : AppColors.onSurfaceVariant.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Center(
+                          child: Text(
+                            section.code,
+                            style: TextStyle(
+                              color: selectedSectionId == section.sectionId
+                                  ? AppColors.accent
+                                  : AppColors.onBackground,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ),
+                      title: Text(
+                        section.name.isNotEmpty ? section.name : section.code,
+                        style: TextStyle(
+                          color: selectedSectionId == section.sectionId
+                              ? AppColors.accent
+                              : AppColors.onBackground,
+                          fontWeight: selectedSectionId == section.sectionId
+                              ? FontWeight.w600
+                              : FontWeight.normal,
+                        ),
+                      ),
+                      subtitle: section.notes?.isNotEmpty == true
+                          ? Text(
+                              section.notes!,
+                              style: const TextStyle(
+                                color: AppColors.onSurfaceVariant,
+                                fontSize: 12,
+                              ),
+                            )
+                          : null,
+                      trailing: selectedSectionId == section.sectionId
+                          ? const Icon(Icons.check,
+                              color: AppColors.accent, size: 18)
+                          : null,
+                      onTap: () => Navigator.of(context).pop(section.sectionId),
+                    ),
+                ],
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

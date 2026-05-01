@@ -61,6 +61,9 @@ export class RoomSection {
   @Prop({ trim: true })
   photo?: string;
 
+  @Prop({ trim: true })
+  furnitureName?: string;
+
   @Prop({ type: BoundingBoxSchema, required: false, default: null })
   boundingBox?: BoundingBox | null;
 }

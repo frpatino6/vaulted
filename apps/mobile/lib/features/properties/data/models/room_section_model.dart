@@ -44,6 +44,7 @@ class RoomSectionModel with _$RoomSectionModel {
     required String type,
     String? notes,
     String? photo,
+    String? furnitureName,
     @JsonKey(fromJson: _boundingBoxFromJson, toJson: _boundingBoxToJson)
     SectionBoundingBox? boundingBox,
   }) = _RoomSectionModel;

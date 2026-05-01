@@ -15,6 +15,7 @@ _$RoomSectionModelImpl _$$RoomSectionModelImplFromJson(
   type: json['type'] as String,
   notes: json['notes'] as String?,
   photo: json['photo'] as String?,
+  furnitureName: json['furnitureName'] as String?,
   boundingBox: _boundingBoxFromJson(json['boundingBox']),
 );
 
@@ -27,5 +28,6 @@ Map<String, dynamic> _$$RoomSectionModelImplToJson(
   'type': instance.type,
   'notes': instance.notes,
   'photo': instance.photo,
+  'furnitureName': instance.furnitureName,
   'boundingBox': _boundingBoxToJson(instance.boundingBox),
 };

@@ -32,6 +32,11 @@ export class AddSectionDto {
   photo?: string;
 
   @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  furnitureName?: string;
+
+  @IsOptional()
   @ValidateNested()
   @Type(() => BoundingBoxDto)
   boundingBox?: BoundingBoxDto;

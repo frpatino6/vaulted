@@ -283,6 +283,8 @@ mixin _$ItemModel {
   String? get locationDetail => throw _privateConstructorUsedError;
   String? get sectionId => throw _privateConstructorUsedError;
   String? get sectionPhoto => throw _privateConstructorUsedError;
+  String? get sectionCode => throw _privateConstructorUsedError;
+  String? get sectionFurnitureName => throw _privateConstructorUsedError;
   @JsonKey(fromJson: _itemBoundingBoxFromJson, toJson: _itemBoundingBoxToJson)
   SectionBoundingBox? get sectionBoundingBox =>
       throw _privateConstructorUsedError;
@@ -326,6 +328,8 @@ abstract class $ItemModelCopyWith<$Res> {
     String? locationDetail,
     String? sectionId,
     String? sectionPhoto,
+    String? sectionCode,
+    String? sectionFurnitureName,
     @JsonKey(fromJson: _itemBoundingBoxFromJson, toJson: _itemBoundingBoxToJson)
     SectionBoundingBox? sectionBoundingBox,
     int quantity,
@@ -369,6 +373,8 @@ class _$ItemModelCopyWithImpl<$Res, $Val extends ItemModel>
     Object? locationDetail = freezed,
     Object? sectionId = freezed,
     Object? sectionPhoto = freezed,
+    Object? sectionCode = freezed,
+    Object? sectionFurnitureName = freezed,
     Object? sectionBoundingBox = freezed,
     Object? quantity = null,
     Object? valuation = freezed,
@@ -454,6 +460,16 @@ class _$ItemModelCopyWithImpl<$Res, $Val extends ItemModel>
                     ? _value.sectionPhoto
                     : sectionPhoto // ignore: cast_nullable_to_non_nullable
                         as String?,
+            sectionCode:
+                freezed == sectionCode
+                    ? _value.sectionCode
+                    : sectionCode // ignore: cast_nullable_to_non_nullable
+                        as String?,
+            sectionFurnitureName:
+                freezed == sectionFurnitureName
+                    ? _value.sectionFurnitureName
+                    : sectionFurnitureName // ignore: cast_nullable_to_non_nullable
+                        as String?,
             sectionBoundingBox:
                 freezed == sectionBoundingBox
                     ? _value.sectionBoundingBox
@@ -534,6 +550,8 @@ abstract class _$$ItemModelImplCopyWith<$Res>
     String? locationDetail,
     String? sectionId,
     String? sectionPhoto,
+    String? sectionCode,
+    String? sectionFurnitureName,
     @JsonKey(fromJson: _itemBoundingBoxFromJson, toJson: _itemBoundingBoxToJson)
     SectionBoundingBox? sectionBoundingBox,
     int quantity,
@@ -577,6 +595,8 @@ class __$$ItemModelImplCopyWithImpl<$Res>
     Object? locationDetail = freezed,
     Object? sectionId = freezed,
     Object? sectionPhoto = freezed,
+    Object? sectionCode = freezed,
+    Object? sectionFurnitureName = freezed,
     Object? sectionBoundingBox = freezed,
     Object? quantity = null,
     Object? valuation = freezed,
@@ -662,6 +682,16 @@ class __$$ItemModelImplCopyWithImpl<$Res>
                 ? _value.sectionPhoto
                 : sectionPhoto // ignore: cast_nullable_to_non_nullable
                     as String?,
+        sectionCode:
+            freezed == sectionCode
+                ? _value.sectionCode
+                : sectionCode // ignore: cast_nullable_to_non_nullable
+                    as String?,
+        sectionFurnitureName:
+            freezed == sectionFurnitureName
+                ? _value.sectionFurnitureName
+                : sectionFurnitureName // ignore: cast_nullable_to_non_nullable
+                    as String?,
         sectionBoundingBox:
             freezed == sectionBoundingBox
                 ? _value.sectionBoundingBox
@@ -721,6 +751,8 @@ class _$ItemModelImpl implements _ItemModel {
     this.locationDetail,
     this.sectionId,
     this.sectionPhoto,
+    this.sectionCode,
+    this.sectionFurnitureName,
     @JsonKey(fromJson: _itemBoundingBoxFromJson, toJson: _itemBoundingBoxToJson)
     this.sectionBoundingBox,
     this.quantity = 1,
@@ -784,6 +816,10 @@ class _$ItemModelImpl implements _ItemModel {
   @override
   final String? sectionPhoto;
   @override
+  final String? sectionCode;
+  @override
+  final String? sectionFurnitureName;
+  @override
   @JsonKey(fromJson: _itemBoundingBoxFromJson, toJson: _itemBoundingBoxToJson)
   final SectionBoundingBox? sectionBoundingBox;
   @override
@@ -820,7 +856,7 @@ class _$ItemModelImpl implements _ItemModel {
 
   @override
   String toString() {
-    return 'ItemModel(id: $id, name: $name, propertyId: $propertyId, propertyName: $propertyName, roomId: $roomId, roomName: $roomName, category: $category, subcategory: $subcategory, status: $status, photos: $photos, tags: $tags, serialNumber: $serialNumber, locationDetail: $locationDetail, sectionId: $sectionId, sectionPhoto: $sectionPhoto, sectionBoundingBox: $sectionBoundingBox, quantity: $quantity, valuation: $valuation, attributes: $attributes, documents: $documents, createdAt: $createdAt, qrCode: $qrCode)';
+    return 'ItemModel(id: $id, name: $name, propertyId: $propertyId, propertyName: $propertyName, roomId: $roomId, roomName: $roomName, category: $category, subcategory: $subcategory, status: $status, photos: $photos, tags: $tags, serialNumber: $serialNumber, locationDetail: $locationDetail, sectionId: $sectionId, sectionPhoto: $sectionPhoto, sectionCode: $sectionCode, sectionFurnitureName: $sectionFurnitureName, sectionBoundingBox: $sectionBoundingBox, quantity: $quantity, valuation: $valuation, attributes: $attributes, documents: $documents, createdAt: $createdAt, qrCode: $qrCode)';
   }
 
   @override
@@ -852,6 +888,10 @@ class _$ItemModelImpl implements _ItemModel {
                 other.sectionId == sectionId) &&
             (identical(other.sectionPhoto, sectionPhoto) ||
                 other.sectionPhoto == sectionPhoto) &&
+            (identical(other.sectionCode, sectionCode) ||
+                other.sectionCode == sectionCode) &&
+            (identical(other.sectionFurnitureName, sectionFurnitureName) ||
+                other.sectionFurnitureName == sectionFurnitureName) &&
             (identical(other.sectionBoundingBox, sectionBoundingBox) ||
                 other.sectionBoundingBox == sectionBoundingBox) &&
             (identical(other.quantity, quantity) ||
@@ -890,6 +930,8 @@ class _$ItemModelImpl implements _ItemModel {
     locationDetail,
     sectionId,
     sectionPhoto,
+    sectionCode,
+    sectionFurnitureName,
     sectionBoundingBox,
     quantity,
     valuation,
@@ -930,6 +972,8 @@ abstract class _ItemModel implements ItemModel {
     final String? locationDetail,
     final String? sectionId,
     final String? sectionPhoto,
+    final String? sectionCode,
+    final String? sectionFurnitureName,
     @JsonKey(fromJson: _itemBoundingBoxFromJson, toJson: _itemBoundingBoxToJson)
     final SectionBoundingBox? sectionBoundingBox,
     final int quantity,
@@ -973,6 +1017,10 @@ abstract class _ItemModel implements ItemModel {
   String? get sectionId;
   @override
   String? get sectionPhoto;
+  @override
+  String? get sectionCode;
+  @override
+  String? get sectionFurnitureName;
   @override
   @JsonKey(fromJson: _itemBoundingBoxFromJson, toJson: _itemBoundingBoxToJson)
   SectionBoundingBox? get sectionBoundingBox;
