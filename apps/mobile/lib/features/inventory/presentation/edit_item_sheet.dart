@@ -1,3 +1,6 @@
+import 'dart:math' show min;
+
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -784,7 +787,7 @@ class _SectionPickerField extends StatelessWidget {
 
 // ── Section picker sheet ───────────────────────────────────────────────────
 
-class _SectionPickerSheet extends StatelessWidget {
+class _SectionPickerSheet extends StatefulWidget {
   const _SectionPickerSheet({
     required this.sections,
     required this.selectedSectionId,
@@ -793,13 +796,43 @@ class _SectionPickerSheet extends StatelessWidget {
   final List<RoomSectionModel> sections;
   final String? selectedSectionId;
 
+  @override
+  State<_SectionPickerSheet> createState() => _SectionPickerSheetState();
+}
+
+class _SectionPickerSheetState extends State<_SectionPickerSheet> {
+  // photoUrl → natural image size
+  final Map<String, Size> _imageSizes = {};
+
   Map<String, List<RoomSectionModel>> get _grouped {
     final map = <String, List<RoomSectionModel>>{};
-    for (final s in sections) {
+    for (final s in widget.sections) {
       final key = s.furnitureName?.isNotEmpty == true ? s.furnitureName! : '';
       map.putIfAbsent(key, () => []).add(s);
     }
     return map;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    for (final s in widget.sections) {
+      if (s.photo != null) _loadImageSize(s.photo!);
+    }
+  }
+
+  void _loadImageSize(String url) {
+    if (_imageSizes.containsKey(url)) return;
+    NetworkImage(url)
+        .resolve(const ImageConfiguration())
+        .addListener(ImageStreamListener((info, _) {
+      if (mounted) {
+        setState(() => _imageSizes[url] = Size(
+              info.image.width.toDouble(),
+              info.image.height.toDouble(),
+            ));
+      }
+    }));
   }
 
   @override
@@ -858,7 +891,7 @@ class _SectionPickerSheet extends StatelessWidget {
           const SizedBox(height: 8),
           ConstrainedBox(
             constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(context).size.height * 0.55,
+              maxHeight: MediaQuery.of(context).size.height * 0.75,
             ),
             child: ListView(
               shrinkWrap: true,
@@ -870,104 +903,290 @@ class _SectionPickerSheet extends StatelessWidget {
                   leading: Icon(
                     Icons.block_outlined,
                     size: 18,
-                    color: selectedSectionId == null
+                    color: widget.selectedSectionId == null
                         ? AppColors.accent
                         : AppColors.onSurfaceVariant.withValues(alpha: 0.5),
                   ),
                   title: Text(
                     'No section',
                     style: TextStyle(
-                      color: selectedSectionId == null
+                      color: widget.selectedSectionId == null
                           ? AppColors.accent
                           : AppColors.onBackground,
-                      fontWeight: selectedSectionId == null
+                      fontWeight: widget.selectedSectionId == null
                           ? FontWeight.w600
                           : FontWeight.normal,
                     ),
                   ),
-                  trailing: selectedSectionId == null
+                  trailing: widget.selectedSectionId == null
                       ? const Icon(Icons.check, color: AppColors.accent, size: 18)
                       : null,
                   onTap: () => Navigator.of(context).pop(''),
                 ),
                 const Divider(height: 8),
                 for (final key in groupKeys) ...[
-                  if (key.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(8, 12, 8, 4),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.door_front_door_outlined,
-                              size: 14, color: AppColors.accent),
-                          const SizedBox(width: 6),
-                          Text(
-                            key,
-                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: AppColors.accent,
-                              letterSpacing: 1.2,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  for (final section in groups[key]!)
-                    ListTile(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-                      leading: Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: selectedSectionId == section.sectionId
-                              ? AppColors.accent.withValues(alpha: 0.18)
-                              : AppColors.onSurfaceVariant.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Center(
-                          child: Text(
-                            section.code,
-                            style: TextStyle(
-                              color: selectedSectionId == section.sectionId
-                                  ? AppColors.accent
-                                  : AppColors.onBackground,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                      ),
-                      title: Text(
-                        section.name.isNotEmpty ? section.name : section.code,
-                        style: TextStyle(
-                          color: selectedSectionId == section.sectionId
-                              ? AppColors.accent
-                              : AppColors.onBackground,
-                          fontWeight: selectedSectionId == section.sectionId
-                              ? FontWeight.w600
-                              : FontWeight.normal,
-                        ),
-                      ),
-                      subtitle: section.notes?.isNotEmpty == true
-                          ? Text(
-                              section.notes!,
-                              style: const TextStyle(
-                                color: AppColors.onSurfaceVariant,
-                                fontSize: 12,
-                              ),
-                            )
-                          : null,
-                      trailing: selectedSectionId == section.sectionId
-                          ? const Icon(Icons.check,
-                              color: AppColors.accent, size: 18)
-                          : null,
-                      onTap: () => Navigator.of(context).pop(section.sectionId),
-                    ),
+                  _GroupHeader(label: key.isEmpty ? 'Unlabeled' : key),
+                  const SizedBox(height: 8),
+                  _CabinetVisualPicker(
+                    sections: groups[key]!,
+                    selectedSectionId: widget.selectedSectionId,
+                    imageSizes: _imageSizes,
+                    onSelect: (id) => Navigator.of(context).pop(id),
+                  ),
+                  const SizedBox(height: 16),
                 ],
                 const SizedBox(height: 8),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Cabinet visual picker ──────────────────────────────────────────────────
+
+class _GroupHeader extends StatelessWidget {
+  const _GroupHeader({required this.label});
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 12, 8, 0),
+      child: Row(
+        children: [
+          const Icon(Icons.kitchen_outlined, size: 14, color: AppColors.accent),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: AppColors.accent,
+              letterSpacing: 1.2,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CabinetVisualPicker extends StatelessWidget {
+  const _CabinetVisualPicker({
+    required this.sections,
+    required this.selectedSectionId,
+    required this.imageSizes,
+    required this.onSelect,
+  });
+
+  final List<RoomSectionModel> sections;
+  final String? selectedSectionId;
+  final Map<String, Size> imageSizes;
+  final void Function(String sectionId) onSelect;
+
+  // First photo URL shared by sections in this group
+  String? get _photoUrl {
+    for (final s in sections) {
+      if (s.photo != null) return s.photo;
+    }
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final photoUrl = _photoUrl;
+    final sectionsWithBox = sections.where((s) => s.boundingBox != null).toList();
+    final sectionsWithoutBox = sections.where((s) => s.boundingBox == null).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Visual photo picker (only when photo + at least one bbox exists)
+        if (photoUrl != null && sectionsWithBox.isNotEmpty)
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: LayoutBuilder(
+              builder: (_, constraints) {
+                final w = constraints.maxWidth;
+                final nat = imageSizes[photoUrl];
+                final h = nat != null
+                    ? (w * nat.height / nat.width).clamp(140.0, 300.0)
+                    : 200.0;
+                final scale =
+                    nat != null ? min(w / nat.width, h / nat.height) : null;
+                final renderedW = scale != null ? nat!.width * scale : 0.0;
+                final renderedH = scale != null ? nat!.height * scale : 0.0;
+                final offsetX = (w - renderedW) / 2;
+                final offsetY = (h - renderedH) / 2;
+
+                return SizedBox(
+                  width: w,
+                  height: h,
+                  child: Stack(
+                    children: [
+                      Container(color: Colors.black),
+                      CachedNetworkImage(
+                        imageUrl: photoUrl,
+                        width: w,
+                        height: h,
+                        fit: BoxFit.contain,
+                        placeholder: (_, __) => Container(
+                          color: AppColors.accent.withValues(alpha: 0.08),
+                          child: const Center(
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ),
+                        errorWidget: (_, __, ___) => Container(
+                          color: AppColors.surfaceVariant,
+                          child: const Center(
+                            child: Icon(Icons.broken_image_outlined,
+                                color: Colors.white24),
+                          ),
+                        ),
+                      ),
+                      if (scale != null)
+                        for (final s in sectionsWithBox)
+                          _TappableBBox(
+                            bbox: s.boundingBox!,
+                            offsetX: offsetX,
+                            offsetY: offsetY,
+                            renderedW: renderedW,
+                            renderedH: renderedH,
+                            label: s.code,
+                            isSelected: s.sectionId == selectedSectionId,
+                            onTap: () => onSelect(s.sectionId),
+                          ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        // Fallback list for sections without bounding box
+        if (sectionsWithoutBox.isNotEmpty || (photoUrl == null))
+          ..._buildListTiles(
+              context, photoUrl == null ? sections : sectionsWithoutBox),
+      ],
+    );
+  }
+
+  List<Widget> _buildListTiles(
+      BuildContext context, List<RoomSectionModel> items) {
+    return [
+      for (final section in items)
+        ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+          leading: Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: selectedSectionId == section.sectionId
+                  ? AppColors.accent.withValues(alpha: 0.18)
+                  : AppColors.onSurfaceVariant.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Center(
+              child: Text(
+                section.code,
+                style: TextStyle(
+                  color: selectedSectionId == section.sectionId
+                      ? AppColors.accent
+                      : AppColors.onBackground,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ),
+          title: Text(
+            section.name.isNotEmpty ? section.name : section.code,
+            style: TextStyle(
+              color: selectedSectionId == section.sectionId
+                  ? AppColors.accent
+                  : AppColors.onBackground,
+              fontWeight: selectedSectionId == section.sectionId
+                  ? FontWeight.w600
+                  : FontWeight.normal,
+            ),
+          ),
+          subtitle: section.notes?.isNotEmpty == true
+              ? Text(section.notes!,
+                  style: const TextStyle(
+                      color: AppColors.onSurfaceVariant, fontSize: 12))
+              : null,
+          trailing: selectedSectionId == section.sectionId
+              ? const Icon(Icons.check, color: AppColors.accent, size: 18)
+              : null,
+          onTap: () => onSelect(section.sectionId),
+        ),
+    ];
+  }
+}
+
+// ── Tappable bounding box overlay ─────────────────────────────────────────
+
+class _TappableBBox extends StatelessWidget {
+  const _TappableBBox({
+    required this.bbox,
+    required this.offsetX,
+    required this.offsetY,
+    required this.renderedW,
+    required this.renderedH,
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final SectionBoundingBox bbox;
+  final double offsetX, offsetY, renderedW, renderedH;
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final left = offsetX + bbox.x * renderedW;
+    final top = offsetY + bbox.y * renderedH;
+    final width = bbox.width * renderedW;
+    final height = bbox.height * renderedH;
+
+    return Positioned(
+      left: left,
+      top: top,
+      width: width,
+      height: height,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(
+              color: isSelected ? AppColors.accent : Colors.white70,
+              width: isSelected ? 2.5 : 1.5,
+            ),
+            color: isSelected
+                ? AppColors.accent.withValues(alpha: 0.35)
+                : Colors.white.withValues(alpha: 0.10),
+          ),
+          alignment: Alignment.center,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+            decoration: BoxDecoration(
+              color: isSelected ? AppColors.accent : Colors.black54,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
