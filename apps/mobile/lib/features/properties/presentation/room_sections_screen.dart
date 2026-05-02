@@ -39,11 +39,18 @@ class _RoomSectionsScreenState extends ConsumerState<RoomSectionsScreen> {
     final grouped = <String, List<RoomSectionModel>>{};
     for (final section in _sections) {
       final rawLabel = section.furnitureName?.trim() ?? '';
-      final label = rawLabel.isEmpty ? 'Unassigned' : rawLabel;
+      final label = rawLabel.isEmpty ? 'Unlabeled' : rawLabel;
       grouped.putIfAbsent(label, () => <RoomSectionModel>[]).add(section);
     }
-    return grouped.entries
-        .map((entry) => _SectionGroup(label: entry.key, sections: entry.value))
+    final entries = grouped.entries.toList()
+      ..sort((a, b) {
+        if (a.key == 'Unlabeled' && b.key == 'Unlabeled') return 0;
+        if (a.key == 'Unlabeled') return 1;
+        if (b.key == 'Unlabeled') return -1;
+        return a.key.compareTo(b.key);
+      });
+    return entries
+        .map((e) => _SectionGroup(label: e.key, sections: e.value))
         .toList();
   }
 
@@ -134,6 +141,7 @@ class _RoomSectionsScreenState extends ConsumerState<RoomSectionsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final groups = _groupedSections;
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -167,7 +175,8 @@ class _RoomSectionsScreenState extends ConsumerState<RoomSectionsScreen> {
                       child: Row(
                         children: [
                           Text(
-                            '${_sections.length} section${_sections.length == 1 ? '' : 's'}',
+                            '${_sections.length} section${_sections.length == 1 ? '' : 's'}'
+                            '${groups.length > 1 ? ' · ${groups.length} cabinet${groups.length == 1 ? '' : 's'}' : ''}',
                             style: const TextStyle(
                               color: AppColors.onSurfaceVariant,
                               fontSize: 13,
@@ -180,10 +189,10 @@ class _RoomSectionsScreenState extends ConsumerState<RoomSectionsScreen> {
                       child: ListView(
                         padding: const EdgeInsets.all(16),
                         children: [
-                          for (final group in _groupedSections) ...[
+                          for (final group in groups) ...[
                             _GroupHeader(
                               label: group.label,
-                              count: group.sections.length,
+                              isUnlabeled: group.label == 'Unlabeled',
                             ),
                             const SizedBox(height: 8),
                             for (final section in group.sections) ...[
@@ -206,63 +215,43 @@ class _RoomSectionsScreenState extends ConsumerState<RoomSectionsScreen> {
 }
 
 class _SectionGroup {
-  const _SectionGroup({
-    required this.label,
-    required this.sections,
-  });
+  const _SectionGroup({required this.label, required this.sections});
 
   final String label;
   final List<RoomSectionModel> sections;
 }
 
+// ── Group header ─────────────────────────────────────────────────────────────
+
 class _GroupHeader extends StatelessWidget {
-  const _GroupHeader({
-    required this.label,
-    required this.count,
-  });
+  const _GroupHeader({required this.label, required this.isUnlabeled});
 
   final String label;
-  final int count;
+  final bool isUnlabeled;
 
   @override
   Widget build(BuildContext context) {
-    final countLabel = '$count section${count == 1 ? '' : 's'}';
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.accent.withAlpha(20),
-        borderRadius: BorderRadius.circular(10),
-      ),
+    return Padding(
+      padding: const EdgeInsets.only(top: 4, bottom: 4),
       child: Row(
         children: [
-          const Icon(Icons.label_outline, size: 15, color: AppColors.accent),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: AppColors.onBackground,
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
+          Icon(
+            isUnlabeled ? Icons.help_outline : Icons.kitchen_outlined,
+            size: 14,
+            color: isUnlabeled
+                ? AppColors.onSurfaceVariant.withValues(alpha: 0.5)
+                : AppColors.accent,
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(
-              countLabel,
-              style: const TextStyle(
-                color: AppColors.onSurfaceVariant,
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-              ),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: isUnlabeled
+                  ? AppColors.onSurfaceVariant.withValues(alpha: 0.5)
+                  : AppColors.accent,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.5,
             ),
           ),
         ],
