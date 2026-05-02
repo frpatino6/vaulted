@@ -1,3 +1,4 @@
+import 'dart:math' show max, min;
 import 'dart:ui' as ui;
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -179,6 +180,7 @@ class _SectionQrSheetState extends State<_SectionQrSheet> {
                       _SectionPhotoPreview(
                         photoUrl: section.photo!,
                         sectionName: '${section.code} · ${section.name}',
+                        boundingBox: section.boundingBox,
                       ),
                       const SizedBox(height: AppSpacing.lg),
                     ],
@@ -193,17 +195,55 @@ class _SectionQrSheetState extends State<_SectionQrSheet> {
   }
 }
 
-class _SectionPhotoPreview extends StatelessWidget {
+class _SectionPhotoPreview extends StatefulWidget {
   const _SectionPhotoPreview({
     required this.photoUrl,
     required this.sectionName,
+    this.boundingBox,
   });
 
   final String photoUrl;
   final String sectionName;
+  final SectionBoundingBox? boundingBox;
+
+  @override
+  State<_SectionPhotoPreview> createState() => _SectionPhotoPreviewState();
+}
+
+class _SectionPhotoPreviewState extends State<_SectionPhotoPreview> {
+  Size? _naturalSize;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.boundingBox != null) _loadImageSize();
+  }
+
+  @override
+  void didUpdateWidget(_SectionPhotoPreview old) {
+    super.didUpdateWidget(old);
+    if (old.photoUrl != widget.photoUrl && widget.boundingBox != null) {
+      setState(() => _naturalSize = null);
+      _loadImageSize();
+    }
+  }
+
+  void _loadImageSize() {
+    NetworkImage(widget.photoUrl)
+        .resolve(const ImageConfiguration())
+        .addListener(ImageStreamListener((info, _) {
+      if (mounted) {
+        setState(() => _naturalSize = Size(
+              info.image.width.toDouble(),
+              info.image.height.toDouble(),
+            ));
+      }
+    }));
+  }
 
   @override
   Widget build(BuildContext context) {
+    const double h = 200;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -226,66 +266,129 @@ class _SectionPhotoPreview extends StatelessWidget {
         ),
         ClipRRect(
           borderRadius: BorderRadius.circular(14),
-          child: Stack(
-            alignment: Alignment.bottomLeft,
-            children: [
-              CachedNetworkImage(
-                imageUrl: photoUrl,
-                width: double.infinity,
-                height: 200,
-                fit: BoxFit.cover,
-                placeholder: (_, __) => Container(
-                  width: double.infinity,
-                  height: 200,
-                  color: AppColors.accent.withValues(alpha: 0.08),
-                  child: const Center(
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                ),
-                errorWidget: (_, __, ___) => Container(
-                  width: double.infinity,
-                  height: 80,
-                  color: AppColors.surfaceVariant,
-                  child: const Center(
-                    child: Icon(Icons.broken_image_outlined, color: Colors.white24),
-                  ),
-                ),
-              ),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      Colors.black.withValues(alpha: 0.65),
-                    ],
-                  ),
-                ),
-                child: Row(
+          child: SizedBox(
+            width: double.infinity,
+            height: h,
+            child: LayoutBuilder(
+              builder: (_, constraints) {
+                final w = constraints.maxWidth;
+                return Stack(
+                  fit: StackFit.expand,
                   children: [
-                    const Icon(Icons.place_outlined, size: 13, color: Color(0xFFC5A059)),
-                    const SizedBox(width: 5),
-                    Flexible(
-                      child: Text(
-                        sectionName,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.white,
-                          fontWeight: FontWeight.w500,
+                    CachedNetworkImage(
+                      imageUrl: widget.photoUrl,
+                      width: w,
+                      height: h,
+                      fit: BoxFit.cover,
+                      placeholder: (_, __) => Container(
+                        color: AppColors.accent.withValues(alpha: 0.08),
+                        child: const Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
                         ),
-                        overflow: TextOverflow.ellipsis,
+                      ),
+                      errorWidget: (_, __, ___) => Container(
+                        color: AppColors.surfaceVariant,
+                        child: const Center(
+                          child: Icon(Icons.broken_image_outlined, color: Colors.white24),
+                        ),
+                      ),
+                    ),
+                    if (widget.boundingBox != null && _naturalSize != null)
+                      _BoundingBoxOverlay(
+                        bbox: widget.boundingBox!,
+                        naturalSize: _naturalSize!,
+                        containerW: w,
+                        containerH: h,
+                        fit: BoxFit.cover,
+                      ),
+                    Positioned(
+                      left: 0, right: 0, bottom: 0,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.transparent,
+                              Colors.black.withValues(alpha: 0.65),
+                            ],
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.place_outlined, size: 13, color: Color(0xFFC5A059)),
+                            const SizedBox(width: 5),
+                            Flexible(
+                              child: Text(
+                                widget.sectionName,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
-                ),
-              ),
-            ],
+                );
+              },
+            ),
           ),
         ),
       ],
+    );
+  }
+}
+
+class _BoundingBoxOverlay extends StatelessWidget {
+  const _BoundingBoxOverlay({
+    required this.bbox,
+    required this.naturalSize,
+    required this.containerW,
+    required this.containerH,
+    this.fit = BoxFit.contain,
+  });
+
+  final SectionBoundingBox bbox;
+  final Size naturalSize;
+  final double containerW, containerH;
+  final BoxFit fit;
+
+  @override
+  Widget build(BuildContext context) {
+    final double scale;
+    if (fit == BoxFit.cover) {
+      scale = max(containerW / naturalSize.width, containerH / naturalSize.height);
+    } else {
+      scale = min(containerW / naturalSize.width, containerH / naturalSize.height);
+    }
+    final renderedW = naturalSize.width * scale;
+    final renderedH = naturalSize.height * scale;
+    final offsetX = (containerW - renderedW) / 2;
+    final offsetY = (containerH - renderedH) / 2;
+
+    final left = offsetX + bbox.x * renderedW;
+    final top = offsetY + bbox.y * renderedH;
+    final width = bbox.width * renderedW;
+    final height = bbox.height * renderedH;
+
+    return Positioned(
+      left: left,
+      top: top,
+      width: width,
+      height: height,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: const Color(0xFFE53935), width: 2.5),
+          color: const Color(0xFFE53935).withValues(alpha: 0.15),
+        ),
+      ),
     );
   }
 }
