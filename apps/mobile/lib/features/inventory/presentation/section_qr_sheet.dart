@@ -241,6 +241,33 @@ class _SectionPhotoPreviewState extends State<_SectionPhotoPreview> {
     }));
   }
 
+  /// Computes the alignment that pans the image so the bbox center is visible.
+  Alignment _computeAlignment(double containerW, double containerH) {
+    final bbox = widget.boundingBox;
+    final nat = _naturalSize;
+    if (bbox == null || nat == null) return Alignment.center;
+
+    final scale = max(containerW / nat.width, containerH / nat.height);
+    final renderedW = nat.width * scale;
+    final renderedH = nat.height * scale;
+    final cx = bbox.x + bbox.width / 2;
+    final cy = bbox.y + bbox.height / 2;
+    final excessW = renderedW - containerW;
+    final excessH = renderedH - containerH;
+
+    // Formula: image offset = -(excessW) * (ax + 1) / 2
+    // We want: offset + cx * renderedW = containerW / 2
+    // → ax = (cx * renderedW - containerW / 2) * 2 / excessW - 1
+    final ax = excessW > 0
+        ? ((cx * renderedW - containerW / 2) * 2 / excessW - 1).clamp(-1.0, 1.0)
+        : 0.0;
+    final ay = excessH > 0
+        ? ((cy * renderedH - containerH / 2) * 2 / excessH - 1).clamp(-1.0, 1.0)
+        : 0.0;
+
+    return Alignment(ax, ay);
+  }
+
   @override
   Widget build(BuildContext context) {
     const double h = 200;
@@ -272,6 +299,7 @@ class _SectionPhotoPreviewState extends State<_SectionPhotoPreview> {
             child: LayoutBuilder(
               builder: (_, constraints) {
                 final w = constraints.maxWidth;
+                final alignment = _computeAlignment(w, h);
                 return Stack(
                   fit: StackFit.expand,
                   children: [
@@ -280,6 +308,7 @@ class _SectionPhotoPreviewState extends State<_SectionPhotoPreview> {
                       width: w,
                       height: h,
                       fit: BoxFit.cover,
+                      alignment: alignment,
                       placeholder: (_, __) => Container(
                         color: AppColors.accent.withValues(alpha: 0.08),
                         child: const Center(
@@ -300,6 +329,7 @@ class _SectionPhotoPreviewState extends State<_SectionPhotoPreview> {
                         containerW: w,
                         containerH: h,
                         fit: BoxFit.cover,
+                        alignment: alignment,
                       ),
                     Positioned(
                       left: 0, right: 0, bottom: 0,
@@ -352,12 +382,14 @@ class _BoundingBoxOverlay extends StatelessWidget {
     required this.containerW,
     required this.containerH,
     this.fit = BoxFit.contain,
+    this.alignment = Alignment.center,
   });
 
   final SectionBoundingBox bbox;
   final Size naturalSize;
   final double containerW, containerH;
   final BoxFit fit;
+  final Alignment alignment;
 
   @override
   Widget build(BuildContext context) {
@@ -369,8 +401,9 @@ class _BoundingBoxOverlay extends StatelessWidget {
     }
     final renderedW = naturalSize.width * scale;
     final renderedH = naturalSize.height * scale;
-    final offsetX = (containerW - renderedW) / 2;
-    final offsetY = (containerH - renderedH) / 2;
+    // Mirror Flutter's alignment offset: offset = (containerSize - renderedSize) * (a + 1) / 2
+    final offsetX = (containerW - renderedW) * (alignment.x + 1) / 2;
+    final offsetY = (containerH - renderedH) * (alignment.y + 1) / 2;
 
     final left = offsetX + bbox.x * renderedW;
     final top = offsetY + bbox.y * renderedH;
