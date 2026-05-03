@@ -30,10 +30,12 @@ async function bootstrap(): Promise<void> {
   ].filter(Boolean);
 
   // Security headers — must be registered before CORS and routes.
-  // crossOriginResourcePolicy is set to same-site so uploaded media files
-  // can be fetched by the Flutter Web app (same eTLD+1: casacam.net).
+  // crossOriginResourcePolicy set to 'cross-origin' because the API is on
+  // api-vaulted.casacam.net and the web app runs on vaulted.casacam.net
+  // (different subdomains = cross-site). The CORS config below already
+  // restricts allowed origins, so this is safe.
   app.use(helmet({
-    crossOriginResourcePolicy: { policy: 'same-site' },
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
     contentSecurityPolicy: false, // API-only server, no HTML served
   }));
 
