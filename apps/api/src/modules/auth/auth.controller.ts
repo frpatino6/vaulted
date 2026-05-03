@@ -113,10 +113,16 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const ip = req.ip ?? 'unknown';
-    const { accessToken, refreshToken } = await this.authService.refresh(payload, ip);
-
-    res.cookie('refresh_token', refreshToken, REFRESH_COOKIE_OPTIONS);
-    return { accessToken };
+    try {
+      const { accessToken, refreshToken } = await this.authService.refresh(payload, ip);
+      res.cookie('refresh_token', refreshToken, REFRESH_COOKIE_OPTIONS);
+      return { accessToken };
+    } catch (error) {
+      // Clear the stale cookie so the browser lands on a clean login state
+      // instead of looping with a blacklisted token on every page refresh.
+      res.clearCookie('refresh_token', CLEAR_COOKIE_OPTIONS);
+      throw error;
+    }
   }
 
   @SkipMfa()
