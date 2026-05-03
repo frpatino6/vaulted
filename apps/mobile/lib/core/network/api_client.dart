@@ -29,11 +29,12 @@ class ApiClient {
               'Content-Type': 'application/json',
               'Accept': 'application/json',
             },
-            // On web, withCredentials allows the browser to send httpOnly cookies
-            // cross-origin (requires SameSite=None; Secure on the server cookie).
-            extra: {'withCredentials': kIsWeb},
           ),
         ) {
+    // dio_web_adapter ignores extra['withCredentials']; must set it on the adapter.
+    if (kIsWeb) {
+      (_dio.httpClientAdapter as dynamic).withCredentials = true;
+    }
     _dio.interceptors.add(_AuthInterceptor(
       dio: _dio,
       secureStorage: _secureStorage,
@@ -116,12 +117,12 @@ class _AuthInterceptor extends Interceptor {
     }
 
     try {
-      // On web, the browser sends the httpOnly cookie automatically
-      // (withCredentials=true + SameSite=None on server).
+      // On web, the browser sends the httpOnly cookie automatically because
+      // withCredentials is set to true on the adapter (see constructor).
       // Setting Cookie manually is a forbidden header in browsers.
       final Options refreshOptions;
       if (kIsWeb) {
-        refreshOptions = Options(extra: {'withCredentials': true});
+        refreshOptions = Options();
       } else {
         final refreshToken = await _secureStorage.getRefreshToken();
         if (refreshToken == null || refreshToken.isEmpty) {
