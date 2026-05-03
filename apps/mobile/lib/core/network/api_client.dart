@@ -76,6 +76,9 @@ class _AuthInterceptor extends Interceptor {
   final VoidCallback? _onMfaRequired;
   final void Function(String newToken)? _onTokenRefreshed;
 
+  Future<String?>? _refreshFuture;
+  final List<({RequestOptions options, ErrorInterceptorHandler handler})> _pending = [];
+
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
     final token = _tokenStore.getToken();
@@ -90,7 +93,6 @@ class _AuthInterceptor extends Interceptor {
     final status = err.response?.statusCode;
     final body = err.response?.data;
 
-    // 403/401 with "MFA verification required" → redirect to MFA screen (keep token)
     if ((status == 403 || status == 401) && _isMfaRequiredMessage(body)) {
       _tokenStore.setMfaPending(true);
       _onMfaRequired?.call();
@@ -101,34 +103,59 @@ class _AuthInterceptor extends Interceptor {
       return handler.next(err);
     }
 
-    // Use the full URI path for reliable matching (path alone may lack leading slash)
     final uriPath = err.requestOptions.uri.path;
 
-    // Avoid retry loop on refresh endpoint
     if (uriPath.contains('auth/refresh')) {
       _clearAndNotify();
       return handler.next(err);
     }
 
-    // Never intercept other auth endpoints (login, mfa/verify, etc.)
-    // Let errors propagate so the UI can handle them directly.
     if (uriPath.contains('auth/')) {
       return handler.next(err);
     }
 
+    if (err.requestOptions.extra['_refreshed'] == true) {
+      _clearAndNotify();
+      return handler.next(err);
+    }
+
+    if (_refreshFuture != null) {
+      _pending.add((options: err.requestOptions, handler: handler));
+      return;
+    }
+
+    _refreshFuture = _doRefresh();
+
     try {
-      // On web, the browser sends the httpOnly cookie automatically because
-      // withCredentials is set to true on the adapter (see constructor).
-      // Setting Cookie manually is a forbidden header in browsers.
+      final newToken = await _refreshFuture;
+      if (newToken != null) {
+        err.requestOptions.headers['Authorization'] = 'Bearer $newToken';
+        err.requestOptions.extra['_refreshed'] = true;
+        final retry = await _dio.fetch(err.requestOptions);
+        _processPending(newToken);
+        return handler.resolve(retry);
+      } else {
+        _clearAndNotify();
+        _processPending(null);
+        handler.next(err);
+      }
+    } catch (_) {
+      _clearAndNotify();
+      _processPending(null);
+      handler.next(err);
+    } finally {
+      _refreshFuture = null;
+    }
+  }
+
+  Future<String?> _doRefresh() async {
+    try {
       final Options refreshOptions;
       if (kIsWeb) {
         refreshOptions = Options();
       } else {
         final refreshToken = await _secureStorage.getRefreshToken();
-        if (refreshToken == null || refreshToken.isEmpty) {
-          _clearAndNotify();
-          return handler.next(err);
-        }
+        if (refreshToken == null || refreshToken.isEmpty) return null;
         refreshOptions = Options(
           headers: {'Cookie': 'refresh_token=$refreshToken'},
         );
@@ -146,24 +173,35 @@ class _AuthInterceptor extends Interceptor {
           final accessToken = inner['accessToken'] as String;
           _tokenStore.setToken(accessToken);
           _onTokenRefreshed?.call(accessToken);
-
-          final opts = err.requestOptions;
-          opts.headers['Authorization'] = 'Bearer $accessToken';
-
-          final retry = await _dio.fetch(opts);
-          return handler.resolve(Response(
-            requestOptions: opts,
-            data: retry.data,
-            statusCode: retry.statusCode,
-          ));
+          return accessToken;
         }
       }
     } catch (_) {
       // Refresh failed
     }
+    return null;
+  }
 
-    _clearAndNotify();
-    handler.next(err);
+  void _processPending(String? newToken) {
+    for (final p in List.of(_pending)) {
+      if (newToken != null) {
+        p.options.headers['Authorization'] = 'Bearer $newToken';
+        p.options.extra['_refreshed'] = true;
+        _dio.fetch(p.options).then(
+          (r) => p.handler.resolve(r),
+          onError: (e) {
+            if (e is DioException) {
+              p.handler.next(e);
+            } else {
+              p.handler.next(DioException(requestOptions: p.options, error: e));
+            }
+          },
+        );
+      } else {
+        p.handler.next(DioException(requestOptions: p.options, type: DioExceptionType.unknown));
+      }
+    }
+    _pending.clear();
   }
 
   void _clearAndNotify() {
