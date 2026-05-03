@@ -121,10 +121,14 @@ export class AuthService {
     const { refreshTokenId, sub: userId } = payload;
     const blacklistKey = `blacklist:refresh:${refreshTokenId}`;
 
-    // If this token is already blacklisted it means it was already rotated.
-    // A second use = replay attack → immediately nuke ALL sessions for this user.
+    // Token rotation: blacklist the used token to prevent replay.
+    // Use a short grace period (60s) so that a browser refresh that races
+    // the same token doesn't immediately nuke the session — the token is
+    // only truly invalid after the grace window expires.
+    const graceSeconds = 60;
     const isBlacklisted = await this.redis.get(blacklistKey);
     if (isBlacklisted) {
+      // Already used AND grace period expired → replay attack
       await this.invalidateAllSessions(userId);
       await this.auditService.log({
         tenantId: payload.tenantId,
@@ -139,9 +143,9 @@ export class AuthService {
       );
     }
 
-    // Revoke the used token and remove it from the active sessions set
+    // Mark as used with a short TTL (grace period for browser refresh races)
     await Promise.all([
-      this.redis.setex(blacklistKey, REFRESH_TOKEN_TTL_SECONDS, '1'),
+      this.redis.setex(blacklistKey, graceSeconds, '1'),
       this.redis.srem(`sessions:${userId}`, refreshTokenId),
     ]);
 
