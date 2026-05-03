@@ -272,7 +272,12 @@ class _MovementDetailScreenState extends ConsumerState<MovementDetailScreen> {
                     delegate: SliverChildBuilderDelegate(
                       (ctx, i) => Padding(
                         padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                        child: _ItemCard(item: movement.items[i]),
+                        child: _ItemCard(
+                          item: movement.items[i],
+                          isCompletedTransfer:
+                              movement.isCompleted &&
+                              movement.operationType == 'transfer',
+                        ),
                       ),
                       childCount: movement.items.length,
                     ),
@@ -651,14 +656,20 @@ class _ProgressCard extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _ItemCard extends StatelessWidget {
-  const _ItemCard({required this.item});
+  const _ItemCard({
+    required this.item,
+    this.isCompletedTransfer = false,
+  });
 
   final MovementItemModel item;
+  final bool isCompletedTransfer;
 
   @override
   Widget build(BuildContext context) {
-    final statusColor = _itemStatusColor(item.status);
-    final statusLabel = _itemStatusLabel(item.status);
+    final effectiveStatus =
+        isCompletedTransfer && item.status == 'out' ? 'transferred' : item.status;
+    final statusColor = _itemStatusColor(effectiveStatus);
+    final statusLabel = _itemStatusLabel(effectiveStatus);
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.sm + 4),
@@ -771,12 +782,14 @@ class _ItemCard extends StatelessWidget {
 
 Color _itemStatusColor(String status) => switch (status) {
   'returned' => const Color(0xFF4CAF50),
+  'transferred' => const Color(0xFF4CAF50),
   'missing' => const Color(0xFFCF6679),
   _ => const Color(0xFF2196F3),
 };
 
 String _itemStatusLabel(String status) => switch (status) {
   'returned' => 'RETURNED',
+  'transferred' => 'TRANSFERRED',
   'missing' => 'MISSING',
   _ => 'OUT',
 };

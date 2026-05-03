@@ -4,6 +4,7 @@ import '../../inventory/data/item_repository_provider.dart';
 import '../../inventory/data/models/item_model.dart';
 import '../../inventory/data/search_repository_provider.dart';
 import '../data/dry_cleaning_repository_provider.dart';
+import 'dry_cleaning_notifier.dart';
 
 class WardrobeNotifier extends AsyncNotifier<List<ItemModel>> {
   @override
@@ -83,6 +84,7 @@ class WardrobeNotifier extends AsyncNotifier<List<ItemModel>> {
         await ref
             .read(dryCleaningRepositoryProvider)
             .createRecord(item.id);
+        ref.invalidate(dryCleaningNotifierProvider(item.id));
       }
       await _refreshSilently();
     } catch (_) {

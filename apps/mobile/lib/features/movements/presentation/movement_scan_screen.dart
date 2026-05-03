@@ -8,6 +8,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../data/models/movement_model.dart';
 import '../domain/active_movement_notifier.dart';
+import '../domain/movement_list_notifier.dart';
 
 /// Full-screen QR scanner for building a movement's item list.
 /// Every scanned item is immediately persisted to the backend.
@@ -373,7 +374,8 @@ class _MovementScanScreenState extends ConsumerState<MovementScanScreen> {
           .activate(movement.id);
 
       if (mounted) {
-        context.go('/movements/${activated.id}');
+        ref.read(movementListNotifierProvider.notifier).load();
+        context.replace('/movements/${activated.id}');
       }
     } catch (e) {
       if (mounted) {
