@@ -372,6 +372,21 @@ export class MovementsService {
       i.status = MovementItemStatus.MISSING;
     });
 
+    if (pending.length > 0) {
+      await Promise.all(
+        pending.map((mi) =>
+          this.itemHistoryModel.create({
+            itemId: mi.itemId,
+            tenantId: user.tenantId,
+            action: 'status_changed',
+            performedBy: user.sub,
+            notes: `[Movement] Marked missing: ${movement.title}`,
+            timestamp: new Date(),
+          }),
+        ),
+      );
+    }
+
     movement.status =
       pending.length > 0 ? MovementStatus.PARTIAL : MovementStatus.COMPLETED;
     movement.completedAt = new Date();
