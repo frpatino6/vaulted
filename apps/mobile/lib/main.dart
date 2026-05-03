@@ -62,15 +62,19 @@ Future<void> _tryRestoreSession() async {
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 10),
       headers: {'Content-Type': 'application/json'},
-      extra: {'withCredentials': kIsWeb},
     ));
+
+    // dio_web_adapter ignores extra['withCredentials']; must set it on the adapter.
+    if (kIsWeb) {
+      (dio.httpClientAdapter as dynamic).withCredentials = true;
+    }
 
     final Options refreshOptions;
     FlutterSecureStorage? storage;
     if (kIsWeb) {
-      // On web, browser sends the httpOnly cookie automatically.
-      // Setting Cookie manually is blocked by browsers (forbidden header).
-      refreshOptions = Options(extra: {'withCredentials': true});
+      // withCredentials is set at the adapter level; browser sends the httpOnly
+      // cookie automatically. Setting Cookie manually is forbidden on web.
+      refreshOptions = Options();
     } else {
       storage = const FlutterSecureStorage(
         aOptions: AndroidOptions(encryptedSharedPreferences: true),
