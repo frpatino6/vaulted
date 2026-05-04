@@ -84,8 +84,16 @@ class WardrobeNotifier extends AsyncNotifier<List<ItemModel>> {
         await ref
             .read(dryCleaningRepositoryProvider)
             .createRecord(item.id);
-        ref.invalidate(dryCleaningNotifierProvider(item.id));
+      } else {
+        final previousStatus =
+            (item.attributes?['cleaningStatus'] as String?) ?? '';
+        if (previousStatus == 'at_dry_cleaner') {
+          await ref
+              .read(dryCleaningRepositoryProvider)
+              .returnLatestRecord(item.id);
+        }
       }
+      ref.invalidate(dryCleaningNotifierProvider(item.id));
       await _refreshSilently();
     } catch (_) {
       final latest = state.valueOrNull;
