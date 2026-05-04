@@ -308,6 +308,27 @@ export class WardrobeService {
     return updatedRecord;
   }
 
+  async markDryCleaningReturnedByItem(
+    tenantId: string,
+    itemId: string,
+  ): Promise<DryCleaningRecord | null> {
+    await this.validateWardrobeItemsBelongToTenant(tenantId, [itemId]);
+
+    const record = await this.dryCleaningRecordModel
+      .findOneAndUpdate(
+        { tenantId, itemId, returnedDate: null },
+        { $set: { returnedDate: new Date() } },
+        { new: true, sort: { sentDate: -1 } },
+      )
+      .exec();
+
+    if (record) {
+      await this.clearStatsCache(tenantId);
+    }
+
+    return record;
+  }
+
   async getStats(tenantId: string): Promise<WardrobeStatsResponse> {
     const cacheKey = `wardrobe:stats:${tenantId}`;
     const cached = await this.redis.get(cacheKey);

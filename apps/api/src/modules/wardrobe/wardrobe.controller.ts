@@ -238,6 +238,33 @@ export class WardrobeController {
   }
 
   @Roles(Role.OWNER, Role.MANAGER)
+  @Put('dry-cleaning/:itemId/return-latest')
+  async markDryCleaningReturnedByItem(
+    @CurrentUser() user: JwtPayload,
+    @Param('itemId') itemId: string,
+    @Req() req: Request,
+  ) {
+    const record = await this.wardrobeService.markDryCleaningReturnedByItem(
+      user.tenantId,
+      itemId,
+    );
+
+    if (record) {
+      await this.auditService.log({
+        tenantId: user.tenantId,
+        userId: user.sub,
+        action: 'wardrobe.dry_cleaning.returned',
+        entityType: 'dry_cleaning_record',
+        entityId: String((record as { _id?: unknown })._id),
+        metadata: { itemId },
+        ipAddress: req.ip,
+      });
+    }
+
+    return record ?? { returned: false };
+  }
+
+  @Roles(Role.OWNER, Role.MANAGER)
   @Get('at-laundry')
   getAtLaundry(
     @CurrentUser() user: JwtPayload,
