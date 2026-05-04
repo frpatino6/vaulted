@@ -6,6 +6,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
+import '../../inventory/data/item_repository_provider.dart';
 import '../data/models/movement_model.dart';
 import '../domain/active_movement_notifier.dart';
 import '../domain/movement_list_notifier.dart';
@@ -375,6 +376,9 @@ class _MovementScanScreenState extends ConsumerState<MovementScanScreen> {
 
       if (mounted) {
         ref.read(movementListNotifierProvider.notifier).load();
+        for (final mi in movement.items) {
+          ref.invalidate(itemHistoryProvider(mi.itemId));
+        }
         context.replace('/movements/${activated.id}');
       }
     } catch (e) {
