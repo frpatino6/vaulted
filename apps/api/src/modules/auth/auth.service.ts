@@ -121,33 +121,13 @@ export class AuthService {
     const { refreshTokenId, sub: userId } = payload;
     const blacklistKey = `blacklist:refresh:${refreshTokenId}`;
 
-    // Token rotation: blacklist the used token to prevent replay.
-    // Use a short grace period (60s) so that a browser refresh that races
-    // the same token doesn't immediately nuke the session — the token is
-    // only truly invalid after the grace window expires.
-    const graceSeconds = 60;
-    const isBlacklisted = await this.redis.get(blacklistKey);
-    if (isBlacklisted) {
-      // Already used AND grace period expired → replay attack
-      await this.invalidateAllSessions(userId);
-      await this.auditService.log({
-        tenantId: payload.tenantId,
-        userId,
-        action: 'user.token_replay_detected',
-        entityType: 'user',
-        entityId: userId,
-        ipAddress,
-      });
-      throw new UnauthorizedException(
-        'Token replay detected — all sessions have been invalidated',
-      );
+    // Reject only if explicitly revoked (logout / logout-all).
+    // Tokens are NOT blacklisted on normal refresh use — rotating the cookie
+    // requires withCredentials on the browser XHR, which can be unreliable.
+    const isRevoked = await this.redis.get(blacklistKey);
+    if (isRevoked) {
+      throw new UnauthorizedException('Session has been revoked. Please log in again.');
     }
-
-    // Mark as used with a short TTL (grace period for browser refresh races)
-    await Promise.all([
-      this.redis.setex(blacklistKey, graceSeconds, '1'),
-      this.redis.srem(`sessions:${userId}`, refreshTokenId),
-    ]);
 
     const user = await this.usersService.findById(userId);
     if (!user || !user.isActive) {
