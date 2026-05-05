@@ -104,7 +104,7 @@ Household Supplies (linens, tableware, glassware)
 
 **MVP (done):** Multi-property management · Property→Floor→Room→Item hierarchy · Photos (up to 10) · Serial number · Valuation · QR code per item · Item status (active/loaned/repair/storage/disposed) · Movement history · Loan tracking · RBAC per property · Push/email notifications · PDF export · Full-text search
 
-**Phase 2 (partially done):** Wardrobe module ✅ · Insurance policies · Maintenance calendar · Incident reports · AI-powered cataloging ✅ · Dashboard KPIs ✅
+**Phase 2 (partially done):** Wardrobe module ✅ · Insurance policies ✅ · Maintenance calendar ✅ · Incident reports · AI-powered cataloging ✅ · Dashboard KPIs ✅ · AI Insurance Analysis ✅
 
 **Phase 3 (pending):** Bulk import · REST API · Advanced reports · Offline mode
 
@@ -125,9 +125,10 @@ dashboard/     ✅  Aggregated metrics, Redis cache
 wardrobe/      ✅  Outfits + dry cleaning history (MongoDB) + Redis stats cache
 media/         ✅  File upload (local Docker volume / GCP Storage)
 audit/         ✅  Immutable audit logs (PostgreSQL)
-ai/            ✅  vision/ · chat/ · maintenance/ · shared/
-insurance/     ❌  Policies and warranties (PostgreSQL)
-notifications/ ❌  Push (FCM) + email (Resend)
+ai/            ✅  vision/ · chat/ · insurance/ · maintenance/ · shared/
+insurance/     ✅  Policies, coverage gaps, claims, encryption (PostgreSQL)
+notifications/ ✅  FCM push + Resend email, device tokens, preferences
+presence/      ⚠️  WebSocket presence tracking (partial)
 reports/       ❌  PDF and Excel generation
 ```
 
@@ -144,8 +145,9 @@ ai_scan/       ✅  camera + AI overlay, review form, photo upload
 users/         ✅  list, invite, edit role
 media/         ✅  image picker, upload progress
 wardrobe/      ✅  closet grid, outfit builder, dry cleaning history, stats bar
+insurance/     ✅  policies, coverage gaps, claims
 reports/       ❌  stub only
-settings/      ✅  basic
+settings/      ❌  stub only
 ```
 
 ### Flutter core packages
@@ -189,7 +191,8 @@ Blacklist:     Redis (immediate revocation)
 | Feature | Endpoint | Model |
 |---|---|---|
 | Vision / Auto-catalog | `POST /ai/vision/analyze` | Gemini 2.5 Flash |
-| RAG Chat | `POST /ai/chat` | Gemini embeddings + vector search |
+| RAG Chat | `POST /ai/chat` | Gemini embeddings + pgvector search |
+| Insurance Analysis | `POST /ai/insurance/analyze` | Gemini 2.5 Flash |
 | Maintenance risk scoring | nightly batch | Gemini |
 
 **Vision notes:**
@@ -202,11 +205,10 @@ Blacklist:     Redis (immediate revocation)
 | Phase | Feature |
 |---|---|
 | AI-3 | Dynamic Asset Valuation (web search + Claude reasoning) |
-| AI-5 | Insurance Intelligence (PDF extraction, gap analysis) |
 
 ### AI Architecture
 - **Primary LLM**: Gemini 2.5 Flash (`GOOGLE_GENAI_API_KEY`)
-- **Embeddings**: Gemini embeddings (stored in MongoDB)
+- **Embeddings**: Gemini embeddings (stored in PostgreSQL via pgvector, 3072 dims)
 - **Web Search** (AI-3): Brave Search API
 - **Queue**: BullMQ on Redis — `ai-vision` (5 workers) · `ai-valuation` (3) · `ai-maintenance` (3)
 - **Cost control**: rate limits per tenant, token usage logged to AuditService
