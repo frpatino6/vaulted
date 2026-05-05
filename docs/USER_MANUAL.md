@@ -20,7 +20,8 @@ Version 1.0 · May 2026
    - 5.1 [Adding a Property](#51-adding-a-property)
    - 5.2 [Adding Floors](#52-adding-floors)
    - 5.3 [Adding Rooms](#53-adding-rooms)
-   - 5.4 [Viewing a Property](#54-viewing-a-property)
+   - 5.4 [AI Section Scan — Mapping Storage Furniture](#54-ai-section-scan--mapping-storage-furniture)
+   - 5.5 [Viewing a Property](#55-viewing-a-property)
 6. [Inventory](#6-inventory)
    - 6.1 [Adding an Item Manually](#61-adding-an-item-manually)
    - 6.2 [Item Details and Fields](#62-item-details-and-fields)
@@ -234,7 +235,55 @@ Repeat for each room on that floor.
 
 ---
 
-### 5.4 Viewing a Property
+### 5.4 AI Section Scan — Mapping Storage Furniture
+
+One of Vaulted's most powerful features is the ability to photograph any piece of storage furniture — a cabinet, wardrobe, chest of drawers, pantry shelf, or safe — and have the AI automatically identify and label every individual section inside it. Each section becomes a precise location where items can be assigned.
+
+**What is a section?**
+A section is a subdivision within a room: a single drawer, a shelf, a cabinet compartment, a rack, or a safe. Sections let you track not just *which room* an item is in, but *exactly where* inside that room — down to the specific drawer or shelf.
+
+**How to scan a piece of furniture:**
+
+1. Open a room and tap **AI Section Scan** (the camera with sparkle icon).
+2. Tap **Take Photo** or **Choose from Gallery**.
+3. Point your camera at the storage furniture and take a clear, straight-on photo.
+4. The AI analyzes the image and automatically detects every drawer, shelf, and compartment. This takes a few seconds.
+5. The photo reappears with colored boxes drawn over each detected section, each labeled with an auto-assigned code (e.g., **1A**, **1B**, **2A**).
+6. Review the detected sections:
+   - **Tap a section chip** to select or deselect it.
+   - **Tap the edit icon** on any chip to rename it, change its type, or add notes.
+   - **Tap anywhere on the photo** (in normal mode) to manually add a section that the AI may have missed.
+   - **Toggle Move Mode** (the arrows icon) to drag section boxes or resize them by pulling the corner handles.
+   - Tap **Rescan** to discard the current result and photograph the same piece again.
+7. If the room has more than one piece of furniture, tap **Scan another piece** to photograph a second cabinet without losing the first set of sections.
+8. When satisfied, tap **Save X sections**. A confirmation sheet appears where you can give each piece of furniture a label (e.g., "Upper Cabinet", "Island", "Walk-in Pantry").
+9. Tap **Confirm & Save**. The sections are created inside the room and are ready to receive items.
+
+**Section types recognized by the AI:**
+| Type | Examples |
+|---|---|
+| Drawer | Dresser drawers, filing drawers, kitchen drawers |
+| Cabinet | Upper and lower kitchen cabinets, bathroom vanities |
+| Shelf | Open shelving, bookcase shelves, pantry shelves |
+| Rack | Wine racks, shoe racks, clothing racks |
+| Safe | In-wall safes, floor safes, fireproof boxes |
+| Compartment | Watch boxes, jewelry organizers, storage cubbies |
+
+**Confidence indicator:**
+After analysis, a percentage badge appears in the top bar. A score of 80% or above means the AI is highly confident. If the score is below 60%, a warning appears prompting you to retake the photo in better lighting or from a closer angle.
+
+> **Tips for best results:**
+> - Photograph furniture straight-on, not at an angle.
+> - Open all drawers and doors slightly so the AI can distinguish compartments.
+> - Use good lighting — natural light or overhead lighting works best.
+> - For large pieces, take one photo per section of the furniture if needed.
+
+**Assigning items to sections:**
+Once sections are created, go to any item and edit its location. In addition to selecting the property, floor, and room, you will now see the list of sections for that room. Select the appropriate section to pinpoint the item's exact location.
+
+---
+
+### 5.5 Viewing a Property
 
 Tap any property card to open it. From the property detail view you can:
 
