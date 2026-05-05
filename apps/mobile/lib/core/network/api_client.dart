@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../config/app_config.dart';
 import '../storage/auth_token_store.dart';
 import '../storage/secure_storage.dart';
+import 'dio_credentials.dart';
 
 /// Shared Dio instance with auth interceptor.
 /// Access token in memory (AuthTokenStore), refresh token in SecureStorage.
@@ -31,10 +32,7 @@ class ApiClient {
             },
           ),
         ) {
-    // dio_web_adapter ignores extra['withCredentials']; must set it on the adapter.
-    if (kIsWeb) {
-      (_dio.httpClientAdapter as dynamic).withCredentials = true;
-    }
+    applyWebCredentials(_dio);
     _dio.interceptors.add(_AuthInterceptor(
       dio: _dio,
       secureStorage: _secureStorage,

@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'core/config/app_config.dart';
+import 'core/network/dio_credentials.dart';
 import 'core/router/app_router_provider.dart';
 import 'core/storage/auth_token_store.dart';
 import 'core/theme/app_theme.dart';
@@ -64,10 +65,7 @@ Future<void> _tryRestoreSession() async {
       headers: {'Content-Type': 'application/json'},
     ));
 
-    // dio_web_adapter ignores extra['withCredentials']; must set it on the adapter.
-    if (kIsWeb) {
-      (dio.httpClientAdapter as dynamic).withCredentials = true;
-    }
+    applyWebCredentials(dio);
 
     final Options refreshOptions;
     FlutterSecureStorage? storage;
