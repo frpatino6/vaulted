@@ -25,10 +25,10 @@ import { JwtRefreshPayload } from './strategies/jwt-refresh.strategy';
 const REFRESH_COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env['NODE_ENV'] === 'production',
-  // SameSite=None required for cross-site cookie: web app (vaulted.casacam.net)
-  // and API (api-vaulted.casacam.net) are different subdomains — browser won't
-  // send Lax cookies on cross-site requests, causing refresh to fail on reload.
-  sameSite: process.env['NODE_ENV'] === 'production' ? 'none' as const : 'lax' as const,
+  // SameSite=Lax works because the web app (vaulted.casacam.net) and API
+  // are now on the same domain — Caddy proxies /api/* to the NestJS container.
+  // Safari blocks SameSite=None cookies via ITP, so Lax is required for Safari.
+  sameSite: 'lax' as const,
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in ms
   path: '/api/auth/refresh',
 };
@@ -36,7 +36,7 @@ const REFRESH_COOKIE_OPTIONS = {
 const CLEAR_COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env['NODE_ENV'] === 'production',
-  sameSite: process.env['NODE_ENV'] === 'production' ? 'none' as const : 'lax' as const,
+  sameSite: 'lax' as const,
   path: '/api/auth/refresh',
 };
 
