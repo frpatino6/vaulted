@@ -12,7 +12,7 @@ FIREBASE_WEB_APP_ID="${FIREBASE_WEB_APP_ID:-}"
 FIREBASE_WEB_VAPID_KEY="${FIREBASE_WEB_VAPID_KEY:-}"
 
 flutter build web \
-  --dart-define=API_BASE_URL=https://api-vaulted.casacam.net/api/ \
+  --dart-define=API_BASE_URL=https://vaulted.casacam.net/api/ \
   --dart-define=WS_BASE_URL=https://api-vaulted.casacam.net \
   --dart-define=FIREBASE_WEB_API_KEY="$FIREBASE_WEB_API_KEY" \
   --dart-define=FIREBASE_AUTH_DOMAIN="$FIREBASE_AUTH_DOMAIN" \
