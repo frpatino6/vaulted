@@ -37,6 +37,13 @@ export class EmbeddingService {
     if (item.valuation?.currentValue) {
       parts.push(`value: ${item.valuation.currentValue} ${item.valuation.currency ?? 'USD'}`);
     }
+    if (item.attributes) {
+      const searchableKeys = ['cleaningStatus', 'brand', 'color', 'condition', 'type', 'material'];
+      for (const key of searchableKeys) {
+        const val = item.attributes[key];
+        if (typeof val === 'string' && val) parts.push(`${key}: ${val}`);
+      }
+    }
     return parts.join(' | ');
   }
 
