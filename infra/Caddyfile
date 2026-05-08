@@ -5,20 +5,3 @@ tenis-uat.casacam.net {
 api-vaulted.casacam.net {
 	reverse_proxy vaulted_api:3000
 }
-
-vaulted.casacam.net {
-	# Proxy API calls to NestJS
-	handle /api/* {
-		reverse_proxy vaulted_api:3000
-	}
-	# Proxy uploaded media files to NestJS static middleware
-	handle /uploads/* {
-		reverse_proxy vaulted_api:3000
-	}
-	# Serve Flutter web app from local directory
-	handle {
-		root * /home/frpatino6/vaulted-web
-		try_files {path} /index.html
-		file_server
-	}
-}
