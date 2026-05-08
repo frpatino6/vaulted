@@ -1,6 +1,5 @@
 import 'package:dio/dio.dart';
 
-import '../../../core/config/app_config.dart';
 import 'models/item_history_model.dart';
 import 'models/item_model.dart';
 
@@ -59,11 +58,11 @@ class ItemRemoteDataSource {
 
     final rawPhotos = json['photos'];
     if (rawPhotos is List) {
-      final apiHost = Uri.tryParse(AppConfig.apiBaseUrl)?.host ?? '';
       json['photos'] = rawPhotos.whereType<String>().where((url) {
         if (url.startsWith('/')) return true;
         final uri = Uri.tryParse(url);
-        return uri != null && uri.host == apiHost;
+        if (uri == null || !uri.hasScheme) return false;
+        return uri.scheme == 'http' || uri.scheme == 'https';
       }).toList();
     }
 

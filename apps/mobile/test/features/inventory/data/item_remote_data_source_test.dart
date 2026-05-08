@@ -2,7 +2,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
-import 'package:vaulted/core/config/app_config.dart';
 import 'package:vaulted/features/inventory/data/item_remote_data_source.dart';
 
 import '../../../support/dio_test_support.dart';
@@ -63,9 +62,7 @@ void main() {
     expect(qp['limit'], '5');
   });
 
-  test('filters photos to same host as AppConfig or relative paths', () async {
-    final apiHost = Uri.parse(AppConfig.apiBaseUrl).host;
-    final sameHostUrl = '${Uri.parse(AppConfig.apiBaseUrl).scheme}://$apiHost/files/a.jpg';
+  test('keeps relative and valid http(s) photos and drops invalid urls', () async {
 
     when(
       () => mockDio.get<Map<String, dynamic>>(
@@ -82,8 +79,10 @@ void main() {
             'category': 'other',
             'photos': [
               '/relative-only.jpg',
-              sameHostUrl,
-              'https://evil.example.com/steal.jpg',
+              'https://cdn.vaulted.com/files/a.jpg',
+              'http://images.example.com/b.jpg',
+              'ftp://files.example.com/c.jpg',
+              'not-a-url',
             ],
           },
         },
@@ -92,7 +91,7 @@ void main() {
 
     final item = await dataSource.getItem('x');
 
-    expect(item.photos, ['/relative-only.jpg', sameHostUrl]);
+    expect(item.photos, ['/relative-only.jpg', 'https://cdn.vaulted.com/files/a.jpg', 'http://images.example.com/b.jpg']);
   });
 
   test('createItem unwraps and normalizes', () async {
