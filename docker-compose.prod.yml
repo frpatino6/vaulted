@@ -1,6 +1,30 @@
 version: '3.9'
 
 services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: vaulted_postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    command: >
+      postgres
+      -c shared_buffers=128MB
+      -c max_connections=20
+      -c work_mem=4MB
+    restart: always
+    networks:
+      - default
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
   api:
     build:
       context: ./apps/api
@@ -29,6 +53,9 @@ services:
       AI_CHAT_RATE_LIMIT_PER_MINUTE: ${AI_CHAT_RATE_LIMIT_PER_MINUTE}
       GCP_PROJECT_ID: ${GCP_PROJECT_ID}
       GCP_STORAGE_BUCKET: ${GCP_STORAGE_BUCKET:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: always
     volumes:
       - uploads_data:/app/uploads
@@ -44,6 +71,7 @@ services:
 
 volumes:
   uploads_data:
+  postgres_data:
 
 networks:
   default:
