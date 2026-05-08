@@ -3,17 +3,20 @@ import '../../../core/storage/secure_storage.dart';
 import 'auth_remote_data_source.dart';
 
 /// Parses refresh_token from Set-Cookie header.
-String? _parseRefreshTokenFromCookie(String? setCookie) {
-  if (setCookie == null || setCookie.isEmpty) return null;
+String? _parseRefreshTokenFromCookies(List<String> setCookies) {
   const prefix = 'refresh_token=';
-  final start = setCookie.indexOf(prefix);
-  if (start == -1) return null;
-  final valueStart = start + prefix.length;
-  final end = setCookie.indexOf(';', valueStart);
-  if (end == -1) {
-    return setCookie.substring(valueStart).trim();
+  for (final setCookie in setCookies) {
+    if (setCookie.isEmpty) continue;
+    final start = setCookie.indexOf(prefix);
+    if (start == -1) continue;
+    final valueStart = start + prefix.length;
+    final end = setCookie.indexOf(';', valueStart);
+    if (end == -1) {
+      return setCookie.substring(valueStart).trim();
+    }
+    return setCookie.substring(valueStart, end).trim();
   }
-  return setCookie.substring(valueStart, end).trim();
+  return null;
 }
 
 class AuthRepository {
@@ -39,7 +42,7 @@ class AuthRepository {
       throw Exception('No access token in response');
     }
 
-    final refreshToken = _parseRefreshTokenFromCookie(result.setCookie);
+    final refreshToken = _parseRefreshTokenFromCookies(result.setCookies);
     if (refreshToken != null) {
       await _secureStorage.saveRefreshToken(refreshToken);
     }
@@ -62,7 +65,7 @@ class AuthRepository {
       throw Exception('No access token in response');
     }
 
-    final refreshToken = _parseRefreshTokenFromCookie(result.setCookie);
+    final refreshToken = _parseRefreshTokenFromCookies(result.setCookies);
     if (refreshToken != null) {
       await _secureStorage.saveRefreshToken(refreshToken);
     }
@@ -79,7 +82,7 @@ class AuthRepository {
       throw Exception('No access token in MFA verification response');
     }
     // Save the new refresh token (mfaVerified=true encoded) — replaces the pre-MFA one
-    final refreshToken = _parseRefreshTokenFromCookie(result.setCookie);
+    final refreshToken = _parseRefreshTokenFromCookies(result.setCookies);
     if (refreshToken != null) {
       await _secureStorage.saveRefreshToken(refreshToken);
     }
