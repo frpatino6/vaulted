@@ -233,7 +233,9 @@ export class InventoryService {
       });
       return result;
     }
-    return items.map((item) => this.accessControl.stripValuation(item.toObject()) as Item);
+    return items.map((item) =>
+      this.withSignedUrls(this.accessControl.stripValuation(item.toObject()) as Item, userId, tenantId),
+    );
   }
 
   async findById(
@@ -301,7 +303,7 @@ export class InventoryService {
       return this.withSignedUrls({ ...plain, propertyName, roomName, sectionPhoto, sectionBoundingBox, sectionCode, sectionFurnitureName } as Item & { propertyName: string | null; roomName: string | null; sectionPhoto: string | null; sectionBoundingBox: { x: number; y: number; width: number; height: number } | null; sectionCode: string | null; sectionFurnitureName: string | null }, userId, tenantId);
     }
     const stripped = this.accessControl.stripValuation(item.toObject()) as Item;
-    return { ...stripped, propertyName, roomName, sectionPhoto, sectionBoundingBox, sectionCode, sectionFurnitureName } as Item & { propertyName: string | null; roomName: string | null; sectionPhoto: string | null; sectionBoundingBox: { x: number; y: number; width: number; height: number } | null; sectionCode: string | null; sectionFurnitureName: string | null };
+    return this.withSignedUrls({ ...stripped, propertyName, roomName, sectionPhoto, sectionBoundingBox, sectionCode, sectionFurnitureName } as Item & { propertyName: string | null; roomName: string | null; sectionPhoto: string | null; sectionBoundingBox: { x: number; y: number; width: number; height: number } | null; sectionCode: string | null; sectionFurnitureName: string | null }, userId, tenantId);
   }
 
   async update(tenantId: string, itemId: string, dto: UpdateItemDto): Promise<Item> {
@@ -575,7 +577,9 @@ export class InventoryService {
       ? enrichedItems.map((item) =>
           this.withSignedUrls(item as unknown as Item, userId, tenantId),
         )
-      : enrichedItems.map((item) => this.accessControl.stripValuation(item));
+      : enrichedItems.map((item) =>
+          this.withSignedUrls(this.accessControl.stripValuation(item) as unknown as Item, userId, tenantId),
+        );
 
     if (role === Role.OWNER || role === Role.MANAGER) {
       void this.audit.log({
