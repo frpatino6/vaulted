@@ -28,6 +28,7 @@ import { HouseholdMembersModule } from './modules/household-members/household-me
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { UserDeviceToken } from './modules/notifications/entities/user-device-token.entity';
 import { NotificationPreference } from './modules/notifications/entities/notification-preference.entity';
+import { NotificationLog } from './modules/notifications/entities/notification-log.entity';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { MfaVerifiedGuard } from './common/guards/mfa-verified.guard';
@@ -68,7 +69,7 @@ import { InsuredItem } from './modules/insurance/entities/insured-item.entity';
         const isProd = config.get<string>('NODE_ENV') === 'production';
         const base = {
           type: 'postgres' as const,
-          entities: [Tenant, User, AuditLog, InsurancePolicy, InsuredItem, UserDeviceToken, NotificationPreference],
+          entities: [Tenant, User, AuditLog, InsurancePolicy, InsuredItem, UserDeviceToken, NotificationPreference, NotificationLog],
           synchronize: config.get<string>('TYPEORM_SYNC') === 'true' || !isProd,
           logging: !isProd,
         };
