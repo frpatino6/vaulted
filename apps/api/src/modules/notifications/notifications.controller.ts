@@ -82,7 +82,7 @@ export class NotificationsController {
     @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
   ): Promise<void> {
-    await this.notificationsService.markRead(user.sub, id);
+    await this.notificationsService.markRead(user.sub, user.tenantId, id);
   }
 
   @Post('mark-all-read')

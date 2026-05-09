@@ -416,9 +416,9 @@ export class NotificationsService {
     return { items, total, unreadCount };
   }
 
-  async markRead(userId: string, notificationId: string): Promise<void> {
+  async markRead(userId: string, tenantId: string, notificationId: string): Promise<void> {
     const log = await this.notificationLogRepository.findOne({
-      where: { id: notificationId, userId },
+      where: { id: notificationId, userId, tenantId },
     });
 
     if (!log) {
