@@ -206,6 +206,7 @@ class _VaultedAppState extends ConsumerState<VaultedApp>
         notifier.pauseHeartbeat();
       case AppLifecycleState.resumed:
         notifier.resumeHeartbeat();
+        ref.invalidate(notificationsListProvider);
       default:
         break;
     }

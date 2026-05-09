@@ -20,6 +20,7 @@ import '../../../features/presence/presentation/widgets/online_users_count.dart'
 import '../../../core/privacy/privacy_mode_provider.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/app_bottom_nav.dart';
+import '../../../features/notifications/presentation/providers/notifications_list_provider.dart';
 import 'widgets/dashboard_header.dart';
 
 /// Dashboard: clean welcome header, Quick Actions grid, recent property cards.
@@ -44,6 +45,7 @@ class DashboardScreen extends ConsumerWidget {
           ref.read(dashboardNotifierProvider.notifier).load();
           ref.read(maintenanceListNotifierProvider.notifier).load();
           ref.read(movementListNotifierProvider.notifier).load();
+          ref.invalidate(notificationsListProvider);
         },
         child: CustomScrollView(
           slivers: [
