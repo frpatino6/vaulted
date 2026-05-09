@@ -9,6 +9,7 @@ import { Property, PropertySchema } from '../properties/schemas/property.schema'
 import { Movement, MovementSchema } from '../movements/schemas/movement.schema';
 import { CommonModule } from '../../common/common.module';
 import { MediaModule } from '../media/media.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { MediaModule } from '../media/media.module';
     TypeOrmModule.forFeature([]),
     CommonModule,
     MediaModule,
+    NotificationsModule,
   ],
   controllers: [InventoryController],
   providers: [InventoryService],

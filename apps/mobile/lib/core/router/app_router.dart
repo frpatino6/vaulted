@@ -38,6 +38,7 @@ import '../../features/insurance/presentation/insurance_detail_screen.dart';
 import '../../features/insurance/presentation/insurance_form_screen.dart';
 import '../../features/insurance/presentation/coverage_gaps_screen.dart';
 import '../../features/insurance/presentation/claim_draft_screen.dart';
+import '../../features/notifications/presentation/pages/notification_center_page.dart';
 import '../../features/notifications/presentation/pages/notification_preferences_page.dart';
 
 GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
@@ -171,6 +172,10 @@ GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
       GoRoute(
         path: '/settings/household-members',
         builder: (context, state) => const HouseholdMembersScreen(),
+      ),
+      GoRoute(
+        path: '/notifications',
+        builder: (context, state) => const NotificationCenterPage(),
       ),
       GoRoute(
         path: '/settings/notifications',
