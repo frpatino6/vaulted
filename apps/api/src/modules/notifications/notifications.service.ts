@@ -254,10 +254,20 @@ export class NotificationsService {
     const userIds = targetUsers.map((u) => u.id);
     const prefsMap = await this.loadPreferencesMap(userIds);
 
+    // Filter to users who have this notification type enabled
+    const notificationType = params.type ?? 'general';
+    const deliverableUsers = targetUsers.filter((u) =>
+      this.isTypeEnabledForUser(notificationType, prefsMap.get(u.id)),
+    );
+
+    if (deliverableUsers.length === 0) {
+      return;
+    }
+
     void this.persistNotificationForUsers(
       params.tenantId,
-      userIds,
-      params.type ?? 'general',
+      deliverableUsers.map((u) => u.id),
+      notificationType,
       params.title,
       params.body,
       params.data,
@@ -268,7 +278,7 @@ export class NotificationsService {
     let totalEmailSuccess = 0;
 
     await Promise.allSettled(
-      targetUsers.map(async (user) => {
+      deliverableUsers.map(async (user) => {
         const prefs = prefsMap.get(user.id);
         const pushEnabled = prefs?.pushEnabled ?? true;
         const emailEnabled = prefs?.emailEnabled ?? true;
@@ -488,5 +498,23 @@ export class NotificationsService {
     });
 
     return new Map(prefs.map((p) => [p.userId, p]));
+  }
+
+  private isTypeEnabledForUser(
+    type: NotificationType,
+    prefs: NotificationPreference | undefined,
+  ): boolean {
+    if (!prefs) return true; // no row → all defaults on
+
+    switch (type) {
+      case 'dry_cleaning_overdue':
+        return prefs.dryCleaningOverdue;
+      case 'maintenance_due':
+        return prefs.maintenanceDue;
+      case 'item_added':
+        return prefs.itemAdded;
+      case 'general':
+        return true;
+    }
   }
 }
