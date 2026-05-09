@@ -8,6 +8,7 @@ import '../../../../core/privacy/privacy_mode_provider.dart';
 import '../../../../core/storage/auth_token_store.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../auth/presentation/auth_notifier.dart';
+import '../../../notifications/presentation/providers/notifications_list_provider.dart';
 import '../../../users/domain/current_user_jwt.dart';
 
 /// Persistent dashboard header: "Welcome back," greeting, serif display name,
@@ -50,6 +51,38 @@ class DashboardHeader extends ConsumerWidget {
             ),
           ),
           const _PrivacyToggleButton(),
+          const SizedBox(width: 4),
+          Consumer(
+            builder: (context, ref, _) {
+              final unread = ref.watch(unreadNotificationsCountProvider);
+              return Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  IconButton(
+                    iconSize: 22,
+                    icon: Icon(
+                      Icons.notifications_outlined,
+                      color: AppColors.onSurfaceVariant,
+                    ),
+                    onPressed: () => context.push('/notifications'),
+                  ),
+                  if (unread > 0)
+                    Positioned(
+                      right: 6,
+                      top: 6,
+                      child: Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          color: AppColors.accent,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
           const SizedBox(width: 4),
           SizedBox(
             width: 48,

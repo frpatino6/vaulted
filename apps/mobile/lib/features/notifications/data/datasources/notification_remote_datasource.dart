@@ -34,6 +34,27 @@ class NotificationRemoteDatasource {
     return _unwrap(response);
   }
 
+  Future<Map<String, dynamic>> getNotifications({
+    int page = 1,
+    int limit = 20,
+  }) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '$_base',
+      queryParameters: {'page': page, 'limit': limit},
+    );
+    return _unwrap(response);
+  }
+
+  Future<void> markRead(String notificationId) async {
+    await _dio.patch<void>('$_base/$notificationId/read');
+  }
+
+  Future<Map<String, dynamic>> markAllRead() async {
+    final response =
+        await _dio.post<Map<String, dynamic>>('$_base/mark-all-read');
+    return _unwrap(response);
+  }
+
   Map<String, dynamic> _unwrap(Response<Map<String, dynamic>> response) {
     final data = response.data;
     if (data == null) {

@@ -12,9 +12,14 @@ import 'core/router/app_router_provider.dart';
 import 'core/storage/auth_token_store.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_mode_provider.dart';
+import 'features/notifications/presentation/providers/notifications_list_provider.dart';
 import 'features/notifications/presentation/providers/notifications_provider.dart';
 import 'features/presence/presentation/providers/presence_provider.dart';
 import 'firebase_options.dart';
+
+/// Holds a notification that arrived while the app was terminated.
+/// Processed in [_VaultedAppState.initState] after the router is ready.
+RemoteMessage? _pendingInitialMessage;
 
 @pragma('vm:entry-point')
 Future<void> _firebaseBackgroundHandler(RemoteMessage message) async {
@@ -44,6 +49,8 @@ Future<void> _initFirebase() async {
       sound: true,
     );
     FirebaseMessaging.onBackgroundMessage(_firebaseBackgroundHandler);
+    _pendingInitialMessage =
+        await FirebaseMessaging.instance.getInitialMessage();
   } catch (e) {
     // Firebase not configured yet for this platform (missing google-services.json / GoogleService-Info.plist)
     debugPrint('[Firebase] Init skipped: $e');
@@ -142,6 +149,46 @@ class _VaultedAppState extends ConsumerState<VaultedApp>
     // Best-effort: silently fails if user is not yet authenticated.
     // Retries automatically on token refresh and after each login.
     ref.read(fcmTokenRegistrationProvider);
+    _setupFcmHandlers();
+  }
+
+  void _setupFcmHandlers() {
+    // Foreground messages — silently refresh the notification list so the
+    // bell badge updates without interrupting the user.
+    FirebaseMessaging.onMessage.listen((_) {
+      ref.invalidate(notificationsListProvider);
+    });
+
+    // App opened from background notification tap.
+    FirebaseMessaging.onMessageOpenedApp.listen((message) {
+      _navigateFromNotification(message.data);
+    });
+
+    // App was terminated and opened via a notification tap.
+    if (_pendingInitialMessage != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _navigateFromNotification(_pendingInitialMessage!.data);
+        _pendingInitialMessage = null;
+      });
+    }
+  }
+
+  void _navigateFromNotification(Map<String, dynamic> data) {
+    final router = ref.read(appRouterProvider);
+    final type = data['type'] as String?;
+    switch (type) {
+      case 'maintenance_due':
+        router.push('/maintenance');
+      case 'item_added':
+        final itemId = data['itemId'] as String?;
+        if (itemId != null && itemId.isNotEmpty) {
+          router.push('/items/$itemId');
+        }
+      case 'dry_cleaning_overdue':
+        router.push('/wardrobe');
+      default:
+        router.push('/notifications');
+    }
   }
 
   @override

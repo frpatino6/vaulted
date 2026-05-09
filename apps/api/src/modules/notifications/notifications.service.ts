@@ -1,13 +1,14 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { In, IsNull, Repository } from 'typeorm';
 import * as admin from 'firebase-admin';
 import { AuditService } from '../audit/audit.service';
 import { UsersService } from '../users/users.service';
 import { Role } from '../../common/enums/role.enum';
 import { UserDeviceToken } from './entities/user-device-token.entity';
 import { NotificationPreference } from './entities/notification-preference.entity';
+import { NotificationLog, NotificationType } from './entities/notification-log.entity';
 import { RegisterDeviceTokenDto } from './dto/register-device-token.dto';
 import { UpdateNotificationPreferenceDto } from './dto/update-notification-preference.dto';
 
@@ -31,6 +32,7 @@ interface NotifyTenantRolesParams {
   roles: Role[];
   title: string;
   body: string;
+  type?: NotificationType;
   emailSubject?: string;
   emailHtml?: string;
   data?: Record<string, string>;
@@ -50,6 +52,8 @@ export class NotificationsService {
     private readonly deviceTokenRepository: Repository<UserDeviceToken>,
     @InjectRepository(NotificationPreference)
     private readonly preferenceRepository: Repository<NotificationPreference>,
+    @InjectRepository(NotificationLog)
+    private readonly notificationLogRepository: Repository<NotificationLog>,
     private readonly configService: ConfigService,
     private readonly auditService: AuditService,
     private readonly usersService: UsersService,
@@ -250,6 +254,15 @@ export class NotificationsService {
     const userIds = targetUsers.map((u) => u.id);
     const prefsMap = await this.loadPreferencesMap(userIds);
 
+    void this.persistNotificationForUsers(
+      params.tenantId,
+      userIds,
+      params.type ?? 'general',
+      params.title,
+      params.body,
+      params.data,
+    );
+
     let totalPushSuccess = 0;
     let totalPushFailure = 0;
     let totalEmailSuccess = 0;
@@ -371,6 +384,82 @@ export class NotificationsService {
     }
 
     return updated;
+  }
+
+  async getNotifications(
+    userId: string,
+    tenantId: string,
+    page: number,
+    limit: number,
+  ): Promise<{ items: NotificationLog[]; total: number; unreadCount: number }> {
+    const [items, total] = await this.notificationLogRepository.findAndCount({
+      where: { userId, tenantId },
+      order: { createdAt: 'DESC' },
+      take: limit,
+      skip: (page - 1) * limit,
+    });
+
+    const unreadCount = await this.notificationLogRepository.count({
+      where: { userId, tenantId, readAt: IsNull() },
+    });
+
+    return { items, total, unreadCount };
+  }
+
+  async markRead(userId: string, notificationId: string): Promise<void> {
+    const log = await this.notificationLogRepository.findOne({
+      where: { id: notificationId, userId },
+    });
+
+    if (!log) {
+      throw new NotFoundException('Notification not found');
+    }
+
+    await this.notificationLogRepository.update(log.id, { readAt: new Date() });
+  }
+
+  async markAllRead(
+    userId: string,
+    tenantId: string,
+  ): Promise<{ updated: number }> {
+    const result = await this.notificationLogRepository
+      .createQueryBuilder()
+      .update(NotificationLog)
+      .set({ readAt: new Date() })
+      .where('user_id = :userId AND tenant_id = :tenantId AND read_at IS NULL', {
+        userId,
+        tenantId,
+      })
+      .execute();
+
+    return { updated: result.affected ?? 0 };
+  }
+
+  private async persistNotificationForUsers(
+    tenantId: string,
+    userIds: string[],
+    type: NotificationType,
+    title: string,
+    body: string,
+    data?: Record<string, string>,
+  ): Promise<void> {
+    if (userIds.length === 0) return;
+    try {
+      const logs = userIds.map((userId) =>
+        this.notificationLogRepository.create({
+          tenantId,
+          userId,
+          type,
+          title,
+          body,
+          data: data ?? null,
+        }),
+      );
+      await this.notificationLogRepository.save(logs);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`persistNotificationForUsers failed: ${message}`);
+    }
   }
 
   private async filterUsersByPushPreference(userIds: string[]): Promise<string[]> {

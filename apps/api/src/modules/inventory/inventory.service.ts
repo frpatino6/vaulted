@@ -19,6 +19,7 @@ import { AccessControlService } from '../../common/services/access-control.servi
 import { CryptoService } from '../../common/services/crypto.service';
 import { AuditService } from '../audit/audit.service';
 import { MediaService } from '../media/media.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { toValueRange } from '../../common/utils/value-range.util';
 
 interface InventoryFilters {
@@ -71,6 +72,7 @@ export class InventoryService {
     private readonly configService: ConfigService,
     private readonly mediaService: MediaService,
     @Optional() private readonly embeddingService?: EmbeddingService,
+    @Optional() private readonly notificationsService?: NotificationsService,
   ) {
     this.appUrl = (
       this.configService.get<string>('APP_URL') ?? 'http://localhost:3000'
@@ -104,10 +106,28 @@ export class InventoryService {
 
     void this.indexItemEmbedding(item);
     void this.recordCreationMovement(item, tenantId, userId);
+    void this.notifyItemAdded(item, tenantId);
 
     const plain = item.toObject();
     plain.valuation = this.decryptValuation(plain.valuation, tenantId);
     return plain as Item;
+  }
+
+  private async notifyItemAdded(item: ItemDocument, tenantId: string): Promise<void> {
+    if (!this.notificationsService) return;
+    try {
+      await this.notificationsService.notifyTenantRoles({
+        tenantId,
+        roles: [Role.OWNER, Role.MANAGER],
+        type: 'item_added',
+        title: 'New item cataloged',
+        body: `${item.name} has been added to your inventory.`,
+        data: { itemId: String(item._id), category: item.category ?? '' },
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`itemAdded notification failed: ${message}`);
+    }
   }
 
   private async recordCreationMovement(
