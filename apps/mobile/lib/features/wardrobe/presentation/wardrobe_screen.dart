@@ -27,6 +27,7 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
   String _selectedCleaningStatus = 'all';
   String _selectedSeason = 'all';
   String? _selectedMemberId;
+  List<ItemModel> _filteredItems = [];
 
   @override
   void initState() {
@@ -59,6 +60,14 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
             fontSize: 22,
           ),
         ),
+        actions: [
+          IconButton(
+            tooltip: 'View QR Codes',
+            icon: const Icon(Icons.qr_code_2_rounded),
+            color: AppColors.onSurfaceVariant,
+            onPressed: () => context.push('/qr-codes', extra: _filteredItems),
+          ),
+        ],
       ),
       body: RefreshIndicator(
         onRefresh: () => ref.read(wardrobeNotifierProvider.notifier).refresh(),
@@ -104,6 +113,7 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
               ),
               data: (List<ItemModel> items) {
                 final List<ItemModel> filtered = _applyFilters(items);
+                _filteredItems = filtered;
                 if (filtered.isEmpty) {
                   return const SliverFillRemaining(
                     child: _WardrobeEmptyState(),
