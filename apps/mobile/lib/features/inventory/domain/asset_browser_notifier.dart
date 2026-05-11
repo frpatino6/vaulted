@@ -86,10 +86,12 @@ class AssetBrowserNotifier extends AsyncNotifier<AssetBrowserState> {
         !unlocated) {
       state = const AsyncLoading();
       state = await AsyncValue.guard(() async {
-        final recent = await ref
+        // Only cap at 5 when showing "Recently Added"; other sorts need all items
+        final int? limit = sortBy == AssetSortBy.recent ? _recentLimit : null;
+        final items = await ref
             .read(itemRepositoryProvider)
-            .getItems(limit: _recentLimit);
-        return AssetBrowserState(items: _applySortBy(recent, sortBy), sortBy: sortBy);
+            .getItems(limit: limit);
+        return AssetBrowserState(items: _applySortBy(items, sortBy), sortBy: sortBy);
       });
       return;
     }
