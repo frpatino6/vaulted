@@ -171,6 +171,12 @@ class _AssetBrowserScreenState extends ConsumerState<AssetBrowserScreen> {
           overflow: TextOverflow.ellipsis,
         ),
         actions: [
+          IconButton(
+            tooltip: 'View QR Codes',
+            icon: const Icon(Icons.qr_code_2_rounded),
+            color: AppColors.onSurfaceVariant,
+            onPressed: () => context.push('/qr-codes'),
+          ),
           if (_hasActiveFilters)
             TextButton(
               onPressed: _clearFilters,
