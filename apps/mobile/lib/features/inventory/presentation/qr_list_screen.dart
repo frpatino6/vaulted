@@ -7,12 +7,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-@JS('window.print')
-external void _webPrint();
-
 import '../../../core/theme/app_theme.dart';
 import '../data/models/item_model.dart';
 import '../domain/asset_browser_notifier.dart';
+
+@JS('window.print')
+external void _webPrint();
 
 class QrListScreen extends ConsumerWidget {
   const QrListScreen({super.key});
