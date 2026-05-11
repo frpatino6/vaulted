@@ -1,9 +1,14 @@
 import 'dart:convert';
+import 'dart:js_interop';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
+@JS('window.print')
+external void _webPrint();
 
 import '../../../core/theme/app_theme.dart';
 import '../data/models/item_model.dart';
@@ -96,17 +101,21 @@ class QrListScreen extends ConsumerWidget {
   }
 
   void _onPrint(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Open the web app in a browser and use Ctrl+P / Cmd+P to print.',
-          style: AppTypography.bodySmall.copyWith(color: Colors.white),
+    if (kIsWeb) {
+      _webPrint();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Open the web app in a browser to print QR codes.',
+            style: AppTypography.bodySmall.copyWith(color: Colors.white),
+          ),
+          backgroundColor: AppColors.surfaceVariant,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 3),
         ),
-        backgroundColor: AppColors.surfaceVariant,
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 4),
-      ),
-    );
+      );
+    }
   }
 }
 
