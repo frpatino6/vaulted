@@ -74,17 +74,34 @@ void _printItems(List<ItemModel> items) {
 }
 
 class QrListScreen extends ConsumerWidget {
-  const QrListScreen({super.key});
+  const QrListScreen({super.key, this.items});
+
+  /// When provided (e.g. from Wardrobe), these items are displayed directly.
+  /// When null, the screen reads from [assetBrowserNotifierProvider].
+  final List<ItemModel>? items;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final browserState = ref.watch(assetBrowserNotifierProvider);
     final bottomPadding = MediaQuery.paddingOf(context).bottom;
 
-    final items = browserState.valueOrNull?.items
-            .where((i) => i.qrCode != null && i.qrCode!.isNotEmpty)
-            .toList() ??
-        [];
+    final List<ItemModel> displayItems;
+    final bool isLoading;
+    final bool isFiltered;
+
+    if (items != null) {
+      displayItems =
+          items!.where((i) => i.qrCode != null && i.qrCode!.isNotEmpty).toList();
+      isLoading = false;
+      isFiltered = false;
+    } else {
+      final browserState = ref.watch(assetBrowserNotifierProvider);
+      displayItems = browserState.valueOrNull?.items
+              .where((i) => i.qrCode != null && i.qrCode!.isNotEmpty)
+              .toList() ??
+          [];
+      isLoading = browserState.isLoading;
+      isFiltered = browserState.valueOrNull?.isFiltered ?? false;
+    }
 
     return Scaffold(
       backgroundColor: AppColors.backgroundElevated,
@@ -108,9 +125,9 @@ class QrListScreen extends ConsumerWidget {
               style:
                   AppTypography.titleSerif.copyWith(color: AppColors.onBackground),
             ),
-            if (items.isNotEmpty)
+            if (displayItems.isNotEmpty)
               Text(
-                '${items.length} item${items.length == 1 ? '' : 's'}',
+                '${displayItems.length} item${displayItems.length == 1 ? '' : 's'}',
                 style: AppTypography.bodySmall.copyWith(
                   color: AppColors.onSurfaceVariant,
                   fontSize: 11,
@@ -123,21 +140,18 @@ class QrListScreen extends ConsumerWidget {
             tooltip: 'Print',
             icon: const Icon(Icons.print_outlined),
             color: AppColors.accent,
-            onPressed: items.isEmpty
+            onPressed: displayItems.isEmpty
                 ? null
-                : () => _onPrint(context, items),
+                : () => _onPrint(context, displayItems),
           ),
         ],
       ),
-      body: browserState.isLoading
+      body: isLoading
           ? const Center(
               child: CircularProgressIndicator(color: AppColors.accent),
             )
-          : items.isEmpty
-              ? _EmptyState(
-                  isFiltered:
-                      browserState.valueOrNull?.isFiltered ?? false,
-                )
+          : displayItems.isEmpty
+              ? _EmptyState(isFiltered: isFiltered)
               : GridView.builder(
                   padding: EdgeInsets.fromLTRB(
                     AppSpacing.md,
@@ -152,9 +166,9 @@ class QrListScreen extends ConsumerWidget {
                     mainAxisSpacing: AppSpacing.md,
                     childAspectRatio: 0.85,
                   ),
-                  itemCount: items.length,
+                  itemCount: displayItems.length,
                   itemBuilder: (context, index) =>
-                      _QrCard(item: items[index]),
+                      _QrCard(item: displayItems[index]),
                 ),
     );
   }
