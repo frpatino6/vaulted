@@ -15,12 +15,28 @@ import { Role } from '../../common/enums/role.enum';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { CompleteStepDto } from './dto/complete-step.dto';
 import { CreatePlanDto } from './dto/create-plan.dto';
+import { ParseCommandDto } from './dto/parse-command.dto';
 import { UpdatePlanDto } from './dto/update-plan.dto';
+import { OrchestratorAiService } from './orchestrator-ai.service';
 import { OrchestratorService } from './orchestrator.service';
 
 @Controller('orchestrator')
 export class OrchestratorController {
-  constructor(private readonly orchestratorService: OrchestratorService) {}
+  constructor(
+    private readonly orchestratorService: OrchestratorService,
+    private readonly orchestratorAiService: OrchestratorAiService,
+  ) {}
+
+  // POST /orchestrator/parse
+  @Roles(Role.OWNER, Role.MANAGER)
+  @HttpCode(HttpStatus.OK)
+  @Post('parse')
+  async parseCommand(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: ParseCommandDto,
+  ) {
+    return this.orchestratorAiService.parseCommand(user.tenantId, dto);
+  }
 
   // POST /orchestrator/plans
   @Roles(Role.OWNER, Role.MANAGER)
