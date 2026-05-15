@@ -373,6 +373,8 @@ export class NotificationsService {
     if (dto.dryCleaningOverdue !== undefined) updates.dryCleaningOverdue = dto.dryCleaningOverdue;
     if (dto.maintenanceDue !== undefined) updates.maintenanceDue = dto.maintenanceDue;
     if (dto.itemAdded !== undefined) updates.itemAdded = dto.itemAdded;
+    if (dto.orchestratorAssigned !== undefined) updates.orchestratorAssigned = dto.orchestratorAssigned;
+    if (dto.orchestratorCompleted !== undefined) updates.orchestratorCompleted = dto.orchestratorCompleted;
 
     await this.preferenceRepository.update(prefs.id, updates);
 
@@ -513,6 +515,10 @@ export class NotificationsService {
         return prefs.maintenanceDue;
       case 'item_added':
         return prefs.itemAdded;
+      case 'orchestrator_assigned':
+        return prefs.orchestratorAssigned;
+      case 'orchestrator_completed':
+        return prefs.orchestratorCompleted;
       case 'general':
         return true;
     }

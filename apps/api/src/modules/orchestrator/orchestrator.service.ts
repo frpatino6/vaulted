@@ -7,10 +7,12 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { AuditService } from '../audit/audit.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { Role } from '../../common/enums/role.enum';
 import { CompleteStepDto } from './dto/complete-step.dto';
 import { CreatePlanDto } from './dto/create-plan.dto';
 import { UpdatePlanDto } from './dto/update-plan.dto';
+import { OrchestratorGateway } from './orchestrator.gateway';
 import {
   OrchestratorPlan,
   OrchestratorPlanDocument,
@@ -48,6 +50,8 @@ export class OrchestratorService {
     @InjectModel(OrchestratorPlan.name)
     private readonly planModel: Model<OrchestratorPlanDocument>,
     private readonly auditService: AuditService,
+    private readonly notificationsService: NotificationsService,
+    private readonly orchestratorGateway: OrchestratorGateway,
   ) {}
 
   async create(
@@ -265,6 +269,29 @@ export class OrchestratorService {
       metadata: { groupCount: plan.taskGroups.length },
     });
 
+    const assigneeIds = [
+      ...new Set(
+        plan.taskGroups
+          .map((g) => g.assignedUserId)
+          .filter((id): id is string => typeof id === 'string' && id.length > 0),
+      ),
+    ];
+
+    if (assigneeIds.length > 0) {
+      try {
+        await this.notificationsService.sendPush({
+          tenantId,
+          userIds: assigneeIds,
+          title: 'New task plan assigned',
+          body: `You have been assigned to: ${plan.title}`,
+          data: { type: 'orchestrator_assigned', planId, planTitle: plan.title },
+        });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        this.logger.warn(`orchestrator_assigned push failed: ${message}`);
+      }
+    }
+
     return published;
   }
 
@@ -321,6 +348,43 @@ export class OrchestratorService {
 
     plan.markModified('taskGroups');
     await plan.save();
+
+    const totalSteps = plan.taskGroups.reduce((sum, g) => sum + g.steps.length, 0);
+    const completedStepsCount = plan.taskGroups.reduce(
+      (sum, g) => sum + g.steps.filter((s) => s.status === 'done' || s.status === 'skipped').length,
+      0,
+    );
+    const percentComplete =
+      totalSteps > 0 ? Math.round((completedStepsCount / totalSteps) * 100) : 0;
+
+    this.orchestratorGateway.emitStepCompleted(tenantId, {
+      planId,
+      groupId,
+      stepId,
+      completedByUserId: userId,
+      percentComplete,
+    });
+
+    if (plan.status === 'completed') {
+      this.orchestratorGateway.emitPlanCompleted(tenantId, {
+        planId,
+        title: plan.title,
+      });
+
+      try {
+        await this.notificationsService.notifyTenantRoles({
+          tenantId,
+          roles: [Role.OWNER, Role.MANAGER],
+          type: 'orchestrator_completed',
+          title: 'Plan completed',
+          body: `The plan "${plan.title}" has been fully completed.`,
+          data: { type: 'orchestrator_completed', planId, planTitle: plan.title },
+        });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        this.logger.warn(`orchestrator_completed notification failed: ${message}`);
+      }
+    }
 
     await this.auditService.log({
       tenantId,
