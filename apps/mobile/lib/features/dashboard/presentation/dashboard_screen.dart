@@ -413,6 +413,11 @@ class DashboardQuickActions extends ConsumerWidget {
               label: 'Maintenance',
               onTap: () => context.push('/maintenance'),
             ),
+            _QuickActionTile(
+              icon: Icons.assignment_outlined,
+              label: 'Orchestrator',
+              onTap: () => context.push('/orchestrator'),
+            ),
           ],
         ),
       ],
