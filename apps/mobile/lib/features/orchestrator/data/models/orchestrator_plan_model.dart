@@ -6,7 +6,7 @@ part 'orchestrator_plan_model.freezed.dart';
 part 'orchestrator_plan_model.g.dart';
 
 // ---------------------------------------------------------------------------
-// BoundingBox helpers (reuses the existing SectionBoundingBox from properties)
+// BoundingBox helpers — reuses SectionBoundingBox from the properties feature
 // ---------------------------------------------------------------------------
 
 SectionBoundingBox? _boundingBoxFromJson(Object? json) {
@@ -49,6 +49,13 @@ class OrchestratorStepModel with _$OrchestratorStepModel {
       _$OrchestratorStepModelFromJson(json);
 }
 
+extension OrchestratorStepModelX on OrchestratorStepModel {
+  bool get isPending => status == 'pending';
+  bool get isDone => status == 'done';
+  bool get isSkipped => status == 'skipped';
+  bool get isOrphaned => status == 'orphaned';
+}
+
 // ---------------------------------------------------------------------------
 // OrchestratorTaskGroupModel
 // ---------------------------------------------------------------------------
@@ -70,6 +77,15 @@ class OrchestratorTaskGroupModel with _$OrchestratorTaskGroupModel {
       _$OrchestratorTaskGroupModelFromJson(json);
 }
 
+extension OrchestratorTaskGroupModelX on OrchestratorTaskGroupModel {
+  bool get isPending => status == 'pending';
+  bool get isInProgress => status == 'in_progress';
+  bool get isCompleted => status == 'completed';
+
+  int get totalSteps => steps.length;
+  int get completedSteps => steps.where((s) => s.status == 'done').length;
+}
+
 // ---------------------------------------------------------------------------
 // OrchestratorPlanModel
 // ---------------------------------------------------------------------------
@@ -77,6 +93,7 @@ class OrchestratorTaskGroupModel with _$OrchestratorTaskGroupModel {
 @freezed
 class OrchestratorPlanModel with _$OrchestratorPlanModel {
   const factory OrchestratorPlanModel({
+    // MongoDB documents use _id; map to id
     @JsonKey(name: '_id') required String id,
     required String tenantId,
     required String title,
@@ -112,8 +129,7 @@ extension OrchestratorPlanModelX on OrchestratorPlanModel {
 
   int get completedSteps => taskGroups.fold(
         0,
-        (sum, g) =>
-            sum + g.steps.where((s) => s.status == 'done').length,
+        (sum, g) => sum + g.steps.where((s) => s.status == 'done').length,
       );
 
   double get percentComplete =>
@@ -121,7 +137,8 @@ extension OrchestratorPlanModelX on OrchestratorPlanModel {
 }
 
 // ---------------------------------------------------------------------------
-// ParsedPlanModel — ephemeral, returned by /parse, not persisted
+// ParsedPlanModel — ephemeral, returned by POST /orchestrator/parse
+// Not persisted; passed between screens via GoRouter extra.
 // ---------------------------------------------------------------------------
 
 @freezed
@@ -141,7 +158,7 @@ class ParsedPlanModel with _$ParsedPlanModel {
 }
 
 // ---------------------------------------------------------------------------
-// GroupProgressModel
+// GroupProgressModel — per-group breakdown within a progress response
 // ---------------------------------------------------------------------------
 
 @freezed
@@ -161,7 +178,7 @@ class GroupProgressModel with _$GroupProgressModel {
 }
 
 // ---------------------------------------------------------------------------
-// PlanProgressModel
+// PlanProgressModel — real-time summary from GET /orchestrator/plans/:id/progress
 // ---------------------------------------------------------------------------
 
 @freezed
