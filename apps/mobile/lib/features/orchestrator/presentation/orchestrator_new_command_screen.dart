@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:speech_to_text/speech_recognition_result.dart';
+import 'package:speech_to_text/speech_to_text.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../properties/data/models/property_model.dart';
@@ -23,8 +25,60 @@ class _OrchestratorNewCommandScreenState
   DateTime? _targetDate;
   bool _generating = false;
 
+  final SpeechToText _speech = SpeechToText();
+  bool _speechAvailable = false;
+  bool _isListening = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initSpeech();
+  }
+
+  Future<void> _initSpeech() async {
+    _speechAvailable = await _speech.initialize(
+      onError: (error) => setState(() => _isListening = false),
+      onStatus: (status) {
+        if (status == 'done' || status == 'notListening') {
+          setState(() => _isListening = false);
+        }
+      },
+    );
+    setState(() {});
+  }
+
+  Future<void> _toggleListening() async {
+    if (!_speechAvailable) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Microphone not available on this device')),
+      );
+      return;
+    }
+    if (_isListening) {
+      await _speech.stop();
+      setState(() => _isListening = false);
+    } else {
+      setState(() => _isListening = true);
+      await _speech.listen(
+        onResult: (SpeechRecognitionResult result) {
+          setState(() {
+            _commandController.text = result.recognizedWords;
+            _commandController.selection = TextSelection.fromPosition(
+              TextPosition(offset: _commandController.text.length),
+            );
+          });
+        },
+        listenFor: const Duration(seconds: 30),
+        pauseFor: const Duration(seconds: 3),
+        partialResults: true,
+        localeId: 'en_US',
+      );
+    }
+  }
+
   @override
   void dispose() {
+    _speech.stop();
     _commandController.dispose();
     super.dispose();
   }
@@ -94,6 +148,16 @@ class _OrchestratorNewCommandScreenState
     }
   }
 
+  Widget _buildMicIcon() {
+    if (!_speechAvailable) {
+      return const Icon(Icons.mic_off, color: AppColors.onSurfaceVariant);
+    }
+    if (_isListening) {
+      return const Icon(Icons.mic, color: Colors.red);
+    }
+    return const Icon(Icons.mic_outlined, color: AppColors.onSurfaceVariant);
+  }
+
   @override
   Widget build(BuildContext context) {
     final propertiesState = ref.watch(propertiesNotifierProvider);
@@ -142,6 +206,12 @@ class _OrchestratorNewCommandScreenState
                   decoration: BoxDecoration(
                     color: AppColors.surfaceVariant,
                     borderRadius: BorderRadius.circular(16),
+                    border: _isListening
+                        ? Border.all(
+                            color: Colors.red.withValues(alpha: 0.5),
+                            width: 1.5,
+                          )
+                        : null,
                   ),
                   child: TextField(
                     controller: _commandController,
@@ -171,23 +241,47 @@ class _OrchestratorNewCommandScreenState
                           right: AppSpacing.xs,
                           top: AppSpacing.xs,
                         ),
-                        child: IconButton(
-                          icon: const Icon(Icons.mic_outlined),
-                          color: AppColors.onSurfaceVariant,
-                          tooltip: 'Voice input',
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Voice input coming soon'),
-                                duration: Duration(seconds: 2),
-                              ),
-                            );
-                          },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          decoration: _isListening
+                              ? BoxDecoration(
+                                  color: Colors.red.withValues(alpha: 0.1),
+                                  shape: BoxShape.circle,
+                                )
+                              : null,
+                          child: IconButton(
+                            icon: _buildMicIcon(),
+                            tooltip: _isListening
+                                ? 'Tap to stop'
+                                : 'Tap to speak',
+                            onPressed: _toggleListening,
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
+                if (_isListening) ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  Row(
+                    children: [
+                      const SizedBox(width: AppSpacing.xs),
+                      Icon(
+                        Icons.fiber_manual_record,
+                        color: Colors.red,
+                        size: 8,
+                      ),
+                      const SizedBox(width: 4),
+                      const Text(
+                        'Listening…',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: AppSpacing.lg),
                 // Options section
                 const Text(
