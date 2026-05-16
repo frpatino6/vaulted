@@ -484,9 +484,9 @@ class _OrchestratorPlanDetailScreenState
         ],
       ),
     );
+    final title = controller.text.trim();
     controller.dispose();
     if (confirmed != true || !mounted) return;
-    final title = controller.text.trim();
     if (title.isEmpty) return;
     try {
       await ref
@@ -655,6 +655,389 @@ class _TaskGroupCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Add Group dashed button
+// ---------------------------------------------------------------------------
+
+class _AddGroupButton extends StatelessWidget {
+  const _AddGroupButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm + 4),
+        decoration: BoxDecoration(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: AppColors.onSurfaceVariant.withValues(alpha: 0.3),
+            style: BorderStyle.solid,
+          ),
+        ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.add, color: AppColors.onSurfaceVariant, size: 18),
+            SizedBox(width: 6),
+            Text(
+              'Add Group',
+              style: TextStyle(
+                color: AppColors.onSurfaceVariant,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Add Item bottom sheet
+// ---------------------------------------------------------------------------
+
+class _AddItemSheet extends ConsumerStatefulWidget {
+  const _AddItemSheet({
+    required this.planId,
+    required this.groupId,
+    required this.notifier,
+  });
+
+  final String planId;
+  final String groupId;
+  final OrchestratorDetailNotifier notifier;
+
+  @override
+  ConsumerState<_AddItemSheet> createState() => _AddItemSheetState();
+}
+
+class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
+  final _searchController = TextEditingController();
+  final _instructionController = TextEditingController();
+
+  List<ItemModel> _results = [];
+  ItemModel? _selected;
+  bool _searching = false;
+  bool _adding = false;
+  String? _searchError;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _instructionController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _search(String query) async {
+    if (query.trim().isEmpty) {
+      setState(() {
+        _results = [];
+        _searchError = null;
+      });
+      return;
+    }
+    setState(() {
+      _searching = true;
+      _searchError = null;
+    });
+    try {
+      final ds = ref.read(searchRemoteDataSourceProvider);
+      final items = await ds.search(query: query);
+      if (!mounted) return;
+      setState(() => _results = items);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _searchError = 'Search failed. Please try again.');
+    } finally {
+      if (mounted) setState(() => _searching = false);
+    }
+  }
+
+  void _selectItem(ItemModel item) {
+    final roomPart = item.roomName != null ? ' from ${item.roomName}' : '';
+    setState(() {
+      _selected = item;
+      _instructionController.text =
+          'Retrieve the ${item.name}$roomPart';
+    });
+  }
+
+  Future<void> _addToGroup() async {
+    final item = _selected;
+    if (item == null) return;
+    final instruction = _instructionController.text.trim();
+    if (instruction.isEmpty) return;
+    setState(() => _adding = true);
+    try {
+      await widget.notifier.addManualStep(
+        widget.groupId,
+        item.id,
+        instruction,
+      );
+      if (!mounted) return;
+      Navigator.of(context).pop();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(OrchestratorDetailNotifier.errorMessage(e)),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _adding = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.surfaceVariant,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.md,
+        AppSpacing.md,
+        bottomInset + AppSpacing.md,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Handle
+          Center(
+            child: Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.onSurfaceVariant.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          const Text(
+            'Add Item to Group',
+            style: TextStyle(
+              color: AppColors.onBackground,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          if (_selected == null) ...[
+            // Search field
+            TextField(
+              controller: _searchController,
+              autofocus: true,
+              style: const TextStyle(color: AppColors.onBackground, fontSize: 14),
+              decoration: InputDecoration(
+                hintText: 'Search items…',
+                hintStyle: TextStyle(
+                  color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
+                  fontSize: 14,
+                ),
+                filled: true,
+                fillColor: AppColors.background,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide.none,
+                ),
+                prefixIcon: const Icon(
+                  Icons.search,
+                  color: AppColors.onSurfaceVariant,
+                  size: 20,
+                ),
+                suffixIcon: _searching
+                    ? const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      )
+                    : null,
+              ),
+              onChanged: (v) {
+                if (v.trim().length >= 2) _search(v.trim());
+                if (v.trim().isEmpty) setState(() => _results = []);
+              },
+            ),
+            if (_searchError != null) ...[
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                _searchError!,
+                style: const TextStyle(color: AppColors.error, fontSize: 12),
+              ),
+            ],
+            if (_results.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.sm),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 220),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: _results.length,
+                  separatorBuilder: (_, __) => Divider(
+                    color: AppColors.onSurfaceVariant.withValues(alpha: 0.1),
+                    height: 1,
+                  ),
+                  itemBuilder: (_, i) {
+                    final item = _results[i];
+                    return ListTile(
+                      dense: true,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm,
+                        vertical: 2,
+                      ),
+                      title: Text(
+                        item.name,
+                        style: const TextStyle(
+                          color: AppColors.onBackground,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Text(
+                        [
+                          item.category,
+                          if (item.roomName != null) item.roomName!,
+                        ].join(' · '),
+                        style: const TextStyle(
+                          color: AppColors.onSurfaceVariant,
+                          fontSize: 12,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      onTap: () => _selectItem(item),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ] else ...[
+            // Selected item + instruction editor
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              decoration: BoxDecoration(
+                color: AppColors.accent.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: AppColors.accent.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.check_circle_outline,
+                      color: AppColors.accent, size: 18),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _selected!.name,
+                          style: const TextStyle(
+                            color: AppColors.onBackground,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          [
+                            _selected!.category,
+                            if (_selected!.roomName != null)
+                              _selected!.roomName!,
+                          ].join(' · '),
+                          style: const TextStyle(
+                            color: AppColors.onSurfaceVariant,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => setState(() {
+                      _selected = null;
+                      _instructionController.clear();
+                    }),
+                    child: const Text('Change'),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            const Text(
+              'Instruction',
+              style: TextStyle(
+                color: AppColors.onSurfaceVariant,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            TextField(
+              controller: _instructionController,
+              style: const TextStyle(color: AppColors.onBackground, fontSize: 14),
+              maxLines: 2,
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: AppColors.background,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.sm,
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            SizedBox(
+              height: 48,
+              child: FilledButton(
+                onPressed: _adding ? null : _addToGroup,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.accent,
+                  foregroundColor: AppColors.background,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: _adding
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.background,
+                        ),
+                      )
+                    : const Text('Add to Plan'),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

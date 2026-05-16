@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../inventory/data/models/item_model.dart';
+import '../../inventory/data/search_remote_data_source_provider.dart';
 import '../../users/data/models/user_model.dart';
 import '../data/models/orchestrator_plan_model.dart';
 import '../data/orchestrator_repository_provider.dart';
@@ -152,6 +155,35 @@ class _OrchestratorPlanReviewScreenState
 
   void _deleteGroup(int index) {
     setState(() => _groups.removeAt(index));
+  }
+
+  void _addManualStepToGroup(int groupIndex, ItemModel item, String instruction) {
+    const uuid = Uuid();
+    final step = OrchestratorStepModel(
+      stepId: uuid.v4(),
+      itemId: item.id,
+      itemName: item.name,
+      itemCategory: item.category,
+      roomId: item.roomId,
+      roomName: item.roomName,
+      instruction: instruction,
+    );
+    setState(() {
+      _groups[groupIndex].steps.add(step);
+    });
+  }
+
+  void _showAddItemSheet(int groupIndex) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _ReviewAddItemSheet(
+        onItemSelected: (item, instruction) {
+          _addManualStepToGroup(groupIndex, item, instruction);
+        },
+      ),
+    );
   }
 
   void _reorder(int oldIndex, int newIndex) {
@@ -325,6 +357,7 @@ class _OrchestratorPlanReviewScreenState
                           index: i,
                           onAssign: () => _assignGroup(i),
                           onDelete: () => _deleteGroup(i),
+                          onAddItem: () => _showAddItemSheet(i),
                         );
                       },
                     ),
@@ -409,10 +442,10 @@ class _ReviewGroup {
   _ReviewGroup({
     required this.groupId,
     required this.title,
-    required this.steps,
+    required List<OrchestratorStepModel> steps,
     this.assignedUserId,
     this.assignedUserName,
-  });
+  }) : steps = List<OrchestratorStepModel>.from(steps);
 
   final String groupId;
   final String title;
@@ -432,12 +465,14 @@ class _ReviewGroupCard extends StatelessWidget {
     required this.index,
     required this.onAssign,
     required this.onDelete,
+    required this.onAddItem,
   });
 
   final _ReviewGroup group;
   final int index;
   final VoidCallback onAssign;
   final VoidCallback onDelete;
+  final VoidCallback onAddItem;
 
   @override
   Widget build(BuildContext context) {
@@ -507,54 +542,398 @@ class _ReviewGroupCard extends StatelessWidget {
                 AppSpacing.md,
                 AppSpacing.sm + 4,
               ),
-              child: GestureDetector(
-                onTap: onAssign,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: group.assignedUserName != null
-                        ? AppColors.accent.withValues(alpha: 0.12)
-                        : AppColors.onSurfaceVariant.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: group.assignedUserName != null
-                          ? AppColors.accent.withValues(alpha: 0.4)
-                          : AppColors.onSurfaceVariant.withValues(alpha: 0.2),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        group.assignedUserName != null
-                            ? Icons.person_rounded
-                            : Icons.person_add_outlined,
-                        size: 14,
-                        color: group.assignedUserName != null
-                            ? AppColors.accent
-                            : AppColors.onSurfaceVariant,
+              child: Wrap(
+                spacing: AppSpacing.xs,
+                runSpacing: AppSpacing.xs,
+                children: [
+                  GestureDetector(
+                    onTap: onAssign,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
                       ),
-                      const SizedBox(width: 6),
-                      Text(
-                        group.assignedUserName ?? 'Assign to…',
-                        style: TextStyle(
+                      decoration: BoxDecoration(
+                        color: group.assignedUserName != null
+                            ? AppColors.accent.withValues(alpha: 0.12)
+                            : AppColors.onSurfaceVariant.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
                           color: group.assignedUserName != null
-                              ? AppColors.accent
-                              : AppColors.onSurfaceVariant,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
+                              ? AppColors.accent.withValues(alpha: 0.4)
+                              : AppColors.onSurfaceVariant.withValues(alpha: 0.2),
                         ),
                       ),
-                    ],
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            group.assignedUserName != null
+                                ? Icons.person_rounded
+                                : Icons.person_add_outlined,
+                            size: 14,
+                            color: group.assignedUserName != null
+                                ? AppColors.accent
+                                : AppColors.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            group.assignedUserName ?? 'Assign to…',
+                            style: TextStyle(
+                              color: group.assignedUserName != null
+                                  ? AppColors.accent
+                                  : AppColors.onSurfaceVariant,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
+                  GestureDetector(
+                    onTap: onAddItem,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.onSurfaceVariant.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: AppColors.onSurfaceVariant.withValues(alpha: 0.2),
+                        ),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.add,
+                            size: 14,
+                            color: AppColors.onSurfaceVariant,
+                          ),
+                          SizedBox(width: 6),
+                          Text(
+                            'Add Item',
+                            style: TextStyle(
+                              color: AppColors.onSurfaceVariant,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Item picker sheet for the review screen (ephemeral — no planId yet)
+// ---------------------------------------------------------------------------
+
+class _ReviewAddItemSheet extends ConsumerStatefulWidget {
+  const _ReviewAddItemSheet({required this.onItemSelected});
+
+  final void Function(ItemModel item, String instruction) onItemSelected;
+
+  @override
+  ConsumerState<_ReviewAddItemSheet> createState() =>
+      _ReviewAddItemSheetState();
+}
+
+class _ReviewAddItemSheetState extends ConsumerState<_ReviewAddItemSheet> {
+  final _searchController = TextEditingController();
+  final _instructionController = TextEditingController();
+
+  List<ItemModel> _results = [];
+  ItemModel? _selected;
+  bool _searching = false;
+  String? _searchError;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _instructionController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _search(String query) async {
+    if (query.trim().isEmpty) {
+      setState(() {
+        _results = [];
+        _searchError = null;
+      });
+      return;
+    }
+    setState(() {
+      _searching = true;
+      _searchError = null;
+    });
+    try {
+      final ds = ref.read(searchRemoteDataSourceProvider);
+      final items = await ds.search(query: query);
+      if (!mounted) return;
+      setState(() => _results = items);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _searchError = 'Search failed. Please try again.');
+    } finally {
+      if (mounted) setState(() => _searching = false);
+    }
+  }
+
+  void _selectItem(ItemModel item) {
+    final roomPart = item.roomName != null ? ' from ${item.roomName}' : '';
+    setState(() {
+      _selected = item;
+      _instructionController.text = 'Retrieve the ${item.name}$roomPart';
+    });
+  }
+
+  void _confirm() {
+    final item = _selected;
+    if (item == null) return;
+    final instruction = _instructionController.text.trim();
+    if (instruction.isEmpty) return;
+    widget.onItemSelected(item, instruction);
+    Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.surfaceVariant,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.md,
+        AppSpacing.md,
+        bottomInset + AppSpacing.md,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(
+            child: Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.onSurfaceVariant.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          const Text(
+            'Add Item to Group',
+            style: TextStyle(
+              color: AppColors.onBackground,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          if (_selected == null) ...[
+            TextField(
+              controller: _searchController,
+              autofocus: true,
+              style: const TextStyle(color: AppColors.onBackground, fontSize: 14),
+              decoration: InputDecoration(
+                hintText: 'Search items…',
+                hintStyle: TextStyle(
+                  color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
+                  fontSize: 14,
+                ),
+                filled: true,
+                fillColor: AppColors.background,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide.none,
+                ),
+                prefixIcon: const Icon(
+                  Icons.search,
+                  color: AppColors.onSurfaceVariant,
+                  size: 20,
+                ),
+                suffixIcon: _searching
+                    ? const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      )
+                    : null,
+              ),
+              onChanged: (v) {
+                if (v.trim().length >= 2) _search(v.trim());
+                if (v.trim().isEmpty) setState(() => _results = []);
+              },
+            ),
+            if (_searchError != null) ...[
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                _searchError!,
+                style: const TextStyle(color: AppColors.error, fontSize: 12),
+              ),
+            ],
+            if (_results.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.sm),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 220),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: _results.length,
+                  separatorBuilder: (_, __) => Divider(
+                    color: AppColors.onSurfaceVariant.withValues(alpha: 0.1),
+                    height: 1,
+                  ),
+                  itemBuilder: (_, i) {
+                    final item = _results[i];
+                    return ListTile(
+                      dense: true,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm,
+                        vertical: 2,
+                      ),
+                      title: Text(
+                        item.name,
+                        style: const TextStyle(
+                          color: AppColors.onBackground,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Text(
+                        [
+                          item.category,
+                          if (item.roomName != null) item.roomName!,
+                        ].join(' · '),
+                        style: const TextStyle(
+                          color: AppColors.onSurfaceVariant,
+                          fontSize: 12,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      onTap: () => _selectItem(item),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ] else ...[
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              decoration: BoxDecoration(
+                color: AppColors.accent.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: AppColors.accent.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.check_circle_outline,
+                      color: AppColors.accent, size: 18),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _selected!.name,
+                          style: const TextStyle(
+                            color: AppColors.onBackground,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          [
+                            _selected!.category,
+                            if (_selected!.roomName != null)
+                              _selected!.roomName!,
+                          ].join(' · '),
+                          style: const TextStyle(
+                            color: AppColors.onSurfaceVariant,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => setState(() {
+                      _selected = null;
+                      _instructionController.clear();
+                    }),
+                    child: const Text('Change'),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            const Text(
+              'Instruction',
+              style: TextStyle(
+                color: AppColors.onSurfaceVariant,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            TextField(
+              controller: _instructionController,
+              style: const TextStyle(color: AppColors.onBackground, fontSize: 14),
+              maxLines: 2,
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: AppColors.background,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.sm,
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            SizedBox(
+              height: 48,
+              child: FilledButton(
+                onPressed: _confirm,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.accent,
+                  foregroundColor: AppColors.background,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text('Add to Plan'),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
