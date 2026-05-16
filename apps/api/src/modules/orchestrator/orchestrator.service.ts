@@ -7,10 +7,14 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { v4 as uuidv4 } from 'uuid';
 import { AuditService } from '../audit/audit.service';
 import { MediaService } from '../media/media.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { Item, ItemDocument } from '../inventory/schemas/item.schema';
 import { Role } from '../../common/enums/role.enum';
+import { AddGroupDto } from './dto/add-group.dto';
+import { AddManualStepDto } from './dto/add-manual-step.dto';
 import { CompleteStepDto } from './dto/complete-step.dto';
 import { CreatePlanDto } from './dto/create-plan.dto';
 import { UpdatePlanDto } from './dto/update-plan.dto';
@@ -54,6 +58,8 @@ export class OrchestratorService {
   constructor(
     @InjectModel(OrchestratorPlan.name)
     private readonly planModel: Model<OrchestratorPlanDocument>,
+    @InjectModel(Item.name)
+    private readonly itemModel: Model<ItemDocument>,
     private readonly auditService: AuditService,
     private readonly mediaService: MediaService,
     private readonly notificationsService: NotificationsService,
@@ -193,7 +199,7 @@ export class OrchestratorService {
     planId: string,
     userId: string,
     dto: UpdatePlanDto,
-  ): Promise<OrchestratorPlanDocument> {
+  ): Promise<OrchestratorPlanDocument | { deleted: true }> {
     const existing = await this.planModel
       .findOne({ _id: planId, tenantId })
       .exec();
@@ -251,8 +257,29 @@ export class OrchestratorService {
     tenantId: string,
     planId: string,
     userId: string,
-  ): Promise<OrchestratorPlanDocument> {
+  ): Promise<OrchestratorPlanDocument | { deleted: true }> {
     const plan = await this.planModel
+      .findOne({ _id: planId, tenantId })
+      .exec();
+
+    if (!plan) throw new NotFoundException('Plan not found');
+
+    if (plan.status === 'draft') {
+      await this.planModel.findOneAndDelete({ _id: planId, tenantId }).exec();
+
+      await this.auditService.log({
+        tenantId,
+        userId,
+        action: 'plan.deleted',
+        entityType: 'orchestrator_plan',
+        entityId: planId,
+        metadata: { reason: 'cancelled_while_draft' },
+      });
+
+      return { deleted: true };
+    }
+
+    const cancelled = await this.planModel
       .findOneAndUpdate(
         { _id: planId, tenantId },
         { $set: { status: 'cancelled', cancelledAt: new Date() } },
@@ -260,7 +287,7 @@ export class OrchestratorService {
       )
       .exec();
 
-    if (!plan) throw new NotFoundException('Plan not found');
+    if (!cancelled) throw new NotFoundException('Plan not found');
 
     await this.auditService.log({
       tenantId,
@@ -271,7 +298,7 @@ export class OrchestratorService {
       metadata: {},
     });
 
-    return plan;
+    return cancelled;
   }
 
   async publishPlan(
