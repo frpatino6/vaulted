@@ -5,6 +5,8 @@ part 'user_model.g.dart';
 
 @freezed
 class UserModel with _$UserModel {
+  const UserModel._();
+
   const factory UserModel({
     required String id,
     required String email,
@@ -17,6 +19,13 @@ class UserModel with _$UserModel {
     String? expiresAt,
     String? createdAt,
   }) = _UserModel;
+
+
+  String get name {
+    final part = email.split('@').first;
+    if (part.isEmpty) return email;
+    return part[0].toUpperCase() + part.substring(1);
+  }
 
   factory UserModel.fromJson(Map<String, dynamic> json) =>
       _$UserModelFromJson(json);
