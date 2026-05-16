@@ -547,4 +547,101 @@ export class OrchestratorService {
       return this.signPlanPhotos(plan, tenantId, userId);
     });
   }
+
+  async addGroup(
+    tenantId: string,
+    planId: string,
+    userId: string,
+    dto: AddGroupDto,
+  ): Promise<OrchestratorPlanDocument> {
+    const plan = await this.planModel
+      .findOne({ _id: planId, tenantId })
+      .exec();
+
+    if (!plan) throw new NotFoundException('Plan not found');
+
+    if (plan.status !== 'draft') {
+      throw new ForbiddenException('Groups can only be added to draft plans');
+    }
+
+    plan.taskGroups.push({
+      groupId: uuidv4(),
+      title: dto.title,
+      status: 'pending',
+      steps: [],
+    } as unknown as (typeof plan.taskGroups)[number]);
+
+    plan.markModified('taskGroups');
+    await plan.save();
+
+    await this.auditService.log({
+      tenantId,
+      userId,
+      action: 'plan.group.added',
+      entityType: 'orchestrator_plan',
+      entityId: planId,
+      metadata: { title: dto.title },
+    });
+
+    return this.signPlanPhotos(plan, tenantId, userId);
+  }
+
+  async addManualStep(
+    tenantId: string,
+    planId: string,
+    groupId: string,
+    userId: string,
+    dto: AddManualStepDto,
+  ): Promise<OrchestratorPlanDocument> {
+    const plan = await this.planModel
+      .findOne({ _id: planId, tenantId })
+      .exec();
+
+    if (!plan) throw new NotFoundException('Plan not found');
+
+    if (plan.status !== 'draft') {
+      throw new ForbiddenException('Steps can only be added to draft plans');
+    }
+
+    const group = plan.taskGroups.find((g) => g.groupId === groupId);
+    if (!group) throw new NotFoundException('Task group not found');
+
+    const item = await this.itemModel
+      .findOne({ _id: dto.itemId, tenantId })
+      .exec();
+
+    if (!item) throw new NotFoundException('Item not found');
+
+    const step: OrchestratorStep = {
+      stepId: uuidv4(),
+      itemId: item._id.toString(),
+      itemName: item.name,
+      itemCategory: String(item.category),
+      itemPhoto: item.photos?.[0] ?? undefined,
+      roomId: item.roomId ?? undefined,
+      roomName: (item as ItemDocument & { roomName?: string }).roomName ?? undefined,
+      sectionId: item.sectionId ?? undefined,
+      sectionCode: (item as ItemDocument & { sectionCode?: string }).sectionCode ?? undefined,
+      sectionFurnitureName: (item as ItemDocument & { sectionFurnitureName?: string }).sectionFurnitureName ?? undefined,
+      sectionPhoto: (item as ItemDocument & { sectionPhoto?: string }).sectionPhoto ?? undefined,
+      boundingBox: (item as ItemDocument & { sectionBoundingBox?: OrchestratorStep['boundingBox'] }).sectionBoundingBox ?? undefined,
+      instruction: dto.instruction,
+      status: 'pending',
+    };
+
+    group.steps.push(step);
+    plan.markModified('taskGroups');
+    await plan.save();
+
+    await this.auditService.log({
+      tenantId,
+      userId,
+      action: 'plan.step.added',
+      entityType: 'orchestrator_plan',
+      entityId: planId,
+      metadata: { groupId, itemId: dto.itemId, itemName: item.name },
+    });
+
+    return this.signPlanPhotos(plan, tenantId, userId);
+  }
 }
