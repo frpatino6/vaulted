@@ -39,9 +39,48 @@ class OrchestratorDetailNotifier
     final planId = _planId;
     if (planId == null) return;
     try {
-      final updated = await ref
+      await ref
           .read(orchestratorRepositoryProvider)
           .updatePlan(planId, {'status': 'cancelled'});
+      // Reload to get the updated plan (or detect deletion)
+      try {
+        final reloaded =
+            await ref.read(orchestratorRepositoryProvider).getPlan(planId);
+        state = AsyncData(reloaded);
+      } on DioException catch (dioErr) {
+        // 404 means the plan was deleted (draft purge on cancel)
+        if (dioErr.response?.statusCode == 404) {
+          state = const AsyncData(null);
+        } else {
+          rethrow;
+        }
+      }
+    } catch (e) {
+      state = AsyncError(e, StackTrace.current);
+    }
+  }
+
+  Future<void> addGroup(String title) async {
+    final planId = _planId;
+    if (planId == null) return;
+    try {
+      final updated = await ref
+          .read(orchestratorRepositoryProvider)
+          .addGroup(planId, title);
+      state = AsyncData(updated);
+    } catch (e) {
+      state = AsyncError(e, StackTrace.current);
+    }
+  }
+
+  Future<void> addManualStep(
+      String groupId, String itemId, String instruction) async {
+    final planId = _planId;
+    if (planId == null) return;
+    try {
+      final updated = await ref
+          .read(orchestratorRepositoryProvider)
+          .addManualStep(planId, groupId, itemId, instruction);
       state = AsyncData(updated);
     } catch (e) {
       state = AsyncError(e, StackTrace.current);

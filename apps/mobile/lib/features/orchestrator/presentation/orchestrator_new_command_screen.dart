@@ -215,6 +215,7 @@ class _OrchestratorNewCommandScreenState
                   ),
                   child: TextField(
                     controller: _commandController,
+                    autofocus: true,
                     maxLines: 5,
                     minLines: 4,
                     style: const TextStyle(

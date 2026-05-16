@@ -64,4 +64,20 @@ class OrchestratorRepository {
       _remote.getProgress(planId);
 
   Future<List<OrchestratorPlanModel>> getMyTasks() => _remote.getMyTasks();
+
+  Future<OrchestratorPlanModel> addGroup(String planId, String title) =>
+      _remote.addGroup(planId, title);
+
+  Future<OrchestratorPlanModel> addManualStep(
+    String planId,
+    String groupId,
+    String itemId,
+    String instruction,
+  ) =>
+      _remote.addManualStep(
+        planId: planId,
+        groupId: groupId,
+        itemId: itemId,
+        instruction: instruction,
+      );
 }

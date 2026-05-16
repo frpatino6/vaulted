@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
+import '../../inventory/data/models/item_model.dart';
+import '../../inventory/data/search_remote_data_source_provider.dart';
 import '../../users/domain/current_user_jwt.dart';
 import '../data/models/orchestrator_plan_model.dart';
 import '../domain/orchestrator_detail_notifier.dart';
@@ -67,13 +69,18 @@ class _OrchestratorPlanDetailScreenState
   }
 
   Future<void> _cancel() async {
+    final currentPlan = ref.read(orchestratorDetailNotifierProvider).valueOrNull;
+    final isDraft = currentPlan?.status == 'draft';
+
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surfaceVariant,
-        title: const Text('Cancel Plan'),
-        content: const Text(
-          'This plan will be marked cancelled and cannot be reactivated.',
+        title: Text(isDraft ? 'Delete Draft' : 'Cancel Plan'),
+        content: Text(
+          isDraft
+              ? 'This draft plan will be permanently deleted.'
+              : 'This plan will be marked cancelled and cannot be reactivated.',
         ),
         actions: [
           TextButton(
@@ -83,7 +90,7 @@ class _OrchestratorPlanDetailScreenState
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: AppColors.error),
-            child: const Text('Cancel Plan'),
+            child: Text(isDraft ? 'Delete' : 'Cancel Plan'),
           ),
         ],
       ),
@@ -95,9 +102,18 @@ class _OrchestratorPlanDetailScreenState
           .read(orchestratorDetailNotifierProvider.notifier)
           .cancel();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Plan cancelled')),
-      );
+      final planAfter = ref.read(orchestratorDetailNotifierProvider).valueOrNull;
+      if (planAfter == null) {
+        // Draft was deleted — plan no longer exists
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Draft deleted')),
+        );
+        context.pop();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Plan cancelled')),
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -340,7 +356,7 @@ class _OrchestratorPlanDetailScreenState
             AppSpacing.md,
             0,
             AppSpacing.md,
-            AppSpacing.xl,
+            AppSpacing.sm,
           ),
           sliver: SliverList(
             delegate: SliverChildBuilderDelegate(
@@ -350,9 +366,11 @@ class _OrchestratorPlanDetailScreenState
                   padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                   child: _TaskGroupCard(
                     group: group,
+                    showAddItem: plan.isDraft && _isOwnerOrManager,
                     onTap: () => context.push(
                       '/orchestrator/plans/${plan.id}/groups/${group.groupId}',
                     ),
+                    onAddItem: () => _showAddItemSheet(plan.id, group.groupId),
                   ),
                 );
               },
@@ -360,13 +378,28 @@ class _OrchestratorPlanDetailScreenState
             ),
           ),
         ),
-        // Publish button if draft
+        // Add Group button — only in draft
         if (plan.isDraft && _isOwnerOrManager)
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(
                 AppSpacing.md,
                 0,
+                AppSpacing.md,
+                AppSpacing.sm,
+              ),
+              child: _AddGroupButton(
+                onTap: () => _showAddGroupDialog(plan.id),
+              ),
+            ),
+          ),
+        // Publish button if draft
+        if (plan.isDraft && _isOwnerOrManager)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                AppSpacing.sm,
                 AppSpacing.md,
                 AppSpacing.xl,
               ),
@@ -396,8 +429,78 @@ class _OrchestratorPlanDetailScreenState
               ),
             ),
           ),
+        if (!plan.isDraft)
+          const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.xl)),
       ],
     );
+  }
+
+  void _showAddItemSheet(String planId, String groupId) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _AddItemSheet(
+        planId: planId,
+        groupId: groupId,
+        notifier: ref.read(orchestratorDetailNotifierProvider.notifier),
+      ),
+    );
+  }
+
+  Future<void> _showAddGroupDialog(String planId) async {
+    final controller = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surfaceVariant,
+        title: const Text('Add Group'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          style: const TextStyle(color: AppColors.onBackground),
+          decoration: InputDecoration(
+            hintText: 'Group title',
+            hintStyle: TextStyle(
+              color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
+            ),
+            filled: true,
+            fillColor: AppColors.background,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide.none,
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (confirmed != true || !mounted) return;
+    final title = controller.text.trim();
+    if (title.isEmpty) return;
+    try {
+      await ref
+          .read(orchestratorDetailNotifierProvider.notifier)
+          .addGroup(title);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(OrchestratorDetailNotifier.errorMessage(e)),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
   }
 
   static String _formatDate(String? iso) {
@@ -413,10 +516,17 @@ class _OrchestratorPlanDetailScreenState
 // ---------------------------------------------------------------------------
 
 class _TaskGroupCard extends StatelessWidget {
-  const _TaskGroupCard({required this.group, required this.onTap});
+  const _TaskGroupCard({
+    required this.group,
+    required this.onTap,
+    this.showAddItem = false,
+    this.onAddItem,
+  });
 
   final OrchestratorTaskGroupModel group;
   final VoidCallback onTap;
+  final bool showAddItem;
+  final VoidCallback? onAddItem;
 
   String get _initials {
     final name = group.assignedUserName ?? '';
@@ -527,11 +637,21 @@ class _TaskGroupCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: AppColors.onSurfaceVariant,
-                size: 20,
-              ),
+              if (showAddItem)
+                IconButton(
+                  icon: const Icon(Icons.add_circle_outline,
+                      color: AppColors.accent, size: 20),
+                  tooltip: 'Add item to group',
+                  onPressed: onAddItem,
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                )
+              else
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.onSurfaceVariant,
+                  size: 20,
+                ),
             ],
           ),
         ),

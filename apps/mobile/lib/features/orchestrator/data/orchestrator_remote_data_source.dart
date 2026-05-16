@@ -154,6 +154,39 @@ class OrchestratorRemoteDataSource {
   }
 
   // ---------------------------------------------------------------------------
+  // POST /orchestrator/plans/:id/groups
+  // ---------------------------------------------------------------------------
+
+  Future<OrchestratorPlanModel> addGroup(String planId, String title) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      'orchestrator/plans/$planId/groups',
+      data: {'title': title},
+    );
+    final data = _unwrapData(response);
+    return OrchestratorPlanModel.fromJson(
+        _normalize(Map<String, dynamic>.from(data as Map)));
+  }
+
+  // ---------------------------------------------------------------------------
+  // POST /orchestrator/plans/:id/groups/:groupId/steps
+  // ---------------------------------------------------------------------------
+
+  Future<OrchestratorPlanModel> addManualStep({
+    required String planId,
+    required String groupId,
+    required String itemId,
+    required String instruction,
+  }) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      'orchestrator/plans/$planId/groups/$groupId/steps',
+      data: {'itemId': itemId, 'instruction': instruction},
+    );
+    final data = _unwrapData(response);
+    return OrchestratorPlanModel.fromJson(
+        _normalize(Map<String, dynamic>.from(data as Map)));
+  }
+
+  // ---------------------------------------------------------------------------
   // GET /orchestrator/plans/my-tasks
   // ---------------------------------------------------------------------------
 
