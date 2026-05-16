@@ -10,6 +10,7 @@ import '../../inventory/data/search_remote_data_source_provider.dart';
 import '../../users/domain/current_user_jwt.dart';
 import '../data/models/orchestrator_plan_model.dart';
 import '../domain/orchestrator_detail_notifier.dart';
+import 'orchestrator_assign_sheet.dart';
 
 class OrchestratorPlanDetailScreen extends ConsumerStatefulWidget {
   const OrchestratorPlanDetailScreen({super.key, required this.planId});
@@ -371,6 +372,9 @@ class _OrchestratorPlanDetailScreenState
                       '/orchestrator/plans/${plan.id}/groups/${group.groupId}',
                     ),
                     onAddItem: () => _showAddItemSheet(plan.id, group.groupId),
+                    onAssign: _isOwnerOrManager && !plan.isCompleted && !plan.isCancelled
+                        ? () => _showAssignSheet(plan.id, group)
+                        : null,
                   ),
                 );
               },
@@ -433,6 +437,18 @@ class _OrchestratorPlanDetailScreenState
           const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.xl)),
       ],
     );
+  }
+
+  Future<void> _showAssignSheet(String planId, OrchestratorTaskGroupModel group) async {
+    final user = await showOrchestratorAssignSheet(context);
+    if (user == null || !mounted) return;
+    await ref.read(orchestratorDetailNotifierProvider.notifier).updateAssignments([
+      {
+        'groupId': group.groupId,
+        'assignedUserId': user.id,
+        'assignedUserName': user.name,
+      }
+    ]);
   }
 
   void _showAddItemSheet(String planId, String groupId) {
@@ -521,12 +537,14 @@ class _TaskGroupCard extends StatelessWidget {
     required this.onTap,
     this.showAddItem = false,
     this.onAddItem,
+    this.onAssign,
   });
 
   final OrchestratorTaskGroupModel group;
   final VoidCallback onTap;
   final bool showAddItem;
   final VoidCallback? onAddItem;
+  final VoidCallback? onAssign;
 
   String get _initials {
     final name = group.assignedUserName ?? '';
@@ -601,11 +619,28 @@ class _TaskGroupCard extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      group.assignedUserName ?? 'Unassigned',
-                      style: const TextStyle(
-                        color: AppColors.onSurfaceVariant,
-                        fontSize: 12,
+                    GestureDetector(
+                      onTap: onAssign,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            group.assignedUserName ?? 'Unassigned',
+                            style: TextStyle(
+                              color: onAssign != null
+                                  ? AppColors.accent
+                                  : AppColors.onSurfaceVariant,
+                              fontSize: 12,
+                              decoration: onAssign != null
+                                  ? TextDecoration.underline
+                                  : null,
+                            ),
+                          ),
+                          if (onAssign != null) ...[
+                            const SizedBox(width: 4),
+                            const Icon(Icons.edit, size: 11, color: AppColors.accent),
+                          ],
+                        ],
                       ),
                     ),
                     const SizedBox(height: AppSpacing.xs),
