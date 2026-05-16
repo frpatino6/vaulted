@@ -158,7 +158,10 @@ export class OrchestratorService {
       this.planModel.countDocuments(filter).exec(),
     ]);
 
-    return { items, total };
+    return {
+      items: items.map((plan) => this.signPlanPhotos(plan, tenantId, userId)),
+      total,
+    };
   }
 
   async findOne(
@@ -182,7 +185,7 @@ export class OrchestratorService {
       plan.taskGroups = filteredGroups;
     }
 
-    return plan;
+    return this.signPlanPhotos(plan, tenantId, userId);
   }
 
   async update(
@@ -446,10 +449,10 @@ export class OrchestratorService {
       filteredPlan.taskGroups = filteredPlan.taskGroups.filter(
         (g) => g.assignedUserId === userId,
       );
-      return filteredPlan;
+      return this.signPlanPhotos(filteredPlan, tenantId, userId);
     }
 
-    return plan;
+    return this.signPlanPhotos(plan, tenantId, userId);
   }
 
   async getProgress(
@@ -514,7 +517,7 @@ export class OrchestratorService {
       plan.taskGroups = plan.taskGroups.filter(
         (g) => g.assignedUserId === userId,
       );
-      return plan;
+      return this.signPlanPhotos(plan, tenantId, userId);
     });
   }
 }
