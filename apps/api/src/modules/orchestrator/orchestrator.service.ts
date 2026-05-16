@@ -188,6 +188,11 @@ export class OrchestratorService {
       const filteredGroups = plan.taskGroups.filter(
         (g) => g.assignedUserId === userId,
       );
+
+      if (filteredGroups.length === 0) {
+        throw new ForbiddenException('Plan not found for assigned staff user');
+      }
+
       plan.taskGroups = filteredGroups;
     }
 
