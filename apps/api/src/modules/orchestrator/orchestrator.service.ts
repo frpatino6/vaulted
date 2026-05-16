@@ -4,9 +4,11 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { AuditService } from '../audit/audit.service';
+import { MediaService } from '../media/media.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { Role } from '../../common/enums/role.enum';
 import { CompleteStepDto } from './dto/complete-step.dto';
@@ -16,6 +18,7 @@ import { OrchestratorGateway } from './orchestrator.gateway';
 import {
   OrchestratorPlan,
   OrchestratorPlanDocument,
+  OrchestratorStep,
 } from './schemas/orchestrator-plan.schema';
 
 export interface PlanListQuery {
@@ -46,13 +49,53 @@ export interface PlanProgressDto {
 export class OrchestratorService {
   private readonly logger = new Logger(OrchestratorService.name);
 
+  private readonly appUrl: string;
+
   constructor(
     @InjectModel(OrchestratorPlan.name)
     private readonly planModel: Model<OrchestratorPlanDocument>,
     private readonly auditService: AuditService,
+    private readonly mediaService: MediaService,
     private readonly notificationsService: NotificationsService,
     private readonly orchestratorGateway: OrchestratorGateway,
-  ) {}
+    config: ConfigService,
+  ) {
+    this.appUrl = (config.get<string>('APP_URL') ?? 'http://localhost:3000').replace(/\/+$/, '');
+  }
+
+  /**
+   * Signs all photo URLs inside every step of every task group.
+   * Photos are stored as raw file keys (e.g. "tenantId/uuid.jpg") and must be
+   * converted to short-lived signed media tokens before being sent to the client.
+   */
+  private signPlanPhotos(
+    plan: OrchestratorPlanDocument,
+    tenantId: string,
+    userId: string,
+  ): OrchestratorPlanDocument {
+    const sign = (url: string | undefined): string | undefined => {
+      if (!url) return undefined;
+      const token = this.mediaService.generateFileToken(url, tenantId, userId);
+      return `${this.appUrl}/api/media/${token}`;
+    };
+
+    const signedGroups = plan.taskGroups.map((group) => {
+      const signedSteps = group.steps.map((step) => {
+        const obj = (step.toObject ? step.toObject() : { ...step }) as OrchestratorStep;
+        return {
+          ...obj,
+          itemPhoto: sign(obj.itemPhoto),
+          roomPhoto: sign(obj.roomPhoto),
+          sectionPhoto: sign(obj.sectionPhoto),
+        };
+      });
+      const groupObj = group.toObject ? group.toObject() : { ...group };
+      return { ...groupObj, steps: signedSteps };
+    });
+
+    const planObj = plan.toObject();
+    return { ...planObj, taskGroups: signedGroups } as unknown as OrchestratorPlanDocument;
+  }
 
   async create(
     tenantId: string,
