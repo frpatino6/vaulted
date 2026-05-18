@@ -325,6 +325,7 @@ class _WardrobeStatsBar extends StatelessWidget {
               value: '${stats.atDryCleaner}',
               color: Colors.blue,
               showOverdueDot: stats.overdueItems > 0,
+              showNavigationArrow: true,
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(
                   builder: (_) => const AtLaundryScreen(),
@@ -353,6 +354,7 @@ class _StatChip extends StatelessWidget {
     this.onTap,
     this.showOverdueDot = false,
     this.isActive = false,
+    this.showNavigationArrow = false,
   });
 
   final String label;
@@ -362,6 +364,7 @@ class _StatChip extends StatelessWidget {
   final VoidCallback? onTap;
   final bool showOverdueDot;
   final bool isActive;
+  final bool showNavigationArrow;
 
   @override
   Widget build(BuildContext context) {
@@ -415,6 +418,14 @@ class _StatChip extends StatelessWidget {
             if (isActive) ...[
               const SizedBox(width: 4),
               Icon(Icons.close, size: 12, color: accentColor),
+            ],
+            if (showNavigationArrow && !isActive) ...[
+              const SizedBox(width: 4),
+              Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 10,
+                color: color ?? AppColors.onSurfaceVariant,
+              ),
             ],
           ],
         ),
