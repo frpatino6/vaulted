@@ -1,6 +1,12 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, Index } from 'typeorm';
 
-export type NotificationType = 'maintenance_due' | 'dry_cleaning_overdue' | 'item_added' | 'general';
+export type NotificationType =
+  | 'maintenance_due'
+  | 'dry_cleaning_overdue'
+  | 'item_added'
+  | 'orchestrator_assigned'
+  | 'orchestrator_completed'
+  | 'general';
 
 @Entity('notification_logs')
 export class NotificationLog {

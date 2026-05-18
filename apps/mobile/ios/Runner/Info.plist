@@ -70,5 +70,9 @@
 	<string>Vaulted needs camera access to photograph your items.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Vaulted needs photo library access to select item photos.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Vaulted uses speech recognition to convert your voice commands into estate work plans.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Vaulted uses the microphone to listen to your estate management commands.</string>
 </dict>
 </plist>

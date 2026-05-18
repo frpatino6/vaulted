@@ -20,4 +20,12 @@ export class UpdateNotificationPreferenceDto {
   @IsOptional()
   @IsBoolean()
   itemAdded?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  orchestratorAssigned?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  orchestratorCompleted?: boolean;
 }
