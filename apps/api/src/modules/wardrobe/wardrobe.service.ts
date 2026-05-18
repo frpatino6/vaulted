@@ -362,15 +362,25 @@ export class WardrobeService {
       this.aggregateAttributeCounts(tenantId, 'season'),
       this.outfitModel.countDocuments({ tenantId }).exec(),
       this.outfitModel.distinct('itemIds', { tenantId }),
-      this.dryCleaningRecordModel.find({ tenantId, returnedDate: null }).select('sentDate').lean().exec(),
+      this.dryCleaningRecordModel.find({ tenantId, returnedDate: null }).select('itemId sentDate').lean().exec(),
     ]);
 
     const overdueThresholdDays = 7;
     const msPerDay = 24 * 60 * 60 * 1000;
     const now = new Date();
-    const atCleanerCount = activeCleanerRecords.length;
-    const overdueCount = activeCleanerRecords.filter(
-      (r) => Math.floor((now.getTime() - new Date(r.sentDate).getTime()) / msPerDay) > overdueThresholdDays,
+
+    // Deduplicate by itemId — same logic as getAtLaundry
+    const latestByItemForStats = new Map<string, { sentDate: Date }>();
+    for (const r of activeCleanerRecords) {
+      const existing = latestByItemForStats.get(r.itemId);
+      if (!existing || new Date(r.sentDate) > new Date(existing.sentDate)) {
+        latestByItemForStats.set(r.itemId, { sentDate: new Date(r.sentDate) });
+      }
+    }
+    const dedupedForStats = [...latestByItemForStats.values()];
+    const atCleanerCount = dedupedForStats.length;
+    const overdueCount = dedupedForStats.filter(
+      (r) => Math.floor((now.getTime() - r.sentDate.getTime()) / msPerDay) > overdueThresholdDays,
     ).length;
 
     const response: WardrobeStatsResponse = {
