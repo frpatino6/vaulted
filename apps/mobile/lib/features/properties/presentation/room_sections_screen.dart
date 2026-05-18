@@ -5,9 +5,12 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../inventory/data/item_repository_provider.dart';
+import '../../inventory/data/models/item_model.dart';
 import '../../media/data/media_repository_provider.dart';
 import '../data/models/room_section_model.dart';
 import '../domain/property_detail_notifier.dart';
@@ -34,6 +37,19 @@ class RoomSectionsScreen extends ConsumerStatefulWidget {
 class _RoomSectionsScreenState extends ConsumerState<RoomSectionsScreen> {
   List<RoomSectionModel> _sections = [];
   bool _loading = true;
+  List<ItemModel> _items = [];
+  bool _itemsLoading = false;
+  final Set<String> _expandedSectionIds = {};
+
+  Map<String, List<ItemModel>> get _itemsBySectionId {
+    final map = <String, List<ItemModel>>{};
+    for (final item in _items) {
+      if (item.sectionId != null) {
+        map.putIfAbsent(item.sectionId!, () => []).add(item);
+      }
+    }
+    return map;
+  }
 
   List<_SectionGroup> get _groupedSections {
     final grouped = <String, List<RoomSectionModel>>{};
@@ -57,7 +73,10 @@ class _RoomSectionsScreenState extends ConsumerState<RoomSectionsScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _load();
+      _loadItems();
+    });
   }
 
   Future<void> _load() async {
@@ -69,6 +88,20 @@ class _RoomSectionsScreenState extends ConsumerState<RoomSectionsScreen> {
       if (mounted) setState(() => _sections = sections);
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _loadItems() async {
+    setState(() => _itemsLoading = true);
+    try {
+      final items = await ref
+          .read(itemRepositoryProvider)
+          .getItems(propertyId: widget.propertyId, roomId: widget.roomId);
+      if (mounted) setState(() => _items = items);
+    } catch (_) {
+      // items are supplementary — don't surface errors
+    } finally {
+      if (mounted) setState(() => _itemsLoading = false);
     }
   }
 
@@ -198,6 +231,16 @@ class _RoomSectionsScreenState extends ConsumerState<RoomSectionsScreen> {
                             for (final section in group.sections) ...[
                               _SectionTile(
                                 section: section,
+                                sectionItems: _itemsBySectionId[section.sectionId] ?? [],
+                                itemsLoading: _itemsLoading,
+                                isExpanded: _expandedSectionIds.contains(section.sectionId),
+                                onToggle: () => setState(() {
+                                  if (_expandedSectionIds.contains(section.sectionId)) {
+                                    _expandedSectionIds.remove(section.sectionId);
+                                  } else {
+                                    _expandedSectionIds.add(section.sectionId);
+                                  }
+                                }),
                                 onEdit: () => _showAddSheet(editing: section),
                                 onDelete: () => _delete(section),
                               ),
@@ -265,11 +308,19 @@ class _GroupHeader extends StatelessWidget {
 class _SectionTile extends StatelessWidget {
   const _SectionTile({
     required this.section,
+    required this.sectionItems,
+    required this.itemsLoading,
+    required this.isExpanded,
+    required this.onToggle,
     required this.onEdit,
     required this.onDelete,
   });
 
   final RoomSectionModel section;
+  final List<ItemModel> sectionItems;
+  final bool itemsLoading;
+  final bool isExpanded;
+  final VoidCallback onToggle;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
@@ -294,20 +345,13 @@ class _SectionTile extends StatelessWidget {
 
   IconData get _icon {
     switch (section.type) {
-      case 'drawer':
-        return Icons.table_rows_outlined;
-      case 'cabinet':
-        return Icons.door_sliding_outlined;
-      case 'shelf':
-        return Icons.shelves;
-      case 'rack':
-        return Icons.view_week_outlined;
-      case 'safe':
-        return Icons.lock_outline;
-      case 'compartment':
-        return Icons.grid_view_outlined;
-      default:
-        return Icons.inventory_2_outlined;
+      case 'drawer': return Icons.table_rows_outlined;
+      case 'cabinet': return Icons.door_sliding_outlined;
+      case 'shelf': return Icons.shelves;
+      case 'rack': return Icons.view_week_outlined;
+      case 'safe': return Icons.lock_outline;
+      case 'compartment': return Icons.grid_view_outlined;
+      default: return Icons.inventory_2_outlined;
     }
   }
 
@@ -318,60 +362,216 @@ class _SectionTile extends StatelessWidget {
         color: AppColors.surfaceVariant,
         borderRadius: BorderRadius.circular(14),
       ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        leading: _codeChip,
-        title: Text(
-          section.name,
-          style: const TextStyle(
-            color: AppColors.onBackground,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        subtitle: Row(
-          children: [
-            Icon(_icon, size: 13, color: AppColors.onSurfaceVariant),
-            const SizedBox(width: 4),
-            Text(
-              section.type,
-              style: const TextStyle(
-                color: AppColors.onSurfaceVariant,
-                fontSize: 12,
-              ),
-            ),
-            if (section.notes != null && section.notes!.isNotEmpty) ...[
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  section.notes!,
-                  style: const TextStyle(
-                    color: AppColors.onSurfaceVariant,
-                    fontSize: 12,
+      clipBehavior: Clip.hardEdge,
+      child: Column(
+        children: [
+          // ── Header row ──────────────────────────────────────────────────
+          InkWell(
+            onTap: onToggle,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Row(
+                children: [
+                  _codeChip,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          section.name,
+                          style: const TextStyle(
+                            color: AppColors.onBackground,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            Icon(_icon, size: 12, color: AppColors.onSurfaceVariant),
+                            const SizedBox(width: 4),
+                            Text(
+                              section.type,
+                              style: const TextStyle(
+                                color: AppColors.onSurfaceVariant,
+                                fontSize: 12,
+                              ),
+                            ),
+                            if (sectionItems.isNotEmpty) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: AppColors.accent.withAlpha(30),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  '${sectionItems.length}',
+                                  style: const TextStyle(
+                                    color: AppColors.accent,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                  overflow: TextOverflow.ellipsis,
-                ),
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined, size: 18),
+                    color: AppColors.onSurfaceVariant,
+                    visualDensity: VisualDensity.compact,
+                    onPressed: onEdit,
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, size: 18),
+                    color: AppColors.error,
+                    visualDensity: VisualDensity.compact,
+                    onPressed: onDelete,
+                  ),
+                  Icon(
+                    isExpanded ? Icons.expand_less : Icons.expand_more,
+                    size: 18,
+                    color: AppColors.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 4),
+                ],
               ),
-            ],
-          ],
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
+            ),
+          ),
+          // ── Expandable items list ────────────────────────────────────────
+          AnimatedSize(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeInOut,
+            child: isExpanded
+                ? _SectionItemsList(
+                    sectionItems: sectionItems,
+                    itemsLoading: itemsLoading,
+                  )
+                : const SizedBox.shrink(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Items list inside expanded section ───────────────────────────────────────
+
+class _SectionItemsList extends StatelessWidget {
+  const _SectionItemsList({
+    required this.sectionItems,
+    required this.itemsLoading,
+  });
+
+  final List<ItemModel> sectionItems;
+  final bool itemsLoading;
+
+  @override
+  Widget build(BuildContext context) {
+    if (itemsLoading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 16),
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accent)),
+      );
+    }
+    return Column(
+      children: [
+        const Divider(height: 1, color: Colors.white10),
+        if (sectionItems.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+            child: Row(
+              children: [
+                Icon(Icons.inbox_outlined, size: 16, color: AppColors.onSurfaceVariant.withValues(alpha: 0.5)),
+                const SizedBox(width: 8),
+                Text(
+                  'No items in this section',
+                  style: TextStyle(
+                    color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          for (final item in sectionItems)
+            _SectionItemRow(item: item),
+        const SizedBox(height: 4),
+      ],
+    );
+  }
+}
+
+class _SectionItemRow extends StatelessWidget {
+  const _SectionItemRow({required this.item});
+
+  final ItemModel item;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () => context.push('/items/${item.id}'),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Row(
           children: [
-            IconButton(
-              icon: const Icon(Icons.edit_outlined, size: 18),
-              color: AppColors.onSurfaceVariant,
-              onPressed: onEdit,
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: item.photos.isNotEmpty
+                  ? CachedNetworkImage(
+                      imageUrl: item.photos.first,
+                      width: 40,
+                      height: 40,
+                      fit: BoxFit.cover,
+                      placeholder: (_, __) => _photoPlaceholder(item.category),
+                      errorWidget: (_, __, ___) => _photoPlaceholder(item.category),
+                    )
+                  : _photoPlaceholder(item.category),
             ),
-            IconButton(
-              icon: const Icon(Icons.delete_outline, size: 18),
-              color: AppColors.error,
-              onPressed: onDelete,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.name,
+                    style: const TextStyle(
+                      color: AppColors.onBackground,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (item.subcategory.isNotEmpty)
+                    Text(
+                      item.subcategory,
+                      style: const TextStyle(
+                        color: AppColors.onSurfaceVariant,
+                        fontSize: 11,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                ],
+              ),
             ),
+            const Icon(Icons.chevron_right, size: 16, color: AppColors.onSurfaceVariant),
           ],
         ),
       ),
     );
   }
+
+  Widget _photoPlaceholder(String category) => Container(
+    width: 40,
+    height: 40,
+    color: AppColors.accent.withAlpha(20),
+    child: const Icon(Icons.category_outlined, size: 18, color: AppColors.accent),
+  );
 }
 
 // ── Empty state ──────────────────────────────────────────────────────────────
