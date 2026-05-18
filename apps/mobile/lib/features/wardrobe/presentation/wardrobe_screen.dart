@@ -85,7 +85,11 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _WardrobeStatsBar(state: statsState),
+                    _WardrobeStatsBar(
+                      state: statsState,
+                      onNeedsCleaningTap: () =>
+                          setState(() => _selectedCleaningStatus = 'needs_cleaning'),
+                    ),
                     _PrimaryFiltersRow(
                       selectedType: _selectedType,
                       onTypeSelected: (String value) =>
@@ -276,9 +280,13 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
 }
 
 class _WardrobeStatsBar extends StatelessWidget {
-  const _WardrobeStatsBar({required this.state});
+  const _WardrobeStatsBar({
+    required this.state,
+    required this.onNeedsCleaningTap,
+  });
 
   final AsyncValue<WardrobeStatsModel> state;
+  final VoidCallback onNeedsCleaningTap;
 
   @override
   Widget build(BuildContext context) {
@@ -299,6 +307,7 @@ class _WardrobeStatsBar extends StatelessWidget {
               label: 'Needs cleaning',
               value: '${stats.needsCleaning}',
               glowColor: stats.needsCleaning > 0 ? Colors.amber : null,
+              onTap: stats.needsCleaning > 0 ? onNeedsCleaningTap : null,
             ),
             const SizedBox(width: AppSpacing.sm),
             _StatChip(

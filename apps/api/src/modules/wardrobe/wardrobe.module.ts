@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AuditModule } from '../audit/audit.module';
 import { InventoryModule } from '../inventory/inventory.module';
+import { MediaModule } from '../media/media.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { Item, ItemSchema } from '../inventory/schemas/item.schema';
 import {
@@ -26,6 +27,7 @@ import { WardrobeService } from './wardrobe.service';
       { name: Property.name, schema: PropertySchema },
     ]),
     InventoryModule,
+    MediaModule,
     AuditModule,
     NotificationsModule,
   ],
