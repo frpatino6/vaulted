@@ -36,10 +36,58 @@ class _NotificationCenterPageState
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to mark all as read. Try again.'),
-        ),
+        const SnackBar(content: Text('Failed to mark all as read. Try again.')),
       );
+    }
+  }
+
+  Future<void> _clearRead() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Clear read notifications'),
+        content: const Text(
+          'All read notifications will be permanently deleted. This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Clear'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await ref.read(notificationsListProvider.notifier).clearRead();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Read notifications cleared.')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to clear notifications. Try again.')),
+      );
+    }
+  }
+
+  Future<void> _deleteNotification(String id) async {
+    try {
+      await ref.read(notificationsListProvider.notifier).deleteNotification(id);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to delete notification. Try again.')),
+      );
+      ref.invalidate(notificationsListProvider);
     }
   }
 
@@ -81,6 +129,37 @@ class _NotificationCenterPageState
                       color: AppColors.accent,
                     ),
               ),
+            ),
+          if (_initialLoadCompleted)
+            Builder(
+              builder: (ctx) {
+                final page =
+                    asyncPage.whenData((p) => p).valueOrNull;
+                final hasRead = page != null &&
+                    page.items.any((n) => n.isRead);
+                if (!hasRead) return const SizedBox.shrink();
+                return PopupMenuButton<String>(
+                  icon: Icon(
+                    Icons.more_vert,
+                    color: AppColors.onBackground,
+                  ),
+                  onSelected: (value) {
+                    if (value == 'clear_read') _clearRead();
+                  },
+                  itemBuilder: (_) => [
+                    const PopupMenuItem(
+                      value: 'clear_read',
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete_sweep_outlined, size: 20),
+                          SizedBox(width: 12),
+                          Text('Clear read notifications'),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
         ],
       ),
@@ -162,9 +241,23 @@ class _NotificationCenterPageState
             ),
             itemBuilder: (context, index) {
               final item = page.items[index];
-              return _NotificationTile(
-                item: item,
-                onTap: () => _onTileTap(item),
+              return Dismissible(
+                key: ValueKey(item.id),
+                direction: DismissDirection.endToStart,
+                background: Container(
+                  alignment: Alignment.centerRight,
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                  color: Colors.red.shade700,
+                  child: const Icon(
+                    Icons.delete_outline,
+                    color: Colors.white,
+                  ),
+                ),
+                onDismissed: (_) => _deleteNotification(item.id),
+                child: _NotificationTile(
+                  item: item,
+                  onTap: () => _onTileTap(item),
+                ),
               );
             },
           );

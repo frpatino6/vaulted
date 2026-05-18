@@ -55,6 +55,16 @@ class NotificationRemoteDatasource {
     return _unwrap(response);
   }
 
+  Future<void> deleteNotification(String notificationId) async {
+    await _dio.delete<void>('$_base/$notificationId');
+  }
+
+  Future<Map<String, dynamic>> clearReadNotifications() async {
+    final response =
+        await _dio.delete<Map<String, dynamic>>('$_base/clear-read');
+    return _unwrap(response);
+  }
+
   Map<String, dynamic> _unwrap(Response<Map<String, dynamic>> response) {
     final data = response.data;
     if (data == null) {

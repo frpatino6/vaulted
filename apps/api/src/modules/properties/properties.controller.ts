@@ -23,7 +23,9 @@ import { UpdatePropertyDto } from './dto/update-property.dto';
 import { UpdateRoomDto } from './dto/update-room.dto';
 import { PropertiesService } from './properties.service';
 import { PropertyDocument } from './schemas/property.schema';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiTags('Properties')
 @Controller('properties')
 export class PropertiesController {
   constructor(
@@ -33,6 +35,9 @@ export class PropertiesController {
 
   @Roles(Role.OWNER, Role.MANAGER)
   @Post()
+  @ApiOperation({ summary: 'Create a new property' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 201, description: 'Property created' })
   async create(@CurrentUser() user: JwtPayload, @Body() dto: CreatePropertyDto) {
     // tenantId always from JWT — never from request body or headers
     const property = await this.propertiesService.create(user.tenantId, dto);
@@ -50,18 +55,28 @@ export class PropertiesController {
 
   @Get()
   @Roles(Role.OWNER, Role.MANAGER, Role.STAFF, Role.AUDITOR)
+  @ApiOperation({ summary: 'Get all properties' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Properties retrieved' })
   findAll(@CurrentUser() user: JwtPayload) {
     return this.propertiesService.findAll(user.tenantId, user.role, user.sub);
   }
 
   @Get(':id')
   @Roles(Role.OWNER, Role.MANAGER, Role.STAFF, Role.AUDITOR)
+  @ApiOperation({ summary: 'Get property by ID' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Property retrieved' })
+  @ApiResponse({ status: 404, description: 'Property not found' })
   findById(@CurrentUser() user: JwtPayload, @Param('id') propertyId: string) {
     return this.propertiesService.findById(user.tenantId, propertyId, user.role, user.sub);
   }
 
   @Roles(Role.OWNER, Role.MANAGER)
   @Put(':id')
+  @ApiOperation({ summary: 'Update property' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Property updated' })
   async update(
     @CurrentUser() user: JwtPayload,
     @Param('id') propertyId: string,
@@ -82,7 +97,10 @@ export class PropertiesController {
 
   @Roles(Role.OWNER)
   @Delete(':id')
-  @HttpCode(HttpStatus.OK)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete property' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 204, description: 'Property deleted' })
   async delete(@CurrentUser() user: JwtPayload, @Param('id') propertyId: string) {
     await this.propertiesService.delete(user.tenantId, propertyId);
 
@@ -99,6 +117,9 @@ export class PropertiesController {
 
   @Roles(Role.OWNER, Role.MANAGER)
   @Post(':id/floors')
+  @ApiOperation({ summary: 'Add floor to property' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 201, description: 'Floor added' })
   async addFloor(
     @CurrentUser() user: JwtPayload,
     @Param('id') propertyId: string,
@@ -120,6 +141,9 @@ export class PropertiesController {
 
   @Roles(Role.OWNER, Role.MANAGER)
   @Put(':id/floors/:floorId')
+  @ApiOperation({ summary: 'Update floor' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Floor updated' })
   async updateFloor(
     @CurrentUser() user: JwtPayload,
     @Param('id') propertyId: string,
@@ -142,7 +166,10 @@ export class PropertiesController {
 
   @Roles(Role.OWNER, Role.MANAGER)
   @Delete(':id/floors/:floorId')
-  @HttpCode(HttpStatus.OK)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete floor' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 204, description: 'Floor deleted' })
   async deleteFloor(
     @CurrentUser() user: JwtPayload,
     @Param('id') propertyId: string,
@@ -164,6 +191,9 @@ export class PropertiesController {
 
   @Roles(Role.OWNER, Role.MANAGER)
   @Post(':id/floors/:floorId/rooms')
+  @ApiOperation({ summary: 'Add room to floor' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 201, description: 'Room added' })
   async addRoom(
     @CurrentUser() user: JwtPayload,
     @Param('id') propertyId: string,
@@ -186,6 +216,9 @@ export class PropertiesController {
 
   @Roles(Role.OWNER, Role.MANAGER)
   @Put(':id/floors/:floorId/rooms/:roomId')
+  @ApiOperation({ summary: 'Update room' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Room updated' })
   async updateRoom(
     @CurrentUser() user: JwtPayload,
     @Param('id') propertyId: string,
@@ -215,7 +248,10 @@ export class PropertiesController {
 
   @Roles(Role.OWNER, Role.MANAGER)
   @Delete(':id/floors/:floorId/rooms/:roomId')
-  @HttpCode(HttpStatus.OK)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete room' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 204, description: 'Room deleted' })
   async deleteRoom(
     @CurrentUser() user: JwtPayload,
     @Param('id') propertyId: string,
@@ -245,6 +281,9 @@ export class PropertiesController {
 
   @Get(':id/floors/:floorId/rooms/:roomId/sections')
   @Roles(Role.OWNER, Role.MANAGER, Role.STAFF, Role.AUDITOR)
+  @ApiOperation({ summary: 'Get sections in room' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Sections retrieved' })
   getSections(
     @CurrentUser() user: JwtPayload,
     @Param('id') propertyId: string,
@@ -256,6 +295,9 @@ export class PropertiesController {
 
   @Roles(Role.OWNER, Role.MANAGER)
   @Post(':id/floors/:floorId/rooms/:roomId/sections')
+  @ApiOperation({ summary: 'Add section to room' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 201, description: 'Section added' })
   async addSection(
     @CurrentUser() user: JwtPayload,
     @Param('id') propertyId: string,
@@ -281,6 +323,9 @@ export class PropertiesController {
 
   @Roles(Role.OWNER, Role.MANAGER)
   @Post(':id/floors/:floorId/rooms/:roomId/sections/bulk')
+  @ApiOperation({ summary: 'Add multiple sections' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 201, description: 'Sections added' })
   async addSections(
     @CurrentUser() user: JwtPayload,
     @Param('id') propertyId: string,
@@ -306,6 +351,9 @@ export class PropertiesController {
 
   @Roles(Role.OWNER, Role.MANAGER)
   @Put(':id/floors/:floorId/rooms/:roomId/sections/:sectionId')
+  @ApiOperation({ summary: 'Update section' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Section updated' })
   async updateSection(
     @CurrentUser() user: JwtPayload,
     @Param('id') propertyId: string,
@@ -332,7 +380,10 @@ export class PropertiesController {
 
   @Roles(Role.OWNER, Role.MANAGER)
   @Delete(':id/floors/:floorId/rooms/:roomId/sections/:sectionId')
-  @HttpCode(HttpStatus.OK)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete section' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 204, description: 'Section deleted' })
   async deleteSection(
     @CurrentUser() user: JwtPayload,
     @Param('id') propertyId: string,

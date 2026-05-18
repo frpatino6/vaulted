@@ -33,6 +33,35 @@ class NotificationsListNotifier
         ));
   }
 
+  Future<void> deleteNotification(String id) async {
+    await ref.read(notificationsDataSourceProvider).deleteNotification(id);
+    state = state.whenData((page) {
+      final removed = page.items.firstWhere((n) => n.id == id,
+          orElse: () => page.items.first);
+      final wasUnread = !removed.isRead;
+      final newItems = page.items.where((n) => n.id != id).toList();
+      return NotificationsPage(
+        items: newItems,
+        total: page.total - 1,
+        unreadCount: wasUnread && page.unreadCount > 0
+            ? page.unreadCount - 1
+            : page.unreadCount,
+      );
+    });
+  }
+
+  Future<void> clearRead() async {
+    await ref.read(notificationsDataSourceProvider).clearReadNotifications();
+    state = state.whenData((page) {
+      final remaining = page.items.where((n) => !n.isRead).toList();
+      return NotificationsPage(
+        items: remaining,
+        total: remaining.length,
+        unreadCount: page.unreadCount,
+      );
+    });
+  }
+
   NotificationItem _markItemRead(NotificationItem n) {
     if (n.isRead) return n;
     return NotificationItem(

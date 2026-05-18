@@ -21,7 +21,9 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums/role.enum';
 import { AuditService } from '../audit/audit.service';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiTags('Movements')
 @Controller('movements')
 export class MovementsController {
   constructor(
@@ -31,6 +33,9 @@ export class MovementsController {
 
   @Roles(Role.OWNER, Role.MANAGER)
   @Post()
+  @ApiOperation({ summary: 'Create movement' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 201, description: 'Movement created' })
   async create(
     @Body() dto: CreateMovementDto,
     @CurrentUser() user: JwtPayload,
@@ -51,6 +56,9 @@ export class MovementsController {
 
   @Get()
   @Roles(Role.OWNER, Role.MANAGER, Role.STAFF)
+  @ApiOperation({ summary: 'Get all movements' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Movements retrieved' })
   async findAll(
     @CurrentUser() user: JwtPayload,
     @Query('status') status?: string,
@@ -64,18 +72,27 @@ export class MovementsController {
 
   @Get('draft')
   @Roles(Role.OWNER, Role.MANAGER, Role.STAFF)
+  @ApiOperation({ summary: 'Get active draft movements' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Drafts retrieved' })
   async getActiveDrafts(@CurrentUser() user: JwtPayload) {
     return this.movementsService.findActiveDrafts(user.sub, user.tenantId);
   }
 
   @Get(':id')
   @Roles(Role.OWNER, Role.MANAGER, Role.STAFF)
+  @ApiOperation({ summary: 'Get movement by ID' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Movement retrieved' })
   async findOne(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
     return this.movementsService.findOne(id, user.tenantId);
   }
 
   @Roles(Role.OWNER, Role.MANAGER)
   @Patch(':id')
+  @ApiOperation({ summary: 'Update movement' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Movement updated' })
   async update(
     @Param('id') id: string,
     @Body() dto: UpdateMovementDto,
@@ -86,6 +103,9 @@ export class MovementsController {
 
   @Roles(Role.OWNER, Role.MANAGER)
   @Post(':id/items')
+  @ApiOperation({ summary: 'Add item to movement' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 201, description: 'Item added' })
   async addItem(
     @Param('id') movementId: string,
     @Body() dto: AddMovementItemDto,
@@ -96,7 +116,10 @@ export class MovementsController {
 
   @Roles(Role.OWNER, Role.MANAGER)
   @Delete(':id/items/:itemId')
-  @HttpCode(HttpStatus.OK)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Remove item from movement' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 204, description: 'Item removed' })
   async removeItem(
     @Param('id') movementId: string,
     @Param('itemId') itemId: string,
