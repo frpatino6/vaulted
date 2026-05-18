@@ -87,8 +87,13 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
                   children: [
                     _WardrobeStatsBar(
                       state: statsState,
-                      onNeedsCleaningTap: () =>
-                          setState(() => _selectedCleaningStatus = 'needs_cleaning'),
+                      selectedCleaningStatus: _selectedCleaningStatus,
+                      onNeedsCleaningTap: () => setState(() {
+                        _selectedCleaningStatus =
+                            _selectedCleaningStatus == 'needs_cleaning'
+                                ? 'all'
+                                : 'needs_cleaning';
+                      }),
                     ),
                     _PrimaryFiltersRow(
                       selectedType: _selectedType,
@@ -282,10 +287,12 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
 class _WardrobeStatsBar extends StatelessWidget {
   const _WardrobeStatsBar({
     required this.state,
+    required this.selectedCleaningStatus,
     required this.onNeedsCleaningTap,
   });
 
   final AsyncValue<WardrobeStatsModel> state;
+  final String selectedCleaningStatus;
   final VoidCallback onNeedsCleaningTap;
 
   @override
@@ -294,6 +301,8 @@ class _WardrobeStatsBar extends StatelessWidget {
     if (stats == null) {
       return const SizedBox.shrink();
     }
+
+    final bool needsCleaningActive = selectedCleaningStatus == 'needs_cleaning';
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.md),
@@ -307,6 +316,7 @@ class _WardrobeStatsBar extends StatelessWidget {
               label: 'Needs cleaning',
               value: '${stats.needsCleaning}',
               glowColor: stats.needsCleaning > 0 ? Colors.amber : null,
+              isActive: needsCleaningActive,
               onTap: stats.needsCleaning > 0 ? onNeedsCleaningTap : null,
             ),
             const SizedBox(width: AppSpacing.sm),
@@ -342,6 +352,7 @@ class _StatChip extends StatelessWidget {
     this.glowColor,
     this.onTap,
     this.showOverdueDot = false,
+    this.isActive = false,
   });
 
   final String label;
@@ -350,10 +361,12 @@ class _StatChip extends StatelessWidget {
   final Color? glowColor;
   final VoidCallback? onTap;
   final bool showOverdueDot;
+  final bool isActive;
 
   @override
   Widget build(BuildContext context) {
-    final Color borderColor = glowColor ?? color ?? Colors.white10;
+    final Color accentColor = glowColor ?? color ?? Colors.white10;
+    final Color borderColor = isActive ? accentColor : accentColor;
     final List<BoxShadow> shadows = glowColor != null
         ? [
             BoxShadow(
@@ -373,8 +386,13 @@ class _StatChip extends StatelessWidget {
         ),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(999),
-          color: AppColors.surfaceVariant,
-          border: Border.all(color: borderColor, width: 0.8),
+          color: isActive
+              ? accentColor.withValues(alpha: 0.18)
+              : AppColors.surfaceVariant,
+          border: Border.all(
+            color: isActive ? accentColor : borderColor,
+            width: isActive ? 1.4 : 0.8,
+          ),
           boxShadow: shadows,
         ),
         child: Row(
@@ -383,7 +401,7 @@ class _StatChip extends StatelessWidget {
             Text(
               label,
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: AppColors.onSurfaceVariant,
+                    color: isActive ? accentColor : AppColors.onSurfaceVariant,
                   ),
             ),
             const SizedBox(width: 6),
@@ -394,6 +412,10 @@ class _StatChip extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                   ),
             ),
+            if (isActive) ...[
+              const SizedBox(width: 4),
+              Icon(Icons.close, size: 12, color: accentColor),
+            ],
           ],
         ),
       ),
