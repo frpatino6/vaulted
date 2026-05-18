@@ -461,6 +461,14 @@ export class NotificationsService {
     }
 
     await this.notificationLogRepository.delete(log.id);
+
+    await this.auditService.log({
+      tenantId,
+      userId,
+      action: 'notification.delete',
+      entityType: 'notification_log',
+      entityId: log.id,
+    });
   }
 
   async clearReadNotifications(

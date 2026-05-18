@@ -29,7 +29,7 @@ async function specExport(): Promise<void> {
 
   const document = SwaggerModule.createDocument(app, config);
 
-  const outputPath = path.resolve(__dirname, '../../docs/openapi.json');
+  const outputPath = path.resolve(__dirname, '../../../docs/openapi.json');
   fs.writeFileSync(outputPath, JSON.stringify(document, null, 2));
 
   console.log(`OpenAPI spec exported to: ${outputPath}`);
