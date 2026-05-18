@@ -402,8 +402,9 @@ ${PROMPT_TAIL[commandType]}`;
       });
     }
 
-    // Honour the spec: max 6 groups
-    return groups.slice(0, 6);
+    // Remove groups with no resolved steps (AI generated empty groups)
+    // then honour the spec: max 6 groups
+    return groups.filter((g) => g.steps.length > 0).slice(0, 6);
   }
 
   private async enforceRateLimit(tenantId: string): Promise<void> {
