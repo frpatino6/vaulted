@@ -13,6 +13,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums/role.enum';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
+import { CreateUserDirectDto } from './dto/create-user-direct.dto';
 import { InviteUserDto } from './dto/invite-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UsersService } from './users.service';
@@ -20,6 +21,12 @@ import { UsersService } from './users.service';
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
+
+  @Roles(Role.OWNER)
+  @Post()
+  createDirect(@CurrentUser() user: JwtPayload, @Body() dto: CreateUserDirectDto) {
+    return this.usersService.createDirect(user.tenantId, dto);
+  }
 
   @Roles(Role.OWNER, Role.MANAGER)
   @Post('invite')

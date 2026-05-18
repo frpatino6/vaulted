@@ -42,6 +42,14 @@ import '../../features/insurance/presentation/coverage_gaps_screen.dart';
 import '../../features/insurance/presentation/claim_draft_screen.dart';
 import '../../features/notifications/presentation/pages/notification_center_page.dart';
 import '../../features/notifications/presentation/pages/notification_preferences_page.dart';
+import '../../features/orchestrator/data/models/orchestrator_plan_model.dart';
+import '../../features/orchestrator/presentation/orchestrator_list_screen.dart';
+import '../../features/orchestrator/presentation/orchestrator_new_command_screen.dart';
+import '../../features/orchestrator/presentation/orchestrator_plan_detail_screen.dart';
+import '../../features/orchestrator/presentation/orchestrator_plan_review_screen.dart';
+import '../../features/orchestrator/presentation/orchestrator_progress_dashboard_screen.dart';
+import '../../features/orchestrator/presentation/orchestrator_task_group_screen.dart';
+import '../../features/orchestrator/presentation/orchestrator_step_guide_screen.dart';
 
 GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
   return GoRouter(
@@ -284,6 +292,49 @@ GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
           final id = state.pathParameters['id'] ?? '';
           return ClaimDraftScreen(policyId: id);
         },
+      ),
+      // ── Orchestrator routes ────────────────────────────────────────────────
+      GoRoute(
+        path: '/orchestrator',
+        builder: (context, state) => const OrchestratorListScreen(),
+      ),
+      GoRoute(
+        path: '/orchestrator/new',
+        builder: (context, state) => const OrchestratorNewCommandScreen(),
+      ),
+      GoRoute(
+        path: '/orchestrator/review',
+        builder: (context, state) {
+          final parsed = state.extra as ParsedPlanModel;
+          return OrchestratorPlanReviewScreen(parsed: parsed);
+        },
+      ),
+      GoRoute(
+        path: '/orchestrator/plans/:id',
+        builder: (context, state) => OrchestratorPlanDetailScreen(
+          planId: state.pathParameters['id']!,
+        ),
+      ),
+      GoRoute(
+        path: '/orchestrator/plans/:id/progress',
+        builder: (context, state) => OrchestratorProgressDashboardScreen(
+          planId: state.pathParameters['id']!,
+        ),
+      ),
+      GoRoute(
+        path: '/orchestrator/plans/:planId/groups/:groupId',
+        builder: (context, state) => OrchestratorTaskGroupScreen(
+          planId: state.pathParameters['planId']!,
+          groupId: state.pathParameters['groupId']!,
+        ),
+      ),
+      GoRoute(
+        path: '/orchestrator/plans/:planId/groups/:groupId/steps/:stepId',
+        builder: (context, state) => OrchestratorStepGuideScreen(
+          planId: state.pathParameters['planId']!,
+          groupId: state.pathParameters['groupId']!,
+          stepId: state.pathParameters['stepId']!,
+        ),
       ),
       GoRoute(
         path: '/unauthorized',

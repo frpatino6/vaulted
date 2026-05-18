@@ -14,6 +14,7 @@ import { createHash, randomBytes } from 'crypto';
 import { User } from './entities/user.entity';
 import { Role } from '../../common/enums/role.enum';
 import { CryptoService } from '../../common/services/crypto.service';
+import { CreateUserDirectDto } from './dto/create-user-direct.dto';
 import { InviteUserDto } from './dto/invite-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { TenantsService } from '../tenants/tenants.service';
@@ -67,6 +68,25 @@ export class UsersService {
     });
 
     return repo.save(user);
+  }
+
+  async createDirect(
+    tenantId: string,
+    dto: CreateUserDirectDto,
+  ): Promise<SanitizedUser> {
+    const user = await this.create({
+      tenantId,
+      email: dto.email,
+      password: dto.password,
+      role: dto.role,
+    });
+
+    if (dto.propertyIds?.length) {
+      user.propertyIds = dto.propertyIds;
+      await this.userRepository.save(user);
+    }
+
+    return this.sanitizeUser(user);
   }
 
   async invite(

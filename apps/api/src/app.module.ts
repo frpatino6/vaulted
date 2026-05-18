@@ -26,6 +26,7 @@ import { InsuranceModule } from './modules/insurance/insurance.module';
 import { PresenceModule } from './modules/presence/presence.module';
 import { HouseholdMembersModule } from './modules/household-members/household-members.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { OrchestratorModule } from './modules/orchestrator/orchestrator.module';
 import { UserDeviceToken } from './modules/notifications/entities/user-device-token.entity';
 import { NotificationPreference } from './modules/notifications/entities/notification-preference.entity';
 import { NotificationLog } from './modules/notifications/entities/notification-log.entity';
@@ -111,6 +112,7 @@ import { InsuredItem } from './modules/insurance/entities/insured-item.entity';
     PresenceModule,
     HouseholdMembersModule,
     NotificationsModule,
+    OrchestratorModule,
   ],
   providers: [
     AnomalyGuard,

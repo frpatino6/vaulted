@@ -34,6 +34,12 @@ export class NotificationPreference {
   @Column({ name: 'item_added', default: false })
   itemAdded!: boolean;
 
+  @Column({ name: 'orchestrator_assigned', default: true })
+  orchestratorAssigned!: boolean;
+
+  @Column({ name: 'orchestrator_completed', default: true })
+  orchestratorCompleted!: boolean;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;
 
