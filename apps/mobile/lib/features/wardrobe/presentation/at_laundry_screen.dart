@@ -133,6 +133,32 @@ class _AtLaundryScreenState extends ConsumerState<AtLaundryScreen> {
   }
 
   Future<void> _markReturned(AtLaundryItem item) async {
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1C1C26),
+        title: const Text('Mark as returned?'),
+        content: Text(
+          '${item.itemName} will be removed from the laundry list and its cleaning status will be updated.',
+          style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
+                color: AppColors.onSurfaceVariant,
+              ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Mark as returned'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
     try {
       final DryCleaningRepository repo =
           ref.read(dryCleaningRepositoryProvider);
@@ -300,12 +326,19 @@ class _LaundryItemTile extends StatelessWidget {
           FilledButton.tonal(
             onPressed: onReturned,
             style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               textStyle: Theme.of(context).textTheme.labelSmall,
               minimumSize: Size.zero,
             ),
-            child: const Text('Returned'),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.check_rounded, size: 13),
+                SizedBox(width: 4),
+                Text('Mark returned'),
+              ],
+            ),
           ),
         ],
       ),
