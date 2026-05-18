@@ -424,7 +424,7 @@ export class WardrobeService {
       };
     }
 
-    const itemIds = records.map((r) => r.itemId);
+    const itemIds = [...new Set(records.map((r) => r.itemId))];
     const items = await this.itemModel
       .find({ _id: { $in: itemIds }, tenantId })
       .select('_id name photos propertyId')
@@ -456,13 +456,22 @@ export class WardrobeService {
       propertyNameMap.set(String(prop._id), prop.name);
     }
 
+    const latestByItem = new Map<string, DryCleaningRecordDocument>();
+    for (const record of records) {
+      const existing = latestByItem.get(record.itemId);
+      if (!existing || record.sentDate > existing.sentDate) {
+        latestByItem.set(record.itemId, record);
+      }
+    }
+    const dedupedRecords = [...latestByItem.values()];
+
     const now = new Date();
     const msPerDay = 24 * 60 * 60 * 1000;
 
     const byPropertyMap = new Map<string, AtLaundryByProperty>();
     let overdueCount = 0;
 
-    for (const record of records) {
+    for (const record of dedupedRecords) {
       const item = itemMap.get(record.itemId);
       if (!item) {
         continue;
@@ -505,7 +514,7 @@ export class WardrobeService {
     }
 
     return {
-      totalItems: records.length,
+      totalItems: dedupedRecords.length,
       overdueItems: overdueCount,
       overdueThresholdDays: thresholdDays,
       byProperty: [...byPropertyMap.values()],
