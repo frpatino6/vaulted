@@ -4,7 +4,9 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { DataSource } from 'typeorm';
 import { InjectDataSource } from '@nestjs/typeorm';
+import Redis from 'ioredis';
 import * as QRCode from 'qrcode';
+import { InjectRedis } from '../../common/decorators/inject-redis.decorator';
 import { CreateItemDto, ItemStatus } from './dto/create-item.dto';
 import { LoanItemDto } from './dto/loan-item.dto';
 import { MoveItemDto } from './dto/move-item.dto';
@@ -73,6 +75,7 @@ export class InventoryService {
     private readonly mediaService: MediaService,
     @Optional() private readonly embeddingService?: EmbeddingService,
     @Optional() private readonly notificationsService?: NotificationsService,
+    @InjectRedis() private readonly redis?: Redis,
   ) {
     this.appUrl = (
       this.configService.get<string>('APP_URL') ?? 'http://localhost:3000'
@@ -364,6 +367,10 @@ export class InventoryService {
     }
 
     void this.indexItemEmbedding(item);
+
+    if (dto.attributes !== undefined && item.category === 'wardrobe') {
+      void this.redis?.del(`wardrobe:stats:${tenantId}`);
+    }
 
     const plain = item.toObject();
     plain.valuation = this.decryptValuation(plain.valuation, tenantId);
