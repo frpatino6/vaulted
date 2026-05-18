@@ -649,4 +649,39 @@ export class OrchestratorService {
 
     return this.signPlanPhotos(plan, tenantId, userId);
   }
+
+  async removeStep(
+    tenantId: string,
+    planId: string,
+    groupId: string,
+    stepId: string,
+    userId: string,
+  ): Promise<OrchestratorPlanDocument> {
+    const plan = await this.planModel.findOne({ _id: planId, tenantId }).exec();
+    if (!plan) throw new NotFoundException('Plan not found');
+    if (plan.status !== 'draft') {
+      throw new ForbiddenException('Steps can only be removed from draft plans');
+    }
+
+    const group = plan.taskGroups.find((g) => g.groupId === groupId);
+    if (!group) throw new NotFoundException('Task group not found');
+
+    const stepIndex = group.steps.findIndex((s) => s.stepId === stepId);
+    if (stepIndex === -1) throw new NotFoundException('Step not found');
+
+    group.steps.splice(stepIndex, 1);
+    plan.markModified('taskGroups');
+    await plan.save();
+
+    await this.auditService.log({
+      tenantId,
+      userId,
+      action: 'plan.step.removed',
+      entityType: 'orchestrator_plan',
+      entityId: planId,
+      metadata: { groupId, stepId },
+    });
+
+    return this.signPlanPhotos(plan, tenantId, userId);
+  }
 }

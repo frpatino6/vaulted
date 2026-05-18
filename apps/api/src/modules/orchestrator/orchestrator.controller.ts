@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -174,6 +175,25 @@ export class OrchestratorController {
       groupId,
       user.sub,
       dto,
+    );
+  }
+
+  // DELETE /orchestrator/plans/:planId/groups/:groupId/steps/:stepId
+  @Roles(Role.OWNER, Role.MANAGER)
+  @Delete('plans/:planId/groups/:groupId/steps/:stepId')
+  @HttpCode(HttpStatus.OK)
+  async removeStep(
+    @CurrentUser() user: JwtPayload,
+    @Param('planId') planId: string,
+    @Param('groupId') groupId: string,
+    @Param('stepId') stepId: string,
+  ) {
+    return this.orchestratorService.removeStep(
+      user.tenantId,
+      planId,
+      groupId,
+      stepId,
+      user.sub,
     );
   }
 }
