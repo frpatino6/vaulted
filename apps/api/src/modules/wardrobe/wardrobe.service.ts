@@ -31,6 +31,7 @@ export interface WardrobeStatsResponse {
   bySeason: Record<string, number>;
   outfitsCount: number;
   itemsWithOutfits: number;
+  overdueItems: number;
 }
 
 export interface AtLaundryItem {
@@ -353,6 +354,7 @@ export class WardrobeService {
       seasonAgg,
       outfitsCount,
       outfitItemIds,
+      activeCleanerRecords,
     ] = await Promise.all([
       this.itemModel.countDocuments({ tenantId, category: 'wardrobe', status: { $ne: 'disposed' } }).exec(),
       this.aggregateAttributeCounts(tenantId, 'type'),
@@ -360,7 +362,16 @@ export class WardrobeService {
       this.aggregateAttributeCounts(tenantId, 'season'),
       this.outfitModel.countDocuments({ tenantId }).exec(),
       this.outfitModel.distinct('itemIds', { tenantId }),
+      this.dryCleaningRecordModel.find({ tenantId, returnedDate: null }).select('sentDate').lean().exec(),
     ]);
+
+    const overdueThresholdDays = 7;
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const now = new Date();
+    const atCleanerCount = activeCleanerRecords.length;
+    const overdueCount = activeCleanerRecords.filter(
+      (r) => Math.floor((now.getTime() - new Date(r.sentDate).getTime()) / msPerDay) > overdueThresholdDays,
+    ).length;
 
     const response: WardrobeStatsResponse = {
       totalItems,
@@ -374,7 +385,7 @@ export class WardrobeService {
       byCleaning: {
         clean: cleaningAgg.clean ?? 0,
         needs_cleaning: cleaningAgg.needs_cleaning ?? 0,
-        at_dry_cleaner: cleaningAgg.at_dry_cleaner ?? 0,
+        at_dry_cleaner: atCleanerCount,
         unknown: cleaningAgg.unknown ?? 0,
       },
       bySeason: {
@@ -386,6 +397,7 @@ export class WardrobeService {
       outfitsCount,
       itemsWithOutfits: new Set(outfitItemIds.map((value) => String(value)))
         .size,
+      overdueItems: overdueCount,
     };
 
     await this.redis.set(cacheKey, JSON.stringify(response), 'EX', 300);
