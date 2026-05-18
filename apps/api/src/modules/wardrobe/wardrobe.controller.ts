@@ -311,6 +311,7 @@ export class WardrobeController {
   ) {
     return this.wardrobeService.getAtLaundry(
       user.tenantId,
+      user.sub,
       query.thresholdDays ?? 7,
     );
   }

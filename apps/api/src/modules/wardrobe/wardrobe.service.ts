@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import Redis from 'ioredis';
@@ -13,6 +14,7 @@ import {
   Property,
   PropertyDocument,
 } from '../properties/schemas/property.schema';
+import { MediaService } from '../media/media.service';
 import { CreateDryCleaningDto } from './dto/create-dry-cleaning.dto';
 import { CreateOutfitDto } from './dto/create-outfit.dto';
 import { UpdateOutfitDto } from './dto/update-outfit.dto';
@@ -59,6 +61,8 @@ export interface AtLaundryResponse {
 
 @Injectable()
 export class WardrobeService {
+  private readonly appUrl: string;
+
   constructor(
     @InjectModel(Outfit.name)
     private readonly outfitModel: Model<OutfitDocument>,
@@ -69,8 +73,14 @@ export class WardrobeService {
     @InjectModel(Property.name)
     private readonly propertyModel: Model<PropertyDocument>,
     private readonly inventoryService: InventoryService,
+    private readonly mediaService: MediaService,
+    private readonly configService: ConfigService,
     @InjectRedis() private readonly redis: Redis,
-  ) {}
+  ) {
+    this.appUrl = (
+      this.configService.get<string>('APP_URL') ?? 'http://localhost:3000'
+    ).replace(/\/+$/, '');
+  }
 
   async createOutfit(
     tenantId: string,
@@ -385,6 +395,7 @@ export class WardrobeService {
 
   async getAtLaundry(
     tenantId: string,
+    userId: string,
     thresholdDays: number = 7,
   ): Promise<AtLaundryResponse> {
     const records = await this.dryCleaningRecordModel
@@ -459,7 +470,9 @@ export class WardrobeService {
         recordId: String((record as { _id?: unknown })._id),
         itemId: record.itemId,
         itemName: item.name,
-        photoUrl: item.photos[0] ?? null,
+        photoUrl: item.photos[0]
+          ? `${this.appUrl}/api/media/${this.mediaService.generateFileToken(item.photos[0], tenantId, userId)}`
+          : null,
         cleanerName: record.cleanerName ?? null,
         sentDate: record.sentDate,
         daysAtCleaner,
