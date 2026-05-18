@@ -5,10 +5,14 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/app_bottom_nav.dart';
+import '../../household_members/data/models/household_member_model.dart';
+import '../../household_members/domain/household_members_notifier.dart';
 import '../../inventory/data/models/item_model.dart';
 import '../data/wardrobe_stats_repository.dart';
 import '../domain/wardrobe_notifier.dart';
 import '../domain/wardrobe_stats_provider.dart';
+import 'at_laundry_screen.dart';
+import 'wardrobe_filters_sheet.dart';
 import 'wardrobe_item_card.dart';
 
 class WardrobeScreen extends ConsumerStatefulWidget {
@@ -19,31 +23,11 @@ class WardrobeScreen extends ConsumerStatefulWidget {
 }
 
 class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
-  static const Map<String, String> _typeFilters = {
-    'all': 'All',
-    'clothing': 'Clothing',
-    'footwear': 'Footwear',
-    'accessories': 'Accessories',
-    'jewelry_watches': 'Jewelry & Watches',
-  };
-
-  static const Map<String, String> _cleaningFilters = {
-    'all': 'All',
-    'clean': 'Clean',
-    'needs_cleaning': 'Needs Cleaning',
-    'at_dry_cleaner': 'At Dry Cleaner',
-  };
-
-  static const Map<String, String> _seasonFilters = {
-    'all': 'All Seasons',
-    'spring_summer': 'Spring / Summer',
-    'fall_winter': 'Fall / Winter',
-    'all_season': 'All Season',
-  };
-
   String _selectedType = 'all';
   String _selectedCleaningStatus = 'all';
   String _selectedSeason = 'all';
+  String? _selectedMemberId;
+  List<ItemModel> _filteredItems = [];
 
   @override
   void initState() {
@@ -76,68 +60,82 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
             fontSize: 22,
           ),
         ),
+        actions: [
+          IconButton(
+            tooltip: 'View QR Codes',
+            icon: const Icon(Icons.qr_code_2_rounded),
+            color: AppColors.onSurfaceVariant,
+            onPressed: () => context.push('/qr-codes', extra: _filteredItems),
+          ),
+        ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Align(
-              alignment: Alignment.centerRight,
-              child: OutlinedButton.icon(
-                onPressed: () => context.push('/wardrobe/outfits'),
-                icon: const Icon(Icons.checkroom),
-                label: const Text('Outfits'),
+      body: RefreshIndicator(
+        onRefresh: () => ref.read(wardrobeNotifierProvider.notifier).refresh(),
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.md,
+                  AppSpacing.md,
+                  AppSpacing.md,
+                  0,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _WardrobeStatsBar(state: statsState),
+                    _PrimaryFiltersRow(
+                      selectedType: _selectedType,
+                      onTypeSelected: (String value) =>
+                          setState(() => _selectedType = value),
+                      onFiltersPressed: () => _showAdvancedFilters(context),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                  ],
+                ),
               ),
             ),
-            _WardrobeStatsBar(state: statsState),
-            _FiltersRow(
-              values: _typeFilters,
-              selected: _selectedType,
-              onSelected:
-                  (String value) => setState(() => _selectedType = value),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            _FiltersRow(
-              values: _cleaningFilters,
-              selected: _selectedCleaningStatus,
-              subtleSelected: true,
-              onSelected:
-                  (String value) =>
-                      setState(() => _selectedCleaningStatus = value),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            _FiltersRow(
-              values: _seasonFilters,
-              selected: _selectedSeason,
-              subtleSelected: true,
-              onSelected:
-                  (String value) => setState(() => _selectedSeason = value),
-            ),
-            const SizedBox(height: 24),
-            Expanded(
-              child: state.when(
-                data: (List<ItemModel> items) {
-                  final List<ItemModel> filtered = _applyFilters(items);
-                  if (filtered.isEmpty) return const _WardrobeEmptyState();
-                  return RefreshIndicator(
-                    onRefresh:
-                        () =>
-                            ref
-                                .read(wardrobeNotifierProvider.notifier)
-                                .refresh(),
-                    child: GridView.builder(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.only(bottom: 20),
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            childAspectRatio: 0.75,
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 12,
-                          ),
-                      itemCount: filtered.length,
-                      itemBuilder: (BuildContext context, int index) {
+            state.when(
+              loading: () => const SliverFillRemaining(
+                child: AppScreenSkeleton(showHeader: false),
+              ),
+              error: (Object error, StackTrace _) => SliverFillRemaining(
+                child: Center(
+                  child: Text(
+                    'Unable to load wardrobe items',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppColors.onBackground,
+                    ),
+                  ),
+                ),
+              ),
+              data: (List<ItemModel> items) {
+                final List<ItemModel> filtered = _applyFilters(items);
+                _filteredItems = filtered;
+                if (filtered.isEmpty) {
+                  return const SliverFillRemaining(
+                    child: _WardrobeEmptyState(),
+                  );
+                }
+                return SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.md,
+                    0,
+                    AppSpacing.md,
+                    20,
+                  ),
+                  sliver: SliverGrid(
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          childAspectRatio: 0.75,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                        ),
+                    delegate: SliverChildBuilderDelegate(
+                      (BuildContext ctx, int index) {
                         final ItemModel item = filtered[index];
                         return WardrobeItemCard(
                           item: item,
@@ -151,20 +149,11 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
                           onStatusTap: () => _showCleaningStatusPicker(item),
                         );
                       },
+                      childCount: filtered.length,
                     ),
-                  );
-                },
-                loading: () => const AppScreenSkeleton(showHeader: false),
-                error:
-                    (Object error, StackTrace _) => Center(
-                      child: Text(
-                        'Unable to load wardrobe items',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppColors.onBackground,
-                        ),
-                      ),
-                    ),
-              ),
+                  ),
+                );
+              },
             ),
           ],
         ),
@@ -183,8 +172,38 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
           attrs.cleaningStatus == _selectedCleaningStatus;
       final bool matchesSeason =
           _selectedSeason == 'all' || attrs.season == _selectedSeason;
-      return matchesType && matchesCleaning && matchesSeason;
+      final bool matchesMember =
+          _selectedMemberId == null || attrs.ownerMemberId == _selectedMemberId;
+      return matchesType && matchesCleaning && matchesSeason && matchesMember;
     }).toList();
+  }
+
+  void _showAdvancedFilters(BuildContext context) {
+    final List<HouseholdMemberModel> members = ref
+            .read(householdMembersNotifierProvider)
+            .valueOrNull
+            ?.where((HouseholdMemberModel m) => m.isActive)
+            .toList() ??
+        [];
+
+    showModalBottomSheet<WardrobeFiltersResult>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext ctx) => WardrobeFiltersSheet(
+        members: members,
+        selectedMemberId: _selectedMemberId,
+        selectedSeason: _selectedSeason,
+        selectedCleaningStatus: _selectedCleaningStatus,
+      ),
+    ).then((WardrobeFiltersResult? result) {
+      if (result == null || !mounted) return;
+      setState(() {
+        _selectedMemberId = result.memberId;
+        _selectedSeason = result.season;
+        _selectedCleaningStatus = result.cleaningStatus;
+      });
+    });
   }
 
   Future<void> _showCleaningStatusPicker(ItemModel item) async {
@@ -270,148 +289,243 @@ class _WardrobeStatsBar extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.md),
-      child: Wrap(
-        spacing: AppSpacing.sm,
-        runSpacing: AppSpacing.sm,
-        children: [
-          _StatChip(label: 'Total', value: '${stats.totalItems}'),
-          _StatChip(
-            label: 'Needs cleaning',
-            value: '${stats.needsCleaning}',
-            color: Colors.amber,
-          ),
-          _StatChip(
-            label: 'At cleaner',
-            value: '${stats.atDryCleaner}',
-            color: Colors.blue,
-          ),
-          _StatChip(label: 'Outfits', value: '${stats.outfitsCount}'),
-        ],
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            _StatChip(label: 'Total', value: '${stats.totalItems}'),
+            const SizedBox(width: AppSpacing.sm),
+            _StatChip(
+              label: 'Needs cleaning',
+              value: '${stats.needsCleaning}',
+              glowColor: stats.needsCleaning > 0 ? Colors.amber : null,
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            _StatChip(
+              label: 'At cleaner',
+              value: '${stats.atDryCleaner}',
+              color: Colors.blue,
+              showOverdueDot: stats.overdueItems > 0,
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const AtLaundryScreen(),
+                ),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            _StatChip(
+              label: 'Outfits',
+              value: '${stats.outfitsCount}',
+              onTap: () => context.push('/wardrobe/outfits'),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
 class _StatChip extends StatelessWidget {
-  const _StatChip({required this.label, required this.value, this.color});
+  const _StatChip({
+    required this.label,
+    required this.value,
+    this.color,
+    this.glowColor,
+    this.onTap,
+    this.showOverdueDot = false,
+  });
 
   final String label;
   final String value;
   final Color? color;
+  final Color? glowColor;
+  final VoidCallback? onTap;
+  final bool showOverdueDot;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: 6,
+    final Color borderColor = glowColor ?? color ?? Colors.white10;
+    final List<BoxShadow> shadows = glowColor != null
+        ? [
+            BoxShadow(
+              color: glowColor!.withValues(alpha: 0.45),
+              blurRadius: 8,
+              spreadRadius: 1,
+            ),
+          ]
+        : [];
+
+    final Widget chip = GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: 6,
+        ),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(999),
+          color: AppColors.surfaceVariant,
+          border: Border.all(color: borderColor, width: 0.8),
+          boxShadow: shadows,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: AppColors.onSurfaceVariant,
+                  ),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              value,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: glowColor ?? color ?? AppColors.onBackground,
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+          ],
+        ),
       ),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(999),
-        color: AppColors.surfaceVariant,
-        border: Border.all(color: color ?? Colors.white10),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            style: Theme.of(
-              context,
-            ).textTheme.labelSmall?.copyWith(color: AppColors.onSurfaceVariant),
-          ),
-          const SizedBox(width: 6),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: color ?? AppColors.onBackground,
-              fontWeight: FontWeight.w600,
+    );
+
+    if (!showOverdueDot) return chip;
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        chip,
+        Positioned(
+          top: -2,
+          right: -2,
+          child: Container(
+            width: 6,
+            height: 6,
+            decoration: const BoxDecoration(
+              color: AppColors.error,
+              shape: BoxShape.circle,
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
 
-class _FiltersRow extends StatelessWidget {
-  const _FiltersRow({
-    required this.values,
-    required this.selected,
-    required this.onSelected,
-    this.subtleSelected = false,
+class _PrimaryFiltersRow extends StatelessWidget {
+  const _PrimaryFiltersRow({
+    required this.selectedType,
+    required this.onTypeSelected,
+    required this.onFiltersPressed,
   });
 
-  final Map<String, String> values;
-  final String selected;
-  final ValueChanged<String> onSelected;
-  final bool subtleSelected;
+  static const Map<String, String> _types = {
+    'all': 'All',
+    'clothing': 'Clothing',
+    'footwear': 'Footwear',
+    'accessories': 'Accessories',
+  };
+
+  final String selectedType;
+  final ValueChanged<String> onTypeSelected;
+  final VoidCallback onFiltersPressed;
 
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
-        children:
-            values.entries.map((MapEntry<String, String> entry) {
-              final bool isSelected = selected == entry.key;
-              return Padding(
-                padding: const EdgeInsets.only(right: AppSpacing.sm),
-                child: FilterChip(
-                  visualDensity: VisualDensity.compact,
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  labelPadding: const EdgeInsets.symmetric(horizontal: 2),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 1,
+        children: [
+          _TuneButton(onPressed: onFiltersPressed),
+          const SizedBox(width: AppSpacing.sm),
+          ..._types.entries.map((MapEntry<String, String> entry) {
+            return Padding(
+              padding: const EdgeInsets.only(right: AppSpacing.sm),
+              child: _GlowFilterChip(
+                label: entry.value,
+                isSelected: selectedType == entry.key,
+                onTap: () => onTypeSelected(entry.key),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+}
+
+class _TuneButton extends StatelessWidget {
+  const _TuneButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        width: 34,
+        height: 34,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          color: AppColors.surfaceVariant,
+          border: Border.all(color: Colors.white12, width: 0.5),
+        ),
+        child: const Icon(
+          Icons.tune,
+          size: 18,
+          color: AppColors.onSurfaceVariant,
+        ),
+      ),
+    );
+  }
+}
+
+class _GlowFilterChip extends StatelessWidget {
+  const _GlowFilterChip({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(999),
+          color: AppColors.surfaceVariant,
+          border: Border.all(
+            color: isSelected ? AppColors.accent : Colors.white10,
+            width: isSelected ? 1.0 : 0.5,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: AppColors.accent.withValues(alpha: 0.35),
+                    blurRadius: 8,
+                    spreadRadius: 1,
                   ),
-                  label:
-                      subtleSelected
-                          ? Container(
-                            padding: const EdgeInsets.only(bottom: 2),
-                            decoration: BoxDecoration(
-                              border:
-                                  isSelected
-                                      ? const Border(
-                                        bottom: BorderSide(
-                                          color: AppColors.accent,
-                                          width: 1,
-                                        ),
-                                      )
-                                      : null,
-                            ),
-                            child: Text(entry.value),
-                          )
-                          : Text(entry.value),
-                  selected: isSelected,
-                  showCheckmark: false,
-                  selectedColor:
-                      subtleSelected
-                          ? AppColors.surfaceVariant
-                          : AppColors.accent.withValues(alpha: 0.15),
-                  backgroundColor: AppColors.surfaceVariant,
-                  side: BorderSide(
-                    color:
-                        subtleSelected
-                            ? Colors.white10
-                            : isSelected
-                            ? AppColors.accent
-                            : Colors.white10,
-                    width: 0.5,
-                  ),
-                  labelStyle: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color:
-                        isSelected
-                            ? subtleSelected
-                                ? AppColors.onBackground
-                                : AppColors.accent
-                            : AppColors.onBackground.withValues(alpha: 0.85),
-                    fontSize: 11,
-                  ),
-                  onSelected: (_) => onSelected(entry.key),
-                ),
-              );
-            }).toList(),
+                ]
+              : [],
+        ),
+        child: Text(
+          label,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: isSelected
+                    ? Colors.white
+                    : AppColors.onBackground.withValues(alpha: 0.7),
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
+                fontSize: 12,
+              ),
+        ),
       ),
     );
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
@@ -7,6 +8,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../data/models/maintenance_model.dart';
 import '../domain/maintenance_notifier.dart';
+import 'add_maintenance_sheet.dart';
 
 class MaintenanceListScreen extends ConsumerStatefulWidget {
   const MaintenanceListScreen({super.key});
@@ -46,370 +48,507 @@ class _MaintenanceListScreenState extends ConsumerState<MaintenanceListScreen>
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(maintenanceListNotifierProvider);
-    final allRecords = state.valueOrNull ?? const <MaintenanceModel>[];
-    final overdueRecords = allRecords.where((r) => r.isOverdue).toList();
-    final dueSoonRecords = allRecords.where((r) => r.isDueSoon).toList();
-    final upcomingRecords =
-        allRecords
-            .where((r) => r.isPending && !r.isDueSoon && !r.isOverdue)
-            .toList();
-    final completedRecords = allRecords.where((r) => r.isCompleted).toList();
+    final all = state.valueOrNull ?? const <MaintenanceModel>[];
+    final overdue = all.where((r) => r.isOverdue).toList();
+    final dueSoon = all.where((r) => r.isDueSoon).toList();
+    final upcoming =
+        all.where((r) => r.isPending && !r.isDueSoon && !r.isOverdue).toList();
+    final completed = all.where((r) => r.isCompleted).toList();
 
-    final showInitialSkeleton =
+    final showSkeleton =
         !_initialLoadCompleted &&
         !state.hasError &&
         (state.isLoading || (state.valueOrNull?.isEmpty ?? true));
     final renderState =
-        showInitialSkeleton
-            ? const AsyncLoading<List<MaintenanceModel>>()
-            : state;
+        showSkeleton ? const AsyncLoading<List<MaintenanceModel>>() : state;
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.background,
         foregroundColor: AppColors.onBackground,
+        elevation: 0,
+        scrolledUnderElevation: 0,
         title: Text(
           'Maintenance',
-          style: AppTypography.headlineSmall.copyWith(
+          style: AppTypography.displaySerif.copyWith(
             color: AppColors.onBackground,
-            fontWeight: FontWeight.w600,
+            fontSize: 22,
           ),
         ),
         bottom: TabBar(
           controller: _tabController,
-          isScrollable: false,
+          isScrollable: true,
+          tabAlignment: TabAlignment.start,
+          indicatorColor: AppColors.accent,
           labelColor: AppColors.accent,
           unselectedLabelColor: AppColors.onSurfaceVariant,
-          indicatorColor: AppColors.accent,
+          labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
           tabs: [
-            _buildTabTitle('Overdue', overdueRecords.length),
-            _buildTabTitle('This Week', dueSoonRecords.length),
-            _buildTabTitle('Upcoming', upcomingRecords.length),
-            _buildTabTitle('Completed', completedRecords.length),
+            Tab(text: overdue.isEmpty ? 'Overdue' : 'Overdue  ${overdue.length}'),
+            Tab(text: dueSoon.isEmpty ? 'This Week' : 'This Week  ${dueSoon.length}'),
+            Tab(text: upcoming.isEmpty ? 'Upcoming' : 'Upcoming  ${upcoming.length}'),
+            Tab(text: 'Completed'),
           ],
         ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: AppColors.accent,
+        foregroundColor: Colors.black,
+        tooltip: 'Schedule maintenance',
+        onPressed: () async {
+          final record = await showAddMaintenanceSheet(context);
+          if (record != null && mounted) {
+            ref.read(maintenanceListNotifierProvider.notifier).load();
+          }
+        },
+        child: const Icon(Icons.add_rounded),
       ),
       body: renderState.when(
-        data:
-            (_) => TabBarView(
-              controller: _tabController,
-              children: [
-                _buildTab(overdueRecords, tab: _tabs[0]),
-                _buildTab(dueSoonRecords, tab: _tabs[1]),
-                _buildTab(upcomingRecords, tab: _tabs[2]),
-                _buildTab(completedRecords, tab: _tabs[3]),
-              ],
-            ),
-        loading: () => const AppScreenSkeleton(showHeader: false),
-        error:
-            (e, _) => Center(
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      MaintenanceListNotifier.errorMessage(e),
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: AppColors.error),
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    FilledButton.tonalIcon(
-                      onPressed:
-                          () =>
-                              ref
-                                  .read(
-                                    maintenanceListNotifierProvider.notifier,
-                                  )
-                                  .load(),
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('Retry'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-      ),
-    );
-  }
-
-  Tab _buildTabTitle(String label, int count) {
-    return Tab(
-      child: Text(
-        '$label ($count)',
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-    );
-  }
-
-  Widget _buildTab(List<MaintenanceModel> records, {required String tab}) {
-    if (records.isEmpty) {
-      return _EmptyTabState(
-        tab: tab,
-        onRefresh:
-            () => ref.read(maintenanceListNotifierProvider.notifier).load(),
-      );
-    }
-
-    return RefreshIndicator(
-      color: AppColors.accent,
-      onRefresh:
-          () => ref.read(maintenanceListNotifierProvider.notifier).load(),
-      child: ListView.separated(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        itemCount: records.length,
-        separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
-        itemBuilder: (context, index) {
-          final record = records[index];
-          return _MaintenanceCard(
-            record: record,
-            onTap:
-                () => context.push('/maintenance/${record.id}', extra: record),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _EmptyTabState extends StatelessWidget {
-  const _EmptyTabState({required this.tab, required this.onRefresh});
-
-  final String tab;
-  final VoidCallback onRefresh;
-
-  @override
-  Widget build(BuildContext context) {
-    final String title;
-    final String subtitle;
-    final IconData icon;
-
-    switch (tab) {
-      case 'Overdue':
-        title = 'No overdue maintenance';
-        subtitle = 'Everything pending is currently on schedule.';
-        icon = Icons.task_alt;
-        break;
-      case 'This Week':
-        title = 'No maintenance due this week';
-        subtitle = 'Upcoming tasks will appear here automatically.';
-        icon = Icons.event_available;
-        break;
-      case 'Upcoming':
-        title = 'No upcoming maintenance';
-        subtitle = 'Create tasks from item details to plan ahead.';
-        icon = Icons.event_note;
-        break;
-      default:
-        title = 'No completed maintenance yet';
-        subtitle = 'Completed tasks will build your maintenance history.';
-        icon = Icons.history;
-        break;
-    }
-
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+        data: (_) => TabBarView(
+          controller: _tabController,
           children: [
-            Icon(icon, size: 44, color: AppColors.onSurfaceVariant),
-            const SizedBox(height: AppSpacing.md),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: AppTypography.titleMedium.copyWith(
-                color: AppColors.onBackground,
-              ),
+            _MaintenanceList(
+              records: overdue,
+              emptyMessage: 'All caught up',
+              emptySubtitle: 'No overdue maintenance at this time.',
+              onRefresh: () =>
+                  ref.read(maintenanceListNotifierProvider.notifier).load(),
             ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              subtitle,
-              textAlign: TextAlign.center,
-              style: AppTypography.bodySmall.copyWith(
-                color: AppColors.onSurfaceVariant,
-              ),
+            _MaintenanceList(
+              records: dueSoon,
+              emptyMessage: 'Nothing due this week',
+              emptySubtitle: 'Upcoming tasks will appear here automatically.',
+              onRefresh: () =>
+                  ref.read(maintenanceListNotifierProvider.notifier).load(),
             ),
-            const SizedBox(height: AppSpacing.md),
-            OutlinedButton.icon(
-              onPressed: onRefresh,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Refresh'),
+            _MaintenanceList(
+              records: upcoming,
+              emptyMessage: 'Schedule looks clear',
+              emptySubtitle: 'Add tasks from item details to plan ahead.',
+              onRefresh: () =>
+                  ref.read(maintenanceListNotifierProvider.notifier).load(),
+            ),
+            _MaintenanceList(
+              records: completed,
+              emptyMessage: 'No history yet',
+              emptySubtitle: 'Completed maintenance will appear here.',
+              onRefresh: () =>
+                  ref.read(maintenanceListNotifierProvider.notifier).load(),
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _MaintenanceCard extends ConsumerWidget {
-  const _MaintenanceCard({required this.record, required this.onTap});
-
-  final MaintenanceModel record;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final statusColor = _statusColor(record);
-    final dateStr = _formatDate(record.scheduledDate);
-
-    return Card(
-      color: AppColors.surface,
-      margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: statusColor.withValues(alpha: 0.3), width: 1),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
+        loading: () => const AppScreenSkeleton(showHeader: false, cardCount: 5),
+        error: (e, _) => Center(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      record.title,
-                      style: AppTypography.bodyLarge.copyWith(
-                        color: AppColors.onBackground,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  _StatusChip(status: record.status, color: statusColor),
-                ],
+              const Icon(Icons.error_outline,
+                  color: AppColors.error, size: 40),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                MaintenanceListNotifier.errorMessage(e),
+                style:
+                    const TextStyle(color: AppColors.onSurfaceVariant),
+                textAlign: TextAlign.center,
               ),
-              const SizedBox(height: AppSpacing.xs),
-              Row(
-                children: [
-                  Icon(
-                    Icons.calendar_today_outlined,
-                    size: 14,
-                    color: AppColors.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    dateStr,
-                    style: AppTypography.bodySmall.copyWith(
-                      color: AppColors.onSurfaceVariant,
-                    ),
-                  ),
-                  if (record.isRecurring) ...[
-                    const SizedBox(width: AppSpacing.sm),
-                    Icon(
-                      Icons.repeat,
-                      size: 14,
-                      color: AppColors.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Every ${record.recurrenceIntervalDays ?? '?'} days',
-                      style: AppTypography.bodySmall.copyWith(
-                        color: AppColors.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ],
+              const SizedBox(height: AppSpacing.md),
+              TextButton(
+                onPressed: () =>
+                    ref.read(maintenanceListNotifierProvider.notifier).load(),
+                child: const Text('Retry'),
               ),
-              if (record.isAiSuggested && record.aiRiskScore != null) ...[
-                const SizedBox(height: AppSpacing.xs),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.auto_awesome,
-                      size: 14,
-                      color: AppColors.accentLight,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'AI suggested · Risk ${record.aiRiskScore!.toInt()}%',
-                      style: AppTypography.bodySmall.copyWith(
-                        color: AppColors.accentLight,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-              if (record.isPending || record.isOverdue) ...[
-                const SizedBox(height: AppSpacing.sm),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Tap for details',
-                      style: AppTypography.bodySmall.copyWith(
-                        color: AppColors.onSurfaceVariant,
-                      ),
-                    ),
-                    FilledButton.tonal(
-                      onPressed: () => _markComplete(context, ref),
-                      child: const Text('Complete'),
-                    ),
-                  ],
-                ),
-              ],
             ],
           ),
         ),
       ),
     );
   }
-
-  Color _statusColor(MaintenanceModel r) {
-    if (r.isOverdue) return const Color(0xFFCF6679);
-    if (r.isUrgent) return const Color(0xFFE07B39);
-    if (r.isDueSoon) return const Color(0xFFD4AF37);
-    if (r.isCompleted) return const Color(0xFF6DB86F);
-    return const Color(0xFF6A6A7E);
-  }
-
-  String _formatDate(String isoDate) {
-    final dt = DateTime.tryParse(isoDate);
-    if (dt == null) return isoDate;
-    return DateFormat.yMMMd().format(dt);
-  }
-
-  Future<void> _markComplete(BuildContext context, WidgetRef ref) async {
-    await ref
-        .read(maintenanceListNotifierProvider.notifier)
-        .complete(record.id);
-    if (context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Marked as completed')));
-    }
-  }
 }
 
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.status, required this.color});
+// ---------------------------------------------------------------------------
+// List + empty state — Tarea 3: ConstrainedBox for tablet/web
+// ---------------------------------------------------------------------------
 
-  final String status;
-  final Color color;
+class _MaintenanceList extends StatelessWidget {
+  const _MaintenanceList({
+    required this.records,
+    required this.emptyMessage,
+    required this.emptySubtitle,
+    required this.onRefresh,
+  });
+
+  final List<MaintenanceModel> records;
+  final String emptyMessage;
+  final String emptySubtitle;
+  final Future<void> Function() onRefresh;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: 0.4)),
-      ),
-      child: Text(
-        status.toUpperCase(),
-        style: AppTypography.labelSmall.copyWith(
-          color: color,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.5,
+    if (records.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.xl),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.build_circle_outlined,
+                size: 56,
+                color: AppColors.onSurfaceVariant.withValues(alpha: 0.3),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                emptyMessage,
+                style: const TextStyle(
+                  color: AppColors.onBackground,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                emptySubtitle,
+                style: const TextStyle(
+                  color: AppColors.onSurfaceVariant,
+                  fontSize: 14,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      color: AppColors.accent,
+      backgroundColor: AppColors.surfaceVariant,
+      onRefresh: onRefresh,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 800),
+          child: ListView.builder(
+            padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md, AppSpacing.sm, AppSpacing.md, 120),
+            itemCount: records.length,
+            itemBuilder: (context, i) => Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: MaintenanceCard(
+                record: records[i],
+                onTap: () => context.push(
+                  '/maintenance/${records[i].id}',
+                  extra: records[i],
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );
   }
+}
+
+// ---------------------------------------------------------------------------
+// Card — Tarea 1 + 2: cleaned subtitle, risk badge, complete action, Slidable
+// ---------------------------------------------------------------------------
+
+class MaintenanceCard extends ConsumerWidget {
+  const MaintenanceCard({super.key, required this.record, required this.onTap});
+
+  final MaintenanceModel record;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final info = _statusInfo(record);
+    final icon = _leadingIcon(record);
+
+    return Slidable(
+      key: ValueKey(record.id),
+      endActionPane: ActionPane(
+        motion: const DrawerMotion(),
+        extentRatio: 0.45,
+        children: [
+          SlidableAction(
+            onPressed: (_) => context.push(
+              '/maintenance/${record.id}',
+              extra: record,
+            ),
+            backgroundColor: const Color(0xFF2196F3),
+            foregroundColor: Colors.white,
+            icon: Icons.schedule_rounded,
+            label: 'Reschedule',
+          ),
+          SlidableAction(
+            onPressed: (_) => ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Snooze coming soon'),
+                duration: Duration(seconds: 2),
+              ),
+            ),
+            backgroundColor: AppColors.surfaceVariant,
+            foregroundColor: AppColors.onSurface,
+            icon: Icons.snooze_rounded,
+            label: 'Snooze',
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            padding: const EdgeInsets.only(
+              left: AppSpacing.md,
+              top: AppSpacing.md,
+              bottom: AppSpacing.md,
+              right: AppSpacing.xs,
+            ),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceVariant,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: info.color.withValues(alpha: 0.2)),
+            ),
+            child: Row(
+              children: [
+                // Leading icon
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: info.color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, color: info.color, size: 22),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                // Content
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Title row + risk badge
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              record.title,
+                              style: const TextStyle(
+                                color: AppColors.onBackground,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (record.isAiSuggested &&
+                              record.aiRiskScore != null) ...[
+                            const SizedBox(width: 6),
+                            _RiskBadge(score: record.aiRiskScore!),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      // Subtitle: single clean line
+                      _SubtitleLine(record: record, statusColor: info.color),
+                      // Recurrence tag
+                      if (record.isRecurring) ...[
+                        const SizedBox(height: 3),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.repeat_rounded,
+                              size: 11,
+                              color: AppColors.onSurfaceVariant,
+                            ),
+                            const SizedBox(width: 3),
+                            Text(
+                              'Every ${record.recurrenceIntervalDays ?? '?'}d',
+                              style: const TextStyle(
+                                color: AppColors.onSurfaceVariant,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                // Trailing: quick complete button
+                IconButton(
+                  icon: Icon(
+                    record.isCompleted
+                        ? Icons.check_circle_rounded
+                        : Icons.check_circle_outline_rounded,
+                    color: record.isCompleted
+                        ? AppColors.accent
+                        : AppColors.onSurfaceVariant.withValues(alpha: 0.45),
+                  ),
+                  iconSize: 26,
+                  tooltip: record.isCompleted ? 'Completed' : 'Mark as done',
+                  onPressed: record.isCompleted
+                      ? null
+                      : () async {
+                          await ref
+                              .read(maintenanceListNotifierProvider.notifier)
+                              .complete(record.id);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Marked as completed'),
+                                duration: Duration(seconds: 2),
+                              ),
+                            );
+                          }
+                        },
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  IconData _leadingIcon(MaintenanceModel r) {
+    if (r.isCompleted) return Icons.check_circle_outline_rounded;
+    if (r.isAiSuggested) return Icons.auto_awesome_rounded;
+    if (r.isRecurring) return Icons.repeat_rounded;
+    return Icons.build_outlined;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Risk badge — traffic-light coloring for aiRiskScore
+// ---------------------------------------------------------------------------
+
+class _RiskBadge extends StatelessWidget {
+  const _RiskBadge({required this.score});
+
+  final double score;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = score >= 80
+        ? const Color(0xFFCF6679)
+        : score >= 50
+        ? const Color(0xFFFF9800)
+        : const Color(0xFF6DB86F);
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.shield_outlined, size: 12, color: color),
+        const SizedBox(width: 2),
+        Text(
+          '${score.toInt()}%',
+          style: TextStyle(
+            color: color,
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Subtitle line — date + urgency on one clean line (Tarea 1)
+// ---------------------------------------------------------------------------
+
+class _SubtitleLine extends StatelessWidget {
+  const _SubtitleLine({required this.record, required this.statusColor});
+
+  final MaintenanceModel record;
+  final Color statusColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final dateStr = _shortDate(record.scheduledDate);
+    final urgency = _urgencyLabel(record);
+
+    if (urgency == null) {
+      return Text(
+        dateStr,
+        style: const TextStyle(
+          color: AppColors.onSurfaceVariant,
+          fontSize: 12,
+          fontWeight: FontWeight.w400,
+        ),
+      );
+    }
+
+    final dateColor = record.isOverdue || record.isUrgent
+        ? statusColor
+        : AppColors.onSurfaceVariant;
+
+    return RichText(
+      text: TextSpan(
+        children: [
+          TextSpan(
+            text: '$dateStr • ',
+            style: TextStyle(
+              color: dateColor,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          TextSpan(
+            text: urgency,
+            style: TextStyle(
+              color: statusColor,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _shortDate(String iso) {
+    final dt = DateTime.tryParse(iso);
+    if (dt == null) return iso;
+    return DateFormat('MMM d').format(dt);
+  }
+
+  String? _urgencyLabel(MaintenanceModel r) {
+    final dt = DateTime.tryParse(r.scheduledDate);
+    if (dt == null) return null;
+    final now = DateTime.now();
+    if (r.isOverdue) {
+      final days = now.difference(dt).inDays;
+      return days <= 0 ? 'due today' : '$days days overdue';
+    }
+    final diff = dt.difference(now).inDays;
+    if (diff == 0) return 'due today';
+    if (diff == 1) return 'tomorrow';
+    if (diff <= 7) return 'in $diff days';
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Status helpers
+// ---------------------------------------------------------------------------
+
+class _StatusInfo {
+  const _StatusInfo(this.color, this.label);
+  final Color color;
+  final String label;
+}
+
+_StatusInfo _statusInfo(MaintenanceModel r) {
+  if (r.isOverdue) return const _StatusInfo(Color(0xFFCF6679), 'OVERDUE');
+  if (r.isUrgent) return const _StatusInfo(Color(0xFFE07B39), 'URGENT');
+  if (r.isDueSoon) return const _StatusInfo(Color(0xFFD4AF37), 'DUE SOON');
+  if (r.isCompleted) return const _StatusInfo(Color(0xFF6DB86F), 'DONE');
+  if (r.isCancelled) return const _StatusInfo(Color(0xFF9E9E9E), 'CANCELLED');
+  return const _StatusInfo(Color(0xFF8A8AA8), 'PENDING');
 }

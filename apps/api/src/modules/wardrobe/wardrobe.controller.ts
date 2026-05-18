@@ -8,6 +8,7 @@ import {
   Param,
   Post,
   Put,
+  Query,
   Req,
 } from '@nestjs/common';
 import { Request } from 'express';
@@ -17,6 +18,7 @@ import { Role } from '../../common/enums/role.enum';
 import { AuditService } from '../audit/audit.service';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { AddOutfitItemDto } from './dto/add-outfit-item.dto';
+import { AtLaundryQueryDto } from './dto/at-laundry-query.dto';
 import { CreateDryCleaningDto } from './dto/create-dry-cleaning.dto';
 import { CreateOutfitDto } from './dto/create-outfit.dto';
 import { UpdateOutfitDto } from './dto/update-outfit.dto';
@@ -56,8 +58,11 @@ export class WardrobeController {
 
   @Get('outfits')
   @Roles(Role.OWNER, Role.MANAGER)
-  listOutfits(@CurrentUser() user: JwtPayload) {
-    return this.wardrobeService.listOutfits(user.tenantId);
+  listOutfits(
+    @CurrentUser() user: JwtPayload,
+    @Query('ownerMemberId') ownerMemberId?: string,
+  ) {
+    return this.wardrobeService.listOutfits(user.tenantId, ownerMemberId);
   }
 
   @Get('outfits/:id')
@@ -230,6 +235,45 @@ export class WardrobeController {
     });
 
     return record;
+  }
+
+  @Roles(Role.OWNER, Role.MANAGER)
+  @Put('dry-cleaning/:itemId/return-latest')
+  async markDryCleaningReturnedByItem(
+    @CurrentUser() user: JwtPayload,
+    @Param('itemId') itemId: string,
+    @Req() req: Request,
+  ) {
+    const record = await this.wardrobeService.markDryCleaningReturnedByItem(
+      user.tenantId,
+      itemId,
+    );
+
+    if (record) {
+      await this.auditService.log({
+        tenantId: user.tenantId,
+        userId: user.sub,
+        action: 'wardrobe.dry_cleaning.returned',
+        entityType: 'dry_cleaning_record',
+        entityId: String((record as { _id?: unknown })._id),
+        metadata: { itemId },
+        ipAddress: req.ip,
+      });
+    }
+
+    return record ?? { returned: false };
+  }
+
+  @Roles(Role.OWNER, Role.MANAGER)
+  @Get('at-laundry')
+  getAtLaundry(
+    @CurrentUser() user: JwtPayload,
+    @Query() query: AtLaundryQueryDto,
+  ) {
+    return this.wardrobeService.getAtLaundry(
+      user.tenantId,
+      query.thresholdDays ?? 7,
+    );
   }
 
   @Roles(Role.OWNER, Role.MANAGER)

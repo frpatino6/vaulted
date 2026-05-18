@@ -48,6 +48,11 @@ _$ItemModelImpl _$$ItemModelImplFromJson(
   serialNumber: json['serialNumber'] as String?,
   locationDetail: json['locationDetail'] as String?,
   sectionId: json['sectionId'] as String?,
+  sectionPhoto: json['sectionPhoto'] as String?,
+  sectionCode: json['sectionCode'] as String?,
+  sectionFurnitureName: json['sectionFurnitureName'] as String?,
+  sectionBoundingBox: _itemBoundingBoxFromJson(json['sectionBoundingBox']),
+  quantity: (json['quantity'] as num?)?.toInt() ?? 1,
   valuation:
       json['valuation'] == null
           ? null
@@ -78,6 +83,11 @@ Map<String, dynamic> _$$ItemModelImplToJson(_$ItemModelImpl instance) =>
       'serialNumber': instance.serialNumber,
       'locationDetail': instance.locationDetail,
       'sectionId': instance.sectionId,
+      'sectionPhoto': instance.sectionPhoto,
+      'sectionCode': instance.sectionCode,
+      'sectionFurnitureName': instance.sectionFurnitureName,
+      'sectionBoundingBox': _itemBoundingBoxToJson(instance.sectionBoundingBox),
+      'quantity': instance.quantity,
       'valuation': instance.valuation,
       if (instance.attributes case final value?) 'attributes': value,
       'documents': instance.documents,

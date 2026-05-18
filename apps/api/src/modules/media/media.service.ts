@@ -138,9 +138,15 @@ export class MediaService {
       }
 
       res.setHeader('Content-Type', mimeType);
-      res.setHeader('Cache-Control', 'private, no-store');
+      res.setHeader('Cache-Control', 'private, max-age=7200, immutable');
 
-      await pipeline(createReadStream(fullPath), res);
+      try {
+        await pipeline(createReadStream(fullPath), res);
+      } catch (err: unknown) {
+        // Client closed the connection before the stream finished — not an error
+        if ((err as NodeJS.ErrnoException).code === 'ERR_STREAM_PREMATURE_CLOSE') return;
+        throw err;
+      }
       return;
     }
 
@@ -305,9 +311,10 @@ export class MediaService {
   }
 
   normalizeKey(key: string): string {
-    const uploadsPrefix = `${this.appUrl}/uploads/`;
-    if (key.startsWith(uploadsPrefix)) {
-      return key.slice(uploadsPrefix.length);
+    // Strip any domain's /uploads/ prefix — handles domain migrations where APP_URL changes.
+    const uploadsMatch = key.match(/^https?:\/\/[^/]+\/uploads\/(.+)$/);
+    if (uploadsMatch) {
+      return uploadsMatch[1];
     }
 
     const gcsPublicPrefix = this.bucketName
@@ -319,16 +326,16 @@ export class MediaService {
 
     // Already a signed media token URL — extract the original fileKey from the JWT payload.
     // Use decode (not verify) so expired tokens still resolve to the correct fileKey.
-    const mediaTokenPrefix = `${this.appUrl}/api/media/`;
-    if (key.startsWith(mediaTokenPrefix)) {
-      const token = key.slice(mediaTokenPrefix.length);
+    // Match any domain's /api/media/ prefix to handle domain migrations.
+    const mediaTokenMatch = key.match(/^https?:\/\/[^/]+\/api\/media\/(.+)$/);
+    if (mediaTokenMatch) {
+      const token = mediaTokenMatch[1];
       try {
         const payload = this.jwtService.decode<{ fileKey: string }>(token);
         if (payload?.fileKey) return payload.fileKey;
       } catch {
         // ignore
       }
-      return key;
     }
 
     return key;

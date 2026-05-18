@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AuditModule } from '../audit/audit.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { MaintenanceRecord, MaintenanceRecordSchema } from './schemas/maintenance-record.schema';
 import { Item, ItemSchema } from '../inventory/schemas/item.schema';
 import { MaintenanceController } from './maintenance.controller';
@@ -14,6 +15,7 @@ import { MaintenanceScheduler } from './maintenance.scheduler';
       { name: Item.name, schema: ItemSchema },
     ]),
     AuditModule,
+    NotificationsModule,
   ],
   controllers: [MaintenanceController],
   providers: [MaintenanceService, MaintenanceScheduler],

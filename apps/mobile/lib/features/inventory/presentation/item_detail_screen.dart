@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -18,8 +19,11 @@ import '../../maintenance/domain/maintenance_notifier.dart';
 import '../../maintenance/presentation/add_maintenance_sheet.dart';
 import '../data/item_repository_provider.dart';
 import '../data/models/item_model.dart';
+import '../../properties/data/models/room_section_model.dart';
 import '../domain/item_detail_notifier.dart';
 import '../../properties/domain/property_detail_notifier.dart';
+import '../../household_members/data/models/household_member_model.dart';
+import '../../household_members/domain/household_members_notifier.dart';
 import 'edit_item_sheet.dart';
 import '../../../shared/widgets/item_card.dart';
 import '../../../shared/widgets/status_badge.dart';
@@ -85,6 +89,8 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
             )
             .toList() ??
         const [];
+    final List<HouseholdMemberModel> members =
+        ref.watch(householdMembersNotifierProvider).valueOrNull ?? [];
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -130,12 +136,23 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                         const SizedBox(height: AppSpacing.lg),
                       _SpecsGrid(
                         item: item,
-                        resolvedRoomName: _resolveRoomName(item.roomId),
-                        resolvedSectionLabel: _resolveSectionLabel(item.roomId, item.sectionId),
+                        resolvedRoomName: item.roomName ?? _resolveRoomName(item.roomId),
+                        resolvedSectionLabel: _resolveSectionLabel(item.roomId, item.sectionId, item: item),
                       ),
+                      if (item.sectionPhoto != null) ...[
+                        const SizedBox(height: AppSpacing.md),
+                        _SectionPhotoPreview(
+                          photoUrl: item.sectionPhoto!,
+                          sectionLabel: _resolveSectionLabel(item.roomId, item.sectionId, item: item),
+                          boundingBox: item.sectionBoundingBox,
+                        ),
+                      ],
                       if (item.isWardrobe && item.hasWardrobeDetails) ...[
                         const SizedBox(height: AppSpacing.lg),
-                        _WardrobeDetailSection(attrs: item.wardrobeAttributes),
+                        _WardrobeDetailSection(
+                          attrs: item.wardrobeAttributes,
+                          members: members,
+                        ),
                       ],
                       if (item.isWardrobe) ...[
                         const SizedBox(height: AppSpacing.md),
@@ -360,7 +377,9 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
       // Use gallery (file picker) directly — it works in all modern browsers.
       file = await picker.pickImage(
         source: ImageSource.gallery,
-        imageQuality: 85,
+        imageQuality: 80,
+        maxWidth: 1920,
+        maxHeight: 1920,
       );
     } else {
       final source = await showModalBottomSheet<ImageSource?>(
@@ -415,7 +434,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
             ),
       );
       if (source == null || !context.mounted) return;
-      file = await picker.pickImage(source: source, imageQuality: 85);
+      file = await picker.pickImage(source: source, imageQuality: 80, maxWidth: 1920, maxHeight: 1920);
     }
     if (file == null || !context.mounted) return;
     try {
@@ -463,37 +482,60 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
     return null;
   }
 
-  String? _resolveSectionLabel(String? roomId, String? sectionId) {
+  String? _resolveSectionLabel(String? roomId, String? sectionId, {ItemModel? item}) {
     if (sectionId == null || sectionId.isEmpty) return null;
+
+    // Try local property cache first
     final property = ref.read(propertyDetailNotifierProvider).valueOrNull;
-    if (property == null) return null;
-    for (final floor in property.floors) {
-      for (final room in floor.rooms) {
-        if (roomId != null && room.roomId != roomId) continue;
-        for (final section in room.sections) {
-          if (section.sectionId == sectionId) {
-            return '${section.code} · ${section.name}';
+    if (property != null) {
+      for (final floor in property.floors) {
+        for (final room in floor.rooms) {
+          if (roomId != null && room.roomId != roomId) continue;
+          for (final section in room.sections) {
+            if (section.sectionId == sectionId) {
+              final parts = <String>[
+                if (section.furnitureName?.isNotEmpty == true) section.furnitureName!,
+                section.code,
+                if (section.name.isNotEmpty) section.name,
+              ];
+              return parts.join(' · ');
+            }
           }
         }
       }
     }
+
+    // Fall back to fields returned directly by the API on the item
+    if (item != null) {
+      final code = item.sectionCode;
+      final furniture = item.sectionFurnitureName;
+      if (code != null && code.isNotEmpty) {
+        if (furniture != null && furniture.isNotEmpty) return '$furniture · $code';
+        return code;
+      }
+    }
+
     return null;
   }
 
-  void _showEditSheet(BuildContext context, ItemModel item) {
-    final property = ref.read(propertyDetailNotifierProvider).valueOrNull;
+  Future<void> _showEditSheet(BuildContext context, ItemModel item) async {
+    var property = ref.read(propertyDetailNotifierProvider).valueOrNull;
+    final propertyId = item.propertyId;
+    if (propertyId != null && (property == null || property.id != propertyId)) {
+      property = await ref
+          .read(propertyDetailNotifierProvider.notifier)
+          .load(propertyId);
+    }
+    if (!context.mounted) return;
     showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder:
-          (ctx) => EditItemSheet(
-            item: item,
-            floors: property?.floors,
-            onUpdated:
-                () =>
-                    ref.read(itemDetailNotifierProvider.notifier).load(item.id),
-          ),
+      builder: (ctx) => EditItemSheet(
+        item: item,
+        floors: property?.floors,
+        onUpdated: () => ref.read(itemDetailNotifierProvider.notifier).load(item.id),
+      ),
     );
   }
 }
@@ -685,7 +727,7 @@ class _MaintenanceSectionWidgetState
                     Navigator.of(ctx).pop();
                     final record = await showAddMaintenanceSheet(
                       context,
-                      widget.itemId,
+                      itemId: widget.itemId,
                       initialTitle: title,
                       initialNotes: action.isNotEmpty ? action : reason,
                     );
@@ -771,7 +813,7 @@ class _MaintenanceSectionWidgetState
                     onPressed: () async {
                       final record = await showAddMaintenanceSheet(
                         context,
-                        widget.itemId,
+                        itemId: widget.itemId,
                       );
                       if (record != null) {
                         ref
@@ -969,9 +1011,10 @@ class _QrSection extends StatelessWidget {
 }
 
 class _WardrobeDetailSection extends StatelessWidget {
-  const _WardrobeDetailSection({required this.attrs});
+  const _WardrobeDetailSection({required this.attrs, this.members = const []});
 
   final WardrobeAttributes attrs;
+  final List<HouseholdMemberModel> members;
 
   static const Map<String, String> _typeLabels = {
     'clothing': 'Clothing',
@@ -994,6 +1037,13 @@ class _WardrobeDetailSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final String? memberName = attrs.ownerMemberId != null
+        ? members
+            .where((m) => m.id == attrs.ownerMemberId)
+            .map((m) => m.name)
+            .firstOrNull
+        : null;
+
     final hasAny =
         attrs.type != null ||
         attrs.brand != null ||
@@ -1001,10 +1051,17 @@ class _WardrobeDetailSection extends StatelessWidget {
         attrs.color != null ||
         attrs.material != null ||
         attrs.season != null ||
-        attrs.cleaningStatus != null;
+        attrs.cleaningStatus != null ||
+        memberName != null;
     if (!hasAny) return const SizedBox.shrink();
 
     final rows = <Widget>[
+      if (memberName != null)
+        _WardrobeRow(
+          icon: Icons.person_outline,
+          label: 'Belongs to',
+          value: memberName,
+        ),
       if (attrs.type != null)
         _WardrobeRow(
           icon: Icons.checkroom_outlined,
@@ -1572,6 +1629,8 @@ class _SpecsTable extends StatelessWidget {
   Widget build(BuildContext context) {
     final ls = _labelStyle(context);
     final cells = <Widget>[
+      if (item.propertyName?.isNotEmpty == true)
+        _SpecCell(label: 'PROPERTY', value: item.propertyName!, labelStyle: ls),
       _SpecCell(
         label: 'ROOM',
         value:
@@ -1637,6 +1696,310 @@ class _SpecsTable extends StatelessWidget {
     }
 
     return Column(children: rows);
+  }
+}
+
+class _SectionPhotoPreview extends StatefulWidget {
+  const _SectionPhotoPreview({
+    required this.photoUrl,
+    this.sectionLabel,
+    this.boundingBox,
+  });
+
+  final String photoUrl;
+  final String? sectionLabel;
+  final SectionBoundingBox? boundingBox;
+
+  @override
+  State<_SectionPhotoPreview> createState() => _SectionPhotoPreviewState();
+}
+
+class _SectionPhotoPreviewState extends State<_SectionPhotoPreview> {
+  Size? _naturalSize;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadImageSize();
+  }
+
+  void _loadImageSize() {
+    NetworkImage(widget.photoUrl)
+        .resolve(const ImageConfiguration())
+        .addListener(ImageStreamListener((info, _) {
+      if (mounted) {
+        setState(() => _naturalSize = Size(
+              info.image.width.toDouble(),
+              info.image.height.toDouble(),
+            ));
+      }
+    }));
+  }
+
+  void _openFullScreen() {
+    showDialog<void>(
+      context: context,
+      barrierColor: Colors.black87,
+      builder: (_) => _SectionPhotoFullScreen(
+        photoUrl: widget.photoUrl,
+        sectionLabel: widget.sectionLabel,
+        boundingBox: widget.boundingBox,
+        naturalSize: _naturalSize,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const double h = 160;
+    return GestureDetector(
+      onTap: _openFullScreen,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: SizedBox(
+          width: double.infinity,
+          height: h,
+          child: LayoutBuilder(
+            builder: (_, constraints) {
+              final w = constraints.maxWidth;
+              return Stack(
+                fit: StackFit.expand,
+                children: [
+                  Container(color: Colors.black),
+                  CachedNetworkImage(
+                    imageUrl: widget.photoUrl,
+                    width: w,
+                    height: h,
+                    fit: BoxFit.contain,
+                    placeholder: (_, __) => Container(color: _kCatalogGold.withValues(alpha: 0.08)),
+                    errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                  ),
+                  if (widget.boundingBox != null && _naturalSize != null)
+                    _BoundingBoxOverlay(
+                      bbox: widget.boundingBox!,
+                      naturalSize: _naturalSize!,
+                      containerW: w,
+                      containerH: h,
+                      fit: BoxFit.contain,
+                    ),
+                  // Tap hint
+                  Positioned(
+                    top: 8, right: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.fullscreen, size: 14, color: Colors.white),
+                          SizedBox(width: 4),
+                          Text('View', style: TextStyle(fontSize: 11, color: Colors.white)),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    left: 0, right: 0, bottom: 0,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [Colors.transparent, Colors.black.withValues(alpha: 0.65)],
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.place_outlined, size: 13, color: _kCatalogGold),
+                          const SizedBox(width: 5),
+                          Flexible(
+                            child: Text(
+                              widget.sectionLabel ?? 'Section location',
+                              style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w500),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionPhotoFullScreen extends StatefulWidget {
+  const _SectionPhotoFullScreen({
+    required this.photoUrl,
+    this.sectionLabel,
+    this.boundingBox,
+    this.naturalSize,
+  });
+
+  final String photoUrl;
+  final String? sectionLabel;
+  final SectionBoundingBox? boundingBox;
+  final Size? naturalSize;
+
+  @override
+  State<_SectionPhotoFullScreen> createState() => _SectionPhotoFullScreenState();
+}
+
+class _SectionPhotoFullScreenState extends State<_SectionPhotoFullScreen> {
+  Size? _naturalSize;
+
+  @override
+  void initState() {
+    super.initState();
+    _naturalSize = widget.naturalSize;
+    if (_naturalSize == null) {
+      NetworkImage(widget.photoUrl)
+          .resolve(const ImageConfiguration())
+          .addListener(ImageStreamListener((info, _) {
+        if (mounted) {
+          setState(() => _naturalSize = Size(
+                info.image.width.toDouble(),
+                info.image.height.toDouble(),
+              ));
+        }
+      }));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog.fullscreen(
+      backgroundColor: Colors.black,
+      child: Stack(
+        children: [
+          InteractiveViewer(
+            minScale: 0.5,
+            maxScale: 5.0,
+            child: Center(
+              child: LayoutBuilder(
+                builder: (_, constraints) {
+                  final w = constraints.maxWidth;
+                  final h = constraints.maxHeight;
+                  return Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      CachedNetworkImage(
+                        imageUrl: widget.photoUrl,
+                        width: w,
+                        height: h,
+                        fit: BoxFit.contain,
+                        placeholder: (_, __) => const Center(
+                          child: CircularProgressIndicator(color: _kCatalogGold),
+                        ),
+                        errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                      ),
+                      if (widget.boundingBox != null && _naturalSize != null)
+                        _BoundingBoxOverlay(
+                          bbox: widget.boundingBox!,
+                          naturalSize: _naturalSize!,
+                          containerW: w,
+                          containerH: h,
+                          fit: BoxFit.contain,
+                        ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
+          // Close button
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 8,
+            right: 12,
+            child: GestureDetector(
+              onTap: () => Navigator.of(context).pop(),
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: const Icon(Icons.close, color: Colors.white, size: 20),
+              ),
+            ),
+          ),
+          if (widget.sectionLabel != null)
+            Positioned(
+              bottom: MediaQuery.of(context).padding.bottom + 16,
+              left: 16, right: 16,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.place_outlined, size: 14, color: _kCatalogGold),
+                  const SizedBox(width: 6),
+                  Text(
+                    widget.sectionLabel!,
+                    style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BoundingBoxOverlay extends StatelessWidget {
+  const _BoundingBoxOverlay({
+    required this.bbox,
+    required this.naturalSize,
+    required this.containerW,
+    required this.containerH,
+    this.fit = BoxFit.contain,
+  });
+
+  final SectionBoundingBox bbox;
+  final Size naturalSize;
+  final double containerW, containerH;
+  final BoxFit fit;
+
+  @override
+  Widget build(BuildContext context) {
+    final double scale;
+    if (fit == BoxFit.cover) {
+      scale = max(containerW / naturalSize.width, containerH / naturalSize.height);
+    } else {
+      scale = min(containerW / naturalSize.width, containerH / naturalSize.height);
+    }
+    final renderedW = naturalSize.width * scale;
+    final renderedH = naturalSize.height * scale;
+    final offsetX = (containerW - renderedW) / 2;
+    final offsetY = (containerH - renderedH) / 2;
+
+    final left = offsetX + bbox.x * renderedW;
+    final top = offsetY + bbox.y * renderedH;
+    final width = bbox.width * renderedW;
+    final height = bbox.height * renderedH;
+
+    return Positioned(
+      left: left,
+      top: top,
+      width: width,
+      height: height,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: const Color(0xFFE53935), width: 2.5),
+          color: const Color(0xFFE53935).withValues(alpha: 0.15),
+        ),
+      ),
+    );
   }
 }
 

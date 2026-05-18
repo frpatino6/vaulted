@@ -1,6 +1,9 @@
 import 'dart:math';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -33,37 +36,38 @@ class _AiSectionScanScreenState extends ConsumerState<AiSectionScanScreen> {
   final _picker = ImagePicker();
 
   _ScanStep _step = _ScanStep.capture;
-  String? _imageUrl;
-  List<_EditableSection> _detected = [];
-  String _furnitureDescription = '';
-  double _confidence = 0;
+  final List<_ScanGroup> _groups = [];
+  int _currentGroupIndex = 0;
   bool _saving = false;
-  bool _isAddingMore = false;
+  final _annotatedKey = GlobalKey();
 
-  // ── Image pick & upload ───────────────────────────────────────────────────
+  _ScanGroup? get _currentGroup =>
+      _groups.isNotEmpty ? _groups[_currentGroupIndex] : null;
+
+  int get _totalSelectedCount =>
+      _groups.fold(0, (sum, g) => sum + g.sections.where((s) => s.selected).length);
+
+  // ── Image pick ────────────────────────────────────────────────────────────
 
   Future<void> _pickImage(ImageSource source) async {
     final file = await _picker.pickImage(
       source: source,
-      imageQuality: 85,
-      // imageQuality triggers EXIF orientation normalization on iOS/Android
+      imageQuality: 80,
+      maxWidth: 1920,
+      maxHeight: 1920,
     );
     if (file == null || !mounted) return;
 
-    setState(() => _step = _ScanStep.uploading);
+    setState(() => _step = _ScanStep.analyzing);
     try {
-      final url = await ref.read(mediaRepositoryProvider).uploadPhoto(file);
-      if (!mounted) return;
-      setState(() {
-        _imageUrl = url;
-        _step = _ScanStep.analyzing;
-      });
-      await _analyze(url);
+      final bytes = await file.readAsBytes();
+      final mime = file.mimeType ?? 'image/jpeg';
+      await _analyze(bytes, mime);
     } catch (e) {
       if (mounted) {
         setState(() => _step = _ScanStep.capture);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Upload failed: $e'), backgroundColor: AppColors.error),
+          SnackBar(content: Text('Failed to read image: $e'), backgroundColor: AppColors.error),
         );
       }
     }
@@ -71,14 +75,14 @@ class _AiSectionScanScreenState extends ConsumerState<AiSectionScanScreen> {
 
   // ── AI analysis ───────────────────────────────────────────────────────────
 
-  Future<void> _analyze(String imageUrl) async {
+  Future<void> _analyze(Uint8List bytes, String mimeType) async {
     try {
       final result = await ref
           .read(propertyDetailNotifierProvider.notifier)
-          .analyzeSections(imageUrl);
+          .analyzeSectionsFromBytes(bytes, mimeType);
 
       final rawSections = (result['sections'] as List?) ?? [];
-      final incoming = rawSections.map((s) {
+      final sections = rawSections.map((s) {
         final m = s as Map<String, dynamic>;
         final rawBbox = m['boundingBox'] as Map<String, dynamic>?;
         return _EditableSection(
@@ -100,21 +104,32 @@ class _AiSectionScanScreenState extends ConsumerState<AiSectionScanScreen> {
         );
       }).toList();
 
+      final furnitureDescription = result['furnitureDescription'] as String? ?? '';
+      final confidence = (result['confidence'] as num?)?.toDouble() ?? 0;
+
+      final newGroup = _ScanGroup(
+        imageBytes: bytes,
+        mimeType: mimeType,
+        sections: sections,
+        furnitureName: furnitureDescription,
+        confidence: confidence,
+      );
+
       if (mounted) {
         setState(() {
-          _detected = _isAddingMore ? _mergeWithOffset(incoming) : incoming;
-          _furnitureDescription = result['furnitureDescription'] as String? ?? '';
-          _confidence = (result['confidence'] as num?)?.toDouble() ?? 0;
-          _isAddingMore = false;
+          if (_currentGroup == null) {
+            _groups.add(newGroup);
+            _currentGroupIndex = 0;
+          } else {
+            _groups.add(newGroup);
+            _currentGroupIndex = _groups.length - 1;
+          }
           _step = _ScanStep.review;
         });
       }
     } catch (e) {
       if (mounted) {
-        setState(() {
-          _step = _ScanStep.capture;
-          _isAddingMore = false;
-        });
+        setState(() => _step = _ScanStep.capture);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('AI analysis failed: $e'), backgroundColor: AppColors.error),
         );
@@ -122,40 +137,15 @@ class _AiSectionScanScreenState extends ConsumerState<AiSectionScanScreen> {
     }
   }
 
-  // ── Code conflict resolution ──────────────────────────────────────────────
-
-  List<_EditableSection> _mergeWithOffset(List<_EditableSection> incoming) {
-    final usedCodes = <String>{
-      ...widget.existingSectionCodes,
-      ..._detected.map((s) => s.code),
-    };
-    final result = List<_EditableSection>.from(_detected);
-    for (final s in incoming) {
-      if (!usedCodes.contains(s.code)) {
-        usedCodes.add(s.code);
-        result.add(s);
-      } else {
-        var row = s.row;
-        String newCode;
-        do {
-          row++;
-          newCode = '$row${s.column}';
-        } while (usedCodes.contains(newCode));
-        usedCodes.add(newCode);
-        result.add(s.copyWith(code: newCode, row: row));
-      }
-    }
-    return result;
-  }
+  // ── Next available code within current group ──────────────────────────────
 
   String _nextAvailableCode() {
+    final group = _currentGroup;
     final usedCodes = <String>{
-      ...widget.existingSectionCodes,
-      ..._detected.map((s) => s.code),
+      ...group?.sections.map((s) => s.code) ?? [],
     };
-    final maxRow = _detected.isEmpty
-        ? 0
-        : _detected.map((s) => s.row).reduce(max);
+    final sections = group?.sections ?? [];
+    final maxRow = sections.isEmpty ? 0 : sections.map((s) => s.row).reduce(max);
     var row = maxRow + 1;
     var col = 'A';
     while (usedCodes.contains('$row$col')) {
@@ -173,9 +163,11 @@ class _AiSectionScanScreenState extends ConsumerState<AiSectionScanScreen> {
   // ── Section management ────────────────────────────────────────────────────
 
   void _removeSection(int i) {
-    final removed = _detected[i];
+    final group = _currentGroup;
+    if (group == null) return;
+    final removed = group.sections[i];
     final idx = i;
-    setState(() => _detected.removeAt(i));
+    setState(() => group.sections.removeAt(i));
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -183,9 +175,7 @@ class _AiSectionScanScreenState extends ConsumerState<AiSectionScanScreen> {
         action: SnackBarAction(
           label: 'Undo',
           onPressed: () {
-            if (mounted) {
-              setState(() => _detected.insert(idx.clamp(0, _detected.length), removed));
-            }
+            if (mounted) setState(() => group.sections.insert(idx.clamp(0, group.sections.length), removed));
           },
         ),
         duration: const Duration(seconds: 4),
@@ -194,12 +184,14 @@ class _AiSectionScanScreenState extends ConsumerState<AiSectionScanScreen> {
   }
 
   void _updateSection(int index, _EditableSection updated) {
-    setState(() => _detected[index] = updated);
+    final group = _currentGroup;
+    if (group == null) return;
+    setState(() => group.sections[index] = updated);
   }
 
   Future<void> _addAtPosition(double fracX, double fracY) async {
     final nextCode = _nextAvailableCode();
-    final bw = 0.15, bh = 0.12;
+    const bw = 0.15, bh = 0.12;
     final placeholder = _EditableSection(
       code: nextCode,
       name: '',
@@ -221,45 +213,129 @@ class _AiSectionScanScreenState extends ConsumerState<AiSectionScanScreen> {
       builder: (_) => _EditSectionSheet(section: placeholder),
     );
     if (result != null && mounted) {
-      setState(() => _detected.add(result));
+      setState(() => _currentGroup?.sections.add(result));
     }
+  }
+
+  // ── Capture annotated screenshot ──────────────────────────────────────────
+
+  Future<Uint8List?> _captureAnnotated() async {
+    try {
+      final boundary = _annotatedKey.currentContext?.findRenderObject()
+          as RenderRepaintBoundary?;
+      if (boundary == null) return null;
+      final image = await boundary.toImage(pixelRatio: 2.0);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      return byteData?.buffer.asUint8List();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // ── Scan another piece ────────────────────────────────────────────────────
+
+  Future<void> _onAddMore() async {
+    // Capture annotated screenshot for current group before switching
+    final annotated = await _captureAnnotated();
+    if (annotated != null) {
+      _currentGroup?.annotatedBytes = annotated;
+    }
+    if (mounted) setState(() => _step = _ScanStep.capture);
+  }
+
+  // ── Rescan current cabinet ────────────────────────────────────────────────
+
+  void _onRescan() {
+    setState(() {
+      if (_groups.isNotEmpty) _groups.removeLast();
+      _currentGroupIndex = _groups.isEmpty ? 0 : _groups.length - 1;
+      _step = _ScanStep.capture;
+    });
   }
 
   // ── Save ──────────────────────────────────────────────────────────────────
 
   Future<void> _requestSave() async {
-    final toSave = _detected.where((s) => s.selected).toList();
-    if (toSave.isEmpty) return;
+    final allSelected = _groups
+        .expand((g) => g.sections.where((s) => s.selected).map((s) => (group: g, section: s)))
+        .toList();
+    if (allSelected.isEmpty) return;
 
-    final confirmed = await showModalBottomSheet<bool>(
+    final furnitureNames = {
+      for (final g in _groups.where((g) => g.sections.any((s) => s.selected)))
+        g: '',
+    };
+
+    final confirmed = await showModalBottomSheet<Map<_ScanGroup, String>?>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => _SaveSummarySheet(
-        sections: toSave,
+        groups: _groups.where((g) => g.sections.any((s) => s.selected)).toList(),
         roomName: widget.roomName,
+        initialFurnitureNames: furnitureNames,
       ),
     );
-    if (confirmed == true) await _save();
+    if (confirmed != null) {
+      for (final entry in confirmed.entries) {
+        entry.key.furnitureName = entry.value;
+      }
+      await _save();
+    }
   }
 
   Future<void> _save() async {
-    final toSave = _detected.where((s) => s.selected).toList();
-    if (toSave.isEmpty || _saving) return;
+    if (_saving) return;
     setState(() => _saving = true);
     try {
+      // Capture annotated screenshot for last group if not done yet
+      final lastGroup = _currentGroup;
+      if (lastGroup != null && lastGroup.annotatedBytes == null) {
+        lastGroup.annotatedBytes = await _captureAnnotated();
+      }
+
+      final allSections = <Map<String, dynamic>>[];
+
+      for (final group in _groups) {
+        final selected = group.sections.where((s) => s.selected).toList();
+        if (selected.isEmpty) continue;
+
+        // Upload annotated photo for this group
+        String? annotatedPhotoUrl;
+        final annotated = group.annotatedBytes;
+        if (annotated != null) {
+          try {
+            annotatedPhotoUrl = await ref
+                .read(mediaRepositoryProvider)
+                .uploadPhotoBytes(annotated, 'section_map.png');
+          } catch (_) {
+            // Proceed without photo if upload fails
+          }
+        }
+
+        for (final s in selected) {
+          allSections.add({
+            'code': s.code,
+            'name': s.name,
+            'type': s.type,
+            if (s.notes != null && s.notes!.isNotEmpty) 'notes': s.notes,
+            if (annotatedPhotoUrl != null) 'photo': annotatedPhotoUrl,
+            if (group.furnitureName.isNotEmpty) 'furnitureName': group.furnitureName,
+            if (s.boundingBox != null) 'boundingBox': {
+              'x': s.boundingBox!.x,
+              'y': s.boundingBox!.y,
+              'width': s.boundingBox!.width,
+              'height': s.boundingBox!.height,
+            },
+          });
+        }
+      }
+
+      if (allSections.isEmpty) return;
+
       await ref
           .read(propertyDetailNotifierProvider.notifier)
-          .addSectionsBulk(
-            widget.floorId,
-            widget.roomId,
-            toSave.map((s) => {
-                  'code': s.code,
-                  'name': s.name,
-                  'type': s.type,
-                  if (s.notes != null && s.notes!.isNotEmpty) 'notes': s.notes,
-                }).toList(),
-          );
+          .addSectionsBulk(widget.floorId, widget.roomId, allSections);
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       if (mounted) {
@@ -279,6 +355,11 @@ class _AiSectionScanScreenState extends ConsumerState<AiSectionScanScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final previousGroupCount = _currentGroupIndex;
+    final previousSectionCount = _groups
+        .take(_currentGroupIndex)
+        .fold(0, (sum, g) => sum + g.sections.where((s) => s.selected).length);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -292,33 +373,32 @@ class _AiSectionScanScreenState extends ConsumerState<AiSectionScanScreen> {
       body: switch (_step) {
         _ScanStep.capture => _CaptureView(
             onPick: _pickImage,
-            isAddingMore: _isAddingMore,
-            pendingCount: _detected.length,
+            previousGroupCount: previousGroupCount,
+            previousSectionCount: previousSectionCount,
           ),
         _ScanStep.uploading => const _ProgressView(message: 'Uploading photo…'),
         _ScanStep.analyzing => const _ProgressView(message: 'AI is mapping sections…'),
         _ScanStep.review => _AnnotatedReviewView(
-            imageUrl: _imageUrl!,
+            imageBytes: _currentGroup!.imageBytes,
             roomName: widget.roomName,
-            furnitureDescription: _furnitureDescription,
-            confidence: _confidence,
-            sections: _detected,
+            furnitureDescription: _currentGroup!.furnitureName,
+            confidence: _currentGroup!.confidence,
+            sections: _currentGroup!.sections,
             saving: _saving,
-            onToggle: (i) => setState(
-                () => _detected[i] = _detected[i].copyWith(selected: !_detected[i].selected)),
+            annotatedKey: _annotatedKey,
+            previousGroupCount: previousGroupCount,
+            previousSectionCount: previousSectionCount,
+            totalSelectedCount: _totalSelectedCount,
+            onToggle: (i) => setState(() {
+              final s = _currentGroup!.sections[i];
+              _currentGroup!.sections[i] = s.copyWith(selected: !s.selected);
+            }),
             onEdit: (i) => _showEditSheet(i),
             onRemove: _removeSection,
             onUpdateSection: _updateSection,
             onAddAtPosition: _addAtPosition,
-            onRescan: () => setState(() {
-              _detected = [];
-              _isAddingMore = false;
-              _step = _ScanStep.capture;
-            }),
-            onAddMore: () => setState(() {
-              _isAddingMore = true;
-              _step = _ScanStep.capture;
-            }),
+            onRescan: _onRescan,
+            onAddMore: _onAddMore,
             onSave: _requestSave,
           ),
       },
@@ -326,13 +406,15 @@ class _AiSectionScanScreenState extends ConsumerState<AiSectionScanScreen> {
   }
 
   Future<void> _showEditSheet(int index) async {
+    final group = _currentGroup;
+    if (group == null) return;
     final result = await showModalBottomSheet<_EditableSection>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _EditSectionSheet(section: _detected[index]),
+      builder: (_) => _EditSectionSheet(section: group.sections[index]),
     );
-    if (result != null && mounted) setState(() => _detected[index] = result);
+    if (result != null && mounted) setState(() => group.sections[index] = result);
   }
 }
 
@@ -341,6 +423,24 @@ class _AiSectionScanScreenState extends ConsumerState<AiSectionScanScreen> {
 enum _ScanStep { capture, uploading, analyzing, review }
 
 enum _ResizeHandle { topLeft, topRight, bottomLeft, bottomRight }
+
+class _ScanGroup {
+  _ScanGroup({
+    required this.imageBytes,
+    required this.mimeType,
+    required this.sections,
+    this.furnitureName = '',
+    this.confidence = 0,
+    this.annotatedBytes,
+  });
+
+  final Uint8List imageBytes;
+  final String mimeType;
+  List<_EditableSection> sections;
+  String furnitureName;
+  final double confidence;
+  Uint8List? annotatedBytes;
+}
 
 class _BoundingBox {
   const _BoundingBox({
@@ -410,16 +510,17 @@ IconData _iconForSectionType(String type) => switch (type) {
 class _CaptureView extends StatelessWidget {
   const _CaptureView({
     required this.onPick,
-    required this.isAddingMore,
-    required this.pendingCount,
+    required this.previousGroupCount,
+    required this.previousSectionCount,
   });
 
   final Future<void> Function(ImageSource) onPick;
-  final bool isAddingMore;
-  final int pendingCount;
+  final int previousGroupCount;
+  final int previousSectionCount;
 
   @override
   Widget build(BuildContext context) {
+    final isAddingMore = previousGroupCount > 0;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -450,7 +551,7 @@ class _CaptureView extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               isAddingMore
-                  ? '$pendingCount section${pendingCount == 1 ? '' : 's'} already mapped. New sections will be added without code conflicts.'
+                  ? '$previousSectionCount section${previousSectionCount == 1 ? '' : 's'} mapped across $previousGroupCount cabinet${previousGroupCount == 1 ? '' : 's'}.'
                   : 'AI will detect every drawer, cabinet, and shelf — then pin the codes directly on the photo.',
               textAlign: TextAlign.center,
               style: const TextStyle(color: AppColors.onSurfaceVariant),
@@ -517,12 +618,16 @@ class _ProgressView extends StatelessWidget {
 
 class _AnnotatedReviewView extends StatefulWidget {
   const _AnnotatedReviewView({
-    required this.imageUrl,
+    required this.imageBytes,
     required this.roomName,
     required this.furnitureDescription,
     required this.confidence,
     required this.sections,
     required this.saving,
+    required this.annotatedKey,
+    required this.previousGroupCount,
+    required this.previousSectionCount,
+    required this.totalSelectedCount,
     required this.onToggle,
     required this.onEdit,
     required this.onRemove,
@@ -533,16 +638,22 @@ class _AnnotatedReviewView extends StatefulWidget {
     required this.onSave,
   });
 
-  final String imageUrl, roomName, furnitureDescription;
+  final Uint8List imageBytes;
+  final String roomName, furnitureDescription;
   final double confidence;
   final List<_EditableSection> sections;
   final bool saving;
+  final GlobalKey annotatedKey;
+  final int previousGroupCount;
+  final int previousSectionCount;
+  final int totalSelectedCount;
   final void Function(int) onToggle;
   final void Function(int) onEdit;
   final void Function(int) onRemove;
   final void Function(int, _EditableSection) onUpdateSection;
   final void Function(double fracX, double fracY) onAddAtPosition;
-  final VoidCallback onRescan, onAddMore, onSave;
+  final VoidCallback onRescan, onSave;
+  final Future<void> Function() onAddMore;
 
   @override
   State<_AnnotatedReviewView> createState() => _AnnotatedReviewViewState();
@@ -552,12 +663,10 @@ class _AnnotatedReviewViewState extends State<_AnnotatedReviewView> {
   Size? _naturalImageSize;
   bool _moveMode = false;
 
-  // Drag / resize state (only active in move mode)
   int? _draggingIndex;
   Offset _dragTotal = Offset.zero;
   _ResizeHandle? _resizingHandle;
 
-  // Layout cache — populated from LayoutBuilder
   double _renderedW = 0, _renderedH = 0, _offsetX = 0, _offsetY = 0;
 
   @override
@@ -569,14 +678,14 @@ class _AnnotatedReviewViewState extends State<_AnnotatedReviewView> {
   @override
   void didUpdateWidget(_AnnotatedReviewView old) {
     super.didUpdateWidget(old);
-    if (old.imageUrl != widget.imageUrl) {
+    if (old.imageBytes != widget.imageBytes) {
       setState(() => _naturalImageSize = null);
       _loadImageSize();
     }
   }
 
   void _loadImageSize() {
-    NetworkImage(widget.imageUrl).resolve(const ImageConfiguration()).addListener(
+    MemoryImage(widget.imageBytes).resolve(const ImageConfiguration()).addListener(
       ImageStreamListener((info, _) {
         if (mounted) {
           setState(() => _naturalImageSize = Size(
@@ -603,8 +712,6 @@ class _AnnotatedReviewViewState extends State<_AnnotatedReviewView> {
   int get _selectedCount => widget.sections.where((s) => s.selected).length;
   bool get _isLowConfidence => widget.confidence > 0 && widget.confidence < 0.6;
 
-  // ── Drag logic ────────────────────────────────────────────────────────────
-
   void _onDragUpdate(int i, DragUpdateDetails details) {
     setState(() {
       _draggingIndex = i;
@@ -625,7 +732,6 @@ class _AnnotatedReviewViewState extends State<_AnnotatedReviewView> {
       final handle = _resizingHandle;
       _BoundingBox newBbox;
       if (handle == null) {
-        // Move
         newBbox = _BoundingBox(
           x: (bbox.x + dx).clamp(0.0, 1.0 - bbox.width),
           y: (bbox.y + dy).clamp(0.0, 1.0 - bbox.height),
@@ -633,7 +739,6 @@ class _AnnotatedReviewViewState extends State<_AnnotatedReviewView> {
           height: bbox.height,
         );
       } else {
-        // Resize — opposite corner stays fixed
         double nx = bbox.x, ny = bbox.y, nw = bbox.width, nh = bbox.height;
         const minSize = 0.04;
         switch (handle) {
@@ -661,8 +766,6 @@ class _AnnotatedReviewViewState extends State<_AnnotatedReviewView> {
     setState(() { _draggingIndex = null; _dragTotal = Offset.zero; _resizingHandle = null; });
   }
 
-  // ── Tap-to-add ────────────────────────────────────────────────────────────
-
   void _handleImageTap(Offset localPos) {
     if (_moveMode || !_layoutReady) return;
     final fracX = ((localPos.dx - _offsetX) / _renderedW).clamp(0.0, 1.0);
@@ -672,6 +775,8 @@ class _AnnotatedReviewViewState extends State<_AnnotatedReviewView> {
 
   @override
   Widget build(BuildContext context) {
+    final hasPrevious = widget.previousGroupCount > 0;
+
     return Column(
       children: [
         // Info bar
@@ -705,6 +810,28 @@ class _AnnotatedReviewViewState extends State<_AnnotatedReviewView> {
             ],
           ),
         ),
+
+        // Previous cabinets badge
+        if (hasPrevious)
+          Container(
+            margin: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.accent.withAlpha(20),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.accent.withAlpha(60)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.check_circle_outline, color: AppColors.accent, size: 14),
+                const SizedBox(width: 6),
+                Text(
+                  '${widget.previousSectionCount} section${widget.previousSectionCount == 1 ? '' : 's'} mapped from ${widget.previousGroupCount} previous cabinet${widget.previousGroupCount == 1 ? '' : 's'}',
+                  style: const TextStyle(color: AppColors.accent, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
 
         // Low confidence warning
         if (_isLowConfidence)
@@ -760,17 +887,19 @@ class _AnnotatedReviewViewState extends State<_AnnotatedReviewView> {
             padding: const EdgeInsets.all(12),
             child: Stack(
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: _moveMode
-                      ? _buildImageStack()
-                      : InteractiveViewer(
-                          minScale: 1.0,
-                          maxScale: 4.0,
-                          child: _buildImageStack(),
-                        ),
+                RepaintBoundary(
+                  key: widget.annotatedKey,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: _moveMode
+                        ? _buildImageStack()
+                        : InteractiveViewer(
+                            minScale: 1.0,
+                            maxScale: 4.0,
+                            child: _buildImageStack(),
+                          ),
+                  ),
                 ),
-                // Move mode toggle button
                 if (_layoutReady)
                   Positioned(
                     top: 8,
@@ -846,7 +975,7 @@ class _AnnotatedReviewViewState extends State<_AnnotatedReviewView> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: FilledButton(
-                      onPressed: (widget.saving || _selectedCount == 0)
+                      onPressed: (widget.saving || widget.totalSelectedCount == 0)
                           ? null
                           : widget.onSave,
                       style: FilledButton.styleFrom(
@@ -862,7 +991,7 @@ class _AnnotatedReviewViewState extends State<_AnnotatedReviewView> {
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : Text(
-                              'Save $_selectedCount section${_selectedCount == 1 ? '' : 's'}'),
+                              'Save ${widget.totalSelectedCount} section${widget.totalSelectedCount == 1 ? '' : 's'}'),
                     ),
                   ),
                 ],
@@ -883,8 +1012,8 @@ class _AnnotatedReviewViewState extends State<_AnnotatedReviewView> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              Image.network(
-                widget.imageUrl,
+              Image.memory(
+                widget.imageBytes,
                 fit: BoxFit.contain,
                 width: constraints.maxWidth,
                 height: constraints.maxHeight,
@@ -934,9 +1063,8 @@ class _AnnotatedReviewViewState extends State<_AnnotatedReviewView> {
       final rectW = bbox.width * _renderedW;
       final rectH = bbox.height * _renderedH;
 
-      final overlay = Stack(
+      return Stack(
         children: [
-          // Rectangle outline
           Positioned(
             left: rectLeft,
             top: rectTop,
@@ -965,7 +1093,6 @@ class _AnnotatedReviewViewState extends State<_AnnotatedReviewView> {
               ),
             ),
           ),
-          // Resize corner handles (move mode only)
           if (_moveMode) ...[
             for (final handle in _ResizeHandle.values)
               Positioned(
@@ -1006,7 +1133,6 @@ class _AnnotatedReviewViewState extends State<_AnnotatedReviewView> {
                 ),
               ),
           ],
-          // Code chip
           Positioned(
             left: centerX - 36,
             top: centerY - 16,
@@ -1022,8 +1148,6 @@ class _AnnotatedReviewViewState extends State<_AnnotatedReviewView> {
           ),
         ],
       );
-
-      return overlay;
     }).toList();
   }
 }
@@ -1080,14 +1204,12 @@ class _SectionChip extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Type icon
             Icon(
               _iconForSectionType(section.type),
               size: 12,
               color: fg.withAlpha(180),
             ),
             const SizedBox(width: 4),
-            // Code
             Text(
               section.code,
               style: TextStyle(
@@ -1155,29 +1277,65 @@ class _ConfidenceBadge extends StatelessWidget {
 
 // ── Save summary sheet ────────────────────────────────────────────────────────
 
-class _SaveSummarySheet extends StatelessWidget {
-  const _SaveSummarySheet({required this.sections, required this.roomName});
+class _SaveSummarySheet extends StatefulWidget {
+  const _SaveSummarySheet({
+    required this.groups,
+    required this.roomName,
+    required this.initialFurnitureNames,
+  });
 
-  final List<_EditableSection> sections;
+  final List<_ScanGroup> groups;
   final String roomName;
+  final Map<_ScanGroup, String> initialFurnitureNames;
+
+  @override
+  State<_SaveSummarySheet> createState() => _SaveSummarySheetState();
+}
+
+class _SaveSummarySheetState extends State<_SaveSummarySheet> {
+  late final Map<_ScanGroup, TextEditingController> _controllers;
+
+  @override
+  void initState() {
+    super.initState();
+    _controllers = {
+      for (final g in widget.groups)
+        g: TextEditingController(text: widget.initialFurnitureNames[g] ?? ''),
+    };
+  }
+
+  @override
+  void dispose() {
+    for (final c in _controllers.values) c.dispose();
+    super.dispose();
+  }
+
+  int get _totalCount => widget.groups
+      .fold(0, (sum, g) => sum + g.sections.where((s) => s.selected).length);
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.surfaceVariant,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(24),
-          topRight: Radius.circular(24),
-        ),
-      ),
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOut,
       padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).padding.bottom + 16,
+        bottom: MediaQuery.of(context).viewInsets.bottom,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+      child: Container(
+        decoration: const BoxDecoration(
+          color: AppColors.surfaceVariant,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(24),
+            topRight: Radius.circular(24),
+          ),
+        ),
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).padding.bottom + 16,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
           const SizedBox(height: 12),
           Center(
             child: Container(
@@ -1199,7 +1357,7 @@ class _SaveSummarySheet extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Saving ${sections.length} section${sections.length == 1 ? '' : 's'} to $roomName',
+                    'Saving $_totalCount section${_totalCount == 1 ? '' : 's'} to ${widget.roomName}',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -1213,68 +1371,99 @@ class _SaveSummarySheet extends StatelessWidget {
           const SizedBox(height: 12),
           ConstrainedBox(
             constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(context).size.height * 0.4,
+              maxHeight: MediaQuery.of(context).size.height * 0.5,
             ),
-            child: ListView.separated(
+            child: ListView.builder(
               shrinkWrap: true,
               padding: const EdgeInsets.symmetric(horizontal: 20),
-              itemCount: sections.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
-              itemBuilder: (_, i) {
-                final s = sections[i];
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: AppColors.accent.withAlpha(20),
-                          borderRadius: BorderRadius.circular(10),
+              itemCount: widget.groups.length,
+              itemBuilder: (_, gi) {
+                final group = widget.groups[gi];
+                final selected = group.sections.where((s) => s.selected).toList();
+                final ctrl = _controllers[group]!;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (gi > 0) const Divider(height: 20),
+                    // Furniture label field
+                    TextField(
+                      controller: ctrl,
+                      decoration: InputDecoration(
+                        labelText: 'Cabinet label (Cabinet ${gi + 1})',
+                        hintText: 'e.g. Upper Cabinet, Island, Pantry…',
+                        prefixIcon: const Icon(Icons.door_front_door_outlined,
+                            size: 18, color: AppColors.accent),
+                        filled: true,
+                        fillColor: AppColors.background.withAlpha(80),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
                         ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(_iconForSectionType(s.type),
-                                size: 14, color: AppColors.accent),
-                            Text(
-                              s.code,
-                              style: const TextStyle(
-                                color: AppColors.accent,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 11,
-                              ),
-                            ),
-                          ],
-                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 10),
+                        labelStyle: const TextStyle(
+                            color: AppColors.onSurfaceVariant, fontSize: 12),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              s.name.isNotEmpty ? s.name : s.code,
-                              style: const TextStyle(
-                                color: AppColors.onBackground,
-                                fontWeight: FontWeight.w500,
+                      style: const TextStyle(
+                          color: AppColors.onBackground, fontSize: 13),
+                    ),
+                    const SizedBox(height: 8),
+                    // Section list for this group
+                    ...selected.map((s) => Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 6),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: AppColors.accent.withAlpha(20),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(_iconForSectionType(s.type),
+                                        size: 14, color: AppColors.accent),
+                                    Text(
+                                      s.code,
+                                      style: const TextStyle(
+                                        color: AppColors.accent,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                            Text(
-                              s.notes != null && s.notes!.isNotEmpty
-                                  ? '${s.type} · ${s.notes}'
-                                  : s.type,
-                              style: const TextStyle(
-                                color: AppColors.onSurfaceVariant,
-                                fontSize: 12,
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      s.name.isNotEmpty ? s.name : s.code,
+                                      style: const TextStyle(
+                                        color: AppColors.onBackground,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    Text(
+                                      s.notes != null && s.notes!.isNotEmpty
+                                          ? '${s.type} · ${s.notes}'
+                                          : s.type,
+                                      style: const TextStyle(
+                                        color: AppColors.onSurfaceVariant,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+                            ],
+                          ),
+                        )),
+                  ],
                 );
               },
             ),
@@ -1285,7 +1474,7 @@ class _SaveSummarySheet extends StatelessWidget {
             child: Row(
               children: [
                 OutlinedButton(
-                  onPressed: () => Navigator.of(context).pop(false),
+                  onPressed: () => Navigator.of(context).pop(null),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.onSurfaceVariant,
                     side: BorderSide(
@@ -1298,7 +1487,13 @@ class _SaveSummarySheet extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: FilledButton.icon(
-                    onPressed: () => Navigator.of(context).pop(true),
+                    onPressed: () {
+                      final names = {
+                        for (final entry in _controllers.entries)
+                          entry.key: entry.value.text.trim(),
+                      };
+                      Navigator.of(context).pop(names);
+                    },
                     icon: const Icon(Icons.save_outlined),
                     label: const Text('Confirm & Save'),
                     style: FilledButton.styleFrom(
@@ -1312,7 +1507,8 @@ class _SaveSummarySheet extends StatelessWidget {
               ],
             ),
           ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -24,16 +24,19 @@ async function bootstrap(): Promise<void> {
     'http://localhost:8080',
     'https://vaulted-prod-2026.web.app',
     'https://vaulted-prod-2026.firebaseapp.com',
+    'https://vaulted.casacam.net',
     // Allow the canonical API domain so Flutter Web (CanvasKit) can fetch
     // /uploads/* when the web app and API share the same hostname.
     'https://api-vaulted.casacam.net',
   ].filter(Boolean);
 
   // Security headers — must be registered before CORS and routes.
-  // crossOriginResourcePolicy is set to same-site so uploaded media files
-  // can be fetched by the Flutter Web app (same eTLD+1: casacam.net).
+  // crossOriginResourcePolicy set to 'cross-origin' because the API is on
+  // api-vaulted.casacam.net and the web app runs on vaulted.casacam.net
+  // (different subdomains = cross-site). The CORS config below already
+  // restricts allowed origins, so this is safe.
   app.use(helmet({
-    crossOriginResourcePolicy: { policy: 'same-site' },
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
     contentSecurityPolicy: false, // API-only server, no HTML served
   }));
 
@@ -45,6 +48,9 @@ async function bootstrap(): Promise<void> {
   });
 
   app.use(cookieParser());
+
+  // Increase JSON body limit for base64 image payloads (AI vision endpoints)
+  app.useBodyParser('json', { limit: '20mb' });
 
   // Serve uploaded files at /uploads/*.
   // CORS for /uploads is handled per-request: only set the header when

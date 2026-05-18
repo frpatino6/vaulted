@@ -18,13 +18,13 @@ class MockSecureStorage extends Mock implements SecureStorage {}
 // Helpers — build the record types that AuthRemoteDataSource returns
 // ---------------------------------------------------------------------------
 
-typedef _LoginResult = ({Map<String, dynamic> data, String? setCookie});
+typedef _LoginResult = ({Map<String, dynamic> data, List<String> setCookies});
 
 _LoginResult _loginResult({
   required Map<String, dynamic> data,
-  String? setCookie,
+  List<String> setCookies = const <String>[],
 }) =>
-    (data: data, setCookie: setCookie);
+    (data: data, setCookies: setCookies);
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -74,7 +74,7 @@ void main() {
       when(() => mockRemote.login(any(), any())).thenAnswer(
         (_) async => _loginResult(
           data: {'accessToken': 'access.jwt', 'mfaRequired': false},
-          setCookie: 'refresh_token=refresh123; Path=/; HttpOnly',
+          setCookies: const ['refresh_token=refresh123; Path=/; HttpOnly'],
         ),
       );
 
@@ -91,7 +91,7 @@ void main() {
       when(() => mockRemote.login(any(), any())).thenAnswer(
         (_) async => _loginResult(
           data: {'accessToken': 'access.jwt', 'mfaRequired': false},
-          setCookie: 'refresh_token=myRefreshValue; Path=/; HttpOnly',
+          setCookies: const ['refresh_token=myRefreshValue; Path=/; HttpOnly'],
         ),
       );
 
@@ -104,7 +104,7 @@ void main() {
       when(() => mockRemote.login(any(), any())).thenAnswer(
         (_) async => _loginResult(
           data: {'accessToken': 'access.jwt', 'mfaRequired': false},
-          setCookie: null,
+          setCookies: const <String>[],
         ),
       );
 
@@ -119,7 +119,7 @@ void main() {
       when(() => mockRemote.login(any(), any())).thenAnswer(
         (_) async => _loginResult(
           data: {'accessToken': 'temp.jwt', 'mfaRequired': true},
-          setCookie: 'refresh_token=mfa_refresh; Path=/; HttpOnly',
+          setCookies: const ['refresh_token=mfa_refresh; Path=/; HttpOnly'],
         ),
       );
 
@@ -157,7 +157,7 @@ void main() {
       when(() => mockRemote.login(any(), any())).thenAnswer(
         (_) async => _loginResult(
           data: {'accessToken': 'access.jwt', 'mfaRequired': false},
-          setCookie: 'refresh_token=tokenValue; Path=/; HttpOnly; SameSite=Strict',
+          setCookies: const ['refresh_token=tokenValue; Path=/; HttpOnly; SameSite=Strict'],
         ),
       );
 
@@ -177,7 +177,7 @@ void main() {
       when(() => mockRemote.verifyMfa(any())).thenAnswer(
         (_) async => _loginResult(
           data: {'accessToken': 'final.jwt'},
-          setCookie: 'refresh_token=full_refresh; Path=/; HttpOnly',
+          setCookies: const ['refresh_token=full_refresh; Path=/; HttpOnly'],
         ),
       );
 
@@ -193,7 +193,7 @@ void main() {
       when(() => mockRemote.verifyMfa(any())).thenAnswer(
         (_) async => _loginResult(
           data: {'accessToken': 'final.jwt'},
-          setCookie: 'refresh_token=full_refresh; Path=/; HttpOnly',
+          setCookies: const ['refresh_token=full_refresh; Path=/; HttpOnly'],
         ),
       );
 

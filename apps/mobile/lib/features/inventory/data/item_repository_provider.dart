@@ -11,7 +11,7 @@ final itemRepositoryProvider = Provider<ItemRepository>((ref) {
 
 final itemHistoryProvider =
     FutureProvider.family<List<ItemHistoryModel>, String>((ref, itemId) {
-  return ref.read(itemRepositoryProvider).getItemHistory(itemId);
+  return ref.watch(itemRepositoryProvider).getItemHistory(itemId);
 });
 
 /// Items with no room assigned for a given propertyId.

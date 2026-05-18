@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -134,13 +136,14 @@ class PropertyDetailNotifier extends AsyncNotifier<PropertyModel?> {
     required String name,
     required String type,
     String? notes,
+    String? photo,
   }) async {
     final id = _propertyId;
     if (id == null) return null;
     try {
       final property = await ref.read(propertyRepositoryProvider).addSection(
         id, floorId, roomId,
-        code: code, name: name, type: type, notes: notes,
+        code: code, name: name, type: type, notes: notes, photo: photo,
       );
       state = AsyncData(property);
       return property;
@@ -174,13 +177,16 @@ class PropertyDetailNotifier extends AsyncNotifier<PropertyModel?> {
     String? name,
     String? type,
     String? notes,
+    String? photo,
+    bool clearPhoto = false,
   }) async {
     final id = _propertyId;
     if (id == null) return null;
     try {
       final property = await ref.read(propertyRepositoryProvider).updateSection(
         id, floorId, roomId, sectionId,
-        code: code, name: name, type: type, notes: notes,
+        code: code, name: name, type: type, notes: notes, photo: photo,
+        clearPhoto: clearPhoto,
       );
       state = AsyncData(property);
       return property;
@@ -209,6 +215,11 @@ class PropertyDetailNotifier extends AsyncNotifier<PropertyModel?> {
 
   Future<Map<String, dynamic>> analyzeSections(String imageUrl) =>
       ref.read(propertyRepositoryProvider).analyzeSections(imageUrl);
+
+  Future<Map<String, dynamic>> analyzeSectionsFromBytes(
+    Uint8List bytes,
+    String mimeType,
+  ) => ref.read(propertyRepositoryProvider).analyzeSectionsFromBytes(bytes, mimeType);
 
   static String message(Object e) {
     if (e is DioException) {

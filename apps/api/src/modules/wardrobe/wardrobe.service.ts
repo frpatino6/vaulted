@@ -9,6 +9,10 @@ import Redis from 'ioredis';
 import { InjectRedis } from '../../common/decorators/inject-redis.decorator';
 import { InventoryService } from '../inventory/inventory.service';
 import { Item, ItemDocument } from '../inventory/schemas/item.schema';
+import {
+  Property,
+  PropertyDocument,
+} from '../properties/schemas/property.schema';
 import { CreateDryCleaningDto } from './dto/create-dry-cleaning.dto';
 import { CreateOutfitDto } from './dto/create-outfit.dto';
 import { UpdateOutfitDto } from './dto/update-outfit.dto';
@@ -27,6 +31,32 @@ export interface WardrobeStatsResponse {
   itemsWithOutfits: number;
 }
 
+export interface AtLaundryItem {
+  recordId: string;
+  itemId: string;
+  itemName: string;
+  photoUrl: string | null;
+  cleanerName: string | null;
+  sentDate: Date;
+  daysAtCleaner: number;
+  isOverdue: boolean;
+  cost: number | null;
+  currency: string;
+}
+
+export interface AtLaundryByProperty {
+  propertyId: string;
+  propertyName: string;
+  items: AtLaundryItem[];
+}
+
+export interface AtLaundryResponse {
+  totalItems: number;
+  overdueItems: number;
+  overdueThresholdDays: number;
+  byProperty: AtLaundryByProperty[];
+}
+
 @Injectable()
 export class WardrobeService {
   constructor(
@@ -36,6 +66,8 @@ export class WardrobeService {
     private readonly dryCleaningRecordModel: Model<DryCleaningRecordDocument>,
     @InjectModel(Item.name)
     private readonly itemModel: Model<ItemDocument>,
+    @InjectModel(Property.name)
+    private readonly propertyModel: Model<PropertyDocument>,
     private readonly inventoryService: InventoryService,
     @InjectRedis() private readonly redis: Redis,
   ) {}
@@ -54,14 +86,24 @@ export class WardrobeService {
       season: dto.season,
       occasion: dto.occasion,
       photos: dto.photos ?? [],
+      ownerMemberId: dto.ownerMemberId ?? null,
       createdBy: userId,
     });
     await this.clearStatsCache(tenantId);
     return outfit;
   }
 
-  async listOutfits(tenantId: string): Promise<Outfit[]> {
-    return this.outfitModel.find({ tenantId }).sort({ createdAt: -1 }).exec();
+  async listOutfits(
+    tenantId: string,
+    ownerMemberId?: string,
+  ): Promise<Outfit[]> {
+    return this.outfitModel
+      .find({
+        tenantId,
+        ...(ownerMemberId ? { ownerMemberId } : {}),
+      })
+      .sort({ createdAt: -1 })
+      .exec();
   }
 
   async getOutfitWithItems(
@@ -70,7 +112,7 @@ export class WardrobeService {
   ): Promise<Record<string, unknown>> {
     const outfit = await this.findOutfitOrThrow(tenantId, outfitId);
     const items = await this.itemModel
-      .find({ _id: { $in: outfit.itemIds }, tenantId })
+      .find({ _id: { $in: outfit.itemIds }, tenantId, status: { $ne: 'disposed' } })
       .select(
         '_id name photos category attributes.type attributes.cleaningStatus',
       )
@@ -114,6 +156,9 @@ export class WardrobeService {
             ...(dto.season !== undefined ? { season: dto.season } : {}),
             ...(dto.occasion !== undefined ? { occasion: dto.occasion } : {}),
             ...(dto.photos !== undefined ? { photos: dto.photos } : {}),
+            ...(dto.ownerMemberId !== undefined
+              ? { ownerMemberId: dto.ownerMemberId || null }
+              : {}),
           },
         },
         { new: true, runValidators: true },
@@ -263,6 +308,27 @@ export class WardrobeService {
     return updatedRecord;
   }
 
+  async markDryCleaningReturnedByItem(
+    tenantId: string,
+    itemId: string,
+  ): Promise<DryCleaningRecord | null> {
+    await this.validateWardrobeItemsBelongToTenant(tenantId, [itemId]);
+
+    const record = await this.dryCleaningRecordModel
+      .findOneAndUpdate(
+        { tenantId, itemId, returnedDate: null },
+        { $set: { returnedDate: new Date() } },
+        { new: true, sort: { sentDate: -1 } },
+      )
+      .exec();
+
+    if (record) {
+      await this.clearStatsCache(tenantId);
+    }
+
+    return record;
+  }
+
   async getStats(tenantId: string): Promise<WardrobeStatsResponse> {
     const cacheKey = `wardrobe:stats:${tenantId}`;
     const cached = await this.redis.get(cacheKey);
@@ -278,7 +344,7 @@ export class WardrobeService {
       outfitsCount,
       outfitItemIds,
     ] = await Promise.all([
-      this.itemModel.countDocuments({ tenantId, category: 'wardrobe' }).exec(),
+      this.itemModel.countDocuments({ tenantId, category: 'wardrobe', status: { $ne: 'disposed' } }).exec(),
       this.aggregateAttributeCounts(tenantId, 'type'),
       this.aggregateAttributeCounts(tenantId, 'cleaningStatus'),
       this.aggregateAttributeCounts(tenantId, 'season'),
@@ -315,6 +381,110 @@ export class WardrobeService {
     await this.redis.set(cacheKey, JSON.stringify(response), 'EX', 300);
 
     return response;
+  }
+
+  async getAtLaundry(
+    tenantId: string,
+    thresholdDays: number = 7,
+  ): Promise<AtLaundryResponse> {
+    const records = await this.dryCleaningRecordModel
+      .find({ tenantId, returnedDate: null })
+      .sort({ sentDate: 1 })
+      .exec();
+
+    if (records.length === 0) {
+      return {
+        totalItems: 0,
+        overdueItems: 0,
+        overdueThresholdDays: thresholdDays,
+        byProperty: [],
+      };
+    }
+
+    const itemIds = records.map((r) => r.itemId);
+    const items = await this.itemModel
+      .find({ _id: { $in: itemIds }, tenantId })
+      .select('_id name photos propertyId')
+      .exec();
+
+    const itemMap = new Map<string, ItemDocument>();
+    for (const item of items) {
+      itemMap.set(String(item._id), item);
+    }
+
+    const propertyIds = [
+      ...new Set(
+        items
+          .map((i) => i.propertyId)
+          .filter((id): id is string => id !== undefined && id !== null),
+      ),
+    ];
+
+    const properties = await this.propertyModel
+      .find({
+        _id: { $in: propertyIds },
+        tenantId,
+      })
+      .select('_id name')
+      .exec();
+
+    const propertyNameMap = new Map<string, string>();
+    for (const prop of properties) {
+      propertyNameMap.set(String(prop._id), prop.name);
+    }
+
+    const now = new Date();
+    const msPerDay = 24 * 60 * 60 * 1000;
+
+    const byPropertyMap = new Map<string, AtLaundryByProperty>();
+    let overdueCount = 0;
+
+    for (const record of records) {
+      const item = itemMap.get(record.itemId);
+      if (!item) {
+        continue;
+      }
+
+      const propertyId = item.propertyId;
+      const daysAtCleaner = Math.floor(
+        (now.getTime() - record.sentDate.getTime()) / msPerDay,
+      );
+      const isOverdue = daysAtCleaner > thresholdDays;
+
+      if (isOverdue) {
+        overdueCount += 1;
+      }
+
+      const laundryItem: AtLaundryItem = {
+        recordId: String((record as { _id?: unknown })._id),
+        itemId: record.itemId,
+        itemName: item.name,
+        photoUrl: item.photos[0] ?? null,
+        cleanerName: record.cleanerName ?? null,
+        sentDate: record.sentDate,
+        daysAtCleaner,
+        isOverdue,
+        cost: record.cost ?? null,
+        currency: record.currency,
+      };
+
+      if (!byPropertyMap.has(propertyId)) {
+        byPropertyMap.set(propertyId, {
+          propertyId,
+          propertyName: propertyNameMap.get(propertyId) ?? 'Unknown Property',
+          items: [],
+        });
+      }
+
+      byPropertyMap.get(propertyId)!.items.push(laundryItem);
+    }
+
+    return {
+      totalItems: records.length,
+      overdueItems: overdueCount,
+      overdueThresholdDays: thresholdDays,
+      byProperty: [...byPropertyMap.values()],
+    };
   }
 
   private async validateWardrobeItemsBelongToTenant(
@@ -368,7 +538,7 @@ export class WardrobeService {
     const path = `$attributes.${field}`;
     const rows = await this.itemModel
       .aggregate<{ _id: string; count: number }>([
-        { $match: { tenantId, category: 'wardrobe' } },
+        { $match: { tenantId, category: 'wardrobe', status: { $ne: 'disposed' } } },
         {
           $group: {
             _id: {

@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'models/property_model.dart';
 import 'models/room_section_model.dart';
 import 'property_remote_data_source.dart';
@@ -99,11 +101,13 @@ class PropertyRepository {
     required String name,
     required String type,
     String? notes,
+    String? photo,
   }) => _remote.addSection(propertyId, floorId, roomId, {
     'code': code,
     'name': name,
     'type': type,
     if (notes != null) 'notes': notes,
+    if (photo != null) 'photo': photo,
   });
 
   Future<PropertyModel> addSectionsBulk(
@@ -122,11 +126,15 @@ class PropertyRepository {
     String? name,
     String? type,
     String? notes,
+    String? photo,
+    bool clearPhoto = false,
   }) => _remote.updateSection(propertyId, floorId, roomId, sectionId, {
     if (code != null) 'code': code,
     if (name != null) 'name': name,
     if (type != null) 'type': type,
     if (notes != null) 'notes': notes,
+    if (photo != null) 'photo': photo,
+    if (clearPhoto) 'photo': null,
   });
 
   Future<PropertyModel> deleteSection(
@@ -138,4 +146,9 @@ class PropertyRepository {
 
   Future<Map<String, dynamic>> analyzeSections(String imageUrl) =>
       _remote.analyzeSections(imageUrl);
+
+  Future<Map<String, dynamic>> analyzeSectionsFromBytes(
+    Uint8List bytes,
+    String mimeType,
+  ) => _remote.analyzeSectionsFromBytes(bytes, mimeType);
 }

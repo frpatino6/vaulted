@@ -18,7 +18,11 @@ export class AnomalyGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const req = context.switchToHttp().getRequest<{ user?: JwtPayload }>();
+    const req = context.switchToHttp().getRequest<{
+      user?: JwtPayload;
+      method: string;
+      path: string;
+    }>();
     const user = req.user;
     if (!user?.sub || !user.tenantId) {
       return true;
@@ -26,19 +30,20 @@ export class AnomalyGuard implements CanActivate {
 
     const userId = user.sub;
     const tenantId = user.tenantId;
-    const key = `anomaly:financial:${userId}`;
+    const endpoint = `${req.method}:${req.path.replace(/\/[a-f0-9]{24}/gi, '/:id')}`;
+    const key = `anomaly:financial:${userId}:${endpoint}`;
     const count = await this.redis.incr(key);
     if (count === 1) {
       await this.redis.expire(key, 3600);
     }
-    if (count > 60) {
+    if (count > 500) {
       await this.auditService.log({
         tenantId,
         userId,
         action: 'security.anomaly.rate_limit_exceeded',
         entityType: 'user',
         entityId: userId,
-        metadata: { count, windowSeconds: 3600 },
+        metadata: { count, endpoint, windowSeconds: 3600 },
       });
       throw new ForbiddenException('Anomalous access pattern detected');
     }

@@ -1,18 +1,21 @@
+import 'dart:math' show max, min;
 import 'dart:ui' as ui;
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../properties/data/models/room_section_model.dart';
 
-/// Shows all unique sections in a room with their printable QR codes.
+/// Shows all sections in a room with their QR codes and optional photo preview.
 void showSectionQrSheet(
   BuildContext context,
   String roomId,
   String roomName,
-  List<String> sections,
+  List<RoomSectionModel> sections,
 ) {
   if (sections.isEmpty) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -41,7 +44,7 @@ class _SectionQrSheet extends StatefulWidget {
 
   final String roomId;
   final String roomName;
-  final List<String> sections;
+  final List<RoomSectionModel> sections;
 
   @override
   State<_SectionQrSheet> createState() => _SectionQrSheetState();
@@ -50,8 +53,8 @@ class _SectionQrSheet extends StatefulWidget {
 class _SectionQrSheetState extends State<_SectionQrSheet> {
   int _selectedIndex = 0;
 
-  String _qrData(String section) =>
-      'vaulted://rooms/${widget.roomId}?section=${Uri.encodeComponent(section)}';
+  String _qrData(RoomSectionModel section) =>
+      'vaulted://rooms/${widget.roomId}?section=${Uri.encodeComponent(section.name)}';
 
   @override
   Widget build(BuildContext context) {
@@ -121,41 +124,302 @@ class _SectionQrSheetState extends State<_SectionQrSheet> {
                   padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
                   itemCount: widget.sections.length,
                   separatorBuilder: (_, _) => const SizedBox(width: 8),
-                  itemBuilder: (_, i) => ChoiceChip(
-                    label: Text(
-                      widget.sections[i],
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: _selectedIndex == i
-                            ? AppColors.background
-                            : AppColors.onSurfaceVariant,
+                  itemBuilder: (_, i) {
+                    final s = widget.sections[i];
+                    return ChoiceChip(
+                      label: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (s.photo != null) ...[
+                            Icon(
+                              Icons.image_outlined,
+                              size: 12,
+                              color: _selectedIndex == i
+                                  ? AppColors.background
+                                  : AppColors.accent,
+                            ),
+                            const SizedBox(width: 3),
+                          ],
+                          Text(
+                            s.name,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: _selectedIndex == i
+                                  ? AppColors.background
+                                  : AppColors.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    selected: _selectedIndex == i,
-                    selectedColor: AppColors.accent,
-                    backgroundColor:
-                        AppColors.surfaceVariant.withValues(alpha: 0.4),
-                    onSelected: (_) =>
-                        setState(() => _selectedIndex = i),
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                  ),
+                      selected: _selectedIndex == i,
+                      selectedColor: AppColors.accent,
+                      backgroundColor:
+                          AppColors.surfaceVariant.withValues(alpha: 0.4),
+                      onSelected: (_) => setState(() => _selectedIndex = i),
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                    );
+                  },
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
             ],
-            // QR display
+            // QR + photo
             Expanded(
               child: SingleChildScrollView(
                 controller: scrollController,
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                child: _QrCard(
-                  section: section,
-                  roomName: widget.roomName,
-                  qrData: _qrData(section),
+                child: Column(
+                  children: [
+                    _QrCard(
+                      section: section,
+                      roomName: widget.roomName,
+                      qrData: _qrData(section),
+                    ),
+                    if (section.photo != null) ...[
+                      const SizedBox(height: AppSpacing.md),
+                      _SectionPhotoPreview(
+                        photoUrl: section.photo!,
+                        sectionName: '${section.code} · ${section.name}',
+                        boundingBox: section.boundingBox,
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                    ],
+                  ],
                 ),
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionPhotoPreview extends StatefulWidget {
+  const _SectionPhotoPreview({
+    required this.photoUrl,
+    required this.sectionName,
+    this.boundingBox,
+  });
+
+  final String photoUrl;
+  final String sectionName;
+  final SectionBoundingBox? boundingBox;
+
+  @override
+  State<_SectionPhotoPreview> createState() => _SectionPhotoPreviewState();
+}
+
+class _SectionPhotoPreviewState extends State<_SectionPhotoPreview> {
+  Size? _naturalSize;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.boundingBox != null) _loadImageSize();
+  }
+
+  @override
+  void didUpdateWidget(_SectionPhotoPreview old) {
+    super.didUpdateWidget(old);
+    if (old.photoUrl != widget.photoUrl && widget.boundingBox != null) {
+      setState(() => _naturalSize = null);
+      _loadImageSize();
+    }
+  }
+
+  void _loadImageSize() {
+    NetworkImage(widget.photoUrl)
+        .resolve(const ImageConfiguration())
+        .addListener(ImageStreamListener((info, _) {
+      if (mounted) {
+        setState(() => _naturalSize = Size(
+              info.image.width.toDouble(),
+              info.image.height.toDouble(),
+            ));
+      }
+    }));
+  }
+
+  /// Computes the alignment that pans the image so the bbox center is visible.
+  Alignment _computeAlignment(double containerW, double containerH) {
+    final bbox = widget.boundingBox;
+    final nat = _naturalSize;
+    if (bbox == null || nat == null) return Alignment.center;
+
+    final scale = max(containerW / nat.width, containerH / nat.height);
+    final renderedW = nat.width * scale;
+    final renderedH = nat.height * scale;
+    final cx = bbox.x + bbox.width / 2;
+    final cy = bbox.y + bbox.height / 2;
+    final excessW = renderedW - containerW;
+    final excessH = renderedH - containerH;
+
+    // Formula: image offset = -(excessW) * (ax + 1) / 2
+    // We want: offset + cx * renderedW = containerW / 2
+    // → ax = (cx * renderedW - containerW / 2) * 2 / excessW - 1
+    final ax = excessW > 0
+        ? ((cx * renderedW - containerW / 2) * 2 / excessW - 1).clamp(-1.0, 1.0)
+        : 0.0;
+    final ay = excessH > 0
+        ? ((cy * renderedH - containerH / 2) * 2 / excessH - 1).clamp(-1.0, 1.0)
+        : 0.0;
+
+    return Alignment(ax, ay);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const double h = 200;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Row(
+            children: [
+              const Icon(Icons.map_outlined, size: 14, color: AppColors.accent),
+              const SizedBox(width: 6),
+              Text(
+                'Location map',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: AppColors.accent,
+                      letterSpacing: 1.1,
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+            ],
+          ),
+        ),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: SizedBox(
+            width: double.infinity,
+            height: h,
+            child: LayoutBuilder(
+              builder: (_, constraints) {
+                final w = constraints.maxWidth;
+                final alignment = _computeAlignment(w, h);
+                return Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    CachedNetworkImage(
+                      imageUrl: widget.photoUrl,
+                      width: w,
+                      height: h,
+                      fit: BoxFit.cover,
+                      alignment: alignment,
+                      placeholder: (_, __) => Container(
+                        color: AppColors.accent.withValues(alpha: 0.08),
+                        child: const Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                      errorWidget: (_, __, ___) => Container(
+                        color: AppColors.surfaceVariant,
+                        child: const Center(
+                          child: Icon(Icons.broken_image_outlined, color: Colors.white24),
+                        ),
+                      ),
+                    ),
+                    if (widget.boundingBox != null && _naturalSize != null)
+                      _BoundingBoxOverlay(
+                        bbox: widget.boundingBox!,
+                        naturalSize: _naturalSize!,
+                        containerW: w,
+                        containerH: h,
+                        fit: BoxFit.cover,
+                        alignment: alignment,
+                      ),
+                    Positioned(
+                      left: 0, right: 0, bottom: 0,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.transparent,
+                              Colors.black.withValues(alpha: 0.65),
+                            ],
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.place_outlined, size: 13, color: Color(0xFFC5A059)),
+                            const SizedBox(width: 5),
+                            Flexible(
+                              child: Text(
+                                widget.sectionName,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _BoundingBoxOverlay extends StatelessWidget {
+  const _BoundingBoxOverlay({
+    required this.bbox,
+    required this.naturalSize,
+    required this.containerW,
+    required this.containerH,
+    this.fit = BoxFit.contain,
+    this.alignment = Alignment.center,
+  });
+
+  final SectionBoundingBox bbox;
+  final Size naturalSize;
+  final double containerW, containerH;
+  final BoxFit fit;
+  final Alignment alignment;
+
+  @override
+  Widget build(BuildContext context) {
+    final double scale;
+    if (fit == BoxFit.cover) {
+      scale = max(containerW / naturalSize.width, containerH / naturalSize.height);
+    } else {
+      scale = min(containerW / naturalSize.width, containerH / naturalSize.height);
+    }
+    final renderedW = naturalSize.width * scale;
+    final renderedH = naturalSize.height * scale;
+    // Mirror Flutter's alignment offset: offset = (containerSize - renderedSize) * (a + 1) / 2
+    final offsetX = (containerW - renderedW) * (alignment.x + 1) / 2;
+    final offsetY = (containerH - renderedH) * (alignment.y + 1) / 2;
+
+    final left = offsetX + bbox.x * renderedW;
+    final top = offsetY + bbox.y * renderedH;
+    final width = bbox.width * renderedW;
+    final height = bbox.height * renderedH;
+
+    return Positioned(
+      left: left,
+      top: top,
+      width: width,
+      height: height,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: const Color(0xFFE53935), width: 2.5),
+          color: const Color(0xFFE53935).withValues(alpha: 0.15),
         ),
       ),
     );
@@ -169,7 +433,7 @@ class _QrCard extends StatefulWidget {
     required this.qrData,
   });
 
-  final String section;
+  final RoomSectionModel section;
   final String roomName;
   final String qrData;
 
@@ -234,7 +498,7 @@ class _QrCardState extends State<_QrCard> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  widget.section,
+                  widget.section.name,
                   style: const TextStyle(
                     color: Colors.black,
                     fontSize: 16,

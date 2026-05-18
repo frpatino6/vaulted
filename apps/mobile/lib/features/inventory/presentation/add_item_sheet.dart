@@ -9,6 +9,8 @@ import '../../properties/data/models/floor_model.dart';
 import '../../properties/data/models/room_model.dart';
 import '../../properties/data/models/room_section_model.dart';
 import '../../wardrobe/data/models/wardrobe_attributes.dart';
+import '../../household_members/data/models/household_member_model.dart';
+import '../../household_members/domain/household_members_notifier.dart';
 import '../data/item_repository_provider.dart';
 import '../domain/item_list_notifier.dart';
 import 'assign_location_sheet.dart';
@@ -59,6 +61,8 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
   final _purchasePriceController = TextEditingController();
   final _currentValueController = TextEditingController();
   final _tagsController = TextEditingController();
+
+  int _quantity = 1;
 
   final List<XFile> _pendingPhotos = [];
   final GlobalKey<_WardrobeFieldsSectionState> _wardrobeSectionKey =
@@ -201,6 +205,7 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
             ? _locationDetailController.text.trim()
             : null,
         sectionId: _selectedSectionId,
+        quantity: _quantity,
         purchasePrice: purchasePrice,
         currentValue: currentValue,
         tags: tags,
@@ -224,6 +229,8 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final members = ref.watch(householdMembersNotifierProvider).valueOrNull ??
+        const <HouseholdMemberModel>[];
     final hasFloors = (widget.floors?.isNotEmpty) ?? false;
     final roomIsChangeable = hasFloors;
 
@@ -293,6 +300,9 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
                       final picker = ImagePicker();
                       final file = await picker.pickImage(
                         source: ImageSource.camera,
+                        imageQuality: 80,
+                        maxWidth: 1920,
+                        maxHeight: 1920,
                       );
                       if (file == null || !mounted) return;
                       setState(() {
@@ -315,6 +325,11 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
                     hintText: 'e.g. Chesterfield Sofa',
                   ),
                   onFieldSubmitted: (_) => _submit(),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                _QuantityStepper(
+                  value: _quantity,
+                  onChanged: (v) => setState(() => _quantity = v),
                 ),
                 const SizedBox(height: AppSpacing.md),
                 DropdownButtonFormField<String>(
@@ -348,7 +363,10 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
                 ),
                 if (_category == 'wardrobe') ...[
                   const SizedBox(height: AppSpacing.lg),
-                  _WardrobeFieldsSection(key: _wardrobeSectionKey),
+                  _WardrobeFieldsSection(
+                    key: _wardrobeSectionKey,
+                    members: members,
+                  ),
                 ],
                 const SizedBox(height: AppSpacing.md),
                 TextFormField(
@@ -669,10 +687,77 @@ class _LocationSection extends StatelessWidget {
   }
 }
 
+// ── Quantity stepper ──────────────────────────────────────────────────────
+
+class _QuantityStepper extends StatelessWidget {
+  const _QuantityStepper({required this.value, required this.onChanged});
+
+  final int value;
+  final void Function(int) onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Text(
+          'Quantity',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: AppColors.onSurfaceVariant,
+          ),
+        ),
+        const Spacer(),
+        SizedBox(
+          width: 36,
+          height: 36,
+          child: IconButton.outlined(
+            padding: EdgeInsets.zero,
+            icon: const Icon(Icons.remove, size: 16),
+            style: IconButton.styleFrom(
+              foregroundColor: value > 1 ? AppColors.accent : AppColors.onSurfaceVariant,
+              side: BorderSide(
+                color: value > 1
+                    ? AppColors.accent.withValues(alpha: 0.5)
+                    : AppColors.onSurfaceVariant.withValues(alpha: 0.3),
+              ),
+            ),
+            onPressed: value > 1 ? () => onChanged(value - 1) : null,
+          ),
+        ),
+        SizedBox(
+          width: 40,
+          child: Text(
+            '$value',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+              color: AppColors.onBackground,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        SizedBox(
+          width: 36,
+          height: 36,
+          child: IconButton.outlined(
+            padding: EdgeInsets.zero,
+            icon: const Icon(Icons.add, size: 16),
+            style: IconButton.styleFrom(
+              foregroundColor: AppColors.accent,
+              side: BorderSide(color: AppColors.accent.withValues(alpha: 0.5)),
+            ),
+            onPressed: () => onChanged(value + 1),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 // ── Wardrobe fields (unchanged) ────────────────────────────────────────────
 
 class _WardrobeFieldsSection extends StatefulWidget {
-  const _WardrobeFieldsSection({super.key});
+  const _WardrobeFieldsSection({super.key, required this.members});
+
+  final List<HouseholdMemberModel> members;
 
   @override
   State<_WardrobeFieldsSection> createState() => _WardrobeFieldsSectionState();
@@ -705,6 +790,13 @@ class _WardrobeFieldsSectionState extends State<_WardrobeFieldsSection> {
   final _sizeController = TextEditingController();
   final _colorController = TextEditingController();
   final _materialController = TextEditingController();
+  String? _ownerMemberId;
+
+  @override
+  void initState() {
+    super.initState();
+    _ownerMemberId = null;
+  }
 
   WardrobeAttributes get value => WardrobeAttributes(
     type: _type,
@@ -714,6 +806,7 @@ class _WardrobeFieldsSectionState extends State<_WardrobeFieldsSection> {
     material: _trimOrNull(_materialController.text),
     season: _season,
     cleaningStatus: _cleaningStatus,
+    ownerMemberId: _ownerMemberId,
   );
 
   String? _trimOrNull(String value) {
@@ -744,6 +837,25 @@ class _WardrobeFieldsSectionState extends State<_WardrobeFieldsSection> {
           ),
         ),
         const SizedBox(height: AppSpacing.sm),
+        DropdownButtonFormField<String>(
+          initialValue: _ownerMemberId,
+          decoration: const InputDecoration(labelText: 'Belongs to (optional)'),
+          dropdownColor: AppColors.surfaceVariant,
+          items: [
+            const DropdownMenuItem<String>(
+              value: null,
+              child: Text('Unassigned'),
+            ),
+            ...widget.members.map(
+              (member) => DropdownMenuItem<String>(
+                value: member.id,
+                child: Text(member.name),
+              ),
+            ),
+          ],
+          onChanged: (value) => setState(() => _ownerMemberId = value),
+        ),
+        const SizedBox(height: AppSpacing.md),
         DropdownButtonFormField<String>(
           initialValue: _type,
           decoration: const InputDecoration(labelText: 'Type'),

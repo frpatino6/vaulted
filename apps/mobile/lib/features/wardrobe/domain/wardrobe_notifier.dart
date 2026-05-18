@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../inventory/data/item_repository_provider.dart';
 import '../../inventory/data/models/item_model.dart';
 import '../../inventory/data/search_repository_provider.dart';
+import '../data/dry_cleaning_repository_provider.dart';
+import 'dry_cleaning_notifier.dart';
 
 class WardrobeNotifier extends AsyncNotifier<List<ItemModel>> {
   @override
@@ -33,7 +35,9 @@ class WardrobeNotifier extends AsyncNotifier<List<ItemModel>> {
   }
 
   List<ItemModel> _onlyWardrobe(List<ItemModel> items) {
-    return items.where((item) => _isWardrobeCategory(item.category)).toList();
+    return items
+        .where((item) => _isWardrobeCategory(item.category) && item.status != 'disposed')
+        .toList();
   }
 
   bool _isWardrobeCategory(String category) {
@@ -76,6 +80,24 @@ class WardrobeNotifier extends AsyncNotifier<List<ItemModel>> {
           return updated;
         }).toList(),
       );
+      try {
+        if (cleaningStatus == 'at_dry_cleaner') {
+          await ref
+              .read(dryCleaningRepositoryProvider)
+              .createRecord(item.id);
+        } else {
+          final previousStatus =
+              (item.attributes?['cleaningStatus'] as String?) ?? '';
+          if (previousStatus == 'at_dry_cleaner') {
+            await ref
+                .read(dryCleaningRepositoryProvider)
+                .returnLatestRecord(item.id);
+          }
+        }
+      } catch (_) {
+        // dry cleaning record sync is best-effort; don't block the status update
+      }
+      ref.invalidate(dryCleaningNotifierProvider(item.id));
       await _refreshSilently();
     } catch (_) {
       final latest = state.valueOrNull;

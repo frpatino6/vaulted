@@ -548,6 +548,11 @@ class _StatusInfo {
 }
 
 _TypeInfo _typeInfo(String type) => switch (type) {
+  'creation' => const _TypeInfo(
+    Icons.add_circle_outline_rounded,
+    Color(0xFF4CAF50),
+    'Cataloged',
+  ),
   'loan' => const _TypeInfo(
     Icons.person_outline_rounded,
     Color(0xFF9C27B0),

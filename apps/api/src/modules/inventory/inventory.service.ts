@@ -11,6 +11,7 @@ import { MoveItemDto } from './dto/move-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
 import { Item, ItemDocument, ItemValuation } from './schemas/item.schema';
 import { ItemHistory, ItemHistoryDocument } from './schemas/item-history.schema';
+import { Movement, MovementDocument, MovementStatus, MovementType, MovementItemStatus } from '../movements/schemas/movement.schema';
 import { Property, PropertyDocument } from '../properties/schemas/property.schema';
 import { EmbeddingService } from '../ai/shared/embedding.service';
 import { Role } from '../../common/enums/role.enum';
@@ -18,6 +19,7 @@ import { AccessControlService } from '../../common/services/access-control.servi
 import { CryptoService } from '../../common/services/crypto.service';
 import { AuditService } from '../audit/audit.service';
 import { MediaService } from '../media/media.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { toValueRange } from '../../common/utils/value-range.util';
 
 interface InventoryFilters {
@@ -39,7 +41,7 @@ interface InventorySearchFilters {
 }
 
 export interface InventorySearchResponse {
-  items: Array<ItemDocument & { propertyName: string | null; roomName: string | null }>;
+  items: Array<ItemDocument & { propertyName: string | null; roomName: string | null; sectionPhoto: string | null }>;
   total: number;
   page: number;
   limit: number;
@@ -61,6 +63,8 @@ export class InventoryService {
     private readonly itemHistoryModel: Model<ItemHistoryDocument>,
     @InjectModel(Property.name)
     private readonly propertyModel: Model<PropertyDocument>,
+    @InjectModel(Movement.name)
+    private readonly movementModel: Model<MovementDocument>,
     @InjectDataSource() private readonly dataSource: DataSource,
     private readonly accessControl: AccessControlService,
     private readonly crypto: CryptoService,
@@ -68,6 +72,7 @@ export class InventoryService {
     private readonly configService: ConfigService,
     private readonly mediaService: MediaService,
     @Optional() private readonly embeddingService?: EmbeddingService,
+    @Optional() private readonly notificationsService?: NotificationsService,
   ) {
     this.appUrl = (
       this.configService.get<string>('APP_URL') ?? 'http://localhost:3000'
@@ -91,6 +96,7 @@ export class InventoryService {
       serialNumber: dto.serialNumber,
       locationDetail: dto.locationDetail,
       sectionId: dto.sectionId ?? null,
+      quantity: dto.quantity ?? 1,
       createdBy: userId,
     });
 
@@ -99,10 +105,84 @@ export class InventoryService {
     await item.save();
 
     void this.indexItemEmbedding(item);
+    void this.recordCreationMovement(item, tenantId, userId);
+    void this.notifyItemAdded(item, tenantId);
 
     const plain = item.toObject();
     plain.valuation = this.decryptValuation(plain.valuation, tenantId);
     return plain as Item;
+  }
+
+  private async notifyItemAdded(item: ItemDocument, tenantId: string): Promise<void> {
+    if (!this.notificationsService) return;
+    try {
+      await this.notificationsService.notifyTenantRoles({
+        tenantId,
+        roles: [Role.OWNER, Role.MANAGER],
+        type: 'item_added',
+        title: 'New item cataloged',
+        body: `${item.name} has been added to your inventory.`,
+        data: { itemId: String(item._id), category: item.category ?? '' },
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`itemAdded notification failed: ${message}`);
+    }
+  }
+
+  private async recordCreationMovement(
+    item: ItemDocument,
+    tenantId: string,
+    userId: string,
+  ): Promise<void> {
+    try {
+      const now = new Date();
+      await this.movementModel.create({
+        tenantId,
+        propertyId: item.propertyId ?? '',
+        operationType: MovementType.CREATION,
+        status: MovementStatus.COMPLETED,
+        title: `Item cataloged: ${item.name}`,
+        description: '',
+        destination: '',
+        destinationPropertyId: '',
+        destinationRoomId: '',
+        destinationPropertyName: '',
+        destinationRoomName: '',
+        items: [
+          {
+            itemId: String(item._id),
+            itemName: item.name,
+            itemCategory: item.category ?? '',
+            itemPhoto: item.photos?.[0] ?? '',
+            fromPropertyId: item.propertyId ?? '',
+            fromRoomId: item.roomId ?? '',
+            fromPropertyName: '',
+            fromRoomName: '',
+            scannedAt: now,
+            checkedInAt: null,
+            checkedInBy: null,
+            status: MovementItemStatus.OUT,
+          },
+        ],
+        createdBy: userId,
+        activatedAt: now,
+        completedAt: now,
+        dueDate: null,
+        notes: '',
+      });
+
+      await this.itemHistoryModel.create({
+        itemId: String(item._id),
+        tenantId,
+        action: 'created',
+        toPropertyId: item.propertyId ?? '',
+        toRoomId: item.roomId ?? '',
+        performedBy: userId,
+      });
+    } catch (err) {
+      this.logger.error(`Failed to record creation movement for item ${String(item._id)}`, err);
+    }
   }
 
   async findAll(
@@ -145,9 +225,7 @@ export class InventoryService {
       query.category = filters.category;
     }
 
-    if (filters.status) {
-      query.status = filters.status;
-    }
+    query.status = filters.status ?? { $ne: 'disposed' };
 
     const q = this.itemModel.find(query).sort({ createdAt: -1 });
     if (filters.limit && filters.limit > 0) q.limit(filters.limit);
@@ -175,7 +253,9 @@ export class InventoryService {
       });
       return result;
     }
-    return items.map((item) => this.accessControl.stripValuation(item.toObject()) as Item);
+    return items.map((item) =>
+      this.withSignedUrls(this.accessControl.stripValuation(item.toObject()) as Item, userId, tenantId),
+    );
   }
 
   async findById(
@@ -191,6 +271,37 @@ export class InventoryService {
         throw new NotFoundException('Item not found');
       }
     }
+
+    const property = await this.propertyModel
+      .findOne({ _id: item.propertyId, tenantId })
+      .select('_id name floors')
+      .exec();
+
+    const propertyName = property?.name ?? null;
+    let roomName: string | null = null;
+    let sectionPhoto: string | null = null;
+    let sectionBoundingBox: { x: number; y: number; width: number; height: number } | null = null;
+    let sectionCode: string | null = null;
+    let sectionFurnitureName: string | null = null;
+    if (property && item.roomId) {
+      for (const floor of property.floors ?? []) {
+        const room = floor.rooms?.find((r) => r.roomId === String(item.roomId));
+        if (room) {
+          roomName = room.name;
+          if (item.sectionId) {
+            const section = room.sections?.find((s) => s.sectionId === String(item.sectionId));
+            sectionPhoto = section?.photo ?? null;
+            sectionCode = section?.code ?? null;
+            sectionFurnitureName = section?.furnitureName ?? null;
+            sectionBoundingBox = section?.boundingBox
+              ? { x: section.boundingBox.x, y: section.boundingBox.y, width: section.boundingBox.width, height: section.boundingBox.height }
+              : null;
+          }
+          break;
+        }
+      }
+    }
+
     if (role === Role.OWNER || role === Role.MANAGER) {
       const plain = item.toObject();
       plain.valuation = this.decryptValuation(plain.valuation, String(item.tenantId));
@@ -209,9 +320,10 @@ export class InventoryService {
           ),
         },
       });
-      return this.withSignedUrls(plain as Item, userId, tenantId);
+      return this.withSignedUrls({ ...plain, propertyName, roomName, sectionPhoto, sectionBoundingBox, sectionCode, sectionFurnitureName } as Item & { propertyName: string | null; roomName: string | null; sectionPhoto: string | null; sectionBoundingBox: { x: number; y: number; width: number; height: number } | null; sectionCode: string | null; sectionFurnitureName: string | null }, userId, tenantId);
     }
-    return this.accessControl.stripValuation(item.toObject()) as Item;
+    const stripped = this.accessControl.stripValuation(item.toObject()) as Item;
+    return this.withSignedUrls({ ...stripped, propertyName, roomName, sectionPhoto, sectionBoundingBox, sectionCode, sectionFurnitureName } as Item & { propertyName: string | null; roomName: string | null; sectionPhoto: string | null; sectionBoundingBox: { x: number; y: number; width: number; height: number } | null; sectionCode: string | null; sectionFurnitureName: string | null }, userId, tenantId);
   }
 
   async update(tenantId: string, itemId: string, dto: UpdateItemDto): Promise<Item> {
@@ -240,6 +352,7 @@ export class InventoryService {
             ...(dto.serialNumber !== undefined ? { serialNumber: dto.serialNumber } : {}),
             ...(dto.locationDetail !== undefined ? { locationDetail: dto.locationDetail } : {}),
             ...(dto.sectionId !== undefined ? { sectionId: dto.sectionId } : {}),
+            ...(dto.quantity !== undefined ? { quantity: dto.quantity } : {}),
           },
         },
         { new: true, runValidators: true },
@@ -418,9 +531,7 @@ export class InventoryService {
       query.propertyId = filters.propertyId;
     }
 
-    if (filters.status) {
-      query.status = filters.status;
-    }
+    query.status = filters.status ?? { $ne: 'disposed' };
 
     const itemQuery = this.itemModel.find(query);
 
@@ -445,11 +556,24 @@ export class InventoryService {
       const propertyName = property?.name ?? null;
 
       let roomName: string | null = null;
+      let sectionPhoto: string | null = null;
+      let sectionBoundingBox: { x: number; y: number; width: number; height: number } | null = null;
+      let sectionCode: string | null = null;
+      let sectionFurnitureName: string | null = null;
       if (property && item.roomId) {
         for (const floor of property.floors ?? []) {
           const room = floor.rooms?.find((candidate) => candidate.roomId === String(item.roomId));
           if (room) {
             roomName = room.name;
+            if (item.sectionId) {
+              const section = room.sections?.find((s) => s.sectionId === String(item.sectionId));
+              sectionPhoto = section?.photo ?? null;
+              sectionCode = section?.code ?? null;
+              sectionFurnitureName = section?.furnitureName ?? null;
+              sectionBoundingBox = section?.boundingBox
+                ? { x: section.boundingBox.x, y: section.boundingBox.y, width: section.boundingBox.width, height: section.boundingBox.height }
+                : null;
+            }
             break;
           }
         }
@@ -462,12 +586,20 @@ export class InventoryService {
         ...plain,
         propertyName,
         roomName,
-      } as ItemDocument & { propertyName: string | null; roomName: string | null };
+        sectionPhoto,
+        sectionBoundingBox,
+        sectionCode,
+        sectionFurnitureName,
+      } as ItemDocument & { propertyName: string | null; roomName: string | null; sectionPhoto: string | null; sectionBoundingBox: { x: number; y: number; width: number; height: number } | null; sectionCode: string | null; sectionFurnitureName: string | null };
     });
 
     const finalItems = role === Role.OWNER || role === Role.MANAGER
-      ? enrichedItems
-      : enrichedItems.map((item) => this.accessControl.stripValuation(item));
+      ? enrichedItems.map((item) =>
+          this.withSignedUrls(item as unknown as Item, userId, tenantId),
+        )
+      : enrichedItems.map((item) =>
+          this.withSignedUrls(this.accessControl.stripValuation(item) as unknown as Item, userId, tenantId),
+        );
 
     if (role === Role.OWNER || role === Role.MANAGER) {
       void this.audit.log({
@@ -502,6 +634,9 @@ export class InventoryService {
       ...item,
       photos: (item.photos ?? []).map(sign),
       documents: (item.documents ?? []).map(sign),
+      ...((item as unknown as Record<string, unknown>)['sectionPhoto']
+        ? { sectionPhoto: sign((item as unknown as Record<string, unknown>)['sectionPhoto'] as string) }
+        : {}),
     };
   }
 

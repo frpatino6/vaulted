@@ -20,6 +20,13 @@ class ItemListNotifier extends AsyncNotifier<List<ItemModel>> {
         .getItems(propertyId: propertyId, roomId: roomId));
   }
 
+  void removeItem(String id) {
+    final current = state.valueOrNull;
+    if (current != null) {
+      state = AsyncData(current.where((i) => i.id != id).toList());
+    }
+  }
+
   Future<void> refresh() async {
     final propertyId = _propertyId;
     final roomId = _roomId;

@@ -5,16 +5,28 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
+import '../../household_members/data/models/household_member_model.dart';
+import '../../household_members/domain/household_members_notifier.dart';
 import '../data/outfit_model.dart';
 import '../domain/outfit_notifier.dart';
 
-class OutfitListScreen extends ConsumerWidget {
+class OutfitListScreen extends ConsumerStatefulWidget {
   const OutfitListScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<OutfitListScreen> createState() => _OutfitListScreenState();
+}
+
+class _OutfitListScreenState extends ConsumerState<OutfitListScreen> {
+  String? _selectedMemberId;
+
+  @override
+  Widget build(BuildContext context) {
     final AsyncValue<List<OutfitModel>> state = ref.watch(
       outfitNotifierProvider,
+    );
+    final AsyncValue<List<HouseholdMemberModel>> membersState = ref.watch(
+      householdMembersNotifierProvider,
     );
 
     return Scaffold(
@@ -29,108 +41,179 @@ class OutfitListScreen extends ConsumerWidget {
         label: const Text('Create Outfit'),
         icon: const Icon(Icons.add),
       ),
-      body: state.when(
-        data: (List<OutfitModel> outfits) {
-          if (outfits.isEmpty) {
-            return const Center(child: Text('No outfits yet'));
-          }
+      body: Column(
+        children: [
+          _OutfitMemberFilterRow(
+            membersState: membersState,
+            selectedMemberId: _selectedMemberId,
+            onSelected: (value) async {
+              setState(() => _selectedMemberId = value);
+              await ref
+                  .read(outfitNotifierProvider.notifier)
+                  .setOwnerMemberFilter(value);
+            },
+          ),
+          Expanded(
+            child: state.when(
+              data: (List<OutfitModel> outfits) {
+                if (outfits.isEmpty) {
+                  return const Center(child: Text('No outfits yet'));
+                }
 
-          return RefreshIndicator(
-            onRefresh:
-                () => ref.read(outfitNotifierProvider.notifier).refresh(),
-            child: ListView.separated(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              itemBuilder: (BuildContext context, int index) {
-                final OutfitModel outfit = outfits[index];
-                final List<String> thumbnails =
-                    outfit.items
-                        .map((OutfitItemPreviewModel item) => item.photo)
-                        .whereType<String>()
-                        .take(3)
-                        .toList();
-                return InkWell(
-                  onTap: () => context.push('/wardrobe/outfits/${outfit.id}'),
-                  child: Container(
+                return RefreshIndicator(
+                  onRefresh:
+                      () => ref.read(outfitNotifierProvider.notifier).refresh(),
+                  child: ListView.separated(
                     padding: const EdgeInsets.all(AppSpacing.md),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceVariant,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: Colors.white10),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          outfit.name,
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(color: AppColors.onBackground),
-                        ),
-                        if (outfit.description != null &&
-                            outfit.description!.isNotEmpty) ...[
-                          const SizedBox(height: AppSpacing.xs),
-                          Text(
-                            outfit.description!,
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(color: AppColors.onSurfaceVariant),
+                    itemBuilder: (BuildContext context, int index) {
+                      final OutfitModel outfit = outfits[index];
+                      final List<String> thumbnails =
+                          outfit.items
+                              .map((OutfitItemPreviewModel item) => item.photo)
+                              .whereType<String>()
+                              .take(3)
+                              .toList();
+                      return InkWell(
+                        onTap: () => context.push('/wardrobe/outfits/${outfit.id}'),
+                        child: Container(
+                          padding: const EdgeInsets.all(AppSpacing.md),
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceVariant,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: Colors.white10),
                           ),
-                        ],
-                        const SizedBox(height: AppSpacing.sm),
-                        SizedBox(
-                          height: 56,
-                          child: Row(
-                            children: List<Widget>.generate(3, (
-                              int thumbIndex,
-                            ) {
-                              final String? image =
-                                  thumbIndex < thumbnails.length
-                                      ? thumbnails[thumbIndex]
-                                      : null;
-                              return Padding(
-                                padding: const EdgeInsets.only(
-                                  right: AppSpacing.sm,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                outfit.name,
+                                style: Theme.of(context).textTheme.titleMedium
+                                    ?.copyWith(color: AppColors.onBackground),
+                              ),
+                              if (outfit.description != null &&
+                                  outfit.description!.isNotEmpty) ...[
+                                const SizedBox(height: AppSpacing.xs),
+                                Text(
+                                  outfit.description!,
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
+                                        color: AppColors.onSurfaceVariant,
+                                      ),
                                 ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Container(
-                                    width: 56,
-                                    height: 56,
-                                    color: AppColors.background,
-                                    child:
-                                        image == null
-                                            ? const Icon(
-                                              Icons.checkroom,
-                                              color: AppColors.onSurfaceVariant,
-                                            )
-                                            : CachedNetworkImage(
-                                              imageUrl: image,
-                                              fit: BoxFit.cover,
-                                              errorWidget:
-                                                  (_, _, _) => const Icon(
-                                                    Icons.broken_image_outlined,
+                              ],
+                              const SizedBox(height: AppSpacing.sm),
+                              SizedBox(
+                                height: 56,
+                                child: Row(
+                                  children: List<Widget>.generate(3, (
+                                    int thumbIndex,
+                                  ) {
+                                    final String? image =
+                                        thumbIndex < thumbnails.length
+                                            ? thumbnails[thumbIndex]
+                                            : null;
+                                    return Padding(
+                                      padding: const EdgeInsets.only(
+                                        right: AppSpacing.sm,
+                                      ),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: Container(
+                                          width: 56,
+                                          height: 56,
+                                          color: AppColors.background,
+                                          child:
+                                              image == null
+                                                  ? const Icon(
+                                                    Icons.checkroom,
                                                     color:
                                                         AppColors
                                                             .onSurfaceVariant,
+                                                  )
+                                                  : CachedNetworkImage(
+                                                    imageUrl: image,
+                                                    fit: BoxFit.cover,
+                                                    errorWidget:
+                                                        (_, _, _) => const Icon(
+                                                          Icons
+                                                              .broken_image_outlined,
+                                                          color:
+                                                              AppColors
+                                                                  .onSurfaceVariant,
+                                                        ),
                                                   ),
-                                            ),
-                                  ),
+                                        ),
+                                      ),
+                                    );
+                                  }),
                                 ),
-                              );
-                            }),
+                              ),
+                            ],
                           ),
                         ),
-                      ],
-                    ),
+                      );
+                    },
+                    separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
+                    itemCount: outfits.length,
                   ),
                 );
               },
-              separatorBuilder:
-                  (_, _) => const SizedBox(height: AppSpacing.sm),
-              itemCount: outfits.length,
+              loading: () => const AppScreenSkeleton(showHeader: false),
+              error: (_, _) => const Center(child: Text('Unable to load outfits')),
             ),
-          );
-        },
-        loading: () => const AppScreenSkeleton(showHeader: false),
-        error: (_, _) => const Center(child: Text('Unable to load outfits')),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OutfitMemberFilterRow extends StatelessWidget {
+  const _OutfitMemberFilterRow({
+    required this.membersState,
+    required this.selectedMemberId,
+    required this.onSelected,
+  });
+
+  final AsyncValue<List<HouseholdMemberModel>> membersState;
+  final String? selectedMemberId;
+  final ValueChanged<String?> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final members = membersState.valueOrNull ?? const <HouseholdMemberModel>[];
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.sm,
+        AppSpacing.md,
+        0,
+      ),
+      child: SizedBox(
+        height: 36,
+        child: ListView(
+          scrollDirection: Axis.horizontal,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(right: AppSpacing.sm),
+              child: ChoiceChip(
+                label: const Text('All members'),
+                selected: selectedMemberId == null,
+                onSelected: (_) => onSelected(null),
+              ),
+            ),
+            ...members.map(
+              (member) => Padding(
+                padding: const EdgeInsets.only(right: AppSpacing.sm),
+                child: ChoiceChip(
+                  label: Text(member.name),
+                  selected: selectedMemberId == member.id,
+                  onSelected: (_) => onSelected(member.id),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

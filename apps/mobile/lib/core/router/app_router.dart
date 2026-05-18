@@ -9,6 +9,7 @@ import '../../features/auth/presentation/mfa_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/reports/presentation/reports_screen.dart';
 import '../../features/wardrobe/presentation/wardrobe_screen.dart';
+import '../../features/wardrobe/presentation/at_laundry_screen.dart';
 import '../../features/wardrobe/presentation/outfit_detail_screen.dart';
 import '../../features/wardrobe/presentation/create_outfit_screen.dart';
 import '../../features/wardrobe/presentation/outfit_list_screen.dart';
@@ -19,6 +20,7 @@ import '../../features/inventory/presentation/search_screen.dart';
 import '../../features/properties/presentation/property_detail_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
 import '../../features/users/presentation/users_screen.dart';
+import '../../features/household_members/presentation/household_members_screen.dart';
 import '../../features/ai_chat/presentation/chat_screen.dart';
 import '../../features/maintenance/presentation/maintenance_list_screen.dart';
 import '../../features/maintenance/presentation/maintenance_detail_screen.dart';
@@ -30,12 +32,16 @@ import '../../features/ai_scan/data/models/ai_scan_result_model.dart';
 import '../../features/ai_scan/presentation/ai_scan_screen.dart';
 import '../../features/ai_scan/presentation/ai_item_review_screen.dart';
 import '../../features/properties/data/models/floor_model.dart';
+import '../../features/inventory/data/models/item_model.dart';
 import '../../features/inventory/presentation/asset_browser_screen.dart';
+import '../../features/inventory/presentation/qr_list_screen.dart';
 import '../../features/insurance/presentation/insurance_list_screen.dart';
 import '../../features/insurance/presentation/insurance_detail_screen.dart';
 import '../../features/insurance/presentation/insurance_form_screen.dart';
 import '../../features/insurance/presentation/coverage_gaps_screen.dart';
 import '../../features/insurance/presentation/claim_draft_screen.dart';
+import '../../features/notifications/presentation/pages/notification_center_page.dart';
+import '../../features/notifications/presentation/pages/notification_preferences_page.dart';
 
 GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
   return GoRouter(
@@ -127,6 +133,14 @@ GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
         builder: (context, state) => const AssetBrowserScreen(),
       ),
       GoRoute(
+        path: '/qr-codes',
+        builder: (context, state) {
+          final extra = state.extra;
+          final items = extra is List<ItemModel> ? extra : null;
+          return QrListScreen(items: items);
+        },
+      ),
+      GoRoute(
         path: '/scanner',
         builder: (context, state) => const QrScannerScreen(),
       ),
@@ -137,6 +151,10 @@ GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
       GoRoute(
         path: '/wardrobe',
         builder: (context, state) => const WardrobeScreen(),
+      ),
+      GoRoute(
+        path: '/wardrobe/at-laundry',
+        builder: (context, state) => const AtLaundryScreen(),
       ),
       GoRoute(
         path: '/wardrobe/outfits',
@@ -160,6 +178,18 @@ GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
       GoRoute(
         path: '/settings/users',
         builder: (context, state) => const UsersScreen(),
+      ),
+      GoRoute(
+        path: '/settings/household-members',
+        builder: (context, state) => const HouseholdMembersScreen(),
+      ),
+      GoRoute(
+        path: '/notifications',
+        builder: (context, state) => const NotificationCenterPage(),
+      ),
+      GoRoute(
+        path: '/settings/notifications',
+        builder: (context, state) => const NotificationPreferencesPage(),
       ),
       GoRoute(path: '/chat', builder: (context, state) => const ChatScreen()),
       GoRoute(

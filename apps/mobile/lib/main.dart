@@ -1,24 +1,60 @@
 import 'package:dio/dio.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'core/config/app_config.dart';
+import 'core/network/dio_credentials.dart';
 import 'core/router/app_router_provider.dart';
 import 'core/storage/auth_token_store.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_mode_provider.dart';
+import 'features/notifications/presentation/providers/notifications_list_provider.dart';
+import 'features/notifications/presentation/providers/notifications_provider.dart';
 import 'features/presence/presentation/providers/presence_provider.dart';
+import 'firebase_options.dart';
+
+/// Holds a notification that arrived while the app was terminated.
+/// Processed in [_VaultedAppState.initState] after the router is ready.
+RemoteMessage? _pendingInitialMessage;
+
+@pragma('vm:entry-point')
+Future<void> _firebaseBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await _initFirebase();
   await _tryRestoreSession();
   runApp(
     const ProviderScope(
       child: VaultedApp(),
     ),
   );
+}
+
+Future<void> _initFirebase() async {
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    final messaging = FirebaseMessaging.instance;
+    await messaging.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+    FirebaseMessaging.onBackgroundMessage(_firebaseBackgroundHandler);
+    _pendingInitialMessage =
+        await FirebaseMessaging.instance.getInitialMessage();
+  } catch (e) {
+    // Firebase not configured yet for this platform (missing google-services.json / GoogleService-Info.plist)
+    debugPrint('[Firebase] Init skipped: $e');
+  }
 }
 
 /// Attempts to restore a previous authenticated session using the stored refresh token.
@@ -34,15 +70,16 @@ Future<void> _tryRestoreSession() async {
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 10),
       headers: {'Content-Type': 'application/json'},
-      extra: {'withCredentials': kIsWeb},
     ));
+
+    applyWebCredentials(dio);
 
     final Options refreshOptions;
     FlutterSecureStorage? storage;
     if (kIsWeb) {
-      // On web, browser sends the httpOnly cookie automatically.
-      // Setting Cookie manually is blocked by browsers (forbidden header).
-      refreshOptions = Options(extra: {'withCredentials': true});
+      // withCredentials is set at the adapter level; browser sends the httpOnly
+      // cookie automatically. Setting Cookie manually is forbidden on web.
+      refreshOptions = Options();
     } else {
       storage = const FlutterSecureStorage(
         aOptions: AndroidOptions(encryptedSharedPreferences: true),
@@ -109,6 +146,49 @@ class _VaultedAppState extends ConsumerState<VaultedApp>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // Best-effort: silently fails if user is not yet authenticated.
+    // Retries automatically on token refresh and after each login.
+    ref.read(fcmTokenRegistrationProvider);
+    _setupFcmHandlers();
+  }
+
+  void _setupFcmHandlers() {
+    // Foreground messages — silently refresh the notification list so the
+    // bell badge updates without interrupting the user.
+    FirebaseMessaging.onMessage.listen((_) {
+      ref.invalidate(notificationsListProvider);
+    });
+
+    // App opened from background notification tap.
+    FirebaseMessaging.onMessageOpenedApp.listen((message) {
+      _navigateFromNotification(message.data);
+    });
+
+    // App was terminated and opened via a notification tap.
+    if (_pendingInitialMessage != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _navigateFromNotification(_pendingInitialMessage!.data);
+        _pendingInitialMessage = null;
+      });
+    }
+  }
+
+  void _navigateFromNotification(Map<String, dynamic> data) {
+    final router = ref.read(appRouterProvider);
+    final type = data['type'] as String?;
+    switch (type) {
+      case 'maintenance_due':
+        router.push('/maintenance');
+      case 'item_added':
+        final itemId = data['itemId'] as String?;
+        if (itemId != null && itemId.isNotEmpty) {
+          router.push('/items/$itemId');
+        }
+      case 'dry_cleaning_overdue':
+        router.push('/wardrobe');
+      default:
+        router.push('/notifications');
+    }
   }
 
   @override
@@ -126,6 +206,7 @@ class _VaultedAppState extends ConsumerState<VaultedApp>
         notifier.pauseHeartbeat();
       case AppLifecycleState.resumed:
         notifier.resumeHeartbeat();
+        ref.invalidate(notificationsListProvider);
       default:
         break;
     }

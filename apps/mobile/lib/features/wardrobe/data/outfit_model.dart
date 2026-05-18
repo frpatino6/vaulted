@@ -34,6 +34,7 @@ class OutfitModel with _$OutfitModel {
     @Default(<String>[]) List<String> photos,
     @Default(<OutfitItemPreviewModel>[]) List<OutfitItemPreviewModel> items,
     String? createdAt,
+    String? ownerMemberId,
   }) = _OutfitModel;
 
   factory OutfitModel.fromJson(Map<String, dynamic> json) =>

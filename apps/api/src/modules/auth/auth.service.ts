@@ -121,29 +121,13 @@ export class AuthService {
     const { refreshTokenId, sub: userId } = payload;
     const blacklistKey = `blacklist:refresh:${refreshTokenId}`;
 
-    // If this token is already blacklisted it means it was already rotated.
-    // A second use = replay attack → immediately nuke ALL sessions for this user.
-    const isBlacklisted = await this.redis.get(blacklistKey);
-    if (isBlacklisted) {
-      await this.invalidateAllSessions(userId);
-      await this.auditService.log({
-        tenantId: payload.tenantId,
-        userId,
-        action: 'user.token_replay_detected',
-        entityType: 'user',
-        entityId: userId,
-        ipAddress,
-      });
-      throw new UnauthorizedException(
-        'Token replay detected — all sessions have been invalidated',
-      );
+    // Reject only if explicitly revoked (logout / logout-all).
+    // Tokens are NOT blacklisted on normal refresh use — rotating the cookie
+    // requires withCredentials on the browser XHR, which can be unreliable.
+    const isRevoked = await this.redis.get(blacklistKey);
+    if (isRevoked) {
+      throw new UnauthorizedException('Session has been revoked. Please log in again.');
     }
-
-    // Revoke the used token and remove it from the active sessions set
-    await Promise.all([
-      this.redis.setex(blacklistKey, REFRESH_TOKEN_TTL_SECONDS, '1'),
-      this.redis.srem(`sessions:${userId}`, refreshTokenId),
-    ]);
 
     const user = await this.usersService.findById(userId);
     if (!user || !user.isActive) {

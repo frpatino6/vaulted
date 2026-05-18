@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,9 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'package:intl/intl.dart';
 
-import '../../../core/storage/auth_token_store.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../auth/presentation/auth_notifier.dart';
 import '../../users/domain/current_user_jwt.dart';
 import '../../maintenance/data/models/maintenance_model.dart';
 import '../../maintenance/domain/maintenance_notifier.dart';
@@ -24,6 +20,8 @@ import '../../../features/presence/presentation/widgets/online_users_count.dart'
 import '../../../core/privacy/privacy_mode_provider.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/app_bottom_nav.dart';
+import '../../../features/notifications/presentation/providers/notifications_list_provider.dart';
+import 'widgets/dashboard_header.dart';
 
 /// Dashboard: clean welcome header, Quick Actions grid, recent property cards.
 class DashboardScreen extends ConsumerWidget {
@@ -47,10 +45,22 @@ class DashboardScreen extends ConsumerWidget {
           ref.read(dashboardNotifierProvider.notifier).load();
           ref.read(maintenanceListNotifierProvider.notifier).load();
           ref.read(movementListNotifierProvider.notifier).load();
+          ref.invalidate(notificationsListProvider);
         },
         child: CustomScrollView(
           slivers: [
-            SliverToBoxAdapter(child: _DashboardHeader()),
+            SliverAppBar(
+              pinned: true,
+              floating: false,
+              automaticallyImplyLeading: false,
+              toolbarHeight: 76,
+              backgroundColor: AppColors.backgroundElevated,
+              surfaceTintColor: Colors.transparent,
+              elevation: 0,
+              scrolledUnderElevation: 0,
+              titleSpacing: 0,
+              title: const DashboardHeader(),
+            ),
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(
@@ -351,290 +361,6 @@ class _EmptyPropertiesCta extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-/// Clean welcome: small greeting + avatar that opens user menu.
-class _DashboardHeader extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final email = _emailFromJwt() ?? 'Guest';
-    final role = currentUserRole() ?? 'guest';
-    final hour = DateTime.now().hour;
-    final greeting =
-        hour < 12
-            ? 'Good morning,'
-            : hour < 18
-            ? 'Good afternoon,'
-            : 'Good evening,';
-
-    // D4: try name claim from JWT first, fall back to capitalized email prefix
-    final firstName =
-        _firstNameFromJwt() ??
-        () {
-          final prefix = email.split('@').first;
-          if (prefix.isEmpty) return 'Guest';
-          return prefix[0].toUpperCase() + prefix.substring(1);
-        }();
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.md,
-        AppSpacing.lg + 8,
-        AppSpacing.md,
-        0,
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  greeting,
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: AppColors.onSurfaceVariant.withValues(alpha: 0.8),
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  firstName,
-                  style: AppTypography.displaySerif.copyWith(
-                    color: AppColors.onBackground,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Privacy mode toggle
-          _PrivacyToggleButton(),
-          const SizedBox(width: 4),
-          // D2: 48dp touch target wrapping the 40dp avatar container
-          SizedBox(
-            width: 48,
-            height: 48,
-            child: Center(
-              child: GestureDetector(
-                onTap: () => _showUserMenu(context, ref, email, role),
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white10,
-                    border: Border.all(
-                      color: AppColors.accent.withValues(alpha: 0.6),
-                      width: 1,
-                    ),
-                  ),
-                  child: Center(
-                    child: Text(
-                      email.isNotEmpty ? email[0].toUpperCase() : '?',
-                      style: TextStyle(
-                        color: AppColors.accentBright,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String? _emailFromJwt() {
-    final token = AuthTokenStore.instance.getToken();
-    if (token == null) return null;
-    final parts = token.split('.');
-    if (parts.length != 3) return null;
-    try {
-      final payload = utf8.decode(
-        base64Url.decode(base64Url.normalize(parts[1])),
-      );
-      return jsonDecode(payload)['email'] as String?;
-    } catch (_) {
-      return null;
-    }
-  }
-
-  /// D4: extract the name claim from the JWT payload.
-  String? _firstNameFromJwt() {
-    final token = AuthTokenStore.instance.getToken();
-    if (token == null) return null;
-    final parts = token.split('.');
-    if (parts.length != 3) return null;
-    try {
-      final payload = utf8.decode(
-        base64Url.decode(base64Url.normalize(parts[1])),
-      );
-      final decoded = jsonDecode(payload) as Map<String, dynamic>;
-      final name = decoded['name'] as String?;
-      if (name == null || name.trim().isEmpty) return null;
-      final first = name.trim().split(' ').first;
-      if (first.isEmpty) return null;
-      return first[0].toUpperCase() + first.substring(1);
-    } catch (_) {
-      return null;
-    }
-  }
-
-  void _showUserMenu(
-    BuildContext context,
-    WidgetRef ref,
-    String email,
-    String role,
-  ) {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: AppColors.surfaceVariant,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder:
-          (ctx) => SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.md,
-                AppSpacing.lg,
-                AppSpacing.md,
-                AppSpacing.md,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AppColors.onSurfaceVariant.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                  Row(
-                    children: [
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: AppColors.accent.withValues(alpha: 0.15),
-                          border: Border.all(
-                            color: AppColors.accent.withValues(alpha: 0.4),
-                          ),
-                        ),
-                        child: Center(
-                          child: Text(
-                            email.isNotEmpty ? email[0].toUpperCase() : '?',
-                            style: TextStyle(
-                              color: AppColors.accent,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 20,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.md),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              email,
-                              style: Theme.of(
-                                ctx,
-                              ).textTheme.bodyMedium?.copyWith(
-                                color: AppColors.onBackground,
-                                fontWeight: FontWeight.w500,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              role[0].toUpperCase() + role.substring(1),
-                              style: Theme.of(ctx).textTheme.bodySmall
-                                  ?.copyWith(color: AppColors.accent),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                  const Divider(color: Colors.white10),
-                  ListTile(
-                    leading: Icon(
-                      Icons.build_circle_outlined,
-                      color: AppColors.onSurfaceVariant,
-                    ),
-                    title: Text(
-                      'Maintenance',
-                      style: Theme.of(ctx).textTheme.bodyLarge?.copyWith(
-                        color: AppColors.onBackground,
-                      ),
-                    ),
-                    onTap: () {
-                      Navigator.of(ctx).pop();
-                      context.push('/maintenance');
-                    },
-                  ),
-                  ListTile(
-                    leading: Icon(
-                      Icons.settings_outlined,
-                      color: AppColors.onSurfaceVariant,
-                    ),
-                    title: Text(
-                      'Settings',
-                      style: Theme.of(ctx).textTheme.bodyLarge?.copyWith(
-                        color: AppColors.onBackground,
-                      ),
-                    ),
-                    onTap: () {
-                      Navigator.of(ctx).pop();
-                      context.push('/settings');
-                    },
-                  ),
-                  ListTile(
-                    leading: Icon(Icons.logout, color: AppColors.error),
-                    title: Text(
-                      'Sign out',
-                      style: Theme.of(
-                        ctx,
-                      ).textTheme.bodyLarge?.copyWith(color: AppColors.error),
-                    ),
-                    onTap: () async {
-                      Navigator.of(ctx).pop();
-                      await ref.read(authNotifierProvider.notifier).logout();
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
-    );
-  }
-}
-
-class _PrivacyToggleButton extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final isPrivate = ref.watch(privacyModeProvider).valueOrNull ?? false;
-    return IconButton(
-      iconSize: 20,
-      icon: Icon(
-        isPrivate ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-        color: AppColors.onSurfaceVariant,
-      ),
-      tooltip: isPrivate ? 'Show values' : 'Hide values',
-      onPressed: () => ref.read(privacyModeProvider.notifier).toggle(),
     );
   }
 }
@@ -975,7 +701,7 @@ class _StatsSection extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'PORTFOLIO OVERVIEW',
+          'WARDROBE OVERVIEW',
           style: Theme.of(context).textTheme.labelSmall?.copyWith(
             color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
             fontSize: 10,
@@ -983,31 +709,37 @@ class _StatsSection extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: AppSpacing.sm),
-        Row(
+        GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisSpacing: AppSpacing.sm,
+          mainAxisSpacing: AppSpacing.sm,
+          childAspectRatio: 1.5,
           children: [
-            if (canSeeValues) ...[
-              Expanded(
-                child: _StatCard(
-                  label: 'Total Value',
-                  value: isPrivate ? '●●●●●' : _currency.format(data.totalValuation),
-                  icon: Icons.account_balance_outlined,
-                  highlight: true,
-                  onTap: () => context.push('/assets'),
-                ),
+            if (canSeeValues)
+              _OverviewCard(
+                icon: Icons.diamond_outlined,
+                value: isPrivate ? '●●●●●' : _currency.format(data.totalValuation),
+                label: 'Total Value',
+                valueColor: AppColors.accent,
+                iconColor: AppColors.accent,
+                borderColor: AppColors.accent.withValues(alpha: 0.3),
+                onTap: () => context.push('/assets'),
               ),
-              const SizedBox(width: AppSpacing.sm),
-            ],
-            Expanded(
-              child: _StatCard(
-                label: 'Total Items',
-                value: '${data.totalItems}',
-                icon: Icons.inventory_2_outlined,
-              ),
+            _OverviewCard(
+              icon: Icons.inventory_2_outlined,
+              value: '${data.totalItems}',
+              label: 'Total Items',
+              valueColor: AppColors.onBackground,
+              iconColor: AppColors.onSurfaceVariant,
+              borderColor: AppColors.onSurfaceVariant.withValues(alpha: 0.12),
+              onTap: () => context.push('/assets'),
             ),
           ],
         ),
         if (data.itemsByStatus.isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: 16.0),
           _StatusRow(itemsByStatus: data.itemsByStatus),
         ],
       ],
@@ -1015,85 +747,69 @@ class _StatsSection extends ConsumerWidget {
   }
 }
 
-class _StatCard extends StatelessWidget {
-  const _StatCard({
-    required this.label,
-    required this.value,
+class _OverviewCard extends StatelessWidget {
+  const _OverviewCard({
     required this.icon,
-    this.highlight = false,
+    required this.value,
+    required this.label,
+    required this.valueColor,
+    required this.iconColor,
+    required this.borderColor,
     this.onTap,
   });
 
-  final String label;
-  final String value;
   final IconData icon;
-  final bool highlight;
+  final String value;
+  final String label;
+  final Color valueColor;
+  final Color iconColor;
+  final Color borderColor;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
+    return Ink(
       decoration: BoxDecoration(
         color: AppColors.surfaceVariant,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color:
-              highlight
-                  ? AppColors.accent.withValues(alpha: 0.3)
-                  : AppColors.onSurfaceVariant.withValues(alpha: 0.1),
+        border: Border.all(color: borderColor),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        splashColor: AppColors.accent.withValues(alpha: 0.08),
+        highlightColor: AppColors.accent.withValues(alpha: 0.04),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 22, color: iconColor),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                value,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: valueColor,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 22,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white54,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w400,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            icon,
-            size: 20,
-            color: highlight ? AppColors.accent : AppColors.onSurfaceVariant,
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: highlight ? AppColors.accent : AppColors.onBackground,
-              fontWeight: FontWeight.w700,
-              fontSize: 22,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: AppColors.onSurfaceVariant,
-              fontSize: 10,
-            ),
-          ),
-          if (onTap != null) ...[
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                Text(
-                  'View all',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: AppColors.accent.withValues(alpha: 0.7),
-                    letterSpacing: 0.3,
-                  ),
-                ),
-                const SizedBox(width: 2),
-                Icon(
-                  Icons.arrow_forward_ios_rounded,
-                  size: 8,
-                  color: AppColors.accent.withValues(alpha: 0.7),
-                ),
-              ],
-            ),
-          ],
-        ],
-      ),
       ),
     );
   }
@@ -1118,47 +834,37 @@ class _StatusRow extends StatelessWidget {
 
     if (entries.isEmpty) return const SizedBox.shrink();
 
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.sm,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceVariant,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppColors.onSurfaceVariant.withValues(alpha: 0.1),
-        ),
-      ),
-      child: Wrap(
-        spacing: AppSpacing.md,
-        runSpacing: AppSpacing.xs,
-        children:
-            entries.map((e) {
-              final color = _statusColors[e.key] ?? AppColors.onSurfaceVariant;
-              return Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      color: color,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${e.value} ${e.key}',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: AppColors.onSurface,
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
-              );
-            }).toList(),
-      ),
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: entries.map((e) {
+        final dotColor = _statusColors[e.key] ?? AppColors.onSurfaceVariant;
+        final label = e.key[0].toUpperCase() + e.key.substring(1);
+        return Chip(
+          avatar: Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: dotColor,
+              shape: BoxShape.circle,
+            ),
+          ),
+          label: Text('${e.value} $label'),
+          backgroundColor: AppColors.surface,
+          side: BorderSide(
+            color: AppColors.onSurfaceVariant.withValues(alpha: 0.2),
+          ),
+          labelStyle: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: AppColors.onSurface,
+            fontSize: 11,
+            fontWeight: FontWeight.w400,
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 2),
+          labelPadding: const EdgeInsets.only(left: 2, right: 4),
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          visualDensity: VisualDensity.compact,
+        );
+      }).toList(),
     );
   }
 }
@@ -1203,71 +909,69 @@ class _MaintenanceAlertCardState extends ConsumerState<_MaintenanceAlertCard> {
             0,
           ),
           child: Container(
-            padding: const EdgeInsets.all(AppSpacing.md),
             decoration: BoxDecoration(
               color: AppColors.surfaceVariant,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: const Color(0xFFCF6679).withValues(alpha: 0.35),
+                color: AppColors.onSurfaceVariant.withValues(alpha: 0.1),
               ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'MAINTENANCE ALERTS',
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: AppColors.onSurfaceVariant.withValues(
-                          alpha: 0.6,
-                        ),
-                        fontSize: 10,
-                        letterSpacing: 2.0,
-                      ),
+                GestureDetector(
+                  onTap: () => context.push('/maintenance'),
+                  behavior: HitTestBehavior.opaque,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.md,
+                      AppSpacing.md,
+                      AppSpacing.md,
+                      0,
                     ),
-                    // D6: TextButton replaces GestureDetector
-                    TextButton(
-                      onPressed: () => context.push('/maintenance'),
-                      style: TextButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.padded,
-                      ),
-                      child: Text(
-                        'See all →',
-                        style: TextStyle(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'MAINTENANCE ALERTS',
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
+                            fontSize: 10,
+                            letterSpacing: 2.0,
+                          ),
+                        ),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          size: 16,
                           color: AppColors.accent,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
                         ),
-                      ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-                const SizedBox(height: AppSpacing.sm),
-                Row(
-                  children: [
-                    if (overdue > 0) ...[
+                Padding(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  child: Row(
+                    children: [
                       Expanded(
                         child: _AlertCountTile(
                           count: overdue,
                           label: 'Overdue',
                           color: const Color(0xFFCF6679),
+                          onTap: () => context.push('/maintenance'),
                         ),
                       ),
-                      if (dueSoon > 0) const SizedBox(width: AppSpacing.sm),
-                    ],
-                    if (dueSoon > 0)
+                      const SizedBox(width: AppSpacing.sm),
                       Expanded(
                         child: _AlertCountTile(
                           count: dueSoon,
                           label: 'Due this week',
                           color: const Color(0xFFD4AF37),
+                          onTap: () => context.push('/maintenance'),
                         ),
                       ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -1322,62 +1026,61 @@ class _ActiveOperationsCardState extends ConsumerState<_ActiveOperationsCard> {
             0,
           ),
           child: Container(
-            padding: const EdgeInsets.all(AppSpacing.md),
+            clipBehavior: Clip.hardEdge,
             decoration: BoxDecoration(
               color: AppColors.surfaceVariant,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: const Color(0xFF2196F3).withValues(alpha: 0.3),
+                color: AppColors.onSurfaceVariant.withValues(alpha: 0.1),
               ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'ACTIVE OPERATIONS',
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: AppColors.onSurfaceVariant.withValues(
-                          alpha: 0.6,
-                        ),
-                        fontSize: 10,
-                        letterSpacing: 2.0,
-                      ),
+                GestureDetector(
+                  onTap: () => context.push('/movements'),
+                  behavior: HitTestBehavior.opaque,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.md,
+                      AppSpacing.md,
+                      AppSpacing.md,
+                      0,
                     ),
-                    // D6: TextButton replaces GestureDetector
-                    TextButton(
-                      onPressed: () => context.push('/movements'),
-                      style: TextButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.padded,
-                      ),
-                      child: Text(
-                        'See all →',
-                        style: TextStyle(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'ACTIVE OPERATIONS (${active.length})',
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
+                            fontSize: 10,
+                            letterSpacing: 2.0,
+                          ),
+                        ),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          size: 16,
                           color: AppColors.accent,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
                         ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                ...active.take(2).map((m) => _OperationRow(movement: m)),
-                if (active.length > 2)
-                  Padding(
-                    padding: const EdgeInsets.only(top: AppSpacing.xs),
-                    child: Text(
-                      '+${active.length - 2} more',
-                      style: TextStyle(
-                        color: AppColors.onSurfaceVariant,
-                        fontSize: 11,
-                      ),
+                      ],
                     ),
                   ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                  itemCount: active.length,
+                  separatorBuilder: (_, __) => const Divider(
+                    color: Colors.white10,
+                    height: 1,
+                    indent: AppSpacing.md,
+                    endIndent: AppSpacing.md,
+                  ),
+                  itemBuilder: (_, i) => _OperationListItem(movement: active[i]),
+                ),
               ],
             ),
           ),
@@ -1393,8 +1096,8 @@ class _ActiveOperationsCardState extends ConsumerState<_ActiveOperationsCard> {
   }
 }
 
-class _OperationRow extends StatelessWidget {
-  const _OperationRow({required this.movement});
+class _OperationListItem extends StatelessWidget {
+  const _OperationListItem({required this.movement});
 
   final MovementModel movement;
 
@@ -1403,75 +1106,80 @@ class _OperationRow extends StatelessWidget {
     final typeIcon = _typeIcon(movement.operationType);
     final typeColor = _typeColor(movement.operationType);
     final isDraft = movement.isDraft;
+    final itemCount = movement.items.length;
+    final subtitle = isDraft
+        ? '$itemCount item${itemCount == 1 ? '' : 's'}'
+        : '$itemCount item${itemCount == 1 ? '' : 's'} · ${movement.returnedCount}/$itemCount returned';
 
-    return GestureDetector(
-      onTap:
-          () => context.push(
-            isDraft
-                ? '/movements/${movement.id}/scan'
-                : '/movements/${movement.id}',
+    return InkWell(
+      onTap: () => context.push(
+        isDraft
+            ? '/movements/${movement.id}/scan'
+            : '/movements/${movement.id}',
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.xs,
+        ),
+        leading: Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: typeColor.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(10),
           ),
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-        child: Row(
+          child: Icon(typeIcon, color: typeColor, size: 18),
+        ),
+        title: Row(
           children: [
             Container(
-              width: 32,
-              height: 32,
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: typeColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(typeIcon, color: typeColor, size: 16),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    movement.title,
-                    style: TextStyle(
-                      color: AppColors.onBackground,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Text(
-                    '${movement.items.length} item${movement.items.length == 1 ? '' : 's'} · ${isDraft ? 'Draft' : '${movement.returnedCount}/${movement.items.length} returned'}',
-                    style: TextStyle(
-                      color: AppColors.onSurfaceVariant,
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: (isDraft
-                        ? const Color(0xFF9E9E9E)
-                        : const Color(0xFF2196F3))
-                    .withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(20),
+                color: isDraft
+                    ? const Color(0xFF9E9E9E)
+                    : const Color(0xFF2196F3),
+                borderRadius: BorderRadius.circular(4),
               ),
               child: Text(
                 isDraft ? 'DRAFT' : 'ACTIVE',
-                style: TextStyle(
-                  color:
-                      isDraft
-                          ? const Color(0xFF9E9E9E)
-                          : const Color(0xFF2196F3),
+                style: const TextStyle(
+                  color: Colors.white,
                   fontSize: 9,
                   fontWeight: FontWeight.w700,
-                  letterSpacing: 0.4,
+                  letterSpacing: 0.5,
                 ),
               ),
             ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                movement.title,
+                style: const TextStyle(
+                  color: AppColors.onBackground,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
+        ),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: Text(
+            subtitle,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: AppColors.onSurfaceVariant,
+              fontSize: 11,
+            ),
+          ),
+        ),
+        trailing: const Icon(
+          Icons.chevron_right,
+          size: 16,
+          color: AppColors.onSurfaceVariant,
         ),
       ),
     );
@@ -1499,54 +1207,64 @@ class _AlertCountTile extends StatelessWidget {
     required this.count,
     required this.label,
     required this.color,
+    this.onTap,
   });
 
   final int count;
   final String label;
   final Color color;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.sm,
-      ),
+    return Ink(
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        splashColor: color.withValues(alpha: 0.15),
+        highlightColor: color.withValues(alpha: 0.06),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
           ),
-          const SizedBox(width: AppSpacing.sm),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
+          child: Row(
             children: [
-              Text(
-                '$count',
-                style: TextStyle(
-                  color: color,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                ),
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
               ),
-              Text(
-                label,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: AppColors.onSurfaceVariant,
-                  fontSize: 10,
-                ),
+              const SizedBox(width: AppSpacing.sm),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '$count',
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  Text(
+                    label,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: AppColors.onSurfaceVariant,
+                      fontSize: 10,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }

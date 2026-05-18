@@ -21,8 +21,29 @@ class DryCleaningRepository {
         .toList();
   }
 
+  Future<void> createRecord(String itemId) async {
+    final Response<Map<String, dynamic>> response =
+        await _dio.post<Map<String, dynamic>>(
+      'wardrobe/dry-cleaning/$itemId',
+      data: <String, dynamic>{'sentDate': DateTime.now().toIso8601String()},
+    );
+    if (response.data?['success'] != true) {
+      throw DioException(
+        requestOptions: response.requestOptions,
+        type: DioExceptionType.badResponse,
+        response: response,
+      );
+    }
+  }
+
   Future<void> markReturned(String recordId) async {
     await _dio.put<Map<String, dynamic>>('wardrobe/dry-cleaning/$recordId/return');
+  }
+
+  Future<void> returnLatestRecord(String itemId) async {
+    await _dio.put<Map<String, dynamic>>(
+      'wardrobe/dry-cleaning/$itemId/return-latest',
+    );
   }
 
   dynamic _unwrapData(Response<Map<String, dynamic>> response) {

@@ -10,7 +10,7 @@ class AuthRemoteDataSource {
   /// POST /auth/login
   /// Returns (data, setCookieHeader) for repository to persist refresh token.
   /// Response format: { success: true, data: { accessToken, mfaRequired } }
-  Future<({Map<String, dynamic> data, String? setCookie})> login(
+  Future<({Map<String, dynamic> data, List<String> setCookies})> login(
     String email,
     String password,
   ) async {
@@ -18,27 +18,25 @@ class AuthRemoteDataSource {
       'auth/login',
       data: {'email': email, 'password': password},
     );
-    final setCookie = response.headers.value('set-cookie') ??
-        response.headers.value('Set-Cookie');
-    return (data: _unwrapData(response), setCookie: setCookie);
+    final setCookies = _extractSetCookies(response.headers);
+    return (data: _unwrapData(response), setCookies: setCookies);
   }
 
   /// POST /auth/mfa/verify
   /// Requires Authorization: Bearer {accessToken from login}
   /// Returns (data: { accessToken }, setCookie: new refresh token cookie).
-  Future<({Map<String, dynamic> data, String? setCookie})> verifyMfa(String code) async {
+  Future<({Map<String, dynamic> data, List<String> setCookies})> verifyMfa(String code) async {
     final response = await _dio.post<Map<String, dynamic>>(
       'auth/mfa/verify',
       data: {'code': code},
     );
-    final setCookie = response.headers.value('set-cookie') ??
-        response.headers.value('Set-Cookie');
-    return (data: _unwrapData(response), setCookie: setCookie);
+    final setCookies = _extractSetCookies(response.headers);
+    return (data: _unwrapData(response), setCookies: setCookies);
   }
 
   /// POST /auth/logout
   /// POST /auth/accept-invite (public)
-  Future<({Map<String, dynamic> data, String? setCookie})> acceptInvite({
+  Future<({Map<String, dynamic> data, List<String> setCookies})> acceptInvite({
     required String token,
     required String password,
   }) async {
@@ -46,9 +44,8 @@ class AuthRemoteDataSource {
       'auth/accept-invite',
       data: {'token': token, 'password': password},
     );
-    final setCookie = response.headers.value('set-cookie') ??
-        response.headers.value('Set-Cookie');
-    return (data: _unwrapData(response), setCookie: setCookie);
+    final setCookies = _extractSetCookies(response.headers);
+    return (data: _unwrapData(response), setCookies: setCookies);
   }
 
   Future<void> logout() async {
@@ -63,6 +60,13 @@ class AuthRemoteDataSource {
     // This method is for explicit refresh if needed.
     final response = await _dio.post<Map<String, dynamic>>('auth/refresh');
     return _unwrapData(response);
+  }
+
+
+
+  List<String> _extractSetCookies(Headers headers) {
+    final values = headers['set-cookie'] ?? headers['Set-Cookie'] ?? const <String>[];
+    return values.whereType<String>().where((v) => v.isNotEmpty).toList();
   }
 
   Map<String, dynamic> _unwrapData(Response<Map<String, dynamic>> response) {

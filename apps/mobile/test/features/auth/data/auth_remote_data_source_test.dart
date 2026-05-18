@@ -97,7 +97,7 @@ void main() {
 
       expect(result.data['accessToken'], 'access.jwt');
       expect(result.data['mfaRequired'], false);
-      expect(result.setCookie, 'refresh_token=abc123; Path=/; HttpOnly');
+      expect(result.setCookies.first, 'refresh_token=abc123; Path=/; HttpOnly');
     });
 
     test('returns data and setCookie on success with mfaRequired=true', () async {
@@ -123,7 +123,7 @@ void main() {
       final result = await dataSource.login(email, password);
 
       expect(result.data['mfaRequired'], true);
-      expect(result.setCookie, contains('refresh_token=mfa_pending_token'));
+      expect(result.setCookies.first, contains('refresh_token=mfa_pending_token'));
     });
 
     test('returns null setCookie when header is absent', () async {
@@ -146,7 +146,7 @@ void main() {
 
       final result = await dataSource.login(email, password);
 
-      expect(result.setCookie, isNull);
+      expect(result.setCookies, isEmpty);
     });
 
     test('throws DioException when success=false with error message', () async {
@@ -278,7 +278,7 @@ void main() {
       final result = await dataSource.verifyMfa(code);
 
       expect(result.data['accessToken'], 'full.jwt');
-      expect(result.setCookie, contains('refresh_token=full_token'));
+      expect(result.setCookies.first, contains('refresh_token=full_token'));
     });
 
     test('throws DioException on 401', () async {

@@ -238,7 +238,7 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
     );
     if (source == null || !context.mounted) return;
 
-    final file = await picker.pickImage(source: source, imageQuality: 85);
+    final file = await picker.pickImage(source: source, imageQuality: 80, maxWidth: 1920, maxHeight: 1920);
     if (file == null || !context.mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(

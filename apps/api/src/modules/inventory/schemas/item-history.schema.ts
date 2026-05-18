@@ -14,6 +14,7 @@ export class ItemHistory {
   @Prop({
     required: true,
     enum: [
+      'created',
       'moved',
       'loaned',
       'returned',
@@ -26,6 +27,7 @@ export class ItemHistory {
     ],
   })
   action!:
+    | 'created'
     | 'moved'
     | 'loaned'
     | 'returned'

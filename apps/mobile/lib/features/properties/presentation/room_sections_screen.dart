@@ -1,7 +1,14 @@
+import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../media/data/media_repository_provider.dart';
 import '../data/models/room_section_model.dart';
 import '../domain/property_detail_notifier.dart';
 import 'ai_section_scan_screen.dart';
@@ -27,6 +34,25 @@ class RoomSectionsScreen extends ConsumerStatefulWidget {
 class _RoomSectionsScreenState extends ConsumerState<RoomSectionsScreen> {
   List<RoomSectionModel> _sections = [];
   bool _loading = true;
+
+  List<_SectionGroup> get _groupedSections {
+    final grouped = <String, List<RoomSectionModel>>{};
+    for (final section in _sections) {
+      final rawLabel = section.furnitureName?.trim() ?? '';
+      final label = rawLabel.isEmpty ? 'Unlabeled' : rawLabel;
+      grouped.putIfAbsent(label, () => <RoomSectionModel>[]).add(section);
+    }
+    final entries = grouped.entries.toList()
+      ..sort((a, b) {
+        if (a.key == 'Unlabeled' && b.key == 'Unlabeled') return 0;
+        if (a.key == 'Unlabeled') return 1;
+        if (b.key == 'Unlabeled') return -1;
+        return a.key.compareTo(b.key);
+      });
+    return entries
+        .map((e) => _SectionGroup(label: e.key, sections: e.value))
+        .toList();
+  }
 
   @override
   void initState() {
@@ -115,6 +141,7 @@ class _RoomSectionsScreenState extends ConsumerState<RoomSectionsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final groups = _groupedSections;
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -148,7 +175,8 @@ class _RoomSectionsScreenState extends ConsumerState<RoomSectionsScreen> {
                       child: Row(
                         children: [
                           Text(
-                            '${_sections.length} section${_sections.length == 1 ? '' : 's'}',
+                            '${_sections.length} section${_sections.length == 1 ? '' : 's'}'
+                            '${groups.length > 1 ? ' · ${groups.length} cabinet${groups.length == 1 ? '' : 's'}' : ''}',
                             style: const TextStyle(
                               color: AppColors.onSurfaceVariant,
                               fontSize: 13,
@@ -158,19 +186,76 @@ class _RoomSectionsScreenState extends ConsumerState<RoomSectionsScreen> {
                       ),
                     ),
                     Expanded(
-                      child: ListView.separated(
+                      child: ListView(
                         padding: const EdgeInsets.all(16),
-                        itemCount: _sections.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 8),
-                        itemBuilder: (_, i) => _SectionTile(
-                          section: _sections[i],
-                          onEdit: () => _showAddSheet(editing: _sections[i]),
-                          onDelete: () => _delete(_sections[i]),
-                        ),
+                        children: [
+                          for (final group in groups) ...[
+                            _GroupHeader(
+                              label: group.label,
+                              isUnlabeled: group.label == 'Unlabeled',
+                            ),
+                            const SizedBox(height: 8),
+                            for (final section in group.sections) ...[
+                              _SectionTile(
+                                section: section,
+                                onEdit: () => _showAddSheet(editing: section),
+                                onDelete: () => _delete(section),
+                              ),
+                              const SizedBox(height: 8),
+                            ],
+                            const SizedBox(height: 4),
+                          ],
+                        ],
                       ),
                     ),
                   ],
                 ),
+    );
+  }
+}
+
+class _SectionGroup {
+  const _SectionGroup({required this.label, required this.sections});
+
+  final String label;
+  final List<RoomSectionModel> sections;
+}
+
+// ── Group header ─────────────────────────────────────────────────────────────
+
+class _GroupHeader extends StatelessWidget {
+  const _GroupHeader({required this.label, required this.isUnlabeled});
+
+  final String label;
+  final bool isUnlabeled;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 4, bottom: 4),
+      child: Row(
+        children: [
+          Icon(
+            isUnlabeled ? Icons.help_outline : Icons.kitchen_outlined,
+            size: 14,
+            color: isUnlabeled
+                ? AppColors.onSurfaceVariant.withValues(alpha: 0.5)
+                : AppColors.accent,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: isUnlabeled
+                  ? AppColors.onSurfaceVariant.withValues(alpha: 0.5)
+                  : AppColors.accent,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -187,6 +272,25 @@ class _SectionTile extends StatelessWidget {
   final RoomSectionModel section;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+
+  Widget get _codeChip => Container(
+    width: 44,
+    height: 44,
+    decoration: BoxDecoration(
+      color: AppColors.accent.withAlpha(25),
+      borderRadius: BorderRadius.circular(10),
+    ),
+    child: Center(
+      child: Text(
+        section.code,
+        style: const TextStyle(
+          color: AppColors.accent,
+          fontWeight: FontWeight.bold,
+          fontSize: 13,
+        ),
+      ),
+    ),
+  );
 
   IconData get _icon {
     switch (section.type) {
@@ -216,24 +320,7 @@ class _SectionTile extends StatelessWidget {
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        leading: Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: AppColors.accent.withAlpha(25),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Center(
-            child: Text(
-              section.code,
-              style: const TextStyle(
-                color: AppColors.accent,
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
-              ),
-            ),
-          ),
-        ),
+        leading: _codeChip,
         title: Text(
           section.name,
           style: const TextStyle(
@@ -376,6 +463,10 @@ class _SectionFormSheetState extends ConsumerState<_SectionFormSheet> {
   String _type = 'other';
   bool _submitting = false;
 
+  XFile? _pendingPhoto;
+  String? _existingPhotoUrl;
+  bool _photoCleared = false;
+
   static const _types = [
     ('drawer', 'Drawer'),
     ('cabinet', 'Cabinet'),
@@ -393,6 +484,7 @@ class _SectionFormSheetState extends ConsumerState<_SectionFormSheet> {
     _nameCtrl = TextEditingController(text: widget.editing?.name ?? '');
     _notesCtrl = TextEditingController(text: widget.editing?.notes ?? '');
     _type = widget.editing?.type ?? 'other';
+    _existingPhotoUrl = widget.editing?.photo;
   }
 
   @override
@@ -410,18 +502,23 @@ class _SectionFormSheetState extends ConsumerState<_SectionFormSheet> {
     setState(() => _submitting = true);
 
     try {
+      String? photoUrl = _existingPhotoUrl;
+      if (_pendingPhoto != null) {
+        photoUrl = await ref.read(mediaRepositoryProvider).uploadPhoto(_pendingPhoto!);
+      }
+
+      final notes = _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim();
       final notifier = ref.read(propertyDetailNotifierProvider.notifier);
       if (widget.editing != null) {
         await notifier.updateSection(
           widget.floorId, widget.roomId, widget.editing!.sectionId,
-          code: code, name: name, type: _type,
-          notes: _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
+          code: code, name: name, type: _type, notes: notes, photo: photoUrl,
+          clearPhoto: _photoCleared && _pendingPhoto == null,
         );
       } else {
         await notifier.addSection(
           widget.floorId, widget.roomId,
-          code: code, name: name, type: _type,
-          notes: _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
+          code: code, name: name, type: _type, notes: notes, photo: photoUrl,
         );
       }
       if (mounted) Navigator.of(context).pop(true);
@@ -523,6 +620,36 @@ class _SectionFormSheetState extends ConsumerState<_SectionFormSheet> {
                 hintText: 'e.g. has glass door',
               ),
             ),
+            const SizedBox(height: 12),
+            _PhotoPickerRow(
+              pendingPhoto: _pendingPhoto,
+              existingPhotoUrl: _existingPhotoUrl,
+              onPick: () async {
+                final picker = ImagePicker();
+                final file = await picker.pickImage(source: ImageSource.camera, imageQuality: 80, maxWidth: 1920, maxHeight: 1920);
+                if (file != null && mounted) {
+                  setState(() {
+                    _pendingPhoto = file;
+                    _existingPhotoUrl = null;
+                  });
+                }
+              },
+              onPickGallery: () async {
+                final picker = ImagePicker();
+                final file = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80, maxWidth: 1920, maxHeight: 1920);
+                if (file != null && mounted) {
+                  setState(() {
+                    _pendingPhoto = file;
+                    _existingPhotoUrl = null;
+                  });
+                }
+              },
+              onRemove: () => setState(() {
+                _pendingPhoto = null;
+                _existingPhotoUrl = null;
+                _photoCleared = true;
+              }),
+            ),
             const SizedBox(height: 20),
             SizedBox(
               height: 52,
@@ -542,6 +669,143 @@ class _SectionFormSheetState extends ConsumerState<_SectionFormSheet> {
                       )
                     : Text(isEditing ? 'Save changes' : 'Add section'),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Photo picker row ─────────────────────────────────────────────────────────
+
+class _PhotoPickerRow extends StatelessWidget {
+  const _PhotoPickerRow({
+    required this.pendingPhoto,
+    required this.existingPhotoUrl,
+    required this.onPick,
+    required this.onPickGallery,
+    required this.onRemove,
+  });
+
+  final XFile? pendingPhoto;
+  final String? existingPhotoUrl;
+  final VoidCallback onPick;
+  final VoidCallback onPickGallery;
+  final VoidCallback onRemove;
+
+  bool get _hasPhoto => pendingPhoto != null || existingPhotoUrl != null;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        if (_hasPhoto) ...[
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: SizedBox(
+              width: 60,
+              height: 60,
+              child: existingPhotoUrl != null
+                  ? CachedNetworkImage(
+                      imageUrl: existingPhotoUrl!,
+                      fit: BoxFit.cover,
+                      placeholder: (_, __) => _placeholderBox,
+                      errorWidget: (_, __, ___) => _placeholderBox,
+                    )
+                  : _buildLocalPreview(pendingPhoto!),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: TextButton.icon(
+              onPressed: onRemove,
+              icon: const Icon(Icons.delete_outline, size: 16),
+              label: const Text('Remove photo'),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.error,
+                alignment: Alignment.centerLeft,
+              ),
+            ),
+          ),
+        ] else ...[
+          _PickButton(
+            icon: Icons.camera_alt_outlined,
+            label: 'Camera',
+            onTap: onPick,
+          ),
+          const SizedBox(width: 8),
+          _PickButton(
+            icon: Icons.photo_library_outlined,
+            label: 'Gallery',
+            onTap: onPickGallery,
+          ),
+          const Spacer(),
+          Text(
+            'Photo (optional)',
+            style: TextStyle(
+              color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildLocalPreview(XFile file) {
+    if (kIsWeb) {
+      return FutureBuilder<Uint8List>(
+        future: file.readAsBytes(),
+        builder: (_, snap) => snap.hasData
+            ? Image.memory(snap.data!, fit: BoxFit.cover)
+            : _placeholderBox,
+      );
+    }
+    final path = file.path;
+    return path.isNotEmpty && File(path).existsSync()
+        ? Image.file(File(path), fit: BoxFit.cover)
+        : _placeholderBox;
+  }
+
+  Widget get _placeholderBox => Container(
+    width: 60,
+    height: 60,
+    color: AppColors.accent.withAlpha(25),
+    child: const Icon(Icons.image_outlined, color: AppColors.accent, size: 24),
+  );
+}
+
+class _PickButton extends StatelessWidget {
+  const _PickButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: AppColors.accent.withAlpha(20),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.accent.withAlpha(60)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: AppColors.accent),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: const TextStyle(color: AppColors.accent, fontSize: 12),
             ),
           ],
         ),
