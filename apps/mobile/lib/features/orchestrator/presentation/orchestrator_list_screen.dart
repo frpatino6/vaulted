@@ -226,7 +226,9 @@ class _PlanList extends StatelessWidget {
           child: _PlanCard(
             plan: plans[i],
             isMyTasks: isMyTasks,
-            onTap: () => context.push('/orchestrator/plans/${plans[i].id}'),
+            onTap: () => context.push('/orchestrator/plans/${plans[i].id}').then((_) {
+                  ref.read(orchestratorListNotifierProvider.notifier).load();
+                }),
           ),
         ),
       ),
