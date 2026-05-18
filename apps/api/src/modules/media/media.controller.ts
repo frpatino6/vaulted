@@ -20,13 +20,19 @@ import { Role } from '../../common/enums/role.enum';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { UploadResponseDto } from './dto/upload-response.dto';
 import { MediaService } from './media.service';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
 
+@ApiTags('Media')
 @Controller('media')
 export class MediaController {
   constructor(private readonly mediaService: MediaService) {}
 
   @Roles(Role.OWNER, Role.MANAGER)
   @Post('upload')
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Upload media file' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 201, description: 'File uploaded' })
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),
@@ -42,6 +48,9 @@ export class MediaController {
 
   @Roles(Role.OWNER, Role.MANAGER)
   @Delete('file')
+  @ApiOperation({ summary: 'Delete media file' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'File deleted' })
   delete(
     @CurrentUser() user: JwtPayload,
     @Query('key') key: string | undefined,

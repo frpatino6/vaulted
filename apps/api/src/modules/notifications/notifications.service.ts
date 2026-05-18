@@ -447,6 +447,47 @@ export class NotificationsService {
     return { updated: result.affected ?? 0 };
   }
 
+  async deleteNotification(
+    userId: string,
+    tenantId: string,
+    notificationId: string,
+  ): Promise<void> {
+    const log = await this.notificationLogRepository.findOne({
+      where: { id: notificationId, userId, tenantId },
+    });
+
+    if (!log) {
+      throw new NotFoundException('Notification not found');
+    }
+
+    await this.notificationLogRepository.delete(log.id);
+
+    await this.auditService.log({
+      tenantId,
+      userId,
+      action: 'notification.delete',
+      entityType: 'notification_log',
+      entityId: log.id,
+    });
+  }
+
+  async clearReadNotifications(
+    userId: string,
+    tenantId: string,
+  ): Promise<{ deleted: number }> {
+    const result = await this.notificationLogRepository
+      .createQueryBuilder()
+      .delete()
+      .from(NotificationLog)
+      .where('user_id = :userId AND tenant_id = :tenantId AND read_at IS NOT NULL', {
+        userId,
+        tenantId,
+      })
+      .execute();
+
+    return { deleted: result.affected ?? 0 };
+  }
+
   private async persistNotificationForUsers(
     tenantId: string,
     userIds: string[],

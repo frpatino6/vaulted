@@ -23,7 +23,9 @@ import { CreateDryCleaningDto } from './dto/create-dry-cleaning.dto';
 import { CreateOutfitDto } from './dto/create-outfit.dto';
 import { UpdateOutfitDto } from './dto/update-outfit.dto';
 import { WardrobeService } from './wardrobe.service';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 
+@ApiTags('Wardrobe')
 @Controller('wardrobe')
 export class WardrobeController {
   constructor(
@@ -33,6 +35,9 @@ export class WardrobeController {
 
   @Roles(Role.OWNER, Role.MANAGER)
   @Post('outfits')
+  @ApiOperation({ summary: 'Create outfit' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 201, description: 'Outfit created' })
   async createOutfit(
     @CurrentUser() user: JwtPayload,
     @Body() dto: CreateOutfitDto,
@@ -58,6 +63,10 @@ export class WardrobeController {
 
   @Get('outfits')
   @Roles(Role.OWNER, Role.MANAGER)
+  @ApiOperation({ summary: 'List outfits' })
+  @ApiBearerAuth()
+  @ApiQuery({ name: 'ownerMemberId', required: false })
+  @ApiResponse({ status: 200, description: 'Outfits retrieved' })
   listOutfits(
     @CurrentUser() user: JwtPayload,
     @Query('ownerMemberId') ownerMemberId?: string,
@@ -67,12 +76,18 @@ export class WardrobeController {
 
   @Get('outfits/:id')
   @Roles(Role.OWNER, Role.MANAGER)
+  @ApiOperation({ summary: 'Get outfit by ID' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Outfit retrieved' })
   getOutfit(@CurrentUser() user: JwtPayload, @Param('id') outfitId: string) {
     return this.wardrobeService.getOutfitWithItems(user.tenantId, outfitId);
   }
 
   @Roles(Role.OWNER, Role.MANAGER)
   @Put('outfits/:id')
+  @ApiOperation({ summary: 'Update outfit' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Outfit updated' })
   async updateOutfit(
     @CurrentUser() user: JwtPayload,
     @Param('id') outfitId: string,
@@ -99,7 +114,10 @@ export class WardrobeController {
 
   @Roles(Role.OWNER)
   @Delete('outfits/:id')
-  @HttpCode(HttpStatus.OK)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete outfit' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 204, description: 'Outfit deleted' })
   async deleteOutfit(
     @CurrentUser() user: JwtPayload,
     @Param('id') outfitId: string,
@@ -124,6 +142,9 @@ export class WardrobeController {
 
   @Roles(Role.OWNER, Role.MANAGER)
   @Post('outfits/:id/items')
+  @ApiOperation({ summary: 'Add item to outfit' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 201, description: 'Item added to outfit' })
   async addItemToOutfit(
     @CurrentUser() user: JwtPayload,
     @Param('id') outfitId: string,
@@ -151,6 +172,9 @@ export class WardrobeController {
 
   @Roles(Role.OWNER, Role.MANAGER)
   @Delete('outfits/:id/items/:itemId')
+  @ApiOperation({ summary: 'Remove item from outfit' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Item removed from outfit' })
   async removeItemFromOutfit(
     @CurrentUser() user: JwtPayload,
     @Param('id') outfitId: string,
@@ -178,6 +202,9 @@ export class WardrobeController {
 
   @Roles(Role.OWNER, Role.MANAGER)
   @Post('dry-cleaning/:itemId')
+  @ApiOperation({ summary: 'Create dry cleaning record' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 201, description: 'Dry cleaning record created' })
   async createDryCleaningRecord(
     @CurrentUser() user: JwtPayload,
     @Param('itemId') itemId: string,
@@ -206,6 +233,9 @@ export class WardrobeController {
 
   @Get('dry-cleaning/:itemId')
   @Roles(Role.OWNER, Role.MANAGER)
+  @ApiOperation({ summary: 'List dry cleaning history' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'History retrieved' })
   listDryCleaningHistory(
     @CurrentUser() user: JwtPayload,
     @Param('itemId') itemId: string,
@@ -215,6 +245,9 @@ export class WardrobeController {
 
   @Roles(Role.OWNER, Role.MANAGER)
   @Put('dry-cleaning/:recordId/return')
+  @ApiOperation({ summary: 'Mark dry cleaning as returned' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Marked as returned' })
   async markDryCleaningReturned(
     @CurrentUser() user: JwtPayload,
     @Param('recordId') recordId: string,
@@ -239,6 +272,9 @@ export class WardrobeController {
 
   @Roles(Role.OWNER, Role.MANAGER)
   @Put('dry-cleaning/:itemId/return-latest')
+  @ApiOperation({ summary: 'Mark latest dry cleaning record as returned for item' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Latest record marked returned or not found' })
   async markDryCleaningReturnedByItem(
     @CurrentUser() user: JwtPayload,
     @Param('itemId') itemId: string,
@@ -266,6 +302,9 @@ export class WardrobeController {
 
   @Roles(Role.OWNER, Role.MANAGER)
   @Get('at-laundry')
+  @ApiOperation({ summary: 'List wardrobe items currently at laundry' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'At-laundry items retrieved' })
   getAtLaundry(
     @CurrentUser() user: JwtPayload,
     @Query() query: AtLaundryQueryDto,
@@ -278,6 +317,9 @@ export class WardrobeController {
 
   @Roles(Role.OWNER, Role.MANAGER)
   @Get('stats')
+  @ApiOperation({ summary: 'Get wardrobe statistics' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Stats retrieved' })
   getStats(@CurrentUser() user: JwtPayload) {
     return this.wardrobeService.getStats(user.tenantId);
   }

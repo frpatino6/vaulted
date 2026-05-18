@@ -10,6 +10,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { RegisterDeviceTokenDto } from './dto/register-device-token.dto';
@@ -17,12 +18,16 @@ import { UpdateNotificationPreferenceDto } from './dto/update-notification-prefe
 import { ListNotificationsDto } from './dto/list-notifications.dto';
 import { NotificationsService } from './notifications.service';
 
+@ApiTags('Notifications')
 @Controller('notifications')
 export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
 
   @Post('test-push')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Send a test push notification to current user' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 204, description: 'Test push sent' })
   async testPush(@CurrentUser() user: JwtPayload): Promise<void> {
     await this.notificationsService.sendPush({
       tenantId: user.tenantId,
@@ -34,6 +39,9 @@ export class NotificationsController {
 
   @Post('device-token')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Register FCM device token' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 204, description: 'Device token registered' })
   async registerDeviceToken(
     @CurrentUser() user: JwtPayload,
     @Body() dto: RegisterDeviceTokenDto,
@@ -43,6 +51,9 @@ export class NotificationsController {
 
   @Delete('device-token/:token')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Unregister FCM device token' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 204, description: 'Device token unregistered' })
   async unregisterDeviceToken(
     @CurrentUser() user: JwtPayload,
     @Param('token') token: string,
@@ -51,11 +62,17 @@ export class NotificationsController {
   }
 
   @Get('preferences')
+  @ApiOperation({ summary: 'Get notification preferences' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Preferences retrieved' })
   async getPreferences(@CurrentUser() user: JwtPayload) {
     return this.notificationsService.getPreferences(user.sub, user.tenantId);
   }
 
   @Patch('preferences')
+  @ApiOperation({ summary: 'Update notification preferences' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Preferences updated' })
   async updatePreferences(
     @CurrentUser() user: JwtPayload,
     @Body() dto: UpdateNotificationPreferenceDto,
@@ -64,6 +81,9 @@ export class NotificationsController {
   }
 
   @Get()
+  @ApiOperation({ summary: 'List notifications for current user' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Notifications retrieved' })
   async getNotifications(
     @CurrentUser() user: JwtPayload,
     @Query() dto: ListNotificationsDto,
@@ -78,6 +98,9 @@ export class NotificationsController {
 
   @Patch(':id/read')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Mark a notification as read' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 204, description: 'Notification marked read' })
   async markRead(
     @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
@@ -87,7 +110,32 @@ export class NotificationsController {
 
   @Post('mark-all-read')
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Mark all notifications as read' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'All notifications marked read' })
   async markAllRead(@CurrentUser() user: JwtPayload) {
     return this.notificationsService.markAllRead(user.sub, user.tenantId);
+  }
+
+  @Delete('clear-read')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Delete all read notifications for current user' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Read notifications deleted', schema: { example: { deleted: 5 } } })
+  async clearReadNotifications(@CurrentUser() user: JwtPayload) {
+    return this.notificationsService.clearReadNotifications(user.sub, user.tenantId);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete a single notification' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 204, description: 'Notification deleted' })
+  @ApiResponse({ status: 404, description: 'Notification not found' })
+  async deleteNotification(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+  ): Promise<void> {
+    await this.notificationsService.deleteNotification(user.sub, user.tenantId, id);
   }
 }

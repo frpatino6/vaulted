@@ -17,7 +17,9 @@ import { CreateUserDirectDto } from './dto/create-user-direct.dto';
 import { InviteUserDto } from './dto/invite-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UsersService } from './users.service';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiTags('Users')
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
@@ -30,24 +32,36 @@ export class UsersController {
 
   @Roles(Role.OWNER, Role.MANAGER)
   @Post('invite')
+  @ApiOperation({ summary: 'Invite a new user' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 201, description: 'User invited' })
   invite(@CurrentUser() user: JwtPayload, @Body() dto: InviteUserDto) {
     return this.usersService.invite(user.tenantId, user.sub, user.role, dto);
   }
 
   @Roles(Role.OWNER, Role.MANAGER)
   @Get()
+  @ApiOperation({ summary: 'Get all users' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Users retrieved' })
   findAll(@CurrentUser() user: JwtPayload) {
     return this.usersService.findAllByTenant(user.tenantId);
   }
 
   @Roles(Role.OWNER, Role.MANAGER)
   @Get(':id')
+  @ApiOperation({ summary: 'Get user by ID' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'User retrieved' })
   findById(@CurrentUser() user: JwtPayload, @Param('id') userId: string) {
     return this.usersService.findSanitizedById(user.tenantId, userId);
   }
 
   @Roles(Role.OWNER, Role.MANAGER)
   @Put(':id')
+  @ApiOperation({ summary: 'Update user' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'User updated' })
   update(
     @CurrentUser() user: JwtPayload,
     @Param('id') userId: string,
@@ -58,7 +72,10 @@ export class UsersController {
 
   @Roles(Role.OWNER)
   @Delete(':id')
-  @HttpCode(HttpStatus.OK)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Deactivate user' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 204, description: 'User deactivated' })
   delete(@CurrentUser() user: JwtPayload, @Param('id') userId: string) {
     return this.usersService.deactivateUser(user.tenantId, user.sub, userId);
   }
