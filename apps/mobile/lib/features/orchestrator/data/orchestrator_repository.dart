@@ -80,4 +80,11 @@ class OrchestratorRepository {
         itemId: itemId,
         instruction: instruction,
       );
+
+  Future<OrchestratorPlanModel> removeStep({
+    required String planId,
+    required String groupId,
+    required String stepId,
+  }) =>
+      _remote.removeStep(planId: planId, groupId: groupId, stepId: stepId);
 }

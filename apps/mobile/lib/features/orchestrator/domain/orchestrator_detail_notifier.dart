@@ -124,6 +124,22 @@ class OrchestratorDetailNotifier
     }
   }
 
+  Future<void> removeStep({
+    required String groupId,
+    required String stepId,
+  }) async {
+    final planId = _planId;
+    if (planId == null) return;
+    try {
+      final updated = await ref
+          .read(orchestratorRepositoryProvider)
+          .removeStep(planId: planId, groupId: groupId, stepId: stepId);
+      state = AsyncData(updated);
+    } catch (e) {
+      state = AsyncError(e, StackTrace.current);
+    }
+  }
+
   static String errorMessage(Object e) {
     if (e is DioException) {
       final data = e.response?.data;

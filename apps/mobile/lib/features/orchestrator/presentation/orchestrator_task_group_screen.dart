@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
+import '../../users/domain/current_user_jwt.dart';
 import '../data/models/orchestrator_plan_model.dart';
 import '../domain/orchestrator_detail_notifier.dart';
 
@@ -222,15 +223,69 @@ class _OrchestratorTaskGroupScreenState
                 delegate: SliverChildBuilderDelegate(
                   (context, i) {
                     final step = group.steps[i];
+                    final jwt = ref.read(currentUserJwtProvider);
+                    final canRemove = plan.isDraft &&
+                        (jwt?.role == 'owner' || jwt?.role == 'manager');
+                    final tile = _StepTile(
+                      step: step,
+                      index: i + 1,
+                      onTap: () => context.push(
+                        '/orchestrator/plans/${widget.planId}/groups/${widget.groupId}/steps/${step.stepId}',
+                      ),
+                    );
                     return Padding(
                       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                      child: _StepTile(
-                        step: step,
-                        index: i + 1,
-                        onTap: () => context.push(
-                          '/orchestrator/plans/${widget.planId}/groups/${widget.groupId}/steps/${step.stepId}',
-                        ),
-                      ),
+                      child: canRemove
+                          ? Dismissible(
+                              key: ValueKey(step.stepId),
+                              direction: DismissDirection.endToStart,
+                              background: Container(
+                                alignment: Alignment.centerRight,
+                                padding: const EdgeInsets.only(right: AppSpacing.lg),
+                                decoration: BoxDecoration(
+                                  color: AppColors.error.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: const Icon(Icons.delete_outline,
+                                    color: AppColors.error),
+                              ),
+                              confirmDismiss: (_) async {
+                                return await showDialog<bool>(
+                                  context: context,
+                                  builder: (ctx) => AlertDialog(
+                                    backgroundColor: AppColors.surfaceVariant,
+                                    title: const Text('Remove step'),
+                                    content: Text(
+                                        'Remove "${step.itemName}" from this group?'),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.pop(ctx, false),
+                                        child: const Text('Cancel'),
+                                      ),
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.pop(ctx, true),
+                                        style: TextButton.styleFrom(
+                                            foregroundColor: AppColors.error),
+                                        child: const Text('Remove'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                              onDismissed: (_) {
+                                ref
+                                    .read(orchestratorDetailNotifierProvider
+                                        .notifier)
+                                    .removeStep(
+                                      groupId: widget.groupId,
+                                      stepId: step.stepId,
+                                    );
+                              },
+                              child: tile,
+                            )
+                          : tile,
                     );
                   },
                   childCount: group.steps.length,
