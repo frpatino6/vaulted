@@ -169,11 +169,21 @@ class _SectionQrSheetState extends State<_SectionQrSheet> {
                           ),
                           if (count != null) ...[
                             const SizedBox(width: 5),
-                            Text(
-                              '· $count',
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: chipFg.withValues(alpha: 0.6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? Colors.white.withValues(alpha: 0.25)
+                                    : AppColors.accent.withAlpha(40),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                '$count',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: isSelected ? AppColors.background : AppColors.accent,
+                                ),
                               ),
                             ),
                           ],

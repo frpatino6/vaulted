@@ -66,7 +66,10 @@ class _RoomSectionsScreenState extends ConsumerState<RoomSectionsScreen> {
         return a.key.compareTo(b.key);
       });
     return entries
-        .map((e) => _SectionGroup(label: e.key, sections: e.value))
+        .map((e) {
+          final sorted = [...e.value]..sort((a, b) => a.code.compareTo(b.code));
+          return _SectionGroup(label: e.key, sections: sorted);
+        })
         .toList();
   }
 
