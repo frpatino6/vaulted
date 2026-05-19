@@ -25,6 +25,7 @@ import '../../properties/domain/property_detail_notifier.dart';
 import '../../household_members/data/models/household_member_model.dart';
 import '../../household_members/domain/household_members_notifier.dart';
 import 'edit_item_sheet.dart';
+import '../../movements/presentation/quick_transfer_sheet.dart';
 import '../../../shared/widgets/item_card.dart';
 import '../../../shared/widgets/status_badge.dart';
 
@@ -72,6 +73,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
   Widget build(BuildContext context) {
     final role = currentUserRole() ?? 'guest';
     final canEdit = role == 'owner' || role == 'manager' || role == 'staff';
+    final canTransfer = role == 'owner' || role == 'manager';
     final canSeeValues = role == 'owner' || role == 'auditor';
     final state = ref.watch(itemDetailNotifierProvider);
     final showInitialSkeleton =
@@ -330,12 +332,12 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
       ),
       bottomNavigationBar:
           state.valueOrNull != null && canEdit
-              ? _buildEditFooter(context, state.valueOrNull!)
+              ? _buildFooter(context, state.valueOrNull!, canTransfer)
               : null,
     );
   }
 
-  Widget _buildEditFooter(BuildContext context, ItemModel item) {
+  Widget _buildFooter(BuildContext context, ItemModel item, bool canTransfer) {
     return Container(
       color: const Color(0xFF0A0A0F),
       padding: const EdgeInsets.fromLTRB(
@@ -346,25 +348,89 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
       ),
       child: SafeArea(
         top: false,
-        child: SizedBox(
-          width: double.infinity,
-          child: OutlinedButton(
-            onPressed: () => _showEditSheet(context, item),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.accent,
-              side: const BorderSide(color: AppColors.accent),
-              padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-            ),
-            child: Text(
-              'Edit Item',
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                letterSpacing: 1.2,
-                fontWeight: FontWeight.w500,
+        child: canTransfer
+            ? Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _showTransferSheet(context, item),
+                      icon: const Icon(Icons.swap_horiz_rounded, size: 18),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF2196F3),
+                        side: const BorderSide(color: Color(0xFF2196F3)),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: AppSpacing.md,
+                        ),
+                      ),
+                      label: Text(
+                        'Transfer',
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          letterSpacing: 1.2,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => _showEditSheet(context, item),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.accent,
+                        side: const BorderSide(color: AppColors.accent),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: AppSpacing.md,
+                        ),
+                      ),
+                      child: Text(
+                        'Edit Item',
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          letterSpacing: 1.2,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            : SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () => _showEditSheet(context, item),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.accent,
+                    side: const BorderSide(color: AppColors.accent),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: AppSpacing.md,
+                    ),
+                  ),
+                  child: Text(
+                    'Edit Item',
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      letterSpacing: 1.2,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
               ),
-            ),
-          ),
-        ),
       ),
+    );
+  }
+
+  void _showTransferSheet(BuildContext context, ItemModel item) {
+    showQuickTransferSheet(
+      context,
+      itemId: item.id,
+      itemName: item.name,
+      itemCategory: item.category,
+      onTransferred: () {
+        ref.read(itemDetailNotifierProvider.notifier).load(item.id);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Item transferred successfully')),
+          );
+        }
+      },
     );
   }
 

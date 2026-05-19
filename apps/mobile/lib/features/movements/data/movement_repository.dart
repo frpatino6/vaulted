@@ -57,4 +57,23 @@ class MovementRepository {
 
   Future<MovementModel> cancel(String movementId) =>
       _remote.cancel(movementId);
+
+  Future<MovementModel> quickTransfer({
+    required String itemId,
+    required String title,
+    required String destinationPropertyId,
+    required String destinationRoomId,
+    String destinationPropertyName = '',
+    String destinationRoomName = '',
+    String notes = '',
+  }) =>
+      _remote.quickTransfer(
+        itemId: itemId,
+        title: title,
+        destinationPropertyId: destinationPropertyId,
+        destinationRoomId: destinationRoomId,
+        destinationPropertyName: destinationPropertyName,
+        destinationRoomName: destinationRoomName,
+        notes: notes,
+      );
 }
