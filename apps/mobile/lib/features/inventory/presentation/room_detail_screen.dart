@@ -162,7 +162,7 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
                 IconButton(
                   onPressed: () {
                     final sections = [...roomSections]
-                      ..sort((a, b) => a.name.compareTo(b.name));
+                      ..sort((a, b) => a.code.compareTo(b.code));
                     final allItems = ref.read(itemListNotifierProvider).valueOrNull ?? [];
                     final counts = <String, int>{};
                     for (final item in allItems) {
