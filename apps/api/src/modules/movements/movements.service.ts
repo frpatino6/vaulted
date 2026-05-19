@@ -24,6 +24,7 @@ import {
 } from '../properties/schemas/property.schema';
 import { CreateMovementDto } from './dto/create-movement.dto';
 import { UpdateMovementDto } from './dto/update-movement.dto';
+import { QuickTransferDto } from './dto/quick-transfer.dto';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 
 @Injectable()
@@ -251,6 +252,10 @@ export class MovementsService {
             itemId: mi.itemId,
             tenantId: user.tenantId,
             action: 'moved',
+            fromPropertyId: mi.fromPropertyId || undefined,
+            fromRoomId: mi.fromRoomId || undefined,
+            toPropertyId: destPropertyId,
+            toRoomId: destRoomId,
             performedBy: user.sub,
             notes: `[Transfer] ${movement.title} → ${movement.destinationPropertyName}${movement.destinationRoomName ? ` / ${movement.destinationRoomName}` : ''}`,
             timestamp: new Date(),
@@ -423,6 +428,49 @@ export class MovementsService {
 
     movement.status = MovementStatus.CANCELLED;
     return movement.save();
+  }
+
+  async quickTransfer(
+    dto: QuickTransferDto,
+    user: JwtPayload,
+  ): Promise<MovementDocument> {
+    const item = await this.itemModel.findOne({
+      _id: dto.itemId,
+      tenantId: user.tenantId,
+    });
+    if (!item) throw new NotFoundException('Item not found');
+    if (item.status === 'disposed') {
+      throw new BadRequestException('Disposed items cannot be transferred');
+    }
+
+    const destProperty = await this.propertyModel.findOne({
+      _id: dto.destinationPropertyId,
+      tenantId: user.tenantId,
+    });
+    if (!destProperty) {
+      throw new NotFoundException('Destination property not found');
+    }
+
+    const createDto: CreateMovementDto = {
+      operationType: MovementType.TRANSFER,
+      title: dto.title,
+      destinationPropertyId: dto.destinationPropertyId,
+      destinationRoomId: dto.destinationRoomId,
+      destinationPropertyName: dto.destinationPropertyName ?? '',
+      destinationRoomName: dto.destinationRoomName ?? '',
+      notes: dto.notes ?? '',
+    };
+
+    const movement = await this.create(createDto, user);
+    const movementId = (movement as any)._id.toString();
+
+    try {
+      await this.addItem(movementId, dto.itemId, user);
+      return await this.activate(movementId, user);
+    } catch (err) {
+      await this.cancel(movementId, user).catch(() => {});
+      throw err;
+    }
   }
 
   private operationTypeToItemStatus(type: MovementType): string {

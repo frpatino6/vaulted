@@ -17,6 +17,7 @@ import '../../properties/data/models/room_section_model.dart';
 import '../../properties/domain/property_detail_notifier.dart';
 import 'add_item_sheet.dart';
 import 'section_qr_sheet.dart';
+import '../../movements/presentation/quick_transfer_sheet.dart';
 
 class RoomDetailScreen extends ConsumerStatefulWidget {
   const RoomDetailScreen({
@@ -105,6 +106,7 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
     final canAddItem = role == 'owner' || role == 'manager' || role == 'staff';
     final canEditItem = role == 'owner' || role == 'manager' || role == 'staff';
     final canDeleteItem = role == 'owner' || role == 'manager';
+    final canTransfer = role == 'owner' || role == 'manager';
     final canSeeValues = role == 'owner' || role == 'auditor';
     final state = ref.watch(itemListNotifierProvider);
     final roomSections = ref
@@ -329,6 +331,15 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
                   delegate: SliverChildBuilderDelegate((context, index) {
                     final item = filtered[index];
                     final slidableActions = <Widget>[
+                      if (canTransfer)
+                        SlidableAction(
+                          onPressed: (_) =>
+                              _showTransferSheet(context, item),
+                          backgroundColor: const Color(0xFF1A3A5C),
+                          foregroundColor: const Color(0xFF2196F3),
+                          icon: Icons.swap_horiz_rounded,
+                          label: 'Transfer',
+                        ),
                       if (canEditItem)
                         SlidableAction(
                           onPressed: (_) => context.push('/items/${item.id}'),
@@ -359,7 +370,11 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
                                 key: ValueKey(item.id),
                                 endActionPane: ActionPane(
                                   motion: const DrawerMotion(),
-                                  extentRatio: 0.32,
+                                  extentRatio: slidableActions.length == 3
+                                      ? 0.48
+                                      : slidableActions.length == 2
+                                          ? 0.32
+                                          : 0.16,
                                   children: slidableActions,
                                 ),
                                 child: RoomInventoryAssetCard(
@@ -673,6 +688,25 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
         ],
       ),
     ];
+  }
+
+  void _showTransferSheet(BuildContext context, ItemModel item) {
+    showQuickTransferSheet(
+      context,
+      itemId: item.id,
+      itemName: item.name,
+      itemCategory: item.category,
+      onTransferred: () {
+        ref
+            .read(itemListNotifierProvider.notifier)
+            .load(widget.propertyId, widget.roomId);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('"${item.name}" transferred successfully')),
+          );
+        }
+      },
+    );
   }
 
   void _showAddItem(BuildContext context) {

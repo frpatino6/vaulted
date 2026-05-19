@@ -16,6 +16,7 @@ import { MovementsService } from './movements.service';
 import { CreateMovementDto } from './dto/create-movement.dto';
 import { UpdateMovementDto } from './dto/update-movement.dto';
 import { AddMovementItemDto } from './dto/add-movement-item.dto';
+import { QuickTransferDto } from './dto/quick-transfer.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums/role.enum';
@@ -77,6 +78,34 @@ export class MovementsController {
   @ApiResponse({ status: 200, description: 'Drafts retrieved' })
   async getActiveDrafts(@CurrentUser() user: JwtPayload) {
     return this.movementsService.findActiveDrafts(user.sub, user.tenantId);
+  }
+
+  @Roles(Role.OWNER, Role.MANAGER)
+  @Post('quick-transfer')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Immediately transfer a single item to another room' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'Transfer completed' })
+  async quickTransfer(
+    @Body() dto: QuickTransferDto,
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+  ) {
+    const movement = await this.movementsService.quickTransfer(dto, user);
+    await this.auditService.log({
+      tenantId: user.tenantId,
+      userId: user.sub,
+      action: 'movement.quick_transfer',
+      entityType: 'movement',
+      entityId: (movement as any)._id?.toString(),
+      metadata: {
+        itemId: dto.itemId,
+        destinationPropertyId: dto.destinationPropertyId,
+        destinationRoomId: dto.destinationRoomId,
+      },
+      ipAddress: req.ip ?? 'unknown',
+    });
+    return movement;
   }
 
   @Get(':id')

@@ -128,6 +128,32 @@ class MovementRemoteDataSource {
     return MovementModel.fromJson(_normalize(_unwrap(response)));
   }
 
+  Future<MovementModel> quickTransfer({
+    required String itemId,
+    required String title,
+    required String destinationPropertyId,
+    required String destinationRoomId,
+    String destinationPropertyName = '',
+    String destinationRoomName = '',
+    String notes = '',
+  }) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '$_path/quick-transfer',
+      data: {
+        'itemId': itemId,
+        'title': title,
+        'destinationPropertyId': destinationPropertyId,
+        'destinationRoomId': destinationRoomId,
+        if (destinationPropertyName.isNotEmpty)
+          'destinationPropertyName': destinationPropertyName,
+        if (destinationRoomName.isNotEmpty)
+          'destinationRoomName': destinationRoomName,
+        if (notes.isNotEmpty) 'notes': notes,
+      },
+    );
+    return MovementModel.fromJson(_normalize(_unwrap(response)));
+  }
+
   // -------------------------------------------------------------------------
 
   dynamic _unwrap(Response<Map<String, dynamic>> response) {
