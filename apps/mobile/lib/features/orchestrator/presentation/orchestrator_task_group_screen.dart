@@ -223,9 +223,9 @@ class _OrchestratorTaskGroupScreenState
                 delegate: SliverChildBuilderDelegate(
                   (context, i) {
                     final step = group.steps[i];
-                    final jwt = ref.read(currentUserJwtProvider);
+                    final role = currentUserRole();
                     final canRemove = plan.isDraft &&
-                        (jwt?.role == 'owner' || jwt?.role == 'manager');
+                        (role == 'owner' || role == 'manager');
                     final tile = _StepTile(
                       step: step,
                       index: i + 1,
