@@ -243,6 +243,12 @@ class _RoomSectionsScreenState extends ConsumerState<RoomSectionsScreen> {
                                 }),
                                 onEdit: () => _showAddSheet(editing: section),
                                 onDelete: () => _delete(section),
+                                onSeeAll: () => context.push(
+                                  '/properties/${widget.propertyId}/rooms/${widget.roomId}'
+                                  '?name=${Uri.encodeComponent(widget.roomName)}'
+                                  '&sectionId=${Uri.encodeComponent(section.sectionId)}'
+                                  '&section=${Uri.encodeComponent(section.name)}',
+                                ),
                               ),
                               const SizedBox(height: 8),
                             ],
@@ -314,6 +320,7 @@ class _SectionTile extends StatelessWidget {
     required this.onToggle,
     required this.onEdit,
     required this.onDelete,
+    this.onSeeAll,
   });
 
   final RoomSectionModel section;
@@ -323,6 +330,7 @@ class _SectionTile extends StatelessWidget {
   final VoidCallback onToggle;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final VoidCallback? onSeeAll;
 
   Widget get _codeChip => Container(
     width: 44,
@@ -450,6 +458,7 @@ class _SectionTile extends StatelessWidget {
                 ? _SectionItemsList(
                     sectionItems: sectionItems,
                     itemsLoading: itemsLoading,
+                    onSeeAll: onSeeAll,
                   )
                 : const SizedBox.shrink(),
           ),
@@ -465,10 +474,12 @@ class _SectionItemsList extends StatelessWidget {
   const _SectionItemsList({
     required this.sectionItems,
     required this.itemsLoading,
+    this.onSeeAll,
   });
 
   final List<ItemModel> sectionItems;
   final bool itemsLoading;
+  final VoidCallback? onSeeAll;
 
   @override
   Widget build(BuildContext context) {
@@ -498,9 +509,34 @@ class _SectionItemsList extends StatelessWidget {
               ],
             ),
           )
-        else
+        else ...[
           for (final item in sectionItems)
             _SectionItemRow(item: item),
+          if (onSeeAll != null) ...[
+            const Divider(height: 1, color: Colors.white10),
+            InkWell(
+              onTap: onSeeAll,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      'See all in inventory',
+                      style: TextStyle(
+                        color: AppColors.accent,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.arrow_forward, size: 14, color: AppColors.accent),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
         const SizedBox(height: 4),
       ],
     );
