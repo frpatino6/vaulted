@@ -15,8 +15,9 @@ void showSectionQrSheet(
   BuildContext context,
   String roomId,
   String roomName,
-  List<RoomSectionModel> sections,
-) {
+  List<RoomSectionModel> sections, {
+  void Function(RoomSectionModel section)? onViewItems,
+}) {
   if (sections.isEmpty) {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('No sections defined in this room yet.')),
@@ -31,6 +32,7 @@ void showSectionQrSheet(
       roomId: roomId,
       roomName: roomName,
       sections: sections,
+      onViewItems: onViewItems,
     ),
   );
 }
@@ -40,11 +42,13 @@ class _SectionQrSheet extends StatefulWidget {
     required this.roomId,
     required this.roomName,
     required this.sections,
+    this.onViewItems,
   });
 
   final String roomId;
   final String roomName;
   final List<RoomSectionModel> sections;
+  final void Function(RoomSectionModel section)? onViewItems;
 
   @override
   State<_SectionQrSheet> createState() => _SectionQrSheetState();
@@ -176,6 +180,12 @@ class _SectionQrSheetState extends State<_SectionQrSheet> {
                       section: section,
                       roomName: widget.roomName,
                       qrData: _qrData(section),
+                      onViewItems: widget.onViewItems != null
+                          ? () {
+                              Navigator.of(context).pop();
+                              widget.onViewItems!(section);
+                            }
+                          : null,
                     ),
                     if (section.photo != null) ...[
                       const SizedBox(height: AppSpacing.md),
@@ -433,11 +443,13 @@ class _QrCard extends StatefulWidget {
     required this.section,
     required this.roomName,
     required this.qrData,
+    this.onViewItems,
   });
 
   final RoomSectionModel section;
   final String roomName;
   final String qrData;
+  final VoidCallback? onViewItems;
 
   @override
   State<_QrCard> createState() => _QrCardState();
@@ -549,6 +561,24 @@ class _QrCardState extends State<_QrCard> {
             ),
           ),
         ),
+        if (widget.onViewItems != null) ...[
+          const SizedBox(height: AppSpacing.sm),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: widget.onViewItems,
+              icon: const Icon(Icons.inventory_2_outlined, size: 18),
+              label: const Text('View items in this section'),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.accent,
+                foregroundColor: AppColors.background,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+        ],
         const SizedBox(height: AppSpacing.lg),
       ],
     );

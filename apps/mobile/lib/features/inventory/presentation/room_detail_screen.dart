@@ -168,6 +168,10 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
                       widget.roomId,
                       widget.roomName,
                       sections,
+                      onViewItems: (section) => setState(() {
+                        _activeSection = section.name;
+                        _activeSectionId = section.sectionId;
+                      }),
                     );
                   },
                   icon: const Icon(
