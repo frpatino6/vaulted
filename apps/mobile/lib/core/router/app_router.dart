@@ -116,12 +116,14 @@ GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
         builder: (context, state) {
           final roomId = state.pathParameters['roomId'] ?? '';
           final roomName = state.uri.queryParameters['name'] ?? '';
+          final sectionId = state.uri.queryParameters['sectionId'] ?? '';
           final section = state.uri.queryParameters['section'] ?? '';
           return RoomDetailScreen(
             propertyId: '',
             roomId: roomId,
             roomName: roomName.isNotEmpty ? roomName : 'Section',
             initialSection: section.isNotEmpty ? section : null,
+            initialSectionId: sectionId.isNotEmpty ? sectionId : null,
           );
         },
       ),

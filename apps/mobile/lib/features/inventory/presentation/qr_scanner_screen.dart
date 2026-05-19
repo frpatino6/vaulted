@@ -34,17 +34,18 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
         return;
       }
 
-      // vaulted://rooms/:roomId?section=X
+      // vaulted://rooms/:roomId?sectionId=X&section=Y
       if (value.startsWith('vaulted://rooms/')) {
         final segments = uri.pathSegments;
         final roomId = segments.isNotEmpty ? segments.last : '';
+        final sectionId = uri.queryParameters['sectionId'] ?? '';
         final section = uri.queryParameters['section'] ?? '';
         if (roomId.isEmpty) continue;
         _isHandlingDetection = true;
-        final sectionParam = section.isNotEmpty
-            ? '&section=${Uri.encodeComponent(section)}'
-            : '';
-        context.pushReplacement('/rooms/$roomId?name=&$sectionParam');
+        var extra = '';
+        if (sectionId.isNotEmpty) extra += '&sectionId=${Uri.encodeComponent(sectionId)}';
+        if (section.isNotEmpty) extra += '&section=${Uri.encodeComponent(section)}';
+        context.pushReplacement('/rooms/$roomId?name=$extra');
         return;
       }
     }

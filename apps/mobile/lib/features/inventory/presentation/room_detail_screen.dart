@@ -25,14 +25,18 @@ class RoomDetailScreen extends ConsumerStatefulWidget {
     required this.roomId,
     required this.roomName,
     this.initialSection,
+    this.initialSectionId,
   });
 
   final String propertyId;
   final String roomId;
   final String roomName;
 
-  /// When set, the list is pre-filtered to this section (from QR scan).
+  /// Display name of the section to pre-filter (from QR scan).
   final String? initialSection;
+
+  /// sectionId to pre-filter — takes priority over [initialSection] for matching.
+  final String? initialSectionId;
 
   @override
   ConsumerState<RoomDetailScreen> createState() => _RoomDetailScreenState();
@@ -42,12 +46,14 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
   late String? _activeSection;
+  late String? _activeSectionId;
   bool _initialLoadCompleted = false;
 
   @override
   void initState() {
     super.initState();
     _activeSection = widget.initialSection;
+    _activeSectionId = widget.initialSectionId;
     _searchController.addListener(
       () => setState(() => _searchQuery = _searchController.text),
     );
@@ -70,8 +76,14 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
 
   List<ItemModel> _filterItems(List<ItemModel> items) {
     var result = items;
-    // Section filter (from QR scan or chip selection)
-    if (_activeSection != null) {
+    // Section filter — prefer sectionId match, fall back to locationDetail for
+    // items that were assigned before the sectionId fix.
+    if (_activeSectionId != null) {
+      result = result.where((i) =>
+        i.sectionId == _activeSectionId ||
+        (i.sectionId == null && i.locationDetail == _activeSection)
+      ).toList();
+    } else if (_activeSection != null) {
       result = result.where((i) => i.locationDetail == _activeSection).toList();
     }
     // Text search
@@ -207,7 +219,7 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
                           fontSize: 10,
                         ),
                       ),
-                      if (_activeSection != null) ...[
+                      if (_activeSection != null || _activeSectionId != null) ...[
                         const SizedBox(height: AppSpacing.md),
                         _buildSectionBanner(context),
                       ],
@@ -298,7 +310,7 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
                           const SizedBox(height: AppSpacing.md),
                           TextButton.icon(
                             onPressed:
-                                () => setState(() => _activeSection = null),
+                                () => setState(() { _activeSection = null; _activeSectionId = null; }),
                             icon: const Icon(Icons.clear, size: 16),
                             label: const Text('Clear section filter'),
                             style: TextButton.styleFrom(
@@ -451,7 +463,7 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
             ),
           ),
           IconButton(
-            onPressed: () => setState(() => _activeSection = null),
+            onPressed: () => setState(() { _activeSection = null; _activeSectionId = null; }),
             icon: const Icon(Icons.close_rounded, size: 18),
             color: AppColors.onSurfaceVariant,
             tooltip: 'Clear filter',

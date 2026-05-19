@@ -54,7 +54,9 @@ class _SectionQrSheetState extends State<_SectionQrSheet> {
   int _selectedIndex = 0;
 
   String _qrData(RoomSectionModel section) =>
-      'vaulted://rooms/${widget.roomId}?section=${Uri.encodeComponent(section.name)}';
+      'vaulted://rooms/${widget.roomId}'
+      '?sectionId=${Uri.encodeComponent(section.sectionId)}'
+      '&section=${Uri.encodeComponent(section.name)}';
 
   @override
   Widget build(BuildContext context) {
