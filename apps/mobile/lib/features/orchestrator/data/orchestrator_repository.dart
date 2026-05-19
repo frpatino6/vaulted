@@ -81,6 +81,12 @@ class OrchestratorRepository {
         instruction: instruction,
       );
 
+  Future<OrchestratorPlanModel> removeGroup({
+    required String planId,
+    required String groupId,
+  }) =>
+      _remote.removeGroup(planId: planId, groupId: groupId);
+
   Future<OrchestratorPlanModel> removeStep({
     required String planId,
     required String groupId,

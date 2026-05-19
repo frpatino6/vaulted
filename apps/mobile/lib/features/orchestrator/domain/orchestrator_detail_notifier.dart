@@ -124,6 +124,19 @@ class OrchestratorDetailNotifier
     }
   }
 
+  Future<void> removeGroup(String groupId) async {
+    final planId = _planId;
+    if (planId == null) return;
+    try {
+      final updated = await ref
+          .read(orchestratorRepositoryProvider)
+          .removeGroup(planId: planId, groupId: groupId);
+      state = AsyncData(updated);
+    } catch (e) {
+      state = AsyncError(e, StackTrace.current);
+    }
+  }
+
   Future<void> removeStep({
     required String groupId,
     required String stepId,
