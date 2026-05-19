@@ -451,6 +451,17 @@ export class MovementsService {
       throw new NotFoundException('Destination property not found');
     }
 
+    const roomExists = (destProperty.floors ?? []).some((floor) =>
+      (floor.rooms ?? []).some(
+        (room) => room.roomId?.toString() === dto.destinationRoomId,
+      ),
+    );
+    if (!roomExists) {
+      throw new BadRequestException(
+        'Destination room not found in the specified property',
+      );
+    }
+
     const createDto: CreateMovementDto = {
       operationType: MovementType.TRANSFER,
       title: dto.title,
