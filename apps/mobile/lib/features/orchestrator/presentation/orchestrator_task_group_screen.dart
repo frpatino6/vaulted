@@ -224,7 +224,7 @@ class _OrchestratorTaskGroupScreenState
                   (context, i) {
                     final step = group.steps[i];
                     final role = currentUserRole();
-                    final canRemove = plan.isDraft &&
+                    final canRemove = !plan.isCompleted && !plan.isCancelled &&
                         (role == 'owner' || role == 'manager');
                     final tile = _StepTile(
                       step: step,

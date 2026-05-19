@@ -363,19 +363,58 @@ class _OrchestratorPlanDetailScreenState
             delegate: SliverChildBuilderDelegate(
               (context, i) {
                 final group = plan.taskGroups[i];
+                final canModify = _isOwnerOrManager && !plan.isCompleted && !plan.isCancelled;
+                final card = _TaskGroupCard(
+                  group: group,
+                  showAddItem: plan.isDraft && _isOwnerOrManager,
+                  onTap: () => context.push(
+                    '/orchestrator/plans/${plan.id}/groups/${group.groupId}',
+                  ),
+                  onAddItem: () => _showAddItemSheet(plan.id, group.groupId),
+                  onAssign: canModify ? () => _showAssignSheet(plan.id, group) : null,
+                );
                 return Padding(
                   padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                  child: _TaskGroupCard(
-                    group: group,
-                    showAddItem: plan.isDraft && _isOwnerOrManager,
-                    onTap: () => context.push(
-                      '/orchestrator/plans/${plan.id}/groups/${group.groupId}',
-                    ),
-                    onAddItem: () => _showAddItemSheet(plan.id, group.groupId),
-                    onAssign: _isOwnerOrManager && !plan.isCompleted && !plan.isCancelled
-                        ? () => _showAssignSheet(plan.id, group)
-                        : null,
-                  ),
+                  child: canModify
+                      ? Dismissible(
+                          key: ValueKey(group.groupId),
+                          direction: DismissDirection.endToStart,
+                          background: Container(
+                            alignment: Alignment.centerRight,
+                            padding: const EdgeInsets.only(right: AppSpacing.lg),
+                            decoration: BoxDecoration(
+                              color: AppColors.error.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: const Icon(Icons.delete_outline, color: AppColors.error),
+                          ),
+                          confirmDismiss: (_) async {
+                            return await showDialog<bool>(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                backgroundColor: AppColors.surfaceVariant,
+                                title: const Text('Remove group'),
+                                content: Text('Remove "${group.title}" and all its steps?'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(ctx, false),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(ctx, true),
+                                    style: TextButton.styleFrom(foregroundColor: AppColors.error),
+                                    child: const Text('Remove'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                          onDismissed: (_) => ref
+                              .read(orchestratorDetailNotifierProvider.notifier)
+                              .removeGroup(group.groupId),
+                          child: card,
+                        )
+                      : card,
                 );
               },
               childCount: plan.taskGroups.length,

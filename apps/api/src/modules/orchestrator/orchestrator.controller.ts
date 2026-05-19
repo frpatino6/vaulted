@@ -178,6 +178,23 @@ export class OrchestratorController {
     );
   }
 
+  // DELETE /orchestrator/plans/:planId/groups/:groupId
+  @Roles(Role.OWNER, Role.MANAGER)
+  @Delete('plans/:planId/groups/:groupId')
+  @HttpCode(HttpStatus.OK)
+  async removeGroup(
+    @CurrentUser() user: JwtPayload,
+    @Param('planId') planId: string,
+    @Param('groupId') groupId: string,
+  ) {
+    return this.orchestratorService.removeGroup(
+      user.tenantId,
+      planId,
+      groupId,
+      user.sub,
+    );
+  }
+
   // DELETE /orchestrator/plans/:planId/groups/:groupId/steps/:stepId
   @Roles(Role.OWNER, Role.MANAGER)
   @Delete('plans/:planId/groups/:groupId/steps/:stepId')

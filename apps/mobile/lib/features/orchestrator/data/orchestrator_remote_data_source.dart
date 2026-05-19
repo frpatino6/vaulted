@@ -187,6 +187,18 @@ class OrchestratorRemoteDataSource {
   }
 
   // ---------------------------------------------------------------------------
+  Future<OrchestratorPlanModel> removeGroup({
+    required String planId,
+    required String groupId,
+  }) async {
+    final response = await _dio.delete<Map<String, dynamic>>(
+      'orchestrator/plans/$planId/groups/$groupId',
+    );
+    final data = _unwrapData(response);
+    return OrchestratorPlanModel.fromJson(
+        _normalize(Map<String, dynamic>.from(data as Map)));
+  }
+
   Future<OrchestratorPlanModel> removeStep({
     required String planId,
     required String groupId,

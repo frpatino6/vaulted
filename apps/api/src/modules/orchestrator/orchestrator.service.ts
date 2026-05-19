@@ -659,8 +659,8 @@ export class OrchestratorService {
   ): Promise<OrchestratorPlanDocument> {
     const plan = await this.planModel.findOne({ _id: planId, tenantId }).exec();
     if (!plan) throw new NotFoundException('Plan not found');
-    if (plan.status !== 'draft') {
-      throw new ForbiddenException('Steps can only be removed from draft plans');
+    if (plan.status === 'completed' || plan.status === 'cancelled') {
+      throw new ForbiddenException('Cannot modify a completed or cancelled plan');
     }
 
     const group = plan.taskGroups.find((g) => g.groupId === groupId);
@@ -680,6 +680,37 @@ export class OrchestratorService {
       entityType: 'orchestrator_plan',
       entityId: planId,
       metadata: { groupId, stepId },
+    });
+
+    return this.signPlanPhotos(plan, tenantId, userId);
+  }
+
+  async removeGroup(
+    tenantId: string,
+    planId: string,
+    groupId: string,
+    userId: string,
+  ): Promise<OrchestratorPlanDocument> {
+    const plan = await this.planModel.findOne({ _id: planId, tenantId }).exec();
+    if (!plan) throw new NotFoundException('Plan not found');
+    if (plan.status === 'completed' || plan.status === 'cancelled') {
+      throw new ForbiddenException('Cannot modify a completed or cancelled plan');
+    }
+
+    const groupIndex = plan.taskGroups.findIndex((g) => g.groupId === groupId);
+    if (groupIndex === -1) throw new NotFoundException('Task group not found');
+
+    plan.taskGroups.splice(groupIndex, 1);
+    plan.markModified('taskGroups');
+    await plan.save();
+
+    await this.auditService.log({
+      tenantId,
+      userId,
+      action: 'plan.group.removed',
+      entityType: 'orchestrator_plan',
+      entityId: planId,
+      metadata: { groupId },
     });
 
     return this.signPlanPhotos(plan, tenantId, userId);
