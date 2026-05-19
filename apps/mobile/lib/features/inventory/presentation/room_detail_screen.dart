@@ -163,11 +163,19 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
                   onPressed: () {
                     final sections = [...roomSections]
                       ..sort((a, b) => a.name.compareTo(b.name));
+                    final allItems = ref.read(itemListNotifierProvider).valueOrNull ?? [];
+                    final counts = <String, int>{};
+                    for (final item in allItems) {
+                      if (item.sectionId != null) {
+                        counts[item.sectionId!] = (counts[item.sectionId!] ?? 0) + 1;
+                      }
+                    }
                     showSectionQrSheet(
                       context,
                       widget.roomId,
                       widget.roomName,
                       sections,
+                      itemCountBySectionId: counts,
                       onViewItems: (section) => setState(() {
                         _activeSection = section.name;
                         _activeSectionId = section.sectionId;

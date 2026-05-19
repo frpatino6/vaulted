@@ -17,6 +17,7 @@ void showSectionQrSheet(
   String roomName,
   List<RoomSectionModel> sections, {
   void Function(RoomSectionModel section)? onViewItems,
+  Map<String, int>? itemCountBySectionId,
 }) {
   if (sections.isEmpty) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -33,6 +34,7 @@ void showSectionQrSheet(
       roomName: roomName,
       sections: sections,
       onViewItems: onViewItems,
+      itemCountBySectionId: itemCountBySectionId,
     ),
   );
 }
@@ -43,12 +45,14 @@ class _SectionQrSheet extends StatefulWidget {
     required this.roomName,
     required this.sections,
     this.onViewItems,
+    this.itemCountBySectionId,
   });
 
   final String roomId;
   final String roomName;
   final List<RoomSectionModel> sections;
   final void Function(RoomSectionModel section)? onViewItems;
+  final Map<String, int>? itemCountBySectionId;
 
   @override
   State<_SectionQrSheet> createState() => _SectionQrSheetState();
@@ -132,32 +136,50 @@ class _SectionQrSheetState extends State<_SectionQrSheet> {
                   separatorBuilder: (_, _) => const SizedBox(width: 8),
                   itemBuilder: (_, i) {
                     final s = widget.sections[i];
+                    final isSelected = _selectedIndex == i;
+                    final count = widget.itemCountBySectionId?[s.sectionId];
+                    final chipFg = isSelected ? AppColors.background : AppColors.onSurfaceVariant;
+                    final codeFg = isSelected ? AppColors.background : AppColors.accent;
                     return ChoiceChip(
                       label: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          if (s.photo != null) ...[
-                            Icon(
-                              Icons.image_outlined,
-                              size: 12,
-                              color: _selectedIndex == i
-                                  ? AppColors.background
-                                  : AppColors.accent,
+                          // Code badge
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? Colors.white.withValues(alpha: 0.2)
+                                  : AppColors.accent.withAlpha(30),
+                              borderRadius: BorderRadius.circular(4),
                             ),
-                            const SizedBox(width: 3),
-                          ],
-                          Text(
-                            s.name,
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: _selectedIndex == i
-                                  ? AppColors.background
-                                  : AppColors.onSurfaceVariant,
+                            child: Text(
+                              s.code,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: codeFg,
+                              ),
                             ),
                           ),
+                          const SizedBox(width: 5),
+                          Text(
+                            s.name,
+                            style: TextStyle(fontSize: 11, color: chipFg),
+                          ),
+                          if (count != null) ...[
+                            const SizedBox(width: 5),
+                            Text(
+                              '· $count',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: chipFg.withValues(alpha: 0.6),
+                              ),
+                            ),
+                          ],
                         ],
                       ),
-                      selected: _selectedIndex == i,
+                      selected: isSelected,
                       selectedColor: AppColors.accent,
                       backgroundColor:
                           AppColors.surfaceVariant.withValues(alpha: 0.4),
@@ -180,6 +202,7 @@ class _SectionQrSheetState extends State<_SectionQrSheet> {
                       section: section,
                       roomName: widget.roomName,
                       qrData: _qrData(section),
+                      itemCount: widget.itemCountBySectionId?[section.sectionId],
                       onViewItems: widget.onViewItems != null
                           ? () {
                               Navigator.of(context).pop();
@@ -443,12 +466,14 @@ class _QrCard extends StatefulWidget {
     required this.section,
     required this.roomName,
     required this.qrData,
+    this.itemCount,
     this.onViewItems,
   });
 
   final RoomSectionModel section;
   final String roomName;
   final String qrData;
+  final int? itemCount;
   final VoidCallback? onViewItems;
 
   @override
@@ -511,19 +536,44 @@ class _QrCardState extends State<_QrCard> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                Text(
-                  widget.section.name,
-                  style: const TextStyle(
-                    color: Colors.black,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.3,
-                  ),
-                  textAlign: TextAlign.center,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(5),
+                      ),
+                      child: Text(
+                        widget.section.code,
+                        style: const TextStyle(
+                          color: Colors.black54,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        widget.section.name,
+                        style: const TextStyle(
+                          color: Colors.black,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.3,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  widget.roomName,
+                  widget.itemCount != null
+                      ? '${widget.roomName}  ·  ${widget.itemCount} item${widget.itemCount == 1 ? '' : 's'}'
+                      : widget.roomName,
                   style: const TextStyle(
                     color: Colors.black54,
                     fontSize: 12,
