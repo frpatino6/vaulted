@@ -295,11 +295,11 @@ class _OrchestratorStepGuideScreenState
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
           child: Row(
             children: [
-              _PanelLabel(label: 'Room', index: 0, current: _currentPage),
+              _PanelLabel(label: 'Room', index: 0, current: _currentPage, controller: _pageController),
               const SizedBox(width: AppSpacing.sm),
-              _PanelLabel(label: 'Section', index: 1, current: _currentPage),
+              _PanelLabel(label: 'Section', index: 1, current: _currentPage, controller: _pageController),
               const SizedBox(width: AppSpacing.sm),
-              _PanelLabel(label: 'Item', index: 2, current: _currentPage),
+              _PanelLabel(label: 'Item', index: 2, current: _currentPage, controller: _pageController),
             ],
           ),
         ),
@@ -778,17 +778,25 @@ class _PanelLabel extends StatelessWidget {
     required this.label,
     required this.index,
     required this.current,
+    required this.controller,
   });
 
   final String label;
   final int index;
   final int current;
+  final PageController controller;
 
   @override
   Widget build(BuildContext context) {
     final isActive = index == current;
     return Expanded(
-      child: AnimatedContainer(
+      child: GestureDetector(
+        onTap: () => controller.animateToPage(
+          index,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeInOut,
+        ),
+        child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(vertical: 6),
         decoration: BoxDecoration(
@@ -813,6 +821,7 @@ class _PanelLabel extends StatelessWidget {
             ),
           ),
         ),
+      ),
       ),
     );
   }
