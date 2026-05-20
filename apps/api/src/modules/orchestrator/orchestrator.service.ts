@@ -12,6 +12,7 @@ import { AuditService } from '../audit/audit.service';
 import { MediaService } from '../media/media.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { Item, ItemDocument } from '../inventory/schemas/item.schema';
+import { Property, PropertyDocument } from '../properties/schemas/property.schema';
 import { Role } from '../../common/enums/role.enum';
 import { AddGroupDto } from './dto/add-group.dto';
 import { AddManualStepDto } from './dto/add-manual-step.dto';
@@ -60,6 +61,8 @@ export class OrchestratorService {
     private readonly planModel: Model<OrchestratorPlanDocument>,
     @InjectModel(Item.name)
     private readonly itemModel: Model<ItemDocument>,
+    @InjectModel(Property.name)
+    private readonly propertyModel: Model<PropertyDocument>,
     private readonly auditService: AuditService,
     private readonly mediaService: MediaService,
     private readonly notificationsService: NotificationsService,
@@ -617,6 +620,8 @@ export class OrchestratorService {
 
     if (!item) throw new NotFoundException('Item not found');
 
+    const location = await this.resolveItemLocation(item, tenantId);
+
     const step: OrchestratorStep = {
       stepId: uuidv4(),
       itemId: item._id.toString(),
@@ -624,12 +629,13 @@ export class OrchestratorService {
       itemCategory: String(item.category),
       itemPhoto: item.photos?.[0] ?? undefined,
       roomId: item.roomId ?? undefined,
-      roomName: (item as ItemDocument & { roomName?: string }).roomName ?? undefined,
-      sectionId: item.sectionId ?? undefined,
-      sectionCode: (item as ItemDocument & { sectionCode?: string }).sectionCode ?? undefined,
-      sectionFurnitureName: (item as ItemDocument & { sectionFurnitureName?: string }).sectionFurnitureName ?? undefined,
-      sectionPhoto: (item as ItemDocument & { sectionPhoto?: string }).sectionPhoto ?? undefined,
-      boundingBox: (item as ItemDocument & { sectionBoundingBox?: OrchestratorStep['boundingBox'] }).sectionBoundingBox ?? undefined,
+      roomName: location.roomName,
+      roomPhoto: location.roomPhoto,
+      sectionId: location.sectionId,
+      sectionCode: location.sectionCode,
+      sectionFurnitureName: location.sectionFurnitureName,
+      sectionPhoto: location.sectionPhoto,
+      boundingBox: location.boundingBox,
       instruction: dto.instruction,
       status: 'pending',
     };
@@ -683,6 +689,66 @@ export class OrchestratorService {
     });
 
     return this.signPlanPhotos(plan, tenantId, userId);
+  }
+
+  private async resolveItemLocation(
+    item: ItemDocument,
+    tenantId: string,
+  ): Promise<{
+    roomName?: string;
+    roomPhoto?: string;
+    sectionId?: string;
+    sectionCode?: string;
+    sectionFurnitureName?: string;
+    sectionPhoto?: string;
+    boundingBox?: OrchestratorStep['boundingBox'];
+  }> {
+    if (!item.propertyId) return {};
+
+    const property = await this.propertyModel
+      .findOne({ _id: item.propertyId, tenantId })
+      .select('floors photos')
+      .lean()
+      .exec();
+
+    if (!property) return {};
+
+    const roomPhoto: string | undefined = (property as any).photos?.[0];
+
+    for (const floor of (property as any).floors ?? []) {
+      for (const room of floor.rooms ?? []) {
+        if (room.roomId !== String(item.roomId)) continue;
+
+        const result: ReturnType<typeof this.resolveItemLocation> extends Promise<infer T> ? T : never = {
+          roomName: room.name,
+          roomPhoto,
+        };
+
+        if (item.sectionId) {
+          const section = (room.sections ?? []).find(
+            (s: any) => s.sectionId === String(item.sectionId),
+          );
+          if (section) {
+            result.sectionId = section.sectionId;
+            result.sectionCode = section.code;
+            result.sectionFurnitureName = section.furnitureName;
+            result.sectionPhoto = section.photo;
+            if (section.boundingBox) {
+              result.boundingBox = {
+                x: section.boundingBox.x,
+                y: section.boundingBox.y,
+                width: section.boundingBox.width,
+                height: section.boundingBox.height,
+              };
+            }
+          }
+        }
+
+        return result;
+      }
+    }
+
+    return { roomPhoto };
   }
 
   async removeGroup(
