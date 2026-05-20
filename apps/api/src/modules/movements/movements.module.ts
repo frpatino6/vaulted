@@ -10,6 +10,7 @@ import {
 } from '../inventory/schemas/item-history.schema';
 import { Property, PropertySchema } from '../properties/schemas/property.schema';
 import { AuditModule } from '../audit/audit.module';
+import { CommonModule } from '../../common/common.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { AuditModule } from '../audit/audit.module';
       { name: Property.name, schema: PropertySchema },
     ]),
     AuditModule,
+    CommonModule,
   ],
   controllers: [MovementsController],
   providers: [MovementsService],

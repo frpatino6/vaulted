@@ -4,15 +4,22 @@ import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../properties/domain/properties_notifier.dart';
+import '../domain/current_user_jwt.dart';
 import '../domain/users_notifier.dart';
 
-const List<String> _inviteRoles = [
+const List<String> _allInviteRoles = [
   'owner',
   'manager',
   'staff',
   'auditor',
   'guest',
 ];
+
+List<String> _inviteRolesForCurrentUser() {
+  final role = currentUserRole();
+  if (role == 'owner') return _allInviteRoles;
+  return _allInviteRoles.where((r) => r != 'owner').toList();
+}
 
 /// Bottom sheet to invite a new user (email, role, property access, optional expiry).
 class InviteUserSheet extends ConsumerStatefulWidget {
@@ -160,7 +167,7 @@ class _InviteUserSheetState extends ConsumerState<InviteUserSheet> {
                   DropdownButtonFormField<String>(
                     initialValue: _role,
                     decoration: const InputDecoration(labelText: 'Role'),
-                    items: _inviteRoles
+                    items: _inviteRolesForCurrentUser()
                         .map(
                           (r) => DropdownMenuItem(
                             value: r,

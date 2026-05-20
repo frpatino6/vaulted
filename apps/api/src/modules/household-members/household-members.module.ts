@@ -6,12 +6,14 @@ import {
   HouseholdMember,
   HouseholdMemberSchema,
 } from './schemas/household-member.schema';
+import { AuditModule } from '../audit/audit.module';
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: HouseholdMember.name, schema: HouseholdMemberSchema },
     ]),
+    AuditModule,
   ],
   controllers: [HouseholdMembersController],
   providers: [HouseholdMembersService],

@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../storage/auth_token_store.dart';
 import 'auth_redirect_notifier.dart';
+import '../../features/users/domain/current_user_jwt.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/accept_invite_screen.dart';
 import '../../features/auth/presentation/mfa_screen.dart';
@@ -73,6 +74,31 @@ GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
 
       // Fully authenticated → skip login/mfa screens
       if (hasToken && !isMfaPending && (isLogin || isMfa)) return '/dashboard';
+
+      // Role-based route guards (only runs when authenticated and MFA done)
+      if (hasToken && !isMfaPending) {
+        final role = currentUserRole() ?? 'guest';
+        final loc = state.matchedLocation;
+
+        // Only owner/manager can manage team or household members
+        if ((loc == '/settings/users' || loc == '/settings/household-members') &&
+            role != 'owner' && role != 'manager') {
+          return '/unauthorized';
+        }
+
+        // Only owner/manager can create operations or access the scan workflow
+        if ((loc == '/orchestrator/new' ||
+                loc.startsWith('/movements/') && loc.endsWith('/scan')) &&
+            role != 'owner' && role != 'manager') {
+          return '/unauthorized';
+        }
+
+        // Only owner/manager/auditor can access AI chat
+        if (loc == '/chat' &&
+            role != 'owner' && role != 'manager' && role != 'auditor') {
+          return '/unauthorized';
+        }
+      }
 
       return null;
     },

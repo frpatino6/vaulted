@@ -65,7 +65,7 @@ export class MovementsController {
     @Query('status') status?: string,
     @Query('operationType') operationType?: string,
   ) {
-    return this.movementsService.findAll(user.tenantId, {
+    return this.movementsService.findAll(user, {
       status,
       operationType,
     });
