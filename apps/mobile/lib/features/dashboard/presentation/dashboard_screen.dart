@@ -845,7 +845,7 @@ class _StatusRow extends StatelessWidget {
       children: entries.map((e) {
         final dotColor = _statusColors[e.key] ?? AppColors.onSurfaceVariant;
         final label = e.key[0].toUpperCase() + e.key.substring(1);
-        return Chip(
+        return ActionChip(
           avatar: Container(
             width: 8,
             height: 8,
@@ -868,6 +868,7 @@ class _StatusRow extends StatelessWidget {
           labelPadding: const EdgeInsets.only(left: 2, right: 4),
           materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           visualDensity: VisualDensity.compact,
+          onPressed: () => context.push('/assets?status=${e.key}'),
         );
       }).toList(),
     );

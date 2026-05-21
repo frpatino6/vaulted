@@ -202,7 +202,9 @@ GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
       ),
       GoRoute(
         path: '/assets',
-        builder: (context, state) => const AssetBrowserScreen(),
+        builder: (context, state) => AssetBrowserScreen(
+          initialStatus: state.uri.queryParameters['status'],
+        ),
       ),
       GoRoute(
         path: '/qr-codes',

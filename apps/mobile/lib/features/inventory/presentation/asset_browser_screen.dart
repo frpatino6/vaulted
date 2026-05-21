@@ -26,10 +26,13 @@ const List<String> _statusFilters = <String>[
   'Loaned',
   'Repair',
   'Storage',
+  'Disposed',
 ];
 
 class AssetBrowserScreen extends ConsumerStatefulWidget {
-  const AssetBrowserScreen({super.key});
+  const AssetBrowserScreen({super.key, this.initialStatus});
+
+  final String? initialStatus;
 
   @override
   ConsumerState<AssetBrowserScreen> createState() => _AssetBrowserScreenState();
@@ -49,11 +52,26 @@ class _AssetBrowserScreenState extends ConsumerState<AssetBrowserScreen> {
   void initState() {
     super.initState();
     _controller = TextEditingController()..addListener(_onQueryChanged);
+    if (widget.initialStatus != null) {
+      final normalized = widget.initialStatus![0].toUpperCase() +
+          widget.initialStatus!.substring(1).toLowerCase();
+      if (_statusFilters.contains(normalized)) {
+        _selectedStatus = normalized;
+      }
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref
-          .read(assetBrowserNotifierProvider.notifier)
-          .loadInitial()
-          .whenComplete(() {
+      final notifier = ref.read(assetBrowserNotifierProvider.notifier);
+      final Future<void> load;
+      if (_selectedStatus != null) {
+        load = notifier.applyFilters(
+          query: '',
+          status: _selectedStatus!.toLowerCase(),
+          sortBy: _sortBy,
+        );
+      } else {
+        load = notifier.loadInitial();
+      }
+      load.whenComplete(() {
         if (mounted) setState(() => _initialLoadCompleted = true);
       });
     });
