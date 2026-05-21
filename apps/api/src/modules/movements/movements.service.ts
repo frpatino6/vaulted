@@ -26,6 +26,8 @@ import { CreateMovementDto } from './dto/create-movement.dto';
 import { UpdateMovementDto } from './dto/update-movement.dto';
 import { QuickTransferDto } from './dto/quick-transfer.dto';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
+import { AccessControlService } from '../../common/services/access-control.service';
+import { Role } from '../../common/enums/role.enum';
 
 @Injectable()
 export class MovementsService {
@@ -38,6 +40,7 @@ export class MovementsService {
     private readonly itemHistoryModel: Model<ItemHistoryDocument>,
     @InjectModel(Property.name)
     private readonly propertyModel: Model<PropertyDocument>,
+    private readonly accessControlService: AccessControlService,
   ) {}
 
   async create(
@@ -66,12 +69,21 @@ export class MovementsService {
   }
 
   async findAll(
-    tenantId: string,
+    user: JwtPayload,
     filters: { status?: string; operationType?: string } = {},
   ): Promise<MovementDocument[]> {
-    const query: Record<string, unknown> = { tenantId };
+    const query: Record<string, unknown> = { tenantId: user.tenantId };
     if (filters.status) query['status'] = filters.status;
     if (filters.operationType) query['operationType'] = filters.operationType;
+
+    const allowedPropertyIds = await this.accessControlService.getAllowedPropertyIds(
+      user.sub,
+      user.role as Role,
+    );
+    if (allowedPropertyIds !== null) {
+      query['propertyId'] = { $in: allowedPropertyIds };
+    }
+
     return this.movementModel.find(query).sort({ createdAt: -1 }).lean();
   }
 

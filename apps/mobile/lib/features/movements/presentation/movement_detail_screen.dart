@@ -49,7 +49,8 @@ class _MovementDetailScreenState extends ConsumerState<MovementDetailScreen> {
     final renderState =
         showInitialSkeleton ? const AsyncLoading<MovementModel?>() : state;
     final role = currentUserRole() ?? 'guest';
-    final canOperate = role == 'owner' || role == 'manager';
+    final canManage = role == 'owner' || role == 'manager';
+    final canCheckin = role == 'owner' || role == 'manager' || role == 'staff';
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -63,7 +64,7 @@ class _MovementDetailScreenState extends ConsumerState<MovementDetailScreen> {
               ),
             );
           }
-          return _buildContent(context, movement, canOperate);
+          return _buildContent(context, movement, canManage, canCheckin);
         },
         loading: () => const AppScreenSkeleton(showHeader: false, cardCount: 4),
         error:
@@ -95,12 +96,14 @@ class _MovementDetailScreenState extends ConsumerState<MovementDetailScreen> {
   Widget _buildContent(
     BuildContext context,
     MovementModel movement,
-    bool canOperate,
+    bool canManage,
+    bool canCheckin,
   ) {
     final typeInfo = movementTypeInfo(movement.operationType);
     final statusInfo = movementStatusInfo(movement.status);
     final isActive = movement.isActive;
     final isDraft = movement.isDraft;
+    final showMenu = !movement.isFinished && (canManage || (canCheckin && isActive));
 
     return CustomScrollView(
       slivers: [
@@ -136,7 +139,7 @@ class _MovementDetailScreenState extends ConsumerState<MovementDetailScreen> {
             ],
           ),
           actions: [
-            if (canOperate && !movement.isFinished)
+            if (showMenu)
               PopupMenuButton<String>(
                 color: AppColors.surfaceVariant,
                 icon: Icon(
@@ -146,7 +149,7 @@ class _MovementDetailScreenState extends ConsumerState<MovementDetailScreen> {
                 onSelected: (v) => _handleMenu(context, v, movement),
                 itemBuilder:
                     (_) => [
-                      if (isDraft)
+                      if (isDraft && canManage)
                         PopupMenuItem(
                           value: 'resume',
                           child: Row(
@@ -164,7 +167,7 @@ class _MovementDetailScreenState extends ConsumerState<MovementDetailScreen> {
                             ],
                           ),
                         ),
-                      if (isActive)
+                      if (isActive && canCheckin)
                         PopupMenuItem(
                           value: 'complete',
                           child: Row(
@@ -182,23 +185,24 @@ class _MovementDetailScreenState extends ConsumerState<MovementDetailScreen> {
                             ],
                           ),
                         ),
-                      PopupMenuItem(
-                        value: 'cancel',
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.cancel_outlined,
-                              color: AppColors.error,
-                              size: 18,
-                            ),
-                            const SizedBox(width: AppSpacing.sm),
-                            Text(
-                              'Cancel operation',
-                              style: TextStyle(color: AppColors.error),
-                            ),
-                          ],
+                      if (canManage)
+                        PopupMenuItem(
+                          value: 'cancel',
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.cancel_outlined,
+                                color: AppColors.error,
+                                size: 18,
+                              ),
+                              const SizedBox(width: AppSpacing.sm),
+                              Text(
+                                'Cancel operation',
+                                style: TextStyle(color: AppColors.error),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
                     ],
               ),
           ],
@@ -223,7 +227,7 @@ class _MovementDetailScreenState extends ConsumerState<MovementDetailScreen> {
                   const SizedBox(height: AppSpacing.md),
                   _ProgressCard(
                     movement: movement,
-                    canOperate: canOperate,
+                    canOperate: canCheckin,
                     onCheckin: () => _openCheckin(context, movement),
                   ),
                 ],
