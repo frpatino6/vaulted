@@ -105,9 +105,23 @@ GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
           return '/unauthorized';
         }
 
-        // Insurance is owner/manager/auditor only
+        // Insurance list/detail/gaps: owner/manager/auditor
         if (loc.startsWith('/insurance') &&
             role != 'owner' && role != 'manager' && role != 'auditor') {
+          return '/unauthorized';
+        }
+
+        // Insurance create/edit/claim-draft: owner/manager only
+        if ((loc == '/insurance/new' ||
+                loc.endsWith('/edit') ||
+                loc.endsWith('/claim-draft')) &&
+            role != 'owner' && role != 'manager') {
+          return '/unauthorized';
+        }
+
+        // Maintenance list: owner/manager/staff only (auditor uses per-item endpoint)
+        if (loc == '/maintenance' &&
+            role != 'owner' && role != 'manager' && role != 'staff') {
           return '/unauthorized';
         }
 

@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
+import '../../users/domain/current_user_jwt.dart';
 import '../data/models/maintenance_model.dart';
 import '../domain/maintenance_notifier.dart';
 import 'add_maintenance_sheet.dart';
@@ -47,6 +48,9 @@ class _MaintenanceListScreenState extends ConsumerState<MaintenanceListScreen>
 
   @override
   Widget build(BuildContext context) {
+    final role = currentUserRole() ?? 'guest';
+    final canCreate = role == 'owner' || role == 'manager';
+    final canComplete = role == 'owner' || role == 'manager' || role == 'staff';
     final state = ref.watch(maintenanceListNotifierProvider);
     final all = state.valueOrNull ?? const <MaintenanceModel>[];
     final overdue = all.where((r) => r.isOverdue).toList();
@@ -92,24 +96,27 @@ class _MaintenanceListScreenState extends ConsumerState<MaintenanceListScreen>
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: AppColors.accent,
-        foregroundColor: Colors.black,
-        tooltip: 'Schedule maintenance',
-        onPressed: () async {
-          final record = await showAddMaintenanceSheet(context);
-          if (record != null && mounted) {
-            ref.read(maintenanceListNotifierProvider.notifier).load();
-          }
-        },
-        child: const Icon(Icons.add_rounded),
-      ),
+      floatingActionButton: canCreate
+          ? FloatingActionButton(
+              backgroundColor: AppColors.accent,
+              foregroundColor: Colors.black,
+              tooltip: 'Schedule maintenance',
+              onPressed: () async {
+                final record = await showAddMaintenanceSheet(context);
+                if (record != null && mounted) {
+                  ref.read(maintenanceListNotifierProvider.notifier).load();
+                }
+              },
+              child: const Icon(Icons.add_rounded),
+            )
+          : null,
       body: renderState.when(
         data: (_) => TabBarView(
           controller: _tabController,
           children: [
             _MaintenanceList(
               records: overdue,
+              canComplete: canComplete,
               emptyMessage: 'All caught up',
               emptySubtitle: 'No overdue maintenance at this time.',
               onRefresh: () =>
@@ -117,6 +124,7 @@ class _MaintenanceListScreenState extends ConsumerState<MaintenanceListScreen>
             ),
             _MaintenanceList(
               records: dueSoon,
+              canComplete: canComplete,
               emptyMessage: 'Nothing due this week',
               emptySubtitle: 'Upcoming tasks will appear here automatically.',
               onRefresh: () =>
@@ -124,6 +132,7 @@ class _MaintenanceListScreenState extends ConsumerState<MaintenanceListScreen>
             ),
             _MaintenanceList(
               records: upcoming,
+              canComplete: canComplete,
               emptyMessage: 'Schedule looks clear',
               emptySubtitle: 'Add tasks from item details to plan ahead.',
               onRefresh: () =>
@@ -131,6 +140,7 @@ class _MaintenanceListScreenState extends ConsumerState<MaintenanceListScreen>
             ),
             _MaintenanceList(
               records: completed,
+              canComplete: canComplete,
               emptyMessage: 'No history yet',
               emptySubtitle: 'Completed maintenance will appear here.',
               onRefresh: () =>
@@ -173,12 +183,14 @@ class _MaintenanceListScreenState extends ConsumerState<MaintenanceListScreen>
 class _MaintenanceList extends StatelessWidget {
   const _MaintenanceList({
     required this.records,
+    required this.canComplete,
     required this.emptyMessage,
     required this.emptySubtitle,
     required this.onRefresh,
   });
 
   final List<MaintenanceModel> records;
+  final bool canComplete;
   final String emptyMessage;
   final String emptySubtitle;
   final Future<void> Function() onRefresh;
@@ -236,6 +248,7 @@ class _MaintenanceList extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: AppSpacing.sm),
               child: MaintenanceCard(
                 record: records[i],
+                canComplete: canComplete,
                 onTap: () => context.push(
                   '/maintenance/${records[i].id}',
                   extra: records[i],
@@ -254,9 +267,15 @@ class _MaintenanceList extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class MaintenanceCard extends ConsumerWidget {
-  const MaintenanceCard({super.key, required this.record, required this.onTap});
+  const MaintenanceCard({
+    super.key,
+    required this.record,
+    required this.canComplete,
+    required this.onTap,
+  });
 
   final MaintenanceModel record;
+  final bool canComplete;
   final VoidCallback onTap;
 
   @override
@@ -379,34 +398,35 @@ class MaintenanceCard extends ConsumerWidget {
                     ],
                   ),
                 ),
-                // Trailing: quick complete button
-                IconButton(
-                  icon: Icon(
-                    record.isCompleted
-                        ? Icons.check_circle_rounded
-                        : Icons.check_circle_outline_rounded,
-                    color: record.isCompleted
-                        ? AppColors.accent
-                        : AppColors.onSurfaceVariant.withValues(alpha: 0.45),
+                // Trailing: quick complete button (owner/manager/staff only)
+                if (canComplete || record.isCompleted)
+                  IconButton(
+                    icon: Icon(
+                      record.isCompleted
+                          ? Icons.check_circle_rounded
+                          : Icons.check_circle_outline_rounded,
+                      color: record.isCompleted
+                          ? AppColors.accent
+                          : AppColors.onSurfaceVariant.withValues(alpha: 0.45),
+                    ),
+                    iconSize: 26,
+                    tooltip: record.isCompleted ? 'Completed' : 'Mark as done',
+                    onPressed: record.isCompleted || !canComplete
+                        ? null
+                        : () async {
+                            await ref
+                                .read(maintenanceListNotifierProvider.notifier)
+                                .complete(record.id);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Marked as completed'),
+                                  duration: Duration(seconds: 2),
+                                ),
+                              );
+                            }
+                          },
                   ),
-                  iconSize: 26,
-                  tooltip: record.isCompleted ? 'Completed' : 'Mark as done',
-                  onPressed: record.isCompleted
-                      ? null
-                      : () async {
-                          await ref
-                              .read(maintenanceListNotifierProvider.notifier)
-                              .complete(record.id);
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Marked as completed'),
-                                duration: Duration(seconds: 2),
-                              ),
-                            );
-                          }
-                        },
-                ),
               ],
             ),
           ),

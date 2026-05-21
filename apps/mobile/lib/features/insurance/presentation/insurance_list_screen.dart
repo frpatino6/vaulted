@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/app_bottom_nav.dart';
+import '../../users/domain/current_user_jwt.dart';
 import '../data/models/insurance_policy_model.dart';
 import '../domain/insurance_list_notifier.dart';
 
@@ -33,6 +34,8 @@ class _InsuranceListScreenState extends ConsumerState<InsuranceListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final role = currentUserRole() ?? 'guest';
+    final canEdit = role == 'owner' || role == 'manager';
     final state = ref.watch(insuranceListNotifierProvider);
     final showInitialSkeleton =
         !_initialLoadCompleted &&
@@ -57,16 +60,17 @@ class _InsuranceListScreenState extends ConsumerState<InsuranceListScreen> {
           ),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            color: AppColors.accent,
-            onPressed: () async {
-              await context.push('/insurance/new');
-              if (context.mounted) {
-                ref.read(insuranceListNotifierProvider.notifier).refresh();
-              }
-            },
-          ),
+          if (canEdit)
+            IconButton(
+              icon: const Icon(Icons.add),
+              color: AppColors.accent,
+              onPressed: () async {
+                await context.push('/insurance/new');
+                if (context.mounted) {
+                  ref.read(insuranceListNotifierProvider.notifier).refresh();
+                }
+              },
+            ),
         ],
       ),
       body: renderState.when(

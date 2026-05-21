@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
+import '../../users/domain/current_user_jwt.dart';
 import '../data/models/insurance_policy_model.dart';
 import '../domain/insurance_detail_notifier.dart';
 import '../domain/insurance_list_notifier.dart';
@@ -75,6 +76,8 @@ class _InsuranceDetailScreenState extends ConsumerState<InsuranceDetailScreen> {
   }
 
   Widget _buildContent(BuildContext context, InsurancePolicyModel policy) {
+    final role = currentUserRole() ?? 'guest';
+    final canEdit = role == 'owner' || role == 'manager';
     final currencyFmt = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
 
     return CustomScrollView(
@@ -97,26 +100,28 @@ class _InsuranceDetailScreenState extends ConsumerState<InsuranceDetailScreen> {
               tooltip: 'AI Analysis',
               onPressed: () => _showAiAnalysisSheet(context, policy.id),
             ),
-            IconButton(
-              icon: const Icon(Icons.edit_outlined),
-              color: AppColors.accent,
-              onPressed: () async {
-                await context.push(
-                  '/insurance/${policy.id}/edit',
-                  extra: policy,
-                );
-                if (context.mounted) {
-                  ref
-                      .read(insuranceDetailNotifierProvider.notifier)
-                      .load(widget.policyId);
-                }
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.delete_outline),
-              color: AppColors.error,
-              onPressed: () => _confirmDelete(context, policy),
-            ),
+            if (canEdit) ...[
+              IconButton(
+                icon: const Icon(Icons.edit_outlined),
+                color: AppColors.accent,
+                onPressed: () async {
+                  await context.push(
+                    '/insurance/${policy.id}/edit',
+                    extra: policy,
+                  );
+                  if (context.mounted) {
+                    ref
+                        .read(insuranceDetailNotifierProvider.notifier)
+                        .load(widget.policyId);
+                  }
+                },
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete_outline),
+                color: AppColors.error,
+                onPressed: () => _confirmDelete(context, policy),
+              ),
+            ],
           ],
         ),
 
@@ -219,11 +224,12 @@ class _InsuranceDetailScreenState extends ConsumerState<InsuranceDetailScreen> {
                           ),
                         ),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.add_circle_outline),
-                        color: AppColors.accent,
-                        onPressed: () => _showAttachSheet(context, policy.id),
-                      ),
+                      if (canEdit)
+                        IconButton(
+                          icon: const Icon(Icons.add_circle_outline),
+                          color: AppColors.accent,
+                          onPressed: () => _showAttachSheet(context, policy.id),
+                        ),
                     ],
                   ),
                 ],
@@ -246,6 +252,7 @@ class _InsuranceDetailScreenState extends ConsumerState<InsuranceDetailScreen> {
                 ...policy.insuredItems.map(
                   (item) => _InsuredItemRow(
                     item: item,
+                    canEdit: canEdit,
                     onDetach: () => _detachItem(item.itemId),
                   ),
                 ).toList(),
@@ -460,9 +467,14 @@ class _DetailRow extends StatelessWidget {
 }
 
 class _InsuredItemRow extends StatefulWidget {
-  const _InsuredItemRow({required this.item, required this.onDetach});
+  const _InsuredItemRow({
+    required this.item,
+    required this.canEdit,
+    required this.onDetach,
+  });
 
   final InsuredItemModel item;
+  final bool canEdit;
   final Future<void> Function() onDetach;
 
   @override
@@ -524,24 +536,25 @@ class _InsuredItemRowState extends State<_InsuredItemRow> {
             ),
           ),
           const SizedBox(width: AppSpacing.xs),
-          SizedBox(
-            width: 24,
-            height: 24,
-            child: _loading
-                ? Padding(
-                    padding: const EdgeInsets.all(4),
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor:
-                          AlwaysStoppedAnimation<Color>(AppColors.error),
+          if (widget.canEdit)
+            SizedBox(
+              width: 24,
+              height: 24,
+              child: _loading
+                  ? Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(AppColors.error),
+                      ),
+                    )
+                  : GestureDetector(
+                      onTap: _handleDetach,
+                      child:
+                          Icon(Icons.close, size: 16, color: AppColors.error),
                     ),
-                  )
-                : GestureDetector(
-                    onTap: _handleDetach,
-                    child:
-                        Icon(Icons.close, size: 16, color: AppColors.error),
-                  ),
-          ),
+            ),
         ],
       ),
     );
