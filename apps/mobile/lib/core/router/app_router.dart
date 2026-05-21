@@ -98,6 +98,24 @@ GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
             role != 'owner' && role != 'manager' && role != 'auditor') {
           return '/unauthorized';
         }
+
+        // Wardrobe is owner/manager only
+        if (loc.startsWith('/wardrobe') &&
+            role != 'owner' && role != 'manager') {
+          return '/unauthorized';
+        }
+
+        // Insurance is owner/manager/auditor only
+        if (loc.startsWith('/insurance') &&
+            role != 'owner' && role != 'manager' && role != 'auditor') {
+          return '/unauthorized';
+        }
+
+        // AI Scan is owner/manager only
+        if (loc.contains('/ai-scan') &&
+            role != 'owner' && role != 'manager') {
+          return '/unauthorized';
+        }
       }
 
       return null;

@@ -87,9 +87,18 @@ export class MovementsService {
     return this.movementModel.find(query).sort({ createdAt: -1 }).lean();
   }
 
-  async findOne(id: string, tenantId: string): Promise<MovementDocument> {
+  async findOne(id: string, tenantId: string, user?: JwtPayload): Promise<MovementDocument> {
     const movement = await this.movementModel.findOne({ _id: id, tenantId });
     if (!movement) throw new NotFoundException('Movement not found');
+    if (user) {
+      const allowedPropertyIds = await this.accessControlService.getAllowedPropertyIds(
+        user.sub,
+        user.role as Role,
+      );
+      if (allowedPropertyIds !== null && movement.propertyId && !allowedPropertyIds.includes(movement.propertyId)) {
+        throw new NotFoundException('Movement not found');
+      }
+    }
     return movement;
   }
 
@@ -326,7 +335,7 @@ export class MovementsService {
     itemId: string,
     user: JwtPayload,
   ): Promise<MovementDocument> {
-    const movement = await this.findOne(movementId, user.tenantId);
+    const movement = await this.findOne(movementId, user.tenantId, user);
     if (movement.status !== MovementStatus.ACTIVE) {
       throw new BadRequestException(
         'Check-in is only available for active movements',
@@ -376,7 +385,7 @@ export class MovementsService {
     movementId: string,
     user: JwtPayload,
   ): Promise<MovementDocument> {
-    const movement = await this.findOne(movementId, user.tenantId);
+    const movement = await this.findOne(movementId, user.tenantId, user);
     if (movement.status !== MovementStatus.ACTIVE) {
       throw new BadRequestException('Only active movements can be completed');
     }

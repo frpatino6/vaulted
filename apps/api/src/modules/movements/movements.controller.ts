@@ -114,7 +114,7 @@ export class MovementsController {
   @ApiBearerAuth()
   @ApiResponse({ status: 200, description: 'Movement retrieved' })
   async findOne(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
-    return this.movementsService.findOne(id, user.tenantId);
+    return this.movementsService.findOne(id, user.tenantId, user);
   }
 
   @Roles(Role.OWNER, Role.MANAGER)

@@ -233,7 +233,7 @@ export class InventoryService {
     const q = this.itemModel.find(query).sort({ createdAt: -1 });
     if (filters.limit && filters.limit > 0) q.limit(filters.limit);
     const items = await q.exec();
-    if (role === Role.OWNER || role === Role.MANAGER) {
+    if (role === Role.OWNER || role === Role.AUDITOR) {
       const result = items.map((item) => {
         const plain = item.toObject();
         plain.valuation = this.decryptValuation(plain.valuation, tenantId);
@@ -305,7 +305,7 @@ export class InventoryService {
       }
     }
 
-    if (role === Role.OWNER || role === Role.MANAGER) {
+    if (role === Role.OWNER || role === Role.AUDITOR) {
       const plain = item.toObject();
       plain.valuation = this.decryptValuation(plain.valuation, String(item.tenantId));
       await this.audit.log({
@@ -600,7 +600,7 @@ export class InventoryService {
       } as ItemDocument & { propertyName: string | null; roomName: string | null; sectionPhoto: string | null; sectionBoundingBox: { x: number; y: number; width: number; height: number } | null; sectionCode: string | null; sectionFurnitureName: string | null };
     });
 
-    const finalItems = role === Role.OWNER || role === Role.MANAGER
+    const finalItems = role === Role.OWNER || role === Role.AUDITOR
       ? enrichedItems.map((item) =>
           this.withSignedUrls(item as unknown as Item, userId, tenantId),
         )
@@ -608,7 +608,7 @@ export class InventoryService {
           this.withSignedUrls(this.accessControl.stripValuation(item) as unknown as Item, userId, tenantId),
         );
 
-    if (role === Role.OWNER || role === Role.MANAGER) {
+    if (role === Role.OWNER || role === Role.AUDITOR) {
       void this.audit.log({
         tenantId,
         userId,
