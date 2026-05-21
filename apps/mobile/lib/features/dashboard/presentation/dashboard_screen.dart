@@ -404,6 +404,11 @@ class DashboardQuickActions extends ConsumerWidget {
               onTap: () => context.push('/chat'),
             ),
             _QuickActionTile(
+              icon: Icons.help_outline_rounded,
+              label: 'Vaulted Guide',
+              onTap: () => context.push('/help-chat?screen=dashboard'),
+            ),
+            _QuickActionTile(
               icon: Icons.swap_horiz_rounded,
               label: 'Operations',
               onTap: () => context.push('/movements'),
