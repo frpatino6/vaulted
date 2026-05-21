@@ -447,7 +447,8 @@ class _LoadingDotsState extends State<_LoadingDots>
         mainAxisSize: MainAxisSize.min,
         children: List.generate(3, (index) {
           final delay = index * 0.2;
-          final opacity = ((_animation.value + delay) % 1.0).clamp(0.3, 1.0);
+          final opacity =
+              ((_animation.value + delay) % 1.0).clamp(0.3, 1.0).toDouble();
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 3),
             child: Opacity(
