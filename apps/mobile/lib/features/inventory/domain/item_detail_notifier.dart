@@ -20,6 +20,13 @@ class ItemDetailNotifier extends AsyncNotifier<ItemModel?> {
     }
   }
 
+  Future<void> markAsReturned(String id) async {
+    final updated = await ref
+        .read(itemRepositoryProvider)
+        .updateItem(id, status: 'active');
+    state = AsyncData(updated);
+  }
+
   static String message(Object e) {
     if (e is DioException) {
       final data = e.response?.data;

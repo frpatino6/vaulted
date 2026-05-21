@@ -21,12 +21,15 @@ class MovementsScreen extends ConsumerStatefulWidget {
 class _MovementsScreenState extends ConsumerState<MovementsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabs;
+  final TextEditingController _searchController = TextEditingController();
+  String? _selectedType;
   bool _initialLoadCompleted = false;
 
   @override
   void initState() {
     super.initState();
     _tabs = TabController(length: 2, vsync: this);
+    _searchController.addListener(() => setState(() {}));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(movementListNotifierProvider.notifier).load().whenComplete(() {
         if (!mounted) return;
@@ -39,7 +42,20 @@ class _MovementsScreenState extends ConsumerState<MovementsScreen>
   @override
   void dispose() {
     _tabs.dispose();
+    _searchController.dispose();
     super.dispose();
+  }
+
+  List<MovementModel> _applyFilters(List<MovementModel> movements) {
+    final q = _searchController.text.trim().toLowerCase();
+    return movements.where((m) {
+      final matchesType =
+          _selectedType == null || m.operationType == _selectedType;
+      final matchesQuery = q.isEmpty ||
+          m.title.toLowerCase().contains(q) ||
+          m.destination.toLowerCase().contains(q);
+      return matchesType && matchesQuery;
+    }).toList();
   }
 
   @override
@@ -92,6 +108,11 @@ class _MovementsScreenState extends ConsumerState<MovementsScreen>
       ),
       body: Column(
         children: [
+          _SearchAndFilterBar(
+            controller: _searchController,
+            selectedType: _selectedType,
+            onTypeSelected: (t) => setState(() => _selectedType = t),
+          ),
           // Draft recovery banners — show one banner per active draft
           if (draftState.value != null && draftState.value!.isNotEmpty)
             _DraftBannerList(
@@ -101,9 +122,10 @@ class _MovementsScreenState extends ConsumerState<MovementsScreen>
           Expanded(
             child: renderListState.when(
               data: (all) {
-                final active =
-                    all.where((m) => m.isDraft || m.isActive).toList();
-                final history = all.where((m) => m.isFinished).toList();
+                final active = _applyFilters(
+                    all.where((m) => m.isDraft || m.isActive).toList());
+                final history =
+                    _applyFilters(all.where((m) => m.isFinished).toList());
 
                 return TabBarView(
                   controller: _tabs,
@@ -583,3 +605,157 @@ _StatusInfo _statusInfo(String status) => switch (status) {
 // Expose helpers for other screens
 _TypeInfo movementTypeInfo(String type) => _typeInfo(type);
 _StatusInfo movementStatusInfo(String status) => _statusInfo(status);
+
+// ---------------------------------------------------------------------------
+// Search & Filter bar
+// ---------------------------------------------------------------------------
+
+class _SearchAndFilterBar extends StatelessWidget {
+  const _SearchAndFilterBar({
+    required this.controller,
+    required this.selectedType,
+    required this.onTypeSelected,
+  });
+
+  final TextEditingController controller;
+  final String? selectedType;
+  final ValueChanged<String?> onTypeSelected;
+
+  static const _types = [
+    ('repair', Icons.build_outlined, Color(0xFFFF9800), 'Repair'),
+    ('loan', Icons.person_outline_rounded, Color(0xFF9C27B0), 'Loan'),
+    ('transfer', Icons.swap_horiz_rounded, Color(0xFF2196F3), 'Transfer'),
+    ('disposal', Icons.delete_outline_rounded, Color(0xFFCF6679), 'Disposal'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppColors.background,
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.sm,
+        AppSpacing.md,
+        0,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextField(
+            controller: controller,
+            style: TextStyle(color: AppColors.onBackground, fontSize: 14),
+            decoration: InputDecoration(
+              hintText: 'Search by name or destination…',
+              hintStyle:
+                  TextStyle(color: AppColors.onSurfaceVariant, fontSize: 14),
+              prefixIcon: Icon(Icons.search_rounded,
+                  color: AppColors.onSurfaceVariant, size: 20),
+              suffixIcon: controller.text.isNotEmpty
+                  ? IconButton(
+                      icon: Icon(Icons.close_rounded,
+                          color: AppColors.onSurfaceVariant, size: 18),
+                      onPressed: () => controller.clear(),
+                    )
+                  : null,
+              filled: true,
+              fillColor: AppColors.surfaceVariant,
+              contentPadding:
+                  const EdgeInsets.symmetric(vertical: 0, horizontal: 12),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _FilterChip(
+                  label: 'All',
+                  icon: Icons.apps_rounded,
+                  color: AppColors.accent,
+                  selected: selectedType == null,
+                  onTap: () => onTypeSelected(null),
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                ..._types.map(
+                  (t) => Padding(
+                    padding: const EdgeInsets.only(right: AppSpacing.xs),
+                    child: _FilterChip(
+                      label: t.$4,
+                      icon: t.$2,
+                      color: t.$3,
+                      selected: selectedType == t.$1,
+                      onTap: () => onTypeSelected(
+                          selectedType == t.$1 ? null : t.$1),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+        ],
+      ),
+    );
+  }
+}
+
+class _FilterChip extends StatelessWidget {
+  const _FilterChip({
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final Color color;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding:
+            const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: selected
+              ? color.withValues(alpha: 0.18)
+              : AppColors.surfaceVariant,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected
+                ? color.withValues(alpha: 0.6)
+                : AppColors.onSurfaceVariant.withValues(alpha: 0.2),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon,
+                size: 13,
+                color: selected ? color : AppColors.onSurfaceVariant),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: selected ? color : AppColors.onSurfaceVariant,
+                fontSize: 12,
+                fontWeight:
+                    selected ? FontWeight.w600 : FontWeight.w400,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

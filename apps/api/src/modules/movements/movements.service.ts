@@ -70,11 +70,14 @@ export class MovementsService {
 
   async findAll(
     user: JwtPayload,
-    filters: { status?: string; operationType?: string } = {},
+    filters: { status?: string; operationType?: string; itemId?: string } = {},
   ): Promise<MovementDocument[]> {
     const query: Record<string, unknown> = { tenantId: user.tenantId };
     if (filters.status) query['status'] = filters.status;
     if (filters.operationType) query['operationType'] = filters.operationType;
+    if (filters.itemId) {
+      query['items.itemId'] = filters.itemId;
+    }
 
     const allowedPropertyIds = await this.accessControlService.getAllowedPropertyIds(
       user.sub,
