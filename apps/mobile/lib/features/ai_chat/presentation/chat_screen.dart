@@ -321,15 +321,20 @@ class _ItemsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final sorted = [...items]..sort(
+        (a, b) => (a.status == 'disposed' ? 1 : 0).compareTo(
+          b.status == 'disposed' ? 1 : 0,
+        ),
+      );
     return SizedBox(
       height: 120,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        itemCount: items.length,
+        itemCount: sorted.length,
         separatorBuilder: (context, idx) =>
             const SizedBox(width: AppSpacing.sm),
         itemBuilder: (context, index) {
-          final chatItem = items[index];
+          final chatItem = sorted[index];
           final itemModel = AiChatRemoteDataSource.chatItemToItemModel(
             chatItem,
           );
