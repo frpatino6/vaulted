@@ -382,7 +382,7 @@ class _MovementList extends StatelessWidget {
       onRefresh: onRefresh,
       child: ListView.builder(
         padding: const EdgeInsets.fromLTRB(
-            AppSpacing.md, AppSpacing.sm, AppSpacing.md, 100),
+            AppSpacing.md, AppSpacing.sm, AppSpacing.md, 110),
         itemCount: movements.length,
         itemBuilder: (context, i) => Padding(
           padding: const EdgeInsets.only(bottom: AppSpacing.sm),
@@ -452,9 +452,9 @@ class MovementCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Title
+                    // Title — first letter capitalized to handle user-entered lowercase titles
                     Text(
-                      movement.title,
+                      _capitalizeFirst(movement.title),
                       style: const TextStyle(
                         color: AppColors.onBackground,
                         fontSize: 14,
@@ -609,6 +609,11 @@ class MovementCard extends StatelessWidget {
     } catch (_) {
       return '';
     }
+  }
+
+  String _capitalizeFirst(String value) {
+    if (value.isEmpty) return value;
+    return value[0].toUpperCase() + value.substring(1);
   }
 }
 
