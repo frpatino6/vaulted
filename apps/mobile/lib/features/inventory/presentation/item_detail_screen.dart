@@ -12,6 +12,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../users/domain/current_user_jwt.dart';
 import '../../wardrobe/data/models/wardrobe_attributes.dart';
+import '../../wardrobe/domain/wardrobe_notifier.dart';
 import '../../wardrobe/presentation/dry_cleaning_history_sheet.dart';
 import '../../media/data/media_repository_provider.dart';
 import '../../maintenance/data/models/maintenance_model.dart';
@@ -193,18 +194,41 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                       ],
                       if (item.isWardrobe) ...[
                         const SizedBox(height: AppSpacing.md),
-                        FilledButton.tonalIcon(
-                          onPressed:
-                              () => _showDryCleaningHistory(context, item.id),
-                          icon: Icon(
-                            Icons.local_laundry_service,
-                            color:
-                                item.wardrobeAttributes.cleaningStatus ==
-                                        'at_dry_cleaner'
-                                    ? Colors.blue
-                                    : null,
-                          ),
-                          label: const Text('Dry Cleaning History'),
+                        Wrap(
+                          spacing: AppSpacing.sm,
+                          runSpacing: AppSpacing.sm,
+                          children: [
+                            if (canEdit)
+                              FilledButton.icon(
+                                onPressed: () =>
+                                    _toggleDryCleaning(context, item),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor:
+                                      item.wardrobeAttributes.cleaningStatus ==
+                                              'at_dry_cleaner'
+                                          ? Colors.blue
+                                          : null,
+                                ),
+                                icon: Icon(
+                                  item.wardrobeAttributes.cleaningStatus ==
+                                          'at_dry_cleaner'
+                                      ? Icons.done_all
+                                      : Icons.local_laundry_service,
+                                ),
+                                label: Text(
+                                  item.wardrobeAttributes.cleaningStatus ==
+                                          'at_dry_cleaner'
+                                      ? 'Mark as Returned'
+                                      : 'Send to Dry Cleaner',
+                                ),
+                              ),
+                            FilledButton.tonalIcon(
+                              onPressed: () =>
+                                  _showDryCleaningHistory(context, item.id),
+                              icon: const Icon(Icons.history),
+                              label: const Text('Dry Cleaning History'),
+                            ),
+                          ],
                         ),
                       ],
                       if (canSeeValues &&
@@ -571,6 +595,53 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
       backgroundColor: Colors.transparent,
       builder: (_) => DryCleaningHistorySheet(itemId: itemId),
     );
+  }
+
+  Future<void> _toggleDryCleaning(
+    BuildContext context,
+    ItemModel item,
+  ) async {
+    final isAtCleaner =
+        item.wardrobeAttributes.cleaningStatus == 'at_dry_cleaner';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(
+          isAtCleaner ? 'Mark as Returned' : 'Send to Dry Cleaner',
+        ),
+        content: Text(
+          isAtCleaner
+              ? 'Mark "${item.name}" as returned from the dry cleaner?'
+              : 'Send "${item.name}" to the dry cleaner?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(isAtCleaner ? 'Mark Returned' : 'Send'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    final nextStatus = isAtCleaner ? 'clean' : 'at_dry_cleaner';
+    try {
+      await ref
+          .read(wardrobeNotifierProvider.notifier)
+          .updateCleaningStatus(item: item, cleaningStatus: nextStatus);
+      if (!mounted) return;
+      await ref
+          .read(itemDetailNotifierProvider.notifier)
+          .load(widget.itemId);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not update cleaning status')),
+      );
+    }
   }
 
   String? _resolveRoomName(String? roomId) {
