@@ -107,12 +107,20 @@ Add `AiHelpModule` to the `imports` array (same pattern as `AiChatModule`, `AiVi
 **File**: `apps/api/src/modules/ai/help/dto/help-request.dto.ts`
 
 ```typescript
-import { IsString, IsOptional, MaxLength } from 'class-validator';
+import { IsString, IsOptional, IsNotEmpty, MaxLength, MinLength, IsIn } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
+const VALID_SCREENS = [
+  'dashboard', 'inventory', 'item_detail', 'add_item',
+  'movements', 'wardrobe', 'maintenance', 'insurance',
+  'properties', 'users', 'ai_scan', 'ai_chat', 'reports', 'settings',
+] as const;
+
 export class HelpRequestDto {
-  @ApiProperty({ description: 'User question about how to use the app', maxLength: 1000 })
+  @ApiProperty({ description: 'User question about how to use the app', minLength: 1, maxLength: 1000 })
   @IsString()
+  @IsNotEmpty()
+  @MinLength(1)
   @MaxLength(1000)
   query: string;
 
@@ -124,14 +132,10 @@ export class HelpRequestDto {
   @ApiPropertyOptional({
     description: 'Current screen name for contextual help',
     example: 'inventory',
-    enum: [
-      'dashboard', 'inventory', 'item_detail', 'add_item',
-      'movements', 'wardrobe', 'maintenance', 'insurance',
-      'properties', 'users', 'ai_scan', 'ai_chat', 'reports', 'settings',
-    ],
+    enum: VALID_SCREENS,
   })
   @IsOptional()
-  @IsString()
+  @IsIn(VALID_SCREENS)   // strict whitelist — prevents prompt injection via free-text screen names
   currentScreen?: string;
 }
 ```
@@ -187,7 +191,8 @@ interface HelpSessionTurn {
   role: 'user' | 'model';
   content: string;
 }
-// Key: ai:help:session:{sessionId}
+// Key: ai:help:session:{tenantId}:{userId}:{sessionId}
+// Ownership enforced: load session only if key matches caller's tenantId+userId
 // Max turns: 15 (trim oldest when exceeded)
 // TTL: 3600s (reset on each turn)
 ```
