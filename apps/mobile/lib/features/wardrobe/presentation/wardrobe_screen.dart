@@ -128,6 +128,12 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
                     child: _WardrobeEmptyState(),
                   );
                 }
+                final double screenWidth = MediaQuery.of(context).size.width;
+                final int crossAxisCount =
+                    screenWidth >= 900 ? 4 : screenWidth >= 600 ? 3 : 2;
+                final double childAspectRatio =
+                    screenWidth >= 600 ? 0.85 : 0.75;
+
                 return SliverPadding(
                   padding: const EdgeInsets.fromLTRB(
                     AppSpacing.md,
@@ -136,13 +142,12 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
                     20,
                   ),
                   sliver: SliverGrid(
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          childAspectRatio: 0.75,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                        ),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: crossAxisCount,
+                      childAspectRatio: childAspectRatio,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                    ),
                     delegate: SliverChildBuilderDelegate(
                       (BuildContext ctx, int index) {
                         final ItemModel item = filtered[index];

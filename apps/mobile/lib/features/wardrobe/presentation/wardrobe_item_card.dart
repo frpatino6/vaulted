@@ -37,9 +37,7 @@ class WardrobeItemCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SizedBox(
-                height: 120,
-                width: double.infinity,
+              Expanded(
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
