@@ -124,6 +124,41 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const SizedBox(height: AppSpacing.md),
+                      if (item.status == 'disposed') ...[
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.md,
+                            vertical: AppSpacing.sm,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF9E9E9E).withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: const Color(0xFF9E9E9E).withValues(alpha: 0.35),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.archive_outlined,
+                                size: 15,
+                                color: Color(0xFF9E9E9E),
+                              ),
+                              const SizedBox(width: AppSpacing.sm),
+                              Expanded(
+                                child: Text(
+                                  'This item has been disposed and is no longer active.',
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: const Color(0xFF9E9E9E),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                      ],
                       _ItemImageHeader(
                         item: item,
                         canEdit: canEdit,
@@ -331,7 +366,9 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
             ),
       ),
       bottomNavigationBar:
-          state.valueOrNull != null && canEdit
+          state.valueOrNull != null &&
+                  canEdit &&
+                  state.valueOrNull!.status != 'disposed'
               ? _buildFooter(context, state.valueOrNull!, canTransfer)
               : null,
     );

@@ -34,6 +34,7 @@ class RoomInventoryAssetCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isDisposed = item.status == 'disposed';
     final surfaceColor = isDark
         ? AppColors.surfaceVariant.withValues(alpha: 0.6)
         : AppColors.surfaceVariant.withValues(alpha: 0.4);
@@ -42,101 +43,124 @@ class RoomInventoryAssetCard extends ConsumerWidget {
         ? AppColors.catalogGold
         : AppColors.onBackground.withValues(alpha: 0.4);
 
-    return Material(
-      color: surfaceColor,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: () => context.push('/items/${item.id}'),
+    return Opacity(
+      opacity: isDisposed ? 0.55 : 1.0,
+      child: Material(
+        color: surfaceColor,
         borderRadius: BorderRadius.circular(12),
-        child: Container(
-          constraints: BoxConstraints(minHeight: nameMaxLines > 1 ? 120 : 100),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: const Color(0xFF1E1E28).withValues(alpha: 0.8),
-            ),
-          ),
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: SizedBox(
-                  width: 68,
-                  height: 68,
-                  child: _buildThumbnail(),
-                ),
+        child: InkWell(
+          onTap: () => context.push('/items/${item.id}'),
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            constraints: BoxConstraints(minHeight: nameMaxLines > 1 ? 120 : 100),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: const Color(0xFF1E1E28).withValues(alpha: 0.8),
               ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            _displayName,
-                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.onBackground,
-                                ),
-                            maxLines: nameMaxLines,
-                            overflow: TextOverflow.ellipsis,
+            ),
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: SizedBox(
+                    width: 68,
+                    height: 68,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        _buildThumbnail(),
+                        if (isDisposed)
+                          Container(
+                            color: Colors.black.withValues(alpha: 0.45),
+                            alignment: Alignment.center,
+                            child: const Text(
+                              'DISPOSED',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 8,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.8,
+                              ),
+                            ),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            _subtitleText,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: AppColors.onBackground.withValues(alpha: 0.6),
-                                  fontSize: 11,
-                                  letterSpacing: 0.8,
-                                ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          if (showLocation && _locationText.isNotEmpty) ...[
-                            const SizedBox(height: 3),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
                             Text(
-                              _locationText,
+                              _displayName,
+                              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.onBackground,
+                                  ),
+                              maxLines: nameMaxLines,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _subtitleText,
                               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: AppColors.accentLight.withValues(alpha: 0.8),
-                                    fontSize: 10,
-                                    letterSpacing: 0.3,
+                                    color: AppColors.onBackground.withValues(alpha: 0.6),
+                                    fontSize: 11,
+                                    letterSpacing: 0.8,
                                   ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
+                            if (showLocation && _locationText.isNotEmpty) ...[
+                              const SizedBox(height: 3),
+                              Text(
+                                _locationText,
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: AppColors.accentLight.withValues(alpha: 0.8),
+                                      fontSize: 10,
+                                      letterSpacing: 0.3,
+                                    ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                            const SizedBox(height: AppSpacing.xs),
+                            StatusBadge(status: item.status, compact: true),
                           ],
-                          const SizedBox(height: AppSpacing.xs),
-                          StatusBadge(status: item.status, compact: true),
-                        ],
-                      ),
-                    ),
-                    if (canSeeValues) ...[
-                      const SizedBox(width: 12),
-                      SizedBox(
-                        width: 92,
-                        child: Align(
-                          alignment: Alignment.topRight,
-                          child: ValuationText(
-                            value: item.valuation?.currentValue,
-                            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                                  color: valueColor,
-                                  fontWeight: valueFontWeight,
-                                ),
-                          ),
                         ),
                       ),
+                      if (canSeeValues) ...[
+                        const SizedBox(width: 12),
+                        SizedBox(
+                          width: 92,
+                          child: Align(
+                            alignment: Alignment.topRight,
+                            child: ValuationText(
+                              value: item.valuation?.currentValue,
+                              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                                    color: valueColor,
+                                    fontWeight: valueFontWeight,
+                                  ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
