@@ -12,6 +12,7 @@ import { AiCostLoggerService } from '../shared/ai-cost-logger.service';
 import { ChatRequestDto } from './dto/chat-request.dto';
 import { Item, ItemDocument } from '../../inventory/schemas/item.schema';
 import { Property, PropertyDocument } from '../../properties/schemas/property.schema';
+import { MediaService } from '../../media/media.service';
 
 const SYSTEM_PROMPT = `You are Vaulted, a premium AI assistant for high-net-worth family inventory management.
 You help owners find items, get valuations, and manage their collections across multiple properties.
@@ -49,6 +50,8 @@ export class AiChatService {
   private readonly sessionTtl = 3600;
   private readonly maxHistoryTurns = 10;
 
+  private readonly appUrl: string;
+
   constructor(
     @InjectModel(Item.name) private readonly itemModel: Model<ItemDocument>,
     @InjectModel(Property.name) private readonly propertyModel: Model<PropertyDocument>,
@@ -58,8 +61,10 @@ export class AiChatService {
     private readonly geminiClient: GeminiClient,
     private readonly costLogger: AiCostLoggerService,
     private readonly config: ConfigService,
+    private readonly mediaService: MediaService,
   ) {
     this.rateLimit = config.get<number>('AI_CHAT_RATE_LIMIT_PER_MINUTE') ?? 20;
+    this.appUrl = config.get<string>('APP_URL') ?? '';
   }
 
   async chat(tenantId: string, userId: string, dto: ChatRequestDto): Promise<ChatResponse> {
@@ -111,6 +116,9 @@ export class AiChatService {
 
     await this.updateSessionHistory(sessionId, dto.query, result.text);
 
+    const signUrl = (url: string) =>
+      `${this.appUrl}/api/media/${this.mediaService.generateFileToken(url, tenantId, userId)}`;
+
     const chatItems: ChatItemResult[] = items
       .map((item) => ({
         id: item.id,
@@ -119,7 +127,7 @@ export class AiChatService {
         status: String(item.status ?? 'active'),
         propertyName: item.propertyName,
         roomName: item.roomName,
-        photos: (item.photos as string[] | undefined) ?? [],
+        photos: ((item.photos as string[] | undefined) ?? []).map(signUrl),
         valuation:
           item.valuation?.currentValue
             ? {

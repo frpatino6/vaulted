@@ -4,6 +4,7 @@ import { DataSource } from 'typeorm';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { Item, ItemSchema } from '../../inventory/schemas/item.schema';
 import { Property, PropertySchema } from '../../properties/schemas/property.schema';
+import { MediaModule } from '../../media/media.module';
 import { AiChatService } from './ai-chat.service';
 import { AiChatController } from './ai-chat.controller';
 
@@ -13,6 +14,7 @@ import { AiChatController } from './ai-chat.controller';
       { name: Item.name, schema: ItemSchema },
       { name: Property.name, schema: PropertySchema },
     ]),
+    MediaModule,
   ],
   controllers: [AiChatController],
   providers: [AiChatService],
