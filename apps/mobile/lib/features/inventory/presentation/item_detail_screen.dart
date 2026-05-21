@@ -192,7 +192,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                           members: members,
                         ),
                       ],
-                      if (item.isWardrobe) ...[
+                      if (item.isWardrobe && item.status != 'disposed') ...[
                         const SizedBox(height: AppSpacing.md),
                         Wrap(
                           spacing: AppSpacing.sm,
