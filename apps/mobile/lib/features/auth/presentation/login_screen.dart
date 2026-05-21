@@ -139,7 +139,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                     keyboardType: TextInputType.emailAddress,
                     autocorrect: false,
                     enabled: !isLoading,
-                    enableInteractiveSelection: false,
                     validator: (v) =>
                         (v == null || v.isEmpty) ? 'Email is required' : null,
                   ),
@@ -169,7 +168,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                     ),
                     obscureText: true,
                     enabled: !isLoading,
-                    enableInteractiveSelection: false,
                     validator: (v) => (v == null || v.isEmpty)
                         ? 'Password is required'
                         : null,

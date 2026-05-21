@@ -53,9 +53,7 @@ class _OrchestratorListScreenState
   @override
   Widget build(BuildContext context) {
     final allState = ref.watch(orchestratorListNotifierProvider);
-    final showInitialSkeleton = !_initialLoadCompleted &&
-        !allState.hasError &&
-        (allState.isLoading || (allState.valueOrNull?.isEmpty ?? true));
+    final showInitialSkeleton = !_initialLoadCompleted && !allState.hasError;
     final renderState = showInitialSkeleton
         ? const AsyncLoading<List<OrchestratorPlanModel>>()
         : allState;
@@ -148,8 +146,11 @@ class _OrchestratorListScreenState
   }
 
   bool _isMyPlan(OrchestratorPlanModel plan) {
-    // Simple: show all active/in-progress plans in my tasks tab
-    return plan.status == 'in_progress' || plan.status == 'published';
+    if (plan.isCancelled || plan.isCompleted) return false;
+    // For staff: backend already filters by assignedUserId, show all non-finished
+    if (!_isOwnerOrManager) return true;
+    // For owner/manager: only active plans in the My Tasks tab
+    return plan.isPublished || plan.isInProgress;
   }
 }
 
