@@ -36,6 +36,9 @@ class MovementRepository {
   Future<List<MovementModel>> getMovements({String? status}) =>
       _remote.getMovements(status: status);
 
+  Future<List<MovementModel>> getMovementsForItem(String itemId) =>
+      _remote.getMovementsForItem(itemId);
+
   Future<List<MovementModel>> getActiveDrafts() => _remote.getActiveDrafts();
 
   Future<MovementModel> getMovement(String id) => _remote.getMovement(id);

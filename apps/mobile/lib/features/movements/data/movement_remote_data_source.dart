@@ -61,6 +61,22 @@ class MovementRemoteDataSource {
         .toList();
   }
 
+  Future<List<MovementModel>> getMovementsForItem(String itemId) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      _path,
+      queryParameters: {'itemId': itemId},
+    );
+    final list = _unwrap(response);
+    if (list is! List) return [];
+    return list
+        .map(
+          (e) => MovementModel.fromJson(
+            _normalize(Map<String, dynamic>.from(e as Map)),
+          ),
+        )
+        .toList();
+  }
+
   Future<List<MovementModel>> getActiveDrafts() async {
     final response =
         await _dio.get<Map<String, dynamic>>('$_path/draft');

@@ -64,10 +64,12 @@ export class MovementsController {
     @CurrentUser() user: JwtPayload,
     @Query('status') status?: string,
     @Query('operationType') operationType?: string,
+    @Query('itemId') itemId?: string,
   ) {
     return this.movementsService.findAll(user, {
       status,
       operationType,
+      itemId,
     });
   }
 

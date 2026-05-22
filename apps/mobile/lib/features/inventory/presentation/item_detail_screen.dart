@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -26,6 +27,7 @@ import '../../properties/domain/property_detail_notifier.dart';
 import '../../household_members/data/models/household_member_model.dart';
 import '../../household_members/domain/household_members_notifier.dart';
 import 'edit_item_sheet.dart';
+import '../../movements/domain/item_repair_movement_provider.dart';
 import '../../movements/presentation/quick_transfer_sheet.dart';
 import '../../../shared/widgets/item_card.dart';
 import '../../../shared/widgets/status_badge.dart';
@@ -158,6 +160,10 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                             ],
                           ),
                         ),
+                        const SizedBox(height: AppSpacing.md),
+                      ],
+                      if (item.status == 'repair' && canTransfer) ...[
+                        _RepairContextCard(item: item),
                         const SizedBox(height: AppSpacing.md),
                       ],
                       _ItemImageHeader(
@@ -2552,5 +2558,207 @@ class _FullscreenGalleryState extends State<_FullscreenGallery> {
         ],
       ),
     );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Repair context card — shown when item.status == 'repair'
+// ---------------------------------------------------------------------------
+
+class _RepairContextCard extends ConsumerWidget {
+  const _RepairContextCard({required this.item});
+
+  final ItemModel item;
+
+  static const _orange = Color(0xFFFF9800);
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final asyncMovement = ref.watch(itemRepairMovementProvider(item.id));
+
+    return asyncMovement.when(
+      loading: () => _shell(
+        child: Row(
+          children: [
+            const Icon(Icons.build_outlined, size: 16, color: _orange),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Container(
+                height: 12,
+                decoration: BoxDecoration(
+                  color: _orange.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (movement) {
+        if (movement != null) {
+          // Active operation exists — show destination and due date
+          final destination = movement.destination.isNotEmpty
+              ? movement.destination
+              : movement.title;
+          final dueDateTime = movement.dueDate != null
+              ? DateTime.tryParse(movement.dueDate!)
+              : null;
+          final dueLabel = dueDateTime != null
+              ? 'Due ${DateFormat.yMMMd().format(dueDateTime)}'
+              : null;
+
+          return GestureDetector(
+            onTap: () => context.push('/movements/${movement.id}'),
+            child: _shell(
+              child: Row(
+                children: [
+                  const Icon(Icons.build_outlined, size: 16, color: _orange),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Currently at $destination',
+                          style: const TextStyle(
+                            color: _orange,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        if (dueLabel != null)
+                          Text(
+                            dueLabel,
+                            style: TextStyle(
+                              color: _orange.withValues(alpha: 0.75),
+                              fontSize: 12,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    'View Operation →',
+                    style: TextStyle(
+                      color: _orange,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        // No active movement — item is stuck, show recovery banner
+        return _shell(
+          borderColor: const Color(0xFFFFB300).withValues(alpha: 0.5),
+          bgColor: const Color(0xFFFFB300).withValues(alpha: 0.08),
+          child: Row(
+            children: [
+              const Icon(Icons.warning_amber_rounded,
+                  size: 16, color: Color(0xFFFFB300)),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'No active operation found for this item.',
+                  style: TextStyle(
+                    color: Color(0xFFFFB300),
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              _MarkReturnedButton(itemId: item.id),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _shell({
+    required Widget child,
+    Color? borderColor,
+    Color? bgColor,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: bgColor ?? _orange.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: borderColor ?? _orange.withValues(alpha: 0.35),
+        ),
+      ),
+      child: child,
+    );
+  }
+}
+
+class _MarkReturnedButton extends ConsumerStatefulWidget {
+  const _MarkReturnedButton({required this.itemId});
+
+  final String itemId;
+
+  @override
+  ConsumerState<_MarkReturnedButton> createState() =>
+      _MarkReturnedButtonState();
+}
+
+class _MarkReturnedButtonState extends ConsumerState<_MarkReturnedButton> {
+  bool _loading = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: _loading ? null : _onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFB300).withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+              color: const Color(0xFFFFB300).withValues(alpha: 0.5)),
+        ),
+        child: _loading
+            ? const SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Color(0xFFFFB300),
+                ),
+              )
+            : const Text(
+                'Mark as Returned',
+                style: TextStyle(
+                  color: Color(0xFFFFB300),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+      ),
+    );
+  }
+
+  Future<void> _onTap() async {
+    setState(() => _loading = true);
+    try {
+      await ref
+          .read(itemDetailNotifierProvider.notifier)
+          .markAsReturned(widget.itemId);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to update status. Try again.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 }
