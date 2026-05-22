@@ -112,10 +112,13 @@ To switch property context: tap the property name in the header dropdown and sel
 
 ---
 
-## Inventory (Items)
+## Asset Directory (Items)
+
+The main inventory screen is called **Asset Directory** (shown in the AppBar title).
+Access: bottom navigation bar → **Asset Directory** icon. (Owner and Manager: full access; Staff: sees only assigned items.)
 
 ### Add an item manually
-1. Tap **Inventory** in the bottom navigation bar.
+1. Open the **Asset Directory** screen.
 2. Tap the blue **+** button (bottom-right corner).
 3. Select a **Category** (e.g., Furniture, Art & Collectibles, Wardrobe, Vehicles).
 4. Enter the **Item Name** and optionally a **Subcategory**.
@@ -126,7 +129,7 @@ To switch property context: tap the property name in the header dropdown and sel
 9. Tap **Save**.
 
 ### Use AI Scan to catalog an item from a photo
-1. Tap the **camera icon** (AI Scan) in the navigation bar, or tap **Scan with AI** from the + menu.
+1. Tap the **AI Scan icon** (camera with sparkle) in the navigation bar.
 2. Point the camera at the item and tap **Capture**.
 3. Review AI suggestions: Category, Brand, Estimated Value, Attributes.
 4. Edit any fields as needed — the AI may misidentify rare or uncommon items.
@@ -142,43 +145,50 @@ For **invoice scanning**: after capturing, tap **Scan Invoice** to auto-fill Pur
 3. Modify the desired fields.
 4. Tap **Save**.
 
-### Item statuses
+### Item statuses (shown as filter chips: Active, Loaned, Repair, Storage, Disposed)
 - **Active**: item is in its assigned room and available.
-- **On Loan**: item has been lent to someone — see Movements to manage return.
-- **Under Repair**: item is being repaired (a Repair movement was created).
-- **In Storage**: item was moved to a storage location.
+- **Loaned**: item has been lent to someone — see Operations to manage return.
+- **Repair**: item is being repaired (a Repair operation was created).
+- **Storage**: item was moved to a storage location.
 - **Disposed**: item is no longer in inventory — it cannot be moved, loaned, or edited.
 
-To change status: edit the item → update the Status field. Some transitions (e.g., Repair) create a Movement automatically.
+To change status: edit the item → update the Status field. Some transitions (e.g., Repair) create an Operation automatically.
 
 ### Search and filter items
-- Use the **Search bar** at the top of the Inventory screen — searches name, tags, serial number.
-- Use the **Filter chips** below the search bar to filter by: Category, Status, Room.
+- Use the **Search bar** (hint: "Search by name, tag, serial…") at the top of the Asset Directory screen.
+- **Status filter chips**: All, Active, Loaned, Repair, Storage, Disposed.
+- **Sort chips**: Recent, Value ↓, Name A–Z.
+- **Category filter**: All, Furniture, Art, Technology, Wardrobe, Vehicles, Wine, Sports.
+- **Unlocated toggle**: show items with no room assigned.
 - Use the **Property switcher** (top of screen) to limit results to one property.
 
 ### Item QR code
 - Each item has a unique QR code — visible on the item detail page under the item name.
+- Tap the **QR Codes** icon (top-right of Asset Directory) to see all QR codes at once.
 - Scanning the QR code from any screen opens that item's detail directly.
 - Useful for quick audits, check-in/check-out during moves, or sharing item info.
 
 ---
 
-## Movements (Loans, Returns, Transfers, Repairs)
+## Operations (Loans, Returns, Transfers, Repairs)
 
-Movements track every time an item changes hands or location.
+The screen is called **Operations** (shown in the AppBar title). It has two tabs: **Active** (in-progress operations) and **History** (completed ones).
+Access: bottom navigation bar → **Operations** icon. (Owner and Manager only can create operations; Staff and Auditor can view.)
+Search bar hint: "Search by name or destination…"
+Operation types: **Loan**, **Repair**, **Transfer**.
 
 ### Loan an item to someone
-1. Tap **Movements** (or Operations) in the navigation.
+1. Tap **Operations** in the navigation bar.
 2. Tap the **+** button (bottom-right corner).
-3. Select **Loan** as the movement type.
+3. Select **Loan** as the operation type.
 4. Search and select the item(s) to loan.
 5. Enter: Borrower Name, Borrower Contact (optional), Expected Return Date.
-6. Tap **Confirm** — status changes to **Active**.
+6. Tap **Confirm** — the operation moves to the **Active** tab.
 
-The item's status automatically changes to **On Loan**.
+The item's status automatically changes to **Loaned**.
 
 ### Mark a loaned item as returned
-1. Open **Movements** → find the active loan.
+1. Open **Operations** → tap the **Active** tab → find the loan.
 2. Tap the loan card to open its detail.
 3. Tap **Mark as Returned** (or **Complete**).
 4. Confirm the return.
@@ -186,48 +196,67 @@ The item's status automatically changes to **On Loan**.
 The item status returns to **Active** automatically.
 
 ### Transfer an item to another room or property
-1. Tap **Movements** → **+** button.
-2. Select **Transfer** as the movement type.
+1. In **Operations** → tap the **+** button.
+2. Select **Transfer** as the operation type.
 3. Select the item(s).
 4. Select the **Destination**: choose a different room (same property) or a different property.
 5. Tap **Confirm**.
 
-### View movement history for an item
-- Open the item detail page → scroll to **Movement History** section.
-- Shows all past and active movements: who moved it, when, where to.
+### Send an item for repair
+1. In **Operations** → tap the **+** button.
+2. Select **Repair** as the operation type.
+3. Select the item(s).
+4. Enter: Repair Provider, Expected Return Date, Notes (optional).
+5. Tap **Confirm** — item status changes to **Repair**.
 
-### Movement workflow
-All movements follow: **Draft → Active → Completed**.
+### View operation history for an item
+- Open the item detail page → scroll to **Movement History** section.
+- Shows all past and active operations: who moved it, when, where to.
+
+### Operation workflow
+All operations follow: **Draft → Active → Completed**.
 - Draft: created but not yet confirmed.
-- Active: confirmed, in progress (item has changed status).
-- Completed: movement finished (item returned, transfer done).
+- Active: confirmed and in progress (visible in the **Active** tab).
+- Completed: finished — visible in the **History** tab.
 
 ---
 
 ## Wardrobe
 
 Wardrobe is a specialized module for clothing, footwear, accessories, jewelry, and watches.
+Access: **Owner and Manager only** — Staff, Auditor, and Guest cannot open Wardrobe.
 
 ### Access Wardrobe
 - Tap **Wardrobe** in the bottom navigation bar.
 - The closet grid shows all wardrobe-category items.
+- Category filter chips at the top: **All**, **Clothing**, **Footwear**, **Accessories**.
+- Tap the tune (⚙️) icon for advanced filters including cleaning status.
+
+### Wardrobe stats bar (interactive chips at top of screen)
+- **Total** — total wardrobe items count.
+- **Needs cleaning** — tap to filter items with cleaning status "Needs Cleaning".
+- **At cleaner** — tap to open the **At Dry Cleaner** screen (items currently with the cleaner).
+- **Outfits** — tap to open the Outfits list.
+
+### Cleaning status values
+Items can have these cleaning statuses: **Clean**, **Needs Cleaning**, **At Dry Cleaner**.
+To update: long-press an item card or open the item → tap the cleaning status chip → select new status.
 
 ### Create an outfit
-1. In the Wardrobe screen, tap the **Outfits** tab (or the outfits icon).
-2. Tap **+ New Outfit**.
+1. In the Wardrobe screen, tap the **Outfits** chip in the stats bar (or navigate to Wardrobe → Outfits).
+2. Tap **+ New Outfit** (or the **+** button).
 3. Enter an outfit name (e.g., "Business Meeting") and occasion tags.
 4. Tap **Add Items** — select from your wardrobe items.
 5. Tap **Save Outfit**.
 
 ### Log a dry cleaning record
-1. In the Wardrobe screen, tap the **Dry Cleaning** tab.
-2. Tap **+ Log Dry Cleaning**.
+1. Tap the **At cleaner** chip in the stats bar to go to the At Dry Cleaner screen.
+2. Tap **+ Log** (or the **+** button).
 3. Select the item(s) sent to the cleaner.
-4. Enter: Date Sent, Provider Name, Cost (optional), Return Date (optional).
+4. Enter: Date Sent, Provider Name, Cost (optional), Expected Return Date (optional).
 5. Tap **Save**.
 
-### Wardrobe stats bar
-The top bar shows: Total Wardrobe Items, Outfits Created, Dry Cleaning count.
+Items sent to the cleaner automatically change to "At Dry Cleaner" status.
 
 ---
 
@@ -340,9 +369,30 @@ The invited user receives an email with a registration link.
 
 ---
 
+## Navigation Access by Role
+
+Not all screens are visible to every role. If a user can't find a section, check their role:
+
+| Screen | Owner | Manager | Staff | Auditor | Guest |
+|--------|-------|---------|-------|---------|-------|
+| Asset Directory | ✅ | ✅ | ✅ (assigned items only) | ✅ (read-only) | ✅ (read-only) |
+| Operations | ✅ create | ✅ create | ✅ view only | ✅ view only | ❌ |
+| Wardrobe | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Maintenance | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Insurance (view) | ✅ | ✅ | ❌ | ✅ | ❌ |
+| Insurance (create/edit) | ✅ | ✅ | ❌ | ❌ | ❌ |
+| AI Chat | ✅ | ✅ | ❌ | ✅ | ❌ |
+| Vaulted Guide (this chat) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Users | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Reports | ✅ | ✅ | ❌ | ✅ (watermarked) | ❌ |
+
+If a user reports not seeing Wardrobe, Maintenance, AI Chat, or Insurance — their role is the most likely cause.
+
+---
+
 ## Reports
 
-1. Tap **Reports** in the navigation.
+1. Tap **Reports** in the navigation. (Owner, Manager, Auditor only.)
 2. Select the export format: **PDF** or **Excel**.
 3. Apply filters: Category, Room, Property, Status.
 4. Tap **Export**.
@@ -371,11 +421,11 @@ Auditor exports are automatically watermarked.
 
 const SCREEN_CONTEXT: Record<HelpScreen, string> = {
   dashboard: 'The user is on the Dashboard — viewing KPI cards and recent activity.',
-  inventory: 'The user is browsing or searching the inventory item list.',
+  inventory: 'The user is on the Asset Directory screen — browsing or searching inventory items.',
   item_detail: "The user is viewing a single item's detail page.",
   add_item: 'The user is on the Add Item form.',
   movements:
-    'The user is on the Movements/Operations screen — managing loans, transfers, and repairs.',
+    'The user is on the Operations screen (AppBar title: "Operations") — managing loans, transfers, and repairs. Tabs: Active and History.',
   wardrobe: 'The user is in the Wardrobe module — closet grid, outfits, or dry cleaning.',
   maintenance: 'The user is on the Maintenance screen.',
   insurance: 'The user is managing insurance policies, coverage gaps, or claims.',
@@ -589,8 +639,9 @@ export class AiHelpService {
   ): Promise<void> {
     if (!answer.includes(UNRESOLVED_MARKER)) return;
     const entry = JSON.stringify({ tenantId, query, answer, ts: Date.now() });
-    await this.redis.lpush('ai:help:unresolved', entry);
-    await this.redis.ltrim('ai:help:unresolved', 0, 499);
+    const key = `ai:help:unresolved:${tenantId}`;
+    await this.redis.lpush(key, entry);
+    await this.redis.ltrim(key, 0, 499);
   }
 
   private buildSystemPrompt(currentScreen?: HelpScreen): string {
