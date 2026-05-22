@@ -802,6 +802,9 @@ export class AiHelpService implements OnModuleInit {
       }
 
       const chunks = [...retrieved.values()];
+      if (chunks.length === 0) {
+        return HELP_KB_CHUNKS.map((c) => `## ${c.title}\n\n${c.content}`).join('\n\n---\n\n');
+      }
       return chunks.map((c) => `## ${c.title}\n\n${c.content}`).join('\n\n---\n\n');
     } catch {
       // Table may not exist yet on first boot before onModuleInit completes — use full KB
