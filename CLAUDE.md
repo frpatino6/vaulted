@@ -313,6 +313,22 @@ BRAVE_SEARCH_API_KEY · VALUATION_SEARCH_ENGINE=brave
   4. Route UI through `renderState` (`AsyncLoading` while first load is unresolved).
 - This avoids incorrect transient UI states when cache is empty and API response is still in-flight.
 
+#### Vaulted Guide KB maintenance rule (mandatory)
+Whenever a Flutter screen is **added or modified**, update the corresponding section of `HELP_KNOWLEDGE_BASE` in `apps/api/src/modules/ai/help/ai-help.service.ts`.
+
+The KB is the **only source of truth** Gemini uses to answer how-to questions. If the KB is stale, the AI gives wrong instructions. Always sync:
+- **AppBar title** — use the exact string from `AppBar(title: Text('...'))`, not the route name.
+- **Tab names** — e.g., `Tab(text: 'Active')`, `Tab(text: 'History')`.
+- **Button labels and tooltips** — FABs, action icons, `ElevatedButton` text.
+- **Filter/sort chip labels** — exact strings from chip lists.
+- **Form field hint texts** — from `InputDecoration(hintText: '...')`.
+- **Role restrictions** — update the Navigation Access by Role table if access changes.
+- **Empty state messages** — what users see when a list is empty.
+
+If a screen is renamed, also update `SCREEN_CONTEXT` (same file, ~line 400) so contextual help uses the correct title.
+
+This rule applies to Cursor and Codex tasks too — include a KB update in the PR whenever UI-facing text changes.
+
 ---
 
 ## MVP Cost (testing phase — all free tiers)
