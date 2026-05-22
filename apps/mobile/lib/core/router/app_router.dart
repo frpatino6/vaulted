@@ -23,6 +23,7 @@ import '../../features/settings/presentation/settings_screen.dart';
 import '../../features/users/presentation/users_screen.dart';
 import '../../features/household_members/presentation/household_members_screen.dart';
 import '../../features/ai_chat/presentation/chat_screen.dart';
+import '../../features/ai_help_chat/presentation/help_chat_screen.dart';
 import '../../features/maintenance/presentation/maintenance_list_screen.dart';
 import '../../features/maintenance/presentation/maintenance_detail_screen.dart';
 import '../../features/maintenance/data/models/maintenance_model.dart';
@@ -266,6 +267,13 @@ GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
         builder: (context, state) => const NotificationPreferencesPage(),
       ),
       GoRoute(path: '/chat', builder: (context, state) => const ChatScreen()),
+      GoRoute(
+        path: '/help-chat',
+        builder: (context, state) {
+          final currentScreen = state.uri.queryParameters['screen'];
+          return HelpChatScreen(currentScreen: currentScreen);
+        },
+      ),
       GoRoute(
         path: '/maintenance',
         builder: (context, state) => const MaintenanceListScreen(),
