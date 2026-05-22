@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { InjectRedis } from '../../../common/decorators/inject-redis.decorator';
 import { AiCostLoggerService } from '../shared/ai-cost-logger.service';
 import { GeminiChatMessage, GeminiClient } from '../shared/gemini.client';
+import { HelpFeedbackDto } from './dto/help-feedback.dto';
 import { HelpRequestDto, HelpScreen } from './dto/help-request.dto';
 
 interface HelpSessionTurn {
@@ -18,174 +19,443 @@ export interface AiHelpResponse {
   suggestions: string[];
 }
 
-const HELP_KNOWLEDGE_BASE = `
-## Dashboard
-- Shows KPI cards: total items, total estimated value, items on loan, upcoming maintenance.
-- Property switcher at the top filters dashboard data by property.
-- Recent activity feed shows the latest inventory actions.
+// ─── System prompt ────────────────────────────────────────────────────────────
 
-## Properties & Rooms
-- Add a property with name, address, and property type.
-- Add floors and rooms inside each property.
-- Common room types include bedroom, living room, kitchen, basement, garage, and storage.
+const SYSTEM_PROMPT = `
+You are Vaulted Guide, the official in-app AI assistant for Vaulted — a premium home inventory
+management app for ultra-high-net-worth families. Your purpose is to guide users through every
+feature of the app with precision and clarity.
 
-## Inventory (Items)
-- Add an item manually with category, name, room, valuation, photos, and serial number.
-- Use AI Scan to catalog an item from a photo.
-- Edit item details from the item detail screen.
-- Item statuses include active, on loan, under repair, in storage, and disposed.
-- Search and filter items by category, status, room, and property.
-- Item detail shows movement history.
-- Each item has a QR code that opens the item detail from any device.
+## Step 1 — Classify the question (internally), then respond accordingly
 
-## Movements (Loans & Transfers)
-- Loan an item by selecting the item, entering borrower details, and setting expected return date.
-- Mark loaned items as returned from Movements.
-- Transfer an item to another room or property.
-- Movement history records every move.
-- Movement workflow is draft, active, then completed.
+**PROCEDURAL** ("how do I…", "how to…", "steps to…", "can I…"):
+→ One-sentence overview, then numbered steps with exact UI element names.
+→ End with a "💡 Pro tip:" line with a relevant shortcut or best practice.
 
-## Wardrobe
-- Wardrobe is a specialized view for clothing, footwear, accessories, jewelry, and watches.
-- Closet grid shows wardrobe items.
-- Create outfits by selecting items, naming the outfit, and adding occasion tags.
-- Log dry cleaning records with item, date, provider, and cost.
-- Stats show wardrobe items, outfits created, and dry cleaning count.
+**CONCEPTUAL** ("what is…", "what does X do", "explain…"):
+→ 1–2 sentence definition, then 2–3 key use cases as bullet points.
 
-## Maintenance
-- Create a maintenance record with item, scheduled date, type, and notes.
-- Maintenance types include cleaning, inspection, repair, service, calibration, and other.
-- Update maintenance status to completed or cancelled.
-- AI risk scoring flags high-risk items for maintenance.
+**TROUBLESHOOTING** ("why can't I…", "I don't see…", "it's not working", "not showing"):
+→ Diagnose the most likely cause first (role restriction, wrong status, wrong screen).
+→ Then give fix steps.
 
-## Insurance
-- Add an insurance policy with insurer, policy number, coverage type, premium, and dates.
-- Link inventory items to policies.
-- Coverage gap analysis identifies underinsured items.
-- AI can draft an insurance claim letter.
+**COMPARISON** ("difference between…", "which should I use…"):
+→ Use a table or parallel bullet list.
 
-## AI Scan (Vision)
-- Open AI Scan from the add button or navigation.
-- Point the camera at an item to identify category, brand, and estimated value.
-- Review and confirm AI suggestions before saving.
-- Invoice scanning can extract purchase details.
+## Step 2 — Precision rules
 
-## AI Chat (Inventory Assistant)
-- AI Chat answers natural language questions over the user's inventory.
-- It can filter by property and return matching items with photos and location.
-- For questions about actual inventory data, users should use AI Chat.
+- Name exact UI elements: "Tap the **+** button (bottom-right corner)" not "tap add".
+- Include navigation path on first mention: "Bottom navigation bar → Inventory".
+- Mention exact field labels as they appear in the app form.
+- Mention role restrictions inline when relevant: "(Owner and Manager only)".
+- Mention limits: items support up to 10 photos; sessions expire for Guest role.
 
-## Users & Roles
-- Invite users with email, role, and property access.
-- Owner has full access and manages users.
-- Manager manages inventory but cannot see financial valuations.
-- Staff can view and update assigned items only.
-- Auditor has read-only access with watermarked exports.
-- Guest has temporary access with expiration.
-- Property-scoped access keeps users limited to assigned properties.
+## Step 3 — Role awareness
 
-## Reports
-- Export inventory as PDF or Excel.
-- Filter exports by category, room, or property.
-- Auditor exports are watermarked.
+If a user can't see a feature or value, their role is likely the cause. Roles and their limits:
+- **Owner**: full access — manages users, sees all valuations, all properties.
+- **Manager**: manages inventory; **cannot see financial valuations**; cannot manage users.
+- **Staff**: view and update only items assigned to them; limited to their property.
+- **Auditor**: read-only; exports are watermarked; cannot create or edit anything.
+- **Guest**: temporary access with expiry date; read-only.
 
-## Settings
-- Manage notification preferences for push and email.
-- Set up MFA with a TOTP authenticator app.
-- Update profile details.
+## Other rules
 
-## QR Scanning
-- Each item has a unique QR code.
-- Scan from the QR icon to jump directly to item detail.
-- QR scanning helps quick check-in and check-out during moves.
+- **Redirect inventory queries**: If asked about actual items ("where is my watch", "value of my sofa"), say: "For questions about your items, use the **AI Chat** feature in the navigation menu — it searches your inventory directly."
+- **Unresolved**: If the question is completely outside Vaulted functionality, end your response with exactly: [UNRESOLVED: brief description]
+- **Never invent** features, buttons, or screens that don't exist.
+- **Language**: Respond in the same language the user writes in (English or Spanish supported).
+
+CURRENT SCREEN CONTEXT:
+{SCREEN_CONTEXT}
+
+APP DOCUMENTATION:
+{KNOWLEDGE_BASE}
 `.trim();
 
+// ─── Knowledge base ────────────────────────────────────────────────────────────
+// Detailed step-by-step workflows with exact UI element names.
+
+const HELP_KNOWLEDGE_BASE = `
+## Dashboard
+
+The Dashboard is the home screen. It shows:
+- KPI cards: Total Items, Total Estimated Value (Owner/Manager only), Items on Loan, Upcoming Maintenance.
+- Property switcher (top of screen) — tap to filter all cards by a specific property.
+- Recent Activity feed — shows the last inventory actions across the account.
+
+To switch property context: tap the property name in the header dropdown and select a property or "All Properties".
+
+---
+
+## Properties, Floors & Rooms
+
+### Add a property
+1. Tap **Properties** in the bottom navigation bar.
+2. Tap the **+** button (top-right corner).
+3. Enter: Property Name, Address, and Property Type (mansion, apartment, vacation home, etc.).
+4. Tap **Save**.
+
+### Add a floor to a property
+1. Open the property detail (tap the property card).
+2. Tap **Add Floor**.
+3. Enter the floor name (e.g., "Ground Floor", "Second Floor").
+4. Tap **Save**.
+
+### Add a room to a floor
+1. Open the property detail → tap the floor.
+2. Tap **Add Room**.
+3. Enter: Room Name and Room Type (bedroom, living room, kitchen, office, garage, storage, etc.).
+4. Tap **Save**.
+
+💡 Rooms must exist before you can assign items to them.
+
+---
+
+## Inventory (Items)
+
+### Add an item manually
+1. Tap **Inventory** in the bottom navigation bar.
+2. Tap the blue **+** button (bottom-right corner).
+3. Select a **Category** (e.g., Furniture, Art & Collectibles, Wardrobe, Vehicles).
+4. Enter the **Item Name** and optionally a **Subcategory**.
+5. Select the **Room** where the item is located.
+6. Add up to **10 photos** using the camera or photo library.
+7. Fill in **Valuation**: Purchase Price, Purchase Date, Current Value, Currency.
+8. Optionally: Serial Number, Tags (comma-separated), Location Detail (e.g., "Left side of closet").
+9. Tap **Save**.
+
+### Use AI Scan to catalog an item from a photo
+1. Tap the **camera icon** (AI Scan) in the navigation bar, or tap **Scan with AI** from the + menu.
+2. Point the camera at the item and tap **Capture**.
+3. Review AI suggestions: Category, Brand, Estimated Value, Attributes.
+4. Edit any fields as needed — the AI may misidentify rare or uncommon items.
+5. Tap **Confirm & Save**.
+
+For **invoice scanning**: after capturing, tap **Scan Invoice** to auto-fill Purchase Price and Purchase Date from a receipt or invoice image.
+
+💡 Pro tip: AI Scan works best with good lighting and the full item in frame.
+
+### Edit an item
+1. Open the item detail (tap the item from the list).
+2. Tap the **pencil (edit) icon** (top-right corner).
+3. Modify the desired fields.
+4. Tap **Save**.
+
+### Item statuses
+- **Active**: item is in its assigned room and available.
+- **On Loan**: item has been lent to someone — see Movements to manage return.
+- **Under Repair**: item is being repaired (a Repair movement was created).
+- **In Storage**: item was moved to a storage location.
+- **Disposed**: item is no longer in inventory — it cannot be moved, loaned, or edited.
+
+To change status: edit the item → update the Status field. Some transitions (e.g., Repair) create a Movement automatically.
+
+### Search and filter items
+- Use the **Search bar** at the top of the Inventory screen — searches name, tags, serial number.
+- Use the **Filter chips** below the search bar to filter by: Category, Status, Room.
+- Use the **Property switcher** (top of screen) to limit results to one property.
+
+### Item QR code
+- Each item has a unique QR code — visible on the item detail page under the item name.
+- Scanning the QR code from any screen opens that item's detail directly.
+- Useful for quick audits, check-in/check-out during moves, or sharing item info.
+
+---
+
+## Movements (Loans, Returns, Transfers, Repairs)
+
+Movements track every time an item changes hands or location.
+
+### Loan an item to someone
+1. Tap **Movements** (or Operations) in the navigation.
+2. Tap the **+** button (bottom-right corner).
+3. Select **Loan** as the movement type.
+4. Search and select the item(s) to loan.
+5. Enter: Borrower Name, Borrower Contact (optional), Expected Return Date.
+6. Tap **Confirm** — status changes to **Active**.
+
+The item's status automatically changes to **On Loan**.
+
+### Mark a loaned item as returned
+1. Open **Movements** → find the active loan.
+2. Tap the loan card to open its detail.
+3. Tap **Mark as Returned** (or **Complete**).
+4. Confirm the return.
+
+The item status returns to **Active** automatically.
+
+### Transfer an item to another room or property
+1. Tap **Movements** → **+** button.
+2. Select **Transfer** as the movement type.
+3. Select the item(s).
+4. Select the **Destination**: choose a different room (same property) or a different property.
+5. Tap **Confirm**.
+
+### View movement history for an item
+- Open the item detail page → scroll to **Movement History** section.
+- Shows all past and active movements: who moved it, when, where to.
+
+### Movement workflow
+All movements follow: **Draft → Active → Completed**.
+- Draft: created but not yet confirmed.
+- Active: confirmed, in progress (item has changed status).
+- Completed: movement finished (item returned, transfer done).
+
+---
+
+## Wardrobe
+
+Wardrobe is a specialized module for clothing, footwear, accessories, jewelry, and watches.
+
+### Access Wardrobe
+- Tap **Wardrobe** in the bottom navigation bar.
+- The closet grid shows all wardrobe-category items.
+
+### Create an outfit
+1. In the Wardrobe screen, tap the **Outfits** tab (or the outfits icon).
+2. Tap **+ New Outfit**.
+3. Enter an outfit name (e.g., "Business Meeting") and occasion tags.
+4. Tap **Add Items** — select from your wardrobe items.
+5. Tap **Save Outfit**.
+
+### Log a dry cleaning record
+1. In the Wardrobe screen, tap the **Dry Cleaning** tab.
+2. Tap **+ Log Dry Cleaning**.
+3. Select the item(s) sent to the cleaner.
+4. Enter: Date Sent, Provider Name, Cost (optional), Return Date (optional).
+5. Tap **Save**.
+
+### Wardrobe stats bar
+The top bar shows: Total Wardrobe Items, Outfits Created, Dry Cleaning count.
+
+---
+
+## Maintenance
+
+### Schedule a maintenance record
+1. Tap **Maintenance** in the navigation.
+2. Tap the **+** button.
+3. Select the **Item** to maintain.
+4. Enter: Scheduled Date, Maintenance Type, Notes (optional).
+5. Maintenance types: Cleaning, Inspection, Repair, Service, Calibration, Other.
+6. Tap **Save**.
+
+### Update maintenance status
+1. Open the maintenance record (tap it from the list).
+2. Tap **Mark as Completed** or **Cancel**.
+3. Confirm.
+
+### AI risk scoring
+The system automatically analyzes items based on age, category, and condition and flags high-risk ones.
+- Items with risk score ≥ 60% may auto-generate maintenance suggestions.
+- These appear in the maintenance list with an "AI Suggested" tag.
+
+---
+
+## Insurance
+
+### Add an insurance policy
+1. Tap **Insurance** in the navigation.
+2. Tap **+ New Policy**.
+3. Enter: Insurer Name, Policy Number, Coverage Type, Premium Amount, Start Date, End Date.
+4. Tap **Save**.
+
+### Link items to a policy
+1. Open the policy detail.
+2. Tap **Link Items**.
+3. Search and select items from your inventory.
+4. Tap **Done**.
+
+### Coverage gap analysis
+1. Open a policy detail.
+2. Tap **Analyze Coverage Gaps**.
+3. The AI identifies items with no policy or with current value exceeding covered value.
+4. Review the gaps report — items are listed with their coverage shortfall.
+
+### Draft an insurance claim letter (AI)
+1. Open the policy detail → tap **Draft Claim**.
+2. Describe the incident or loss.
+3. The AI generates a formal claim letter using your policy details and item data.
+4. Review, edit if needed, and export or copy.
+
+---
+
+## AI Scan (Vision)
+
+AI Scan uses the device camera to catalog items automatically.
+
+1. Tap the **AI Scan icon** (camera with sparkle) in the navigation.
+2. Choose: **Scan Item** or **Scan Invoice**.
+3. Frame the item or invoice in the camera view.
+4. Tap **Capture**.
+5. Review AI output: Name, Category, Brand, Estimated Value, Tags, Suggested Room.
+6. Edit any fields.
+7. Tap **Save to Inventory**.
+
+For invoices: AI extracts Purchase Price, Purchase Date, and Vendor Name.
+
+---
+
+## AI Chat (Inventory Assistant)
+
+AI Chat answers natural-language questions about your own inventory.
+
+- Access: tap **AI Chat** in the navigation (available to Owner, Manager, Auditor).
+- Ask: "Where is my Hermès bag?", "Show all items on loan", "Items worth over $10,000".
+- Results include item photos, location, and valuation (if your role allows).
+- Use the Property filter to narrow results to one property.
+- Distinct from Vaulted Guide: AI Chat searches your items; Vaulted Guide explains the app.
+
+---
+
+## Users & Roles
+
+### Invite a new user
+1. Tap **Users** (or the People icon) in the navigation. (Owner only)
+2. Tap **+ Invite User**.
+3. Enter their email address.
+4. Select their **Role**: Owner, Manager, Staff, Auditor, Guest.
+5. Select which **Properties** they can access.
+6. For Guest: set an **Expiry Date**.
+7. Tap **Send Invite**.
+
+The invited user receives an email with a registration link.
+
+### Change a user's role or property access
+1. Open **Users** → tap the user.
+2. Tap **Edit**.
+3. Update Role or Property access.
+4. Tap **Save**.
+
+### Role comparison
+
+| Role    | Add/Edit Items | See Valuations | Manage Users | Property Scope  |
+|---------|---------------|----------------|--------------|-----------------|
+| Owner   | ✅             | ✅              | ✅            | All properties  |
+| Manager | ✅             | ❌              | ❌            | Assigned        |
+| Staff   | Limited        | ❌              | ❌            | Assigned items  |
+| Auditor | ❌ (read-only) | ✅              | ❌            | Assigned        |
+| Guest   | ❌ (read-only) | ❌              | ❌            | Assigned, timed |
+
+---
+
+## Reports
+
+1. Tap **Reports** in the navigation.
+2. Select the export format: **PDF** or **Excel**.
+3. Apply filters: Category, Room, Property, Status.
+4. Tap **Export**.
+
+Auditor exports are automatically watermarked.
+
+---
+
+## Settings
+
+- **Notifications**: toggle push and email notifications per event type.
+- **MFA Setup**: tap **Security** → **Enable MFA** → scan the QR code with an authenticator app (Google Authenticator, Authy).
+- **Profile**: update display name and email.
+
+---
+
+## QR Scanning
+
+- Each item has a unique QR code on its detail page.
+- Tap the **QR icon** in the app bar (any screen) to open the scanner.
+- Scanning an item QR code navigates directly to that item's detail.
+- Useful for: quick audits, staff check-in/check-out, insurance appraisals.
+`.trim();
+
+// ─── Screen context & suggestions ─────────────────────────────────────────────
+
 const SCREEN_CONTEXT: Record<HelpScreen, string> = {
-  dashboard: 'The user is viewing Dashboard metrics and recent activity.',
-  inventory: 'The user is browsing or searching inventory items.',
-  item_detail: 'The user is viewing a single item detail page.',
-  add_item: 'The user is creating a new inventory item.',
-  movements: 'The user is managing item loans, returns, and transfers.',
-  wardrobe: 'The user is using the wardrobe module.',
-  maintenance: 'The user is managing item maintenance records.',
-  insurance: 'The user is managing policies, claims, or coverage analysis.',
-  properties: 'The user is managing properties, floors, and rooms.',
+  dashboard: 'The user is on the Dashboard — viewing KPI cards and recent activity.',
+  inventory: 'The user is browsing or searching the inventory item list.',
+  item_detail: "The user is viewing a single item's detail page.",
+  add_item: 'The user is on the Add Item form.',
+  movements:
+    'The user is on the Movements/Operations screen — managing loans, transfers, and repairs.',
+  wardrobe: 'The user is in the Wardrobe module — closet grid, outfits, or dry cleaning.',
+  maintenance: 'The user is on the Maintenance screen.',
+  insurance: 'The user is managing insurance policies, coverage gaps, or claims.',
+  properties: 'The user is managing properties, floors, or rooms.',
   users: 'The user is managing invited users, roles, and property access.',
-  ai_scan: 'The user is using AI Scan to catalog an item or invoice from an image.',
-  ai_chat: 'The user is using the inventory AI Chat feature.',
-  reports: 'The user is exporting or reviewing reports.',
-  settings: 'The user is managing profile, MFA, or notification settings.',
+  ai_scan: 'The user is using AI Scan to catalog an item or invoice.',
+  ai_chat: 'The user is on the AI Chat (inventory assistant) screen.',
+  reports: 'The user is on the Reports/export screen.',
+  settings: 'The user is in Settings.',
 };
 
 const SCREEN_SUGGESTIONS: Record<HelpScreen, string[]> = {
   dashboard: [
     'How do I filter the dashboard by property?',
-    'What do the dashboard KPI cards mean?',
-    'Where can I see recent activity?',
+    'What does the Total Value card show?',
+    'How do I see recent activity?',
   ],
   inventory: [
     'How do I add a new item?',
     'How do I filter items by room?',
-    'How do I find items on loan?',
+    'How do I find items currently on loan?',
   ],
   item_detail: [
     'How do I edit this item?',
-    'How do I see movement history?',
+    "How do I see this item's movement history?",
     'How do I use the item QR code?',
   ],
   add_item: [
-    'Which fields are required for a new item?',
+    'Which fields are required?',
     'How many photos can I add?',
     'When should I use AI Scan instead?',
   ],
   movements: [
+    'How do I loan an item?',
     'How do I mark a loaned item as returned?',
-    'How do I transfer an item to another room?',
-    'How do I see all active loans?',
+    'How do I transfer an item to another property?',
   ],
   wardrobe: [
     'How do I create an outfit?',
-    'How do I add dry cleaning history?',
-    'Which items appear in wardrobe?',
+    'How do I log a dry cleaning record?',
+    'Which item categories appear in Wardrobe?',
   ],
   maintenance: [
     'How do I schedule maintenance?',
-    'What maintenance types are available?',
+    'What is AI risk scoring?',
     'How do I complete a maintenance record?',
   ],
   insurance: [
     'How do I add a policy?',
-    'How do I link items to insurance?',
+    'How do I link items to a policy?',
     'How does coverage gap analysis work?',
   ],
   properties: [
-    'How do I add a room?',
-    'How do I organize floors?',
-    'How do I move an item between properties?',
+    'How do I add a room to a floor?',
+    'How do I add a new property?',
+    'How do I transfer an item between properties?',
   ],
   users: [
-    'How do I invite a staff member?',
-    'What is property-scoped access?',
-    'What is the difference between roles?',
+    'How do I invite a new user?',
+    'What can a Manager do vs a Staff member?',
+    'How do I restrict a user to one property?',
   ],
   ai_scan: [
     'How do I scan an item?',
     'Can AI Scan read invoices?',
-    'Do I need to confirm AI suggestions?',
+    'What happens after I capture a photo?',
   ],
   ai_chat: [
-    'What can AI Chat answer?',
-    'How do I ask about a specific property?',
-    'Why should I use Vaulted Guide instead?',
+    'What kind of questions can AI Chat answer?',
+    'How is AI Chat different from Vaulted Guide?',
+    'How do I filter AI Chat results to one property?',
   ],
   reports: [
-    'How do I export a PDF?',
-    'Can I filter a report before export?',
-    'Why are auditor exports watermarked?',
+    'How do I export a PDF report?',
+    'Can I filter before exporting?',
+    'Why are Auditor exports watermarked?',
   ],
   settings: [
     'How do I set up MFA?',
-    'How do I change notification preferences?',
+    'How do I change my notification preferences?',
     'How do I update my profile?',
   ],
 };
@@ -193,14 +463,19 @@ const SCREEN_SUGGESTIONS: Record<HelpScreen, string[]> = {
 const DEFAULT_SUGGESTIONS = [
   'How do I add a new item?',
   'How do I invite a staff member?',
-  'How do I export an inventory report?',
+  'What is the difference between roles?',
 ];
+
+const UNRESOLVED_MARKER = '[UNRESOLVED:';
+
+// ─── Service ───────────────────────────────────────────────────────────────────
 
 @Injectable()
 export class AiHelpService {
   private readonly rateLimit: number;
   private readonly sessionTtl = 3600;
   private readonly maxHistoryTurns = 15;
+  private readonly maxFeedbackEntries = 1000;
 
   constructor(
     @InjectRedis() private readonly redis: Redis,
@@ -225,6 +500,7 @@ export class AiHelpService {
     const result = await this.geminiClient.chat(systemPrompt, geminiHistory, dto.query);
 
     await this.updateSessionHistory(tenantId, userId, sessionId, dto.query, result.text);
+    await this.detectAndLogUnresolved(tenantId, dto.query, result.text);
 
     void this.costLogger.log({
       tenantId,
@@ -240,6 +516,21 @@ export class AiHelpService {
       sessionId,
       suggestions: this.getSuggestions(dto.currentScreen),
     };
+  }
+
+  async submitFeedback(tenantId: string, userId: string, dto: HelpFeedbackDto): Promise<void> {
+    const entry = JSON.stringify({
+      tenantId,
+      userId,
+      sessionId: dto.sessionId,
+      messageIndex: dto.messageIndex,
+      helpful: dto.helpful,
+      comment: dto.comment ?? null,
+      ts: Date.now(),
+    });
+    const key = `ai:help:feedback:${tenantId}`;
+    await this.redis.lpush(key, entry);
+    await this.redis.ltrim(key, 0, this.maxFeedbackEntries - 1);
   }
 
   private async enforceRateLimit(tenantId: string): Promise<void> {
@@ -262,14 +553,10 @@ export class AiHelpService {
     try {
       const parsed: unknown = JSON.parse(raw);
       if (!Array.isArray(parsed)) return [];
-
       return parsed.filter((turn): turn is HelpSessionTurn => {
         if (typeof turn !== 'object' || turn === null) return false;
-        const candidate = turn as { role?: unknown; content?: unknown };
-        return (
-          (candidate.role === 'user' || candidate.role === 'model') &&
-          typeof candidate.content === 'string'
-        );
+        const t = turn as { role?: unknown; content?: unknown };
+        return (t.role === 'user' || t.role === 'model') && typeof t.content === 'string';
       });
     } catch {
       return [];
@@ -286,7 +573,6 @@ export class AiHelpService {
     const history = await this.getSessionHistory(tenantId, userId, sessionId);
     history.push({ role: 'user', content: userMessage });
     history.push({ role: 'model', content: modelResponse });
-
     const trimmed = history.slice(-this.maxHistoryTurns * 2);
     await this.redis.set(
       this.sessionKey(tenantId, userId, sessionId),
@@ -296,27 +582,26 @@ export class AiHelpService {
     );
   }
 
+  private async detectAndLogUnresolved(
+    tenantId: string,
+    query: string,
+    answer: string,
+  ): Promise<void> {
+    if (!answer.includes(UNRESOLVED_MARKER)) return;
+    const entry = JSON.stringify({ tenantId, query, answer, ts: Date.now() });
+    await this.redis.lpush('ai:help:unresolved', entry);
+    await this.redis.ltrim('ai:help:unresolved', 0, 499);
+  }
+
   private buildSystemPrompt(currentScreen?: HelpScreen): string {
-    const screen = currentScreen ?? 'not specified';
-    const screenContext = currentScreen ? SCREEN_CONTEXT[currentScreen] : 'No screen context was provided.';
+    const screenContext = currentScreen
+      ? SCREEN_CONTEXT[currentScreen]
+      : 'No specific screen context provided.';
 
-    return `
-You are Vaulted Guide, the in-app AI assistant for Vaulted, a premium home inventory management app for high-net-worth families. Your sole purpose is to help users understand how to use the Vaulted app.
-
-RULES:
-- Answer only questions about how to use Vaulted features.
-- If asked about the user's actual inventory items, redirect them to use the AI Chat feature in the navigation menu.
-- Be concise and use numbered steps for procedural instructions.
-- Respond in the same language the user writes in.
-- Do not invent unavailable screens, permissions, or data.
-
-CURRENT CONTEXT:
-Screen: ${screen}
-Context: ${screenContext}
-
-APP FEATURES DOCUMENTATION:
-${HELP_KNOWLEDGE_BASE}
-`.trim();
+    return SYSTEM_PROMPT.replace('{SCREEN_CONTEXT}', screenContext).replace(
+      '{KNOWLEDGE_BASE}',
+      HELP_KNOWLEDGE_BASE,
+    );
   }
 
   private getSuggestions(currentScreen?: HelpScreen): string[] {
