@@ -589,8 +589,9 @@ export class AiHelpService {
   ): Promise<void> {
     if (!answer.includes(UNRESOLVED_MARKER)) return;
     const entry = JSON.stringify({ tenantId, query, answer, ts: Date.now() });
-    await this.redis.lpush('ai:help:unresolved', entry);
-    await this.redis.ltrim('ai:help:unresolved', 0, 499);
+    const key = `ai:help:unresolved:${tenantId}`;
+    await this.redis.lpush(key, entry);
+    await this.redis.ltrim(key, 0, 499);
   }
 
   private buildSystemPrompt(currentScreen?: HelpScreen): string {
