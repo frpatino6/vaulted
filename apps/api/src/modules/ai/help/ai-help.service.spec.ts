@@ -1,14 +1,26 @@
 import { HttpException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { DataSource } from 'typeorm';
 import Redis from 'ioredis';
 import { AiCostLoggerService } from '../shared/ai-cost-logger.service';
+import { EmbeddingService } from '../shared/embedding.service';
 import { GeminiClient } from '../shared/gemini.client';
 import { AiHelpService } from './ai-help.service';
 
 jest.mock('uuid', () => ({ v4: jest.fn(() => 'help-session-id') }));
 
+const MOCK_EMBEDDING = Array.from({ length: 3072 }, (_, i) => i * 0.001);
+
+const MOCK_CHUNK_ROW = {
+  chunk_id: 'asset-directory',
+  title: 'Asset Directory — Browse, Search & Filter',
+  content: 'The main inventory screen is called Asset Directory.',
+};
+
 describe('AiHelpService', () => {
-  let redis: jest.Mocked<Pick<Redis, 'incr' | 'expire' | 'get' | 'set'>>;
+  let redis: jest.Mocked<Pick<Redis, 'incr' | 'expire' | 'get' | 'set' | 'lpush' | 'ltrim'>>;
+  let dataSource: jest.Mocked<Pick<DataSource, 'query'>>;
+  let embeddingService: jest.Mocked<Pick<EmbeddingService, 'generateEmbedding'>>;
   let geminiClient: jest.Mocked<Pick<GeminiClient, 'chat'>>;
   let costLogger: jest.Mocked<Pick<AiCostLoggerService, 'log'>>;
   let config: jest.Mocked<Pick<ConfigService, 'get'>>;
@@ -20,11 +32,21 @@ describe('AiHelpService', () => {
       expire: jest.fn().mockResolvedValue(1),
       get: jest.fn().mockResolvedValue(null),
       set: jest.fn().mockResolvedValue('OK'),
+      lpush: jest.fn().mockResolvedValue(1),
+      ltrim: jest.fn().mockResolvedValue('OK'),
+    };
+
+    dataSource = {
+      query: jest.fn().mockResolvedValue([MOCK_CHUNK_ROW]),
+    };
+
+    embeddingService = {
+      generateEmbedding: jest.fn().mockResolvedValue(MOCK_EMBEDDING),
     };
 
     geminiClient = {
       chat: jest.fn().mockResolvedValue({
-        text: '1. Open Inventory.\n2. Tap Add.',
+        text: '1. Open Asset Directory.\n2. Tap Add.',
         inputTokens: 12,
         outputTokens: 8,
       }),
@@ -44,6 +66,8 @@ describe('AiHelpService', () => {
 
     service = new AiHelpService(
       redis as unknown as Redis,
+      dataSource as unknown as DataSource,
+      embeddingService as unknown as EmbeddingService,
       geminiClient as unknown as GeminiClient,
       costLogger as unknown as AiCostLoggerService,
       config as unknown as ConfigService,
@@ -56,28 +80,19 @@ describe('AiHelpService', () => {
       currentScreen: 'inventory',
     });
 
-    expect(result).toEqual({
-      answer: '1. Open Inventory.\n2. Tap Add.',
-      sessionId: 'help-session-id',
-      suggestions: [
-        'How do I add a new item?',
-        'How do I filter items by room?',
-        'How do I find items on loan?',
-      ],
-    });
+    expect(result.answer).toBe('1. Open Asset Directory.\n2. Tap Add.');
+    expect(result.sessionId).toBe('help-session-id');
+    expect(result.suggestions).toEqual([
+      'How do I add a new item?',
+      'How do I filter items by status?',
+      'How do I find items currently on loan?',
+    ]);
+
+    expect(embeddingService.generateEmbedding).toHaveBeenCalledWith('How do I add an item?');
     expect(geminiClient.chat).toHaveBeenCalledWith(
-      expect.stringContaining('Screen: inventory'),
+      expect.stringContaining('Asset Directory'),
       [],
       'How do I add an item?',
-    );
-    expect(redis.set).toHaveBeenCalledWith(
-      'ai:help:session:tenant-1:user-1:help-session-id',
-      JSON.stringify([
-        { role: 'user', content: 'How do I add an item?' },
-        { role: 'model', content: '1. Open Inventory.\n2. Tap Add.' },
-      ]),
-      'EX',
-      3600,
     );
   });
 
@@ -85,7 +100,7 @@ describe('AiHelpService', () => {
     redis.get.mockResolvedValue(
       JSON.stringify([
         { role: 'user', content: 'How do I loan an item?' },
-        { role: 'model', content: 'Open Movements.' },
+        { role: 'model', content: 'Open Operations.' },
       ]),
     );
 
@@ -100,7 +115,7 @@ describe('AiHelpService', () => {
       expect.any(String),
       [
         { role: 'user', content: 'How do I loan an item?' },
-        { role: 'model', content: 'Open Movements.' },
+        { role: 'model', content: 'Open Operations.' },
       ],
       'How do I return it?',
     );
@@ -116,5 +131,20 @@ describe('AiHelpService', () => {
     ).rejects.toBeInstanceOf(HttpException);
 
     expect(geminiClient.chat).not.toHaveBeenCalled();
+  });
+
+  it('falls back to full KB when RAG retrieval fails', async () => {
+    dataSource.query.mockRejectedValue(new Error('DB down'));
+
+    const result = await service.chat('tenant-1', 'user-1', {
+      query: 'How do I add an item?',
+    });
+
+    expect(result.answer).toBe('1. Open Asset Directory.\n2. Tap Add.');
+    expect(geminiClient.chat).toHaveBeenCalledWith(
+      expect.stringContaining('Asset Directory'),
+      [],
+      'How do I add an item?',
+    );
   });
 });
