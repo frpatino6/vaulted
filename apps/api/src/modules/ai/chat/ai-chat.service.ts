@@ -144,7 +144,7 @@ export class AiChatService {
   }
 
   async reindex(tenantId: string): Promise<{ indexed: number }> {
-    const items = await this.itemModel.find({ tenantId }).lean().exec();
+    const items = await this.itemModel.find({ tenantId, status: { $ne: 'disposed' } }).lean().exec();
     let indexed = 0;
 
     for (let i = 0; i < items.length; i += 10) {
@@ -196,7 +196,7 @@ export class AiChatService {
     if (!propertyId) return rows.map((r) => ({ item_id: r.item_id, score: Number(r.score) }));
 
     const propertyItems = await this.itemModel
-      .find({ propertyId, tenantId })
+      .find({ propertyId, tenantId, status: { $ne: 'disposed' } })
       .select('_id')
       .lean()
       .exec();
@@ -213,7 +213,7 @@ export class AiChatService {
     if (!itemIds.length) return [];
 
     const items = await this.itemModel
-      .find({ _id: { $in: itemIds }, tenantId })
+      .find({ _id: { $in: itemIds }, tenantId, status: { $ne: 'disposed' } })
       .lean()
       .exec();
 
