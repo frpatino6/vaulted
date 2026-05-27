@@ -79,7 +79,7 @@ Guest    → temporary access with expiration date
 
 ## Security Requirements
 
-- **JWT**: Access Token 15 min (memory) + Refresh Token 7 days (httpOnly cookie / secure storage)
+- **JWT**: Access Token 24h (memory) + Refresh Token 7 days (httpOnly cookie / secure storage)
 - **Rotation**: each refresh generates a new token; blacklist in Redis
 - **MFA**: mandatory for Owner and Manager (TOTP + YubiKey); Passkeys/FIDO2 supported
 - **Data**: AES-256 at rest, TLS 1.3, MongoDB CSFLE for sensitive fields
@@ -114,47 +114,54 @@ Household Supplies (linens, tableware, glassware)
 
 ### Backend modules (`apps/api/src/modules/`)
 ```
-auth/          ✅  JWT, refresh tokens, MFA, sessions
-users/         ✅  User management (PostgreSQL)
-tenants/       ✅  Client/family management (PostgreSQL)
-properties/    ✅  Properties and rooms (MongoDB)
-inventory/     ✅  Items and item history (MongoDB)
-movements/     ✅  Item transfers, loans, repairs (MongoDB)
-maintenance/   ✅  Scheduled maintenance records (MongoDB)
-dashboard/     ✅  Aggregated metrics, Redis cache
-wardrobe/      ✅  Outfits + dry cleaning history (MongoDB) + Redis stats cache
-media/         ✅  File upload (local Docker volume / GCP Storage)
-audit/         ✅  Immutable audit logs (PostgreSQL)
-ai/            ✅  vision/ · chat/ · insurance/ · maintenance/ · shared/
-insurance/     ✅  Policies, coverage gaps, claims, encryption (PostgreSQL)
-notifications/ ✅  FCM push + Resend email, device tokens, preferences
-presence/      ⚠️  WebSocket presence tracking (partial)
-reports/       ❌  PDF and Excel generation
+auth/              ✅  JWT, refresh tokens, MFA, sessions
+users/             ✅  User management (PostgreSQL)
+tenants/           ✅  Client/family management (PostgreSQL)
+properties/        ✅  Properties and rooms (MongoDB)
+inventory/         ✅  Items and item history (MongoDB)
+movements/         ✅  Item transfers, loans, repairs (MongoDB)
+maintenance/       ✅  Scheduled maintenance records (MongoDB)
+dashboard/         ✅  Aggregated metrics, Redis cache
+wardrobe/          ✅  Outfits + dry cleaning history (MongoDB) + Redis stats cache
+media/             ✅  File upload (local Docker volume / GCP Storage)
+audit/             ✅  Immutable audit logs (PostgreSQL)
+ai/                ✅  vision/ · chat/ · help/ · insurance/ · maintenance/ · shared/
+insurance/         ✅  Policies, coverage gaps, claims, encryption (PostgreSQL)
+notifications/     ✅  FCM push + Resend email, device tokens, preferences
+household-members/ ✅  Household people management (MongoDB)
+orchestrator/      ✅  Multi-step task plans + WebSocket progress (MongoDB)
+presence/          ⚠️  WebSocket presence tracking (partial)
+reports/           ❌  PDF and Excel generation
 ```
 
 ### Flutter features (`apps/mobile/lib/features/`)
 ```
-auth/          ✅  login, register, MFA
-dashboard/     ✅  stats summary, property cards
-properties/    ✅  list, detail, floors, rooms
-inventory/     ✅  list, detail, add/edit, QR scan, item history
-movements/     ✅  draft→active→complete workflow, QR checkin
-maintenance/   ✅  list, create, update status
-ai_chat/       ✅  RAG chat UI, conversation history
-ai_scan/       ✅  camera + AI overlay, review form, photo upload
-users/         ✅  list, invite, edit role
-media/         ✅  image picker, upload progress
-wardrobe/      ✅  closet grid, outfit builder, dry cleaning history, stats bar
-insurance/     ✅  policies, coverage gaps, claims
-reports/       ❌  stub only
-settings/      ❌  stub only
+auth/              ✅  login, register, MFA
+dashboard/         ✅  stats summary, property cards
+properties/        ✅  list, detail, floors, rooms
+inventory/         ✅  list, detail, add/edit, QR scan, item history
+movements/         ✅  draft→active→complete workflow, QR checkin
+maintenance/       ✅  list, create, update status
+ai_chat/           ✅  RAG chat UI, conversation history
+ai_help_chat/      ✅  contextual help chat (Vaulted Guide)
+ai_scan/           ✅  camera + AI overlay, review form, photo upload
+users/             ✅  list, invite, edit role
+media/             ✅  image picker, upload progress
+wardrobe/          ✅  closet grid, outfit builder, dry cleaning history, stats bar
+insurance/         ✅  policies, coverage gaps, claims
+household_members/ ✅  household people management
+notifications/     ✅  notification inbox + preferences
+orchestrator/      ✅  task plans, step guide, progress dashboard
+presence/          ✅  online presence indicators
+reports/           ❌  stub only
+settings/          ❌  stub only
 ```
 
 ### Flutter core packages
 ```yaml
-dio · flutter_secure_storage · hive_flutter · flutter_riverpod
-go_router · mobile_scanner · local_auth · cached_network_image
-sentry_flutter · freezed · json_serializable
+dio · flutter_secure_storage · flutter_riverpod · go_router
+mobile_scanner · cached_network_image · freezed · json_serializable
+firebase_messaging · fl_chart · speech_to_text · socket_io_client · google_fonts
 ```
 
 ---
@@ -178,7 +185,7 @@ tenants · users · audit_logs (NO UPDATE/DELETE) · insurance_policies
 
 ### JWT Strategy
 ```
-Access Token:  15 min — in memory (Flutter)
+Access Token:  24h — in memory (Flutter)
 Refresh Token: 7 days — httpOnly cookie / secure storage
 Blacklist:     Redis (immediate revocation)
 ```
@@ -207,11 +214,12 @@ Blacklist:     Redis (immediate revocation)
 | AI-3 | Dynamic Asset Valuation (web search + Claude reasoning) |
 
 ### AI Architecture
-- **Primary LLM**: Gemini 2.5 Flash (`GOOGLE_GENAI_API_KEY`)
-- **Embeddings**: Gemini embeddings (stored in PostgreSQL via pgvector, 3072 dims)
+- **Primary LLM**: Gemini 2.5 Flash (`GOOGLE_GENAI_API_KEY`) — vision, chat, insurance, maintenance
+- **Secondary LLM**: Anthropic Claude (`@anthropic-ai/sdk`) — AI-3 valuation reasoning
+- **Embeddings**: Gemini embeddings (`gemini-embedding-001`, 3072 dims, stored in PostgreSQL via pgvector)
 - **Web Search** (AI-3): Brave Search API
 - **Queue**: BullMQ on Redis — `ai-vision` (5 workers) · `ai-valuation` (3) · `ai-maintenance` (3)
-- **Cost control**: rate limits per tenant, token usage logged to AuditService
+- **Rate limit**: `AI_CHAT_RATE_LIMIT_PER_MINUTE=20` per tenant; token usage logged to AuditService
 
 ---
 
@@ -271,16 +279,22 @@ docker logs vaulted_api --tail 50
 
 ```
 NODE_ENV · PORT · APP_URL
-JWT_SECRET · JWT_EXPIRES_IN=15m · JWT_REFRESH_SECRET · JWT_REFRESH_EXPIRES_IN=7d
-MONGODB_URI · POSTGRES_HOST/PORT/DB/USER/PASSWORD
-REDIS_HOST/PORT/PASSWORD (use rediss:// for Upstash TLS)
+JWT_SECRET · JWT_EXPIRES_IN=24h · JWT_REFRESH_SECRET · JWT_REFRESH_EXPIRES_IN=7d
+MONGODB_URI
+POSTGRES_HOST/PORT/DB/USER/PASSWORD · DATABASE_URL · TYPEORM_SYNC
+REDIS_HOST/PORT/PASSWORD · REDIS_URL (use rediss:// for Upstash TLS)
 GCP_PROJECT_ID · GCP_STORAGE_BUCKET · GCP_KEY_FILE
 FIREBASE_PROJECT_ID · FIREBASE_PRIVATE_KEY · FIREBASE_CLIENT_EMAIL
 RESEND_API_KEY · EMAIL_FROM
 SENTRY_DSN
-GOOGLE_GENAI_API_KEY · AI_VISION_MODEL=gemini-2.5-flash
+GOOGLE_GENAI_API_KEY
+AI_CHAT_MODEL=gemini-2.5-flash · AI_VISION_MODEL=gemini-2.5-flash
+AI_EMBEDDING_MODEL=gemini-embedding-001 · AI_EMBEDDING_DIMS=3072
+AI_CHAT_RATE_LIMIT_PER_MINUTE=20
 BRAVE_SEARCH_API_KEY · VALUATION_SEARCH_ENGINE=brave
 ```
+
+> Note: `FIREBASE_*`, `RESEND_*`, `SENTRY_DSN`, `BRAVE_*` are not yet in `.env.prod.example` — add them before production deploy.
 
 ---
 
