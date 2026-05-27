@@ -15,6 +15,7 @@ import { dirname, extname, join } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import type { Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
+import sharp from 'sharp';
 import { UploadResponseDto } from './dto/upload-response.dto';
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
@@ -168,20 +169,23 @@ export class MediaService {
     }
 
     const detectedMime = this.validateFile(file);
-    const filename = this.buildFilename(tenantId, detectedMime);
+    const { buffer: processedBuffer, mimeType: processedMime } =
+      await this.processImage(file.buffer, detectedMime);
+    const filename = this.buildFilename(tenantId, processedMime);
 
     if (this.useLocalStorage) {
-      return this.saveLocally(filename, file, detectedMime);
+      const processedFile = { ...file, buffer: processedBuffer, size: processedBuffer.length };
+      return this.saveLocally(filename, processedFile, processedMime);
     }
 
     const bucket = this.storage!.bucket(this.bucketName!);
     const storageFile = bucket.file(filename);
 
     try {
-      await storageFile.save(file.buffer, {
+      await storageFile.save(processedBuffer, {
         resumable: false,
         metadata: {
-          contentType: detectedMime,
+          contentType: processedMime,
         },
       });
 
@@ -193,11 +197,30 @@ export class MediaService {
       return {
         url,
         filename,
-        size: file.size,
-        mimeType: detectedMime,
+        size: processedBuffer.length,
+        mimeType: processedMime,
       };
     } catch {
       throw new InternalServerErrorException('Failed to upload file');
+    }
+  }
+
+  private async processImage(
+    buffer: Buffer,
+    mimeType: string,
+  ): Promise<{ buffer: Buffer; mimeType: string }> {
+    if (mimeType === 'application/pdf') {
+      return { buffer, mimeType };
+    }
+    try {
+      const processed = await sharp(buffer)
+        .rotate()
+        .resize({ width: 2048, height: 2048, fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 85, mozjpeg: true })
+        .toBuffer();
+      return { buffer: processed, mimeType: 'image/jpeg' };
+    } catch {
+      throw new BadRequestException('Invalid or corrupted image file');
     }
   }
 
