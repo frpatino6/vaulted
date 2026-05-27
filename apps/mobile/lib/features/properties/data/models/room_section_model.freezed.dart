@@ -286,8 +286,17 @@ class _$RoomSectionModelImpl implements _RoomSectionModel {
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode =>
-      Object.hash(runtimeType, sectionId, code, name, type, notes, photo, furnitureName, boundingBox);
+  int get hashCode => Object.hash(
+    runtimeType,
+    sectionId,
+    code,
+    name,
+    type,
+    notes,
+    photo,
+    furnitureName,
+    boundingBox,
+  );
 
   /// Create a copy of RoomSectionModel
   /// with the given fields replaced by the non-null parameter values.

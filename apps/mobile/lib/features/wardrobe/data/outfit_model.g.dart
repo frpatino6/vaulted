@@ -50,6 +50,7 @@ _$OutfitModelImpl _$$OutfitModelImplFromJson(
           .toList() ??
       const <OutfitItemPreviewModel>[],
   createdAt: json['createdAt'] as String?,
+  ownerMemberId: json['ownerMemberId'] as String?,
 );
 
 Map<String, dynamic> _$$OutfitModelImplToJson(_$OutfitModelImpl instance) =>
@@ -63,4 +64,5 @@ Map<String, dynamic> _$$OutfitModelImplToJson(_$OutfitModelImpl instance) =>
       'photos': instance.photos,
       'items': instance.items,
       'createdAt': instance.createdAt,
+      'ownerMemberId': instance.ownerMemberId,
     };

@@ -318,6 +318,7 @@ mixin _$OutfitModel {
   List<String> get photos => throw _privateConstructorUsedError;
   List<OutfitItemPreviewModel> get items => throw _privateConstructorUsedError;
   String? get createdAt => throw _privateConstructorUsedError;
+  String? get ownerMemberId => throw _privateConstructorUsedError;
 
   /// Serializes this OutfitModel to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -346,6 +347,7 @@ abstract class $OutfitModelCopyWith<$Res> {
     List<String> photos,
     List<OutfitItemPreviewModel> items,
     String? createdAt,
+    String? ownerMemberId,
   });
 }
 
@@ -373,6 +375,7 @@ class _$OutfitModelCopyWithImpl<$Res, $Val extends OutfitModel>
     Object? photos = null,
     Object? items = null,
     Object? createdAt = freezed,
+    Object? ownerMemberId = freezed,
   }) {
     return _then(
       _value.copyWith(
@@ -421,6 +424,11 @@ class _$OutfitModelCopyWithImpl<$Res, $Val extends OutfitModel>
                     ? _value.createdAt
                     : createdAt // ignore: cast_nullable_to_non_nullable
                         as String?,
+            ownerMemberId:
+                freezed == ownerMemberId
+                    ? _value.ownerMemberId
+                    : ownerMemberId // ignore: cast_nullable_to_non_nullable
+                        as String?,
           )
           as $Val,
     );
@@ -446,6 +454,7 @@ abstract class _$$OutfitModelImplCopyWith<$Res>
     List<String> photos,
     List<OutfitItemPreviewModel> items,
     String? createdAt,
+    String? ownerMemberId,
   });
 }
 
@@ -472,6 +481,7 @@ class __$$OutfitModelImplCopyWithImpl<$Res>
     Object? photos = null,
     Object? items = null,
     Object? createdAt = freezed,
+    Object? ownerMemberId = freezed,
   }) {
     return _then(
       _$OutfitModelImpl(
@@ -520,6 +530,11 @@ class __$$OutfitModelImplCopyWithImpl<$Res>
                 ? _value.createdAt
                 : createdAt // ignore: cast_nullable_to_non_nullable
                     as String?,
+        ownerMemberId:
+            freezed == ownerMemberId
+                ? _value.ownerMemberId
+                : ownerMemberId // ignore: cast_nullable_to_non_nullable
+                    as String?,
       ),
     );
   }
@@ -538,6 +553,7 @@ class _$OutfitModelImpl implements _OutfitModel {
     final List<String> photos = const <String>[],
     final List<OutfitItemPreviewModel> items = const <OutfitItemPreviewModel>[],
     this.createdAt,
+    this.ownerMemberId,
   }) : _itemIds = itemIds,
        _photos = photos,
        _items = items;
@@ -584,10 +600,12 @@ class _$OutfitModelImpl implements _OutfitModel {
 
   @override
   final String? createdAt;
+  @override
+  final String? ownerMemberId;
 
   @override
   String toString() {
-    return 'OutfitModel(id: $id, name: $name, description: $description, itemIds: $itemIds, season: $season, occasion: $occasion, photos: $photos, items: $items, createdAt: $createdAt)';
+    return 'OutfitModel(id: $id, name: $name, description: $description, itemIds: $itemIds, season: $season, occasion: $occasion, photos: $photos, items: $items, createdAt: $createdAt, ownerMemberId: $ownerMemberId)';
   }
 
   @override
@@ -606,7 +624,9 @@ class _$OutfitModelImpl implements _OutfitModel {
             const DeepCollectionEquality().equals(other._photos, _photos) &&
             const DeepCollectionEquality().equals(other._items, _items) &&
             (identical(other.createdAt, createdAt) ||
-                other.createdAt == createdAt));
+                other.createdAt == createdAt) &&
+            (identical(other.ownerMemberId, ownerMemberId) ||
+                other.ownerMemberId == ownerMemberId));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -622,6 +642,7 @@ class _$OutfitModelImpl implements _OutfitModel {
     const DeepCollectionEquality().hash(_photos),
     const DeepCollectionEquality().hash(_items),
     createdAt,
+    ownerMemberId,
   );
 
   /// Create a copy of OutfitModel
@@ -649,6 +670,7 @@ abstract class _OutfitModel implements OutfitModel {
     final List<String> photos,
     final List<OutfitItemPreviewModel> items,
     final String? createdAt,
+    final String? ownerMemberId,
   }) = _$OutfitModelImpl;
 
   factory _OutfitModel.fromJson(Map<String, dynamic> json) =
@@ -672,6 +694,8 @@ abstract class _OutfitModel implements OutfitModel {
   List<OutfitItemPreviewModel> get items;
   @override
   String? get createdAt;
+  @override
+  String? get ownerMemberId;
 
   /// Create a copy of OutfitModel
   /// with the given fields replaced by the non-null parameter values.
