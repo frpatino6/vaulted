@@ -212,12 +212,16 @@ export class MediaService {
     if (mimeType === 'application/pdf') {
       return { buffer, mimeType };
     }
-    const processed = await sharp(buffer)
-      .rotate()
-      .resize({ width: 2048, height: 2048, fit: 'inside', withoutEnlargement: true })
-      .jpeg({ quality: 85, mozjpeg: true })
-      .toBuffer();
-    return { buffer: processed, mimeType: 'image/jpeg' };
+    try {
+      const processed = await sharp(buffer)
+        .rotate()
+        .resize({ width: 2048, height: 2048, fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 85, mozjpeg: true })
+        .toBuffer();
+      return { buffer: processed, mimeType: 'image/jpeg' };
+    } catch {
+      throw new BadRequestException('Invalid or corrupted image file');
+    }
   }
 
   async delete(
