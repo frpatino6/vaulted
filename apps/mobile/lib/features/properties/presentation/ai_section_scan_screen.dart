@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/image_compress_utils.dart';
 import '../../media/data/media_repository_provider.dart';
 import '../data/models/room_section_model.dart';
 import '../domain/property_detail_notifier.dart';
@@ -305,9 +306,10 @@ class _AiSectionScanScreenState extends ConsumerState<AiSectionScanScreen> {
         final annotated = group.annotatedBytes;
         if (annotated != null) {
           try {
+            final compressed = await compressImageBytes(annotated);
             annotatedPhotoUrl = await ref
                 .read(mediaRepositoryProvider)
-                .uploadPhotoBytes(annotated, 'section_map.png');
+                .uploadPhotoBytes(compressed, 'section_map.jpg');
           } catch (_) {
             // Proceed without photo if upload fails
           }

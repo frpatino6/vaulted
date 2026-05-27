@@ -331,7 +331,11 @@ class _EditItemSheetState extends ConsumerState<EditItemSheet> {
                       pendingFiles: _pendingPhotos,
                       onPickFromGallery: () async {
                         final picker = ImagePicker();
-                        final list = await picker.pickMultipleMedia();
+                        final list = await picker.pickMultipleMedia(
+                          imageQuality: 80,
+                          maxWidth: 1920,
+                          maxHeight: 1920,
+                        );
                         if (list.isEmpty || !mounted) return;
                         final images =
                             list.where((x) => x.path.isNotEmpty).toList();
