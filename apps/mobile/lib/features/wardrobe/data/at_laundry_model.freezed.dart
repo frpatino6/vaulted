@@ -361,10 +361,7 @@ class _$AtLaundryItemImpl implements _AtLaundryItem {
   @override
   @pragma('vm:prefer-inline')
   _$$AtLaundryItemImplCopyWith<_$AtLaundryItemImpl> get copyWith =>
-      __$$AtLaundryItemImplCopyWithImpl<_$AtLaundryItemImpl>(
-        this,
-        _$identity,
-      );
+      __$$AtLaundryItemImplCopyWithImpl<_$AtLaundryItemImpl>(this, _$identity);
 
   @override
   Map<String, dynamic> toJson() {
@@ -425,10 +422,6 @@ abstract class _AtLaundryItem implements AtLaundryItem {
   _$$AtLaundryItemImplCopyWith<_$AtLaundryItemImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// AtLaundryProperty
-// ─────────────────────────────────────────────────────────────────────────────
 
 AtLaundryProperty _$AtLaundryPropertyFromJson(Map<String, dynamic> json) {
   return _AtLaundryProperty.fromJson(json);
@@ -556,7 +549,7 @@ class __$$AtLaundryPropertyImplCopyWithImpl<$Res>
                     as String,
         items:
             null == items
-                ? _value.items
+                ? _value._items
                 : items // ignore: cast_nullable_to_non_nullable
                     as List<AtLaundryItem>,
       ),
@@ -570,8 +563,8 @@ class _$AtLaundryPropertyImpl implements _AtLaundryProperty {
   const _$AtLaundryPropertyImpl({
     @JsonKey(name: 'propertyId') required this.propertyId,
     @JsonKey(name: 'propertyName') required this.propertyName,
-    required this.items,
-  });
+    required final List<AtLaundryItem> items,
+  }) : _items = items;
 
   factory _$AtLaundryPropertyImpl.fromJson(Map<String, dynamic> json) =>
       _$$AtLaundryPropertyImplFromJson(json);
@@ -582,8 +575,13 @@ class _$AtLaundryPropertyImpl implements _AtLaundryProperty {
   @override
   @JsonKey(name: 'propertyName')
   final String propertyName;
+  final List<AtLaundryItem> _items;
   @override
-  final List<AtLaundryItem> items;
+  List<AtLaundryItem> get items {
+    if (_items is EqualUnmodifiableListView) return _items;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_items);
+  }
 
   @override
   String toString() {
@@ -599,7 +597,7 @@ class _$AtLaundryPropertyImpl implements _AtLaundryProperty {
                 other.propertyId == propertyId) &&
             (identical(other.propertyName, propertyName) ||
                 other.propertyName == propertyName) &&
-            const DeepCollectionEquality().equals(other.items, items));
+            const DeepCollectionEquality().equals(other._items, _items));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -608,7 +606,7 @@ class _$AtLaundryPropertyImpl implements _AtLaundryProperty {
     runtimeType,
     propertyId,
     propertyName,
-    const DeepCollectionEquality().hash(items),
+    const DeepCollectionEquality().hash(_items),
   );
 
   /// Create a copy of AtLaundryProperty
@@ -654,10 +652,6 @@ abstract class _AtLaundryProperty implements AtLaundryProperty {
   _$$AtLaundryPropertyImplCopyWith<_$AtLaundryPropertyImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// AtLaundryData
-// ─────────────────────────────────────────────────────────────────────────────
 
 AtLaundryData _$AtLaundryDataFromJson(Map<String, dynamic> json) {
   return _AtLaundryData.fromJson(json);
@@ -802,7 +796,7 @@ class __$$AtLaundryDataImplCopyWithImpl<$Res>
                     as int,
         byProperty:
             null == byProperty
-                ? _value.byProperty
+                ? _value._byProperty
                 : byProperty // ignore: cast_nullable_to_non_nullable
                     as List<AtLaundryProperty>,
       ),
@@ -817,8 +811,9 @@ class _$AtLaundryDataImpl implements _AtLaundryData {
     @JsonKey(name: 'totalItems') required this.totalItems,
     @JsonKey(name: 'overdueItems') required this.overdueItems,
     @JsonKey(name: 'overdueThresholdDays') this.overdueThresholdDays = 7,
-    @JsonKey(name: 'byProperty') required this.byProperty,
-  });
+    @JsonKey(name: 'byProperty')
+    required final List<AtLaundryProperty> byProperty,
+  }) : _byProperty = byProperty;
 
   factory _$AtLaundryDataImpl.fromJson(Map<String, dynamic> json) =>
       _$$AtLaundryDataImplFromJson(json);
@@ -832,9 +827,14 @@ class _$AtLaundryDataImpl implements _AtLaundryData {
   @override
   @JsonKey(name: 'overdueThresholdDays')
   final int overdueThresholdDays;
+  final List<AtLaundryProperty> _byProperty;
   @override
   @JsonKey(name: 'byProperty')
-  final List<AtLaundryProperty> byProperty;
+  List<AtLaundryProperty> get byProperty {
+    if (_byProperty is EqualUnmodifiableListView) return _byProperty;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_byProperty);
+  }
 
   @override
   String toString() {
@@ -852,8 +852,10 @@ class _$AtLaundryDataImpl implements _AtLaundryData {
                 other.overdueItems == overdueItems) &&
             (identical(other.overdueThresholdDays, overdueThresholdDays) ||
                 other.overdueThresholdDays == overdueThresholdDays) &&
-            const DeepCollectionEquality()
-                .equals(other.byProperty, byProperty));
+            const DeepCollectionEquality().equals(
+              other._byProperty,
+              _byProperty,
+            ));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -863,7 +865,7 @@ class _$AtLaundryDataImpl implements _AtLaundryData {
     totalItems,
     overdueItems,
     overdueThresholdDays,
-    const DeepCollectionEquality().hash(byProperty),
+    const DeepCollectionEquality().hash(_byProperty),
   );
 
   /// Create a copy of AtLaundryData
@@ -872,10 +874,7 @@ class _$AtLaundryDataImpl implements _AtLaundryData {
   @override
   @pragma('vm:prefer-inline')
   _$$AtLaundryDataImplCopyWith<_$AtLaundryDataImpl> get copyWith =>
-      __$$AtLaundryDataImplCopyWithImpl<_$AtLaundryDataImpl>(
-        this,
-        _$identity,
-      );
+      __$$AtLaundryDataImplCopyWithImpl<_$AtLaundryDataImpl>(this, _$identity);
 
   @override
   Map<String, dynamic> toJson() {
@@ -888,7 +887,8 @@ abstract class _AtLaundryData implements AtLaundryData {
     @JsonKey(name: 'totalItems') required final int totalItems,
     @JsonKey(name: 'overdueItems') required final int overdueItems,
     @JsonKey(name: 'overdueThresholdDays') final int overdueThresholdDays,
-    @JsonKey(name: 'byProperty') required final List<AtLaundryProperty> byProperty,
+    @JsonKey(name: 'byProperty')
+    required final List<AtLaundryProperty> byProperty,
   }) = _$AtLaundryDataImpl;
 
   factory _AtLaundryData.fromJson(Map<String, dynamic> json) =
