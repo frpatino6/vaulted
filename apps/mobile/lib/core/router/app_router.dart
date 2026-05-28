@@ -53,6 +53,15 @@ import '../../features/orchestrator/presentation/orchestrator_progress_dashboard
 import '../../features/orchestrator/presentation/orchestrator_task_group_screen.dart';
 import '../../features/orchestrator/presentation/orchestrator_step_guide_screen.dart';
 
+Page<void> _fadePage(Widget child, GoRouterState state) {
+  return CustomTransitionPage<void>(
+    key: state.pageKey,
+    child: child,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+        FadeTransition(opacity: animation, child: child),
+  );
+}
+
 GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
   return GoRouter(
     initialLocation: '/login',
@@ -147,284 +156,283 @@ GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
       GoRoute(path: '/mfa', builder: (context, state) => const MfaScreen()),
       GoRoute(
         path: '/dashboard',
-        builder: (context, state) => const DashboardScreen(),
+        pageBuilder: (context, state) => _fadePage(const DashboardScreen(), state),
       ),
       GoRoute(
         path: '/properties/:id',
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final id = state.pathParameters['id'] ?? '';
-          return PropertyDetailScreen(propertyId: id);
+          return _fadePage(PropertyDetailScreen(propertyId: id), state);
         },
       ),
       GoRoute(
         path: '/properties/:propertyId/rooms/:roomId',
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final propertyId = state.pathParameters['propertyId'] ?? '';
           final roomId = state.pathParameters['roomId'] ?? '';
           final roomName = state.uri.queryParameters['name'] ?? '';
           final sectionId = state.uri.queryParameters['sectionId'] ?? '';
           final section = state.uri.queryParameters['section'] ?? '';
-          return RoomDetailScreen(
+          return _fadePage(RoomDetailScreen(
             propertyId: propertyId,
             roomId: roomId,
             roomName: roomName,
             initialSection: section.isNotEmpty ? section : null,
             initialSectionId: sectionId.isNotEmpty ? sectionId : null,
-          );
+          ), state);
         },
       ),
       // Route used when navigating from a section QR scan — no propertyId known
       GoRoute(
         path: '/rooms/:roomId',
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final roomId = state.pathParameters['roomId'] ?? '';
           final roomName = state.uri.queryParameters['name'] ?? '';
           final sectionId = state.uri.queryParameters['sectionId'] ?? '';
           final section = state.uri.queryParameters['section'] ?? '';
-          return RoomDetailScreen(
+          return _fadePage(RoomDetailScreen(
             propertyId: '',
             roomId: roomId,
             roomName: roomName.isNotEmpty ? roomName : 'Section',
             initialSection: section.isNotEmpty ? section : null,
             initialSectionId: sectionId.isNotEmpty ? sectionId : null,
-          );
+          ), state);
         },
       ),
       GoRoute(
         path: '/items/:id',
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final id = state.pathParameters['id'] ?? '';
-          return ItemDetailScreen(itemId: id);
+          return _fadePage(ItemDetailScreen(itemId: id), state);
         },
       ),
       GoRoute(
         path: '/search',
-        builder: (context, state) => const SearchScreen(),
+        pageBuilder: (context, state) => _fadePage(const SearchScreen(), state),
       ),
       GoRoute(
         path: '/assets',
-        builder: (context, state) => AssetBrowserScreen(
+        pageBuilder: (context, state) => _fadePage(AssetBrowserScreen(
           initialStatus: state.uri.queryParameters['status'],
-        ),
+        ), state),
       ),
       GoRoute(
         path: '/qr-codes',
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final extra = state.extra;
           final items = extra is List<ItemModel> ? extra : null;
-          return QrListScreen(items: items);
+          return _fadePage(QrListScreen(items: items), state);
         },
       ),
       GoRoute(
         path: '/scanner',
-        builder: (context, state) => const QrScannerScreen(),
+        pageBuilder: (context, state) => _fadePage(const QrScannerScreen(), state),
       ),
       GoRoute(
         path: '/reports',
-        builder: (context, state) => const ReportsScreen(),
+        pageBuilder: (context, state) => _fadePage(const ReportsScreen(), state),
       ),
       GoRoute(
         path: '/wardrobe',
-        builder: (context, state) => const WardrobeScreen(),
+        pageBuilder: (context, state) => _fadePage(const WardrobeScreen(), state),
       ),
       GoRoute(
         path: '/wardrobe/at-laundry',
-        builder: (context, state) => const AtLaundryScreen(),
+        pageBuilder: (context, state) => _fadePage(const AtLaundryScreen(), state),
       ),
       GoRoute(
         path: '/wardrobe/outfits',
-        builder: (context, state) => const OutfitListScreen(),
+        pageBuilder: (context, state) => _fadePage(const OutfitListScreen(), state),
       ),
       GoRoute(
         path: '/wardrobe/outfits/new',
-        builder: (context, state) => const CreateOutfitScreen(),
+        pageBuilder: (context, state) => _fadePage(const CreateOutfitScreen(), state),
       ),
       GoRoute(
         path: '/wardrobe/outfits/:id',
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final id = state.pathParameters['id'] ?? '';
-          return OutfitDetailScreen(outfitId: id);
+          return _fadePage(OutfitDetailScreen(outfitId: id), state);
         },
       ),
       GoRoute(
         path: '/settings',
-        builder: (context, state) => const SettingsScreen(),
+        pageBuilder: (context, state) => _fadePage(const SettingsScreen(), state),
       ),
       GoRoute(
         path: '/settings/users',
-        builder: (context, state) => const UsersScreen(),
+        pageBuilder: (context, state) => _fadePage(const UsersScreen(), state),
       ),
       GoRoute(
         path: '/settings/household-members',
-        builder: (context, state) => const HouseholdMembersScreen(),
+        pageBuilder: (context, state) => _fadePage(const HouseholdMembersScreen(), state),
       ),
       GoRoute(
         path: '/notifications',
-        builder: (context, state) => const NotificationCenterPage(),
+        pageBuilder: (context, state) => _fadePage(const NotificationCenterPage(), state),
       ),
       GoRoute(
         path: '/settings/notifications',
-        builder: (context, state) => const NotificationPreferencesPage(),
+        pageBuilder: (context, state) => _fadePage(const NotificationPreferencesPage(), state),
       ),
-      GoRoute(path: '/chat', builder: (context, state) => const ChatScreen()),
+      GoRoute(
+        path: '/chat',
+        pageBuilder: (context, state) => _fadePage(const ChatScreen(), state),
+      ),
       GoRoute(
         path: '/help-chat',
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final currentScreen = state.uri.queryParameters['screen'];
           final initialQuery = state.uri.queryParameters['ask'];
-          return HelpChatScreen(
+          return _fadePage(HelpChatScreen(
             currentScreen: currentScreen,
             initialQuery: initialQuery,
-          );
+          ), state);
         },
       ),
       GoRoute(
         path: '/maintenance',
-        builder: (context, state) => const MaintenanceListScreen(),
+        pageBuilder: (context, state) => _fadePage(const MaintenanceListScreen(), state),
       ),
       GoRoute(
         path: '/maintenance/:id',
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final id = state.pathParameters['id'] ?? '';
           final record = state.extra;
-          return MaintenanceDetailScreen(
+          return _fadePage(MaintenanceDetailScreen(
             maintenanceId: id,
             initialRecord: record is MaintenanceModel ? record : null,
-          );
+          ), state);
         },
       ),
       GoRoute(
         path: '/movements',
-        builder: (context, state) => const MovementsScreen(),
+        pageBuilder: (context, state) => _fadePage(const MovementsScreen(), state),
       ),
       GoRoute(
         path: '/movements/:id',
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final id = state.pathParameters['id'] ?? '';
-          return MovementDetailScreen(movementId: id);
+          return _fadePage(MovementDetailScreen(movementId: id), state);
         },
       ),
       GoRoute(
         path: '/movements/:id/scan',
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final id = state.pathParameters['id'] ?? '';
-          return MovementScanScreen(movementId: id);
+          return _fadePage(MovementScanScreen(movementId: id), state);
         },
       ),
       // ── AI Scan routes ─────────────────────────────────────────────────────
       GoRoute(
         path: '/properties/:propertyId/ai-scan',
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final propertyId = state.pathParameters['propertyId'] ?? '';
           final floors = (state.extra as List<FloorModel>?) ?? [];
-          return AiScanScreen(propertyId: propertyId, floors: floors);
+          return _fadePage(AiScanScreen(propertyId: propertyId, floors: floors), state);
         },
       ),
       GoRoute(
         path: '/properties/:propertyId/ai-scan/review',
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final propertyId = state.pathParameters['propertyId'] ?? '';
           final extra = state.extra as Map<String, dynamic>?;
           final result = extra?['result'] as AiScanResult;
           final floors = (extra?['floors'] as List<FloorModel>?) ?? [];
-          return AiItemReviewScreen(
+          return _fadePage(AiItemReviewScreen(
             propertyId: propertyId,
             result: result,
             floors: floors,
-          );
+          ), state);
         },
       ),
       // ── Insurance routes ───────────────────────────────────────────────────
       GoRoute(
         path: '/insurance',
-        builder: (context, state) => const InsuranceListScreen(),
+        pageBuilder: (context, state) => _fadePage(const InsuranceListScreen(), state),
       ),
       GoRoute(
         path: '/insurance/new',
-        builder: (context, state) => const InsuranceFormScreen(),
+        pageBuilder: (context, state) => _fadePage(const InsuranceFormScreen(), state),
       ),
       GoRoute(
         path: '/insurance/:id',
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final id = state.pathParameters['id'] ?? '';
-          return InsuranceDetailScreen(policyId: id);
+          return _fadePage(InsuranceDetailScreen(policyId: id), state);
         },
       ),
       GoRoute(
         path: '/insurance/:id/edit',
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final policy = state.extra as dynamic;
-          return InsuranceFormScreen(policy: policy);
+          return _fadePage(InsuranceFormScreen(policy: policy), state);
         },
       ),
       GoRoute(
         path: '/insurance/:id/gaps',
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final id = state.pathParameters['id'] ?? '';
-          return CoverageGapsScreen(policyId: id);
+          return _fadePage(CoverageGapsScreen(policyId: id), state);
         },
       ),
       GoRoute(
         path: '/insurance/:id/claim-draft',
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final id = state.pathParameters['id'] ?? '';
-          return ClaimDraftScreen(policyId: id);
+          return _fadePage(ClaimDraftScreen(policyId: id), state);
         },
       ),
       // ── Orchestrator routes ────────────────────────────────────────────────
       GoRoute(
         path: '/orchestrator',
-        builder: (context, state) => const OrchestratorListScreen(),
+        pageBuilder: (context, state) => _fadePage(const OrchestratorListScreen(), state),
       ),
       GoRoute(
         path: '/orchestrator/new',
-        builder: (context, state) => const OrchestratorNewCommandScreen(),
+        pageBuilder: (context, state) => _fadePage(const OrchestratorNewCommandScreen(), state),
       ),
       GoRoute(
         path: '/orchestrator/review',
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final parsed = state.extra as ParsedPlanModel;
-          return OrchestratorPlanReviewScreen(parsed: parsed);
+          return _fadePage(OrchestratorPlanReviewScreen(parsed: parsed), state);
         },
       ),
       GoRoute(
         path: '/orchestrator/plans/:id',
-        builder: (context, state) => OrchestratorPlanDetailScreen(
+        pageBuilder: (context, state) => _fadePage(OrchestratorPlanDetailScreen(
           planId: state.pathParameters['id']!,
-        ),
+        ), state),
       ),
       GoRoute(
         path: '/orchestrator/plans/:id/progress',
-        builder: (context, state) => OrchestratorProgressDashboardScreen(
+        pageBuilder: (context, state) => _fadePage(OrchestratorProgressDashboardScreen(
           planId: state.pathParameters['id']!,
-        ),
+        ), state),
       ),
       GoRoute(
         path: '/orchestrator/plans/:planId/groups/:groupId',
-        builder: (context, state) => OrchestratorTaskGroupScreen(
+        pageBuilder: (context, state) => _fadePage(OrchestratorTaskGroupScreen(
           planId: state.pathParameters['planId']!,
           groupId: state.pathParameters['groupId']!,
-        ),
+        ), state),
       ),
       GoRoute(
         path: '/orchestrator/plans/:planId/groups/:groupId/steps/:stepId',
-        builder: (context, state) => OrchestratorStepGuideScreen(
+        pageBuilder: (context, state) => _fadePage(OrchestratorStepGuideScreen(
           planId: state.pathParameters['planId']!,
           groupId: state.pathParameters['groupId']!,
           stepId: state.pathParameters['stepId']!,
-        ),
+        ), state),
       ),
       GoRoute(
         path: '/unauthorized',
-        builder:
-            (context, state) => Scaffold(
-              body: Center(
-                child: Text(
-                  'Unauthorized',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-              ),
-            ),
+        pageBuilder: (context, state) => _fadePage(Scaffold(
+          body: Center(
+            child: Text('Unauthorized', style: Theme.of(context).textTheme.titleLarge),
+          ),
+        ), state),
       ),
     ],
   );

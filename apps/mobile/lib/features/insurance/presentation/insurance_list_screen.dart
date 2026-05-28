@@ -64,6 +64,7 @@ class _InsuranceListScreenState extends ConsumerState<InsuranceListScreen> {
           const HelpScreenButton(screenKey: 'insurance'),
           if (canEdit)
             IconButton(
+              tooltip: 'Add policy',
               icon: const Icon(Icons.add),
               color: AppColors.accent,
               onPressed: () async {
@@ -258,7 +259,7 @@ class _StatusBadge extends StatelessWidget {
     Color color;
     switch (status) {
       case 'active':
-        color = const Color(0xFF4CAF50);
+        color = AppColors.statusActive;
         break;
       case 'expired':
         color = AppColors.error;
@@ -267,11 +268,11 @@ class _StatusBadge extends StatelessWidget {
         color = AppColors.onSurfaceVariant;
     }
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
+        color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.4)),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
       ),
       child: Text(
         status[0].toUpperCase() + status.substring(1),

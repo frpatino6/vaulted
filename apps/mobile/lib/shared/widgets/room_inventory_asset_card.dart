@@ -190,10 +190,13 @@ class RoomInventoryAssetCard extends ConsumerWidget {
 
   Widget _buildThumbnail() {
     if (item.photos.isNotEmpty) {
-      return Image.network(
-        item.photos.first,
-        fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => _placeholderIcon(),
+      return Hero(
+        tag: 'item_photo_${item.id}',
+        child: Image.network(
+          item.photos.first,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => _placeholderIcon(),
+        ),
       );
     }
     return _placeholderIcon();

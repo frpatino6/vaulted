@@ -98,16 +98,19 @@ class AppTypography {
   static TextStyle get bodyLarge => GoogleFonts.dmSans(
         fontSize: 16,
         fontWeight: FontWeight.w400,
+        height: 1.5,
       );
 
   static TextStyle get bodyMedium => GoogleFonts.dmSans(
         fontSize: 14,
         fontWeight: FontWeight.w400,
+        height: 1.5,
       );
 
   static TextStyle get bodySmall => GoogleFonts.dmSans(
         fontSize: 12,
         fontWeight: FontWeight.w400,
+        height: 1.4,
       );
 
   static TextStyle get labelLarge => GoogleFonts.dmSans(

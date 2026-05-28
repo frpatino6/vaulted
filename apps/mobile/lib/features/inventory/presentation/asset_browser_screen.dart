@@ -383,6 +383,7 @@ class _AssetBrowserScreenState extends ConsumerState<AssetBrowserScreen> {
                       canSeeValues: canSeeValues,
                       sortBy: _sortBy,
                       bottomPadding: bottomPadding,
+                      onRefresh: _applyFilters,
                     ),
                     loading: () => const AppScreenSkeleton(showHeader: false),
                     error: (e, _) => _ErrorState(
@@ -485,12 +486,14 @@ class _BrowserBody extends StatelessWidget {
     required this.canSeeValues,
     required this.sortBy,
     required this.bottomPadding,
+    required this.onRefresh,
   });
 
   final AssetBrowserState data;
   final bool canSeeValues;
   final AssetSortBy sortBy;
   final double bottomPadding;
+  final VoidCallback onRefresh;
 
   @override
   Widget build(BuildContext context) {
@@ -498,7 +501,10 @@ class _BrowserBody extends StatelessWidget {
       return _EmptyState(hasActiveFilters: data.isFiltered);
     }
 
-    return CustomScrollView(
+    return RefreshIndicator(
+      onRefresh: () async => onRefresh(),
+      color: AppColors.accent,
+      child: CustomScrollView(
       slivers: [
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(
@@ -529,6 +535,7 @@ class _BrowserBody extends StatelessWidget {
           ),
         ),
       ],
+    ),
     );
   }
 }

@@ -305,33 +305,61 @@ class _InsuranceDetailScreenState extends ConsumerState<InsuranceDetailScreen> {
   }
 
   Future<void> _detachItem(String itemId) async {
-    final confirm = await showDialog<bool>(
+    final confirm = await showModalBottomSheet<bool>(
       context: context,
-      builder:
-          (ctx) => AlertDialog(
-            backgroundColor: AppColors.surface,
-            title: Text(
-              'Remove Item',
-              style: TextStyle(color: AppColors.onBackground),
-            ),
-            content: Text(
-              'Remove this item from the policy?',
-              style: TextStyle(color: AppColors.onSurface),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: Text(
-                  'Cancel',
-                  style: TextStyle(color: AppColors.onSurface),
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.onSurfaceVariant.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: Text('Remove', style: TextStyle(color: AppColors.error)),
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Text(
+              'Remove Item',
+              style: AppTypography.titleLarge.copyWith(color: AppColors.onBackground),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              'Remove this item from the policy?',
+              style: AppTypography.bodyMedium.copyWith(color: AppColors.onSurface),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(ctx, false),
+                    child: const Text('Cancel'),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () => Navigator.pop(ctx, true),
+                    style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+                    child: const Text('Remove'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
+        ),
+      ),
     );
     if (confirm != true || !mounted) return;
 
@@ -355,33 +383,65 @@ class _InsuranceDetailScreenState extends ConsumerState<InsuranceDetailScreen> {
     BuildContext context,
     InsurancePolicyModel policy,
   ) async {
-    final confirm = await showDialog<bool>(
+    final confirm = await showModalBottomSheet<bool>(
       context: context,
-      builder:
-          (ctx) => AlertDialog(
-            backgroundColor: AppColors.surface,
-            title: Text(
-              'Delete Policy',
-              style: TextStyle(color: AppColors.onBackground),
-            ),
-            content: Text(
-              'Delete "${policy.provider} – ${policy.policyNumber}"? This cannot be undone.',
-              style: TextStyle(color: AppColors.onSurface),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: Text(
-                  'Cancel',
-                  style: TextStyle(color: AppColors.onSurface),
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.onSurfaceVariant.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: Text('Delete', style: TextStyle(color: AppColors.error)),
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Text(
+              'Delete Policy',
+              style: AppTypography.titleLarge.copyWith(color: AppColors.onBackground),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              'Delete "${policy.provider} – ${policy.policyNumber}"?',
+              style: AppTypography.bodyMedium.copyWith(color: AppColors.onSurface),
+            ),
+            Text(
+              'This cannot be undone.',
+              style: AppTypography.bodySmall.copyWith(color: AppColors.onSurfaceVariant),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(ctx, false),
+                    child: const Text('Cancel'),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () => Navigator.pop(ctx, true),
+                    style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+                    child: const Text('Delete'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
+        ),
+      ),
     );
     if (confirm != true || !mounted) return;
 
@@ -573,7 +633,7 @@ class _StatusBadge extends StatelessWidget {
     Color color;
     switch (status) {
       case 'active':
-        color = const Color(0xFF4CAF50);
+        color = AppColors.statusActive;
         break;
       case 'expired':
         color = AppColors.error;
@@ -582,11 +642,11 @@ class _StatusBadge extends StatelessWidget {
         color = AppColors.onSurfaceVariant;
     }
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
+        color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.4)),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
       ),
       child: Text(
         status[0].toUpperCase() + status.substring(1),
