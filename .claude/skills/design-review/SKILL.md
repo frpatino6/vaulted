@@ -193,23 +193,18 @@ Vaulted serves UHNW clients. Design must signal exclusivity and trust.
 
 ## Output Format
 
-### 🔴 Critical (breaks premium feel or functionality)
-Design/UX bugs that make the app feel broken, cheap, or inaccessible.
+**Compact. One line per finding. No prose. No summaries.**
 
-### 🟡 Should Fix (degrades premium perception)
-Violations of the design system, inconsistencies, or missed polish opportunities.
-
-### 🟢 Suggestions (elevate quality further)
-Micro-interactions, animation improvements, luxury brand touches.
-
-### ✅ What's solid
-Specific callouts of what's done well — reinforce good patterns.
-
----
+```
+🔴 file:line — problem → fix
+🟡 file:line — problem → fix
+🟢 file:line — suggestion
+✅ what's solid (max 3 bullets, one line each)
+```
 
 **Rules:**
-- Show current code snippet + corrected version for every finding.
-- Group findings by screen/file path.
-- For visual issues: describe what the user sees, then what they should see.
-- Be opinionated. "This looks cheap" is valid feedback with a fix attached.
-- Skip checklist items that don't apply (backend-only changes, etc.).
+- One line per finding: location, problem, fix. No explanations unless non-obvious.
+- Show code only when fix is ambiguous (5 lines max, no before/after blocks).
+- No section headers, no counts, no closing summary.
+- Skip passing items entirely.
+- Max 20 findings total — rank by impact, cut the rest.

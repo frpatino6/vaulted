@@ -195,7 +195,7 @@ class _AssetBrowserScreenState extends ConsumerState<AssetBrowserScreen> {
           IconButton(
             tooltip: 'View QR Codes',
             icon: const Icon(Icons.qr_code_2_rounded),
-            color: AppColors.onSurfaceVariant,
+            color: AppColors.accent,
             onPressed: () => context.push('/qr-codes'),
           ),
           if (_hasActiveFilters)

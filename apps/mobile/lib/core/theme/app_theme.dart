@@ -33,6 +33,12 @@ class AppColors {
   /// Gold for catalog total value and premium highlights (e.g. room inventory summary).
   static const Color catalogGold = Color(0xFFC5A059);
   static const Color error = Color(0xFFCF6679);
+  static const Color info = Color(0xFF2196F3);
+  static const Color statusActive = Color(0xFF4CAF50);
+  static const Color statusLoaned = Color(0xFFFFC107);
+  static const Color statusRepair = Color(0xFFFF9800);
+  static const Color statusStorage = Color(0xFF2196F3);
+  static const Color statusDisposed = Color(0xFF9E9E9E);
 
   // Light palette — "Luxury Light" (ivory, pearl, deep gold)
   /// Warm ivory pearl — never pure white; evokes Cartier packaging.

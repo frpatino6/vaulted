@@ -86,6 +86,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           if (state.messages.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.delete_sweep_outlined),
+              color: AppColors.accent,
               tooltip: 'Clear session',
               onPressed: () =>
                   ref.read(aiChatNotifierProvider.notifier).clearSession(),

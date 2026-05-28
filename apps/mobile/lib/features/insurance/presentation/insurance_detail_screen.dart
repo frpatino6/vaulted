@@ -98,7 +98,7 @@ class _InsuranceDetailScreenState extends ConsumerState<InsuranceDetailScreen> {
             const HelpScreenButton(screenKey: 'insurance'),
             IconButton(
               icon: const Icon(Icons.auto_awesome_outlined),
-              color: AppColors.accentLight,
+              color: AppColors.accent,
               tooltip: 'AI Analysis',
               onPressed: () => _showAiAnalysisSheet(context, policy.id),
             ),

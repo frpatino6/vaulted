@@ -1,4 +1,6 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -555,10 +557,9 @@ class DashboardPropertyCard extends StatelessWidget {
     _ => 'Rental',
   };
 
-  // D8: badge border color per type
   Color get _typeBadgeBorderColor => switch (property.type) {
     'primary' => AppColors.accent,
-    'vacation' => const Color(0xFF2196F3),
+    'vacation' => AppColors.info,
     _ => AppColors.onSurfaceVariant,
   };
 
@@ -601,10 +602,12 @@ class DashboardPropertyCard extends StatelessWidget {
               children: [
                 // Background image or gradient
                 if (imageUrl != null && imageUrl.isNotEmpty)
-                  Image.network(
-                    imageUrl,
+                  CachedNetworkImage(
+                    imageUrl: imageUrl,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => _buildPlaceholderGradient(),
+                    fadeInDuration: const Duration(milliseconds: 200),
+                    placeholder: (_, __) => _buildPlaceholderGradient(),
+                    errorWidget: (_, __, ___) => _buildPlaceholderGradient(),
                   )
                 else
                   _buildPlaceholderGradient(),
@@ -761,7 +764,7 @@ class _StatsSection extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'WARDROBE OVERVIEW',
+          'PORTFOLIO OVERVIEW',
           style: Theme.of(context).textTheme.labelSmall?.copyWith(
             color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
             fontSize: 10,
@@ -860,10 +863,9 @@ class _OverviewCard extends StatelessWidget {
               const SizedBox(height: 2),
               Text(
                 label,
-                style: const TextStyle(
-                  color: Colors.white54,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: AppColors.onSurfaceVariant,
                   fontSize: 12,
-                  fontWeight: FontWeight.w400,
                   letterSpacing: 0.3,
                 ),
               ),
@@ -881,11 +883,11 @@ class _StatusRow extends StatelessWidget {
   final Map<String, int> itemsByStatus;
 
   static const _statusColors = {
-    'active': Color(0xFF4CAF50),
-    'loaned': Color(0xFFFFC107),
-    'repair': Color(0xFFFF9800),
-    'storage': Color(0xFF2196F3),
-    'disposed': Color(0xFF9E9E9E),
+    'active': AppColors.statusActive,
+    'loaned': AppColors.statusLoaned,
+    'repair': AppColors.statusRepair,
+    'storage': AppColors.statusStorage,
+    'disposed': AppColors.statusDisposed,
   };
 
   @override
@@ -980,9 +982,11 @@ class _MaintenanceAlertCardState extends ConsumerState<_MaintenanceAlertCard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                GestureDetector(
+                InkWell(
                   onTap: () => context.push('/maintenance'),
-                  behavior: HitTestBehavior.opaque,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(16),
+                  ),
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(
                       AppSpacing.md,
@@ -1018,7 +1022,7 @@ class _MaintenanceAlertCardState extends ConsumerState<_MaintenanceAlertCard> {
                         child: _AlertCountTile(
                           count: overdue,
                           label: 'Overdue',
-                          color: const Color(0xFFCF6679),
+                          color: AppColors.error,
                           onTap: () => context.push('/maintenance'),
                         ),
                       ),
@@ -1027,7 +1031,7 @@ class _MaintenanceAlertCardState extends ConsumerState<_MaintenanceAlertCard> {
                         child: _AlertCountTile(
                           count: dueSoon,
                           label: 'Due this week',
-                          color: const Color(0xFFD4AF37),
+                          color: AppColors.accentBright,
                           onTap: () => context.push('/maintenance'),
                         ),
                       ),
@@ -1098,9 +1102,11 @@ class _ActiveOperationsCardState extends ConsumerState<_ActiveOperationsCard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                GestureDetector(
+                InkWell(
                   onTap: () => context.push('/movements'),
-                  behavior: HitTestBehavior.opaque,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(16),
+                  ),
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(
                       AppSpacing.md,
@@ -1134,8 +1140,8 @@ class _ActiveOperationsCardState extends ConsumerState<_ActiveOperationsCard> {
                   physics: const NeverScrollableScrollPhysics(),
                   padding: const EdgeInsets.only(bottom: AppSpacing.xs),
                   itemCount: active.length,
-                  separatorBuilder: (_, __) => const Divider(
-                    color: Colors.white10,
+                  separatorBuilder: (_, __) => Divider(
+                    color: AppColors.onSurfaceVariant.withValues(alpha: 0.1),
                     height: 1,
                     indent: AppSpacing.md,
                     endIndent: AppSpacing.md,
@@ -1197,10 +1203,8 @@ class _OperationListItem extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: isDraft
-                    ? const Color(0xFF9E9E9E)
-                    : const Color(0xFF2196F3),
-                borderRadius: BorderRadius.circular(4),
+                color: isDraft ? AppColors.statusDisposed : AppColors.info,
+                borderRadius: BorderRadius.circular(6),
               ),
               child: Text(
                 isDraft ? 'DRAFT' : 'ACTIVE',
