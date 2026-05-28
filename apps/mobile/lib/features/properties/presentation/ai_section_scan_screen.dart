@@ -12,6 +12,8 @@ import '../../../core/utils/image_compress_utils.dart';
 import '../../media/data/media_repository_provider.dart';
 import '../data/models/room_section_model.dart';
 import '../domain/property_detail_notifier.dart';
+import 'package:vaulted/shared/widgets/help_screen_button.dart';
+
 
 class AiSectionScanScreen extends ConsumerStatefulWidget {
   const AiSectionScanScreen({
@@ -371,6 +373,7 @@ class _AiSectionScanScreenState extends ConsumerState<AiSectionScanScreen> {
           style: TextStyle(color: AppColors.onBackground),
         ),
         iconTheme: const IconThemeData(color: AppColors.onBackground),
+        actions: [const HelpScreenButton(screenKey: 'ai_section_scan')],
       ),
       body: switch (_step) {
         _ScanStep.capture => _CaptureView(

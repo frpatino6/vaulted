@@ -10,6 +10,7 @@ import 'qr_print_helper_stub.dart'
     if (dart.library.js_interop) 'qr_print_helper_web.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/help_screen_button.dart';
 import '../data/models/item_model.dart';
 import '../domain/asset_browser_notifier.dart';
 
@@ -77,6 +78,7 @@ class QrListScreen extends ConsumerWidget {
           ],
         ),
         actions: [
+          const HelpScreenButton(screenKey: 'inventory'),
           IconButton(
             tooltip: 'Print',
             icon: const Icon(Icons.print_outlined),

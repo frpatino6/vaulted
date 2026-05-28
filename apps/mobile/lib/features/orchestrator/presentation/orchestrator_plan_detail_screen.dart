@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/help_screen_button.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../inventory/data/models/item_model.dart';
 import '../../inventory/data/search_remote_data_source_provider.dart';
@@ -200,6 +201,7 @@ class _OrchestratorPlanDetailScreenState
             overflow: TextOverflow.ellipsis,
           ),
           actions: [
+            const HelpScreenButton(screenKey: 'orchestrator'),
             if (_isOwnerOrManager && !plan.isCancelled)
               PopupMenuButton<String>(
                 icon: const Icon(Icons.more_vert, color: AppColors.onBackground),

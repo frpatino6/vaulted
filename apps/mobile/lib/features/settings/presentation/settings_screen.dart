@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_mode_provider.dart';
+import '../../../shared/widgets/help_screen_button.dart';
 import '../../auth/presentation/auth_notifier.dart';
 import '../../users/domain/current_user_jwt.dart';
 
@@ -32,6 +33,7 @@ class SettingsScreen extends ConsumerWidget {
             color: AppColors.onBackground,
           ),
         ),
+        actions: [const HelpScreenButton(screenKey: 'settings')],
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.pop(),

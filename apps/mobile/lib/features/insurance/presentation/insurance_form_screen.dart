@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/help_screen_button.dart';
 import '../data/models/insurance_policy_model.dart';
 import '../data/insurance_repository_provider.dart';
 import '../domain/insurance_list_notifier.dart';
@@ -196,6 +197,7 @@ class _InsuranceFormScreenState extends ConsumerState<InsuranceFormScreen> {
             fontWeight: FontWeight.w600,
           ),
         ),
+        actions: [const HelpScreenButton(screenKey: 'insurance')],
       ),
       body: Form(
         key: _formKey,

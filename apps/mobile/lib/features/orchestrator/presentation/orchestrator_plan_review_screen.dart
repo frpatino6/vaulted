@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/help_screen_button.dart';
 import '../../inventory/data/models/item_model.dart';
 import '../../inventory/data/search_remote_data_source_provider.dart';
 import '../../users/data/models/user_model.dart';
@@ -210,6 +211,7 @@ class _OrchestratorPlanReviewScreenState
             fontWeight: FontWeight.w600,
           ),
         ),
+        actions: [const HelpScreenButton(screenKey: 'orchestrator')],
       ),
       body: Column(
         children: [

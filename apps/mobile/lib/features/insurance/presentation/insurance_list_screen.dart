@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/app_bottom_nav.dart';
+import '../../../shared/widgets/help_screen_button.dart';
 import '../../users/domain/current_user_jwt.dart';
 import '../data/models/insurance_policy_model.dart';
 import '../domain/insurance_list_notifier.dart';
@@ -60,6 +61,7 @@ class _InsuranceListScreenState extends ConsumerState<InsuranceListScreen> {
           ),
         ),
         actions: [
+          const HelpScreenButton(screenKey: 'insurance'),
           if (canEdit)
             IconButton(
               icon: const Icon(Icons.add),

@@ -15,6 +15,8 @@ import '../../media/data/media_repository_provider.dart';
 import '../data/models/room_section_model.dart';
 import '../domain/property_detail_notifier.dart';
 import 'ai_section_scan_screen.dart';
+import 'package:vaulted/shared/widgets/help_screen_button.dart';
+
 
 class RoomSectionsScreen extends ConsumerStatefulWidget {
   const RoomSectionsScreen({
@@ -188,6 +190,7 @@ class _RoomSectionsScreenState extends ConsumerState<RoomSectionsScreen> {
         ),
         iconTheme: const IconThemeData(color: AppColors.onBackground),
         actions: [
+          const HelpScreenButton(screenKey: 'properties'),
           IconButton(
             icon: const Icon(Icons.auto_awesome, color: AppColors.accent),
             tooltip: 'AI Section Scan',

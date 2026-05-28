@@ -31,6 +31,8 @@ import '../../movements/domain/item_repair_movement_provider.dart';
 import '../../movements/presentation/quick_transfer_sheet.dart';
 import '../../../shared/widgets/item_card.dart';
 import '../../../shared/widgets/status_badge.dart';
+import 'package:vaulted/shared/widgets/help_screen_button.dart';
+
 
 /// Catalog gold for price and accents (Sotheby's/Christie's style).
 const Color _kCatalogGold = Color(0xFFC5A059);
@@ -117,6 +119,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
+                actions: [const HelpScreenButton(screenKey: 'item_detail')],
               ),
               SliverToBoxAdapter(
                 child: Padding(

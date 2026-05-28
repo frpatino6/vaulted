@@ -6,6 +6,7 @@ import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/help_screen_button.dart';
 import '../../properties/data/models/property_model.dart';
 import '../../properties/domain/properties_notifier.dart';
 import '../domain/orchestrator_parse_notifier.dart';
@@ -177,6 +178,7 @@ class _OrchestratorNewCommandScreenState
             fontWeight: FontWeight.w600,
           ),
         ),
+        actions: [const HelpScreenButton(screenKey: 'orchestrator')],
       ),
       body: Stack(
         children: [

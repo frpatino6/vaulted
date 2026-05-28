@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/help_screen_button.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../data/models/insurance_ai_model.dart';
 import '../domain/insurance_ai_notifier.dart';
@@ -88,6 +89,7 @@ class _ClaimDraftScreenState extends ConsumerState<ClaimDraftScreen> {
             color: AppColors.onBackground,
           ),
         ),
+        actions: [const HelpScreenButton(screenKey: 'insurance')],
       ),
       body: SafeArea(
         child:

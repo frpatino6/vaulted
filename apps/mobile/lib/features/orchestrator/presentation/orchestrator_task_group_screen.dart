@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/help_screen_button.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../users/domain/current_user_jwt.dart';
 import '../data/models/orchestrator_plan_model.dart';
@@ -113,6 +114,7 @@ class _OrchestratorTaskGroupScreenState
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
+            actions: [const HelpScreenButton(screenKey: 'orchestrator')],
           ),
           // Header card
           SliverToBoxAdapter(

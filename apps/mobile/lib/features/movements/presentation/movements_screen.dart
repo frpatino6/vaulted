@@ -10,6 +10,8 @@ import '../data/models/movement_model.dart';
 import '../domain/movement_list_notifier.dart';
 import '../domain/active_movement_notifier.dart';
 import 'new_movement_sheet.dart';
+import 'package:vaulted/shared/widgets/help_screen_button.dart';
+
 
 // ---------------------------------------------------------------------------
 // Color tokens — WCAG AA compliant on #1C1C26 (surfaceVariant)
@@ -108,6 +110,7 @@ class _MovementsScreenState extends ConsumerState<MovementsScreen>
             letterSpacing: -0.3,
           ),
         ),
+        actions: [const HelpScreenButton(screenKey: 'movements')],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(44),
           child: Column(

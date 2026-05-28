@@ -271,7 +271,11 @@ GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
         path: '/help-chat',
         builder: (context, state) {
           final currentScreen = state.uri.queryParameters['screen'];
-          return HelpChatScreen(currentScreen: currentScreen);
+          final initialQuery = state.uri.queryParameters['ask'];
+          return HelpChatScreen(
+            currentScreen: currentScreen,
+            initialQuery: initialQuery,
+          );
         },
       ),
       GoRoute(

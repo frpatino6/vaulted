@@ -7,6 +7,8 @@ import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../data/outfit_model.dart';
 import '../data/outfit_repository_provider.dart';
+import '../../../shared/widgets/help_screen_button.dart';
+
 
 class OutfitDetailScreen extends ConsumerWidget {
   const OutfitDetailScreen({super.key, required this.outfitId});
@@ -34,6 +36,7 @@ class OutfitDetailScreen extends ConsumerWidget {
             backgroundColor: AppColors.background,
             foregroundColor: AppColors.onBackground,
             title: Text(outfit.name),
+            actions: [const HelpScreenButton(screenKey: 'wardrobe')],
           ),
           body: Padding(
             padding: const EdgeInsets.all(AppSpacing.md),

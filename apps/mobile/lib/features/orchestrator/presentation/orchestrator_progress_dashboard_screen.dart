@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/help_screen_button.dart';
 import '../data/models/orchestrator_plan_model.dart';
 import '../domain/orchestrator_detail_notifier.dart';
 import '../domain/orchestrator_progress_notifier.dart';
@@ -87,6 +88,7 @@ class _OrchestratorProgressDashboardScreenState
           ),
         ),
         actions: [
+          const HelpScreenButton(screenKey: 'orchestrator'),
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: AppColors.accent),
             onPressed: () => _load(),

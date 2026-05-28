@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/help_screen_button.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../data/models/household_member_model.dart';
 import '../domain/household_members_notifier.dart';
@@ -20,6 +21,7 @@ class HouseholdMembersScreen extends ConsumerWidget {
         backgroundColor: AppColors.background,
         foregroundColor: AppColors.onBackground,
         title: const Text('Household Members'),
+        actions: [const HelpScreenButton(screenKey: 'household_members')],
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.pop(),

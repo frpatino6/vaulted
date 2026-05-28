@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/help_screen_button.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../users/domain/current_user_jwt.dart';
 import '../data/models/insurance_policy_model.dart';
@@ -94,6 +95,7 @@ class _InsuranceDetailScreenState extends ConsumerState<InsuranceDetailScreen> {
             ),
           ),
           actions: [
+            const HelpScreenButton(screenKey: 'insurance'),
             IconButton(
               icon: const Icon(Icons.auto_awesome_outlined),
               color: AppColors.accentLight,

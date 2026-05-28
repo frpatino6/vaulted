@@ -13,9 +13,13 @@ export const VALID_HELP_SCREENS = [
   'properties',
   'users',
   'ai_scan',
+  'ai_section_scan',
   'ai_chat',
   'reports',
   'settings',
+  'orchestrator',
+  'notifications',
+  'household_members',
 ] as const;
 
 export type HelpScreen = (typeof VALID_HELP_SCREENS)[number];

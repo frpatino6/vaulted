@@ -9,6 +9,8 @@ import '../../properties/domain/properties_notifier.dart';
 import '../../users/domain/current_user_jwt.dart';
 import '../data/models/item_model.dart';
 import '../domain/asset_browser_notifier.dart';
+import 'package:vaulted/shared/widgets/help_screen_button.dart';
+
 
 const List<String> _categoryFilters = <String>[
   'All',
@@ -189,6 +191,7 @@ class _AssetBrowserScreenState extends ConsumerState<AssetBrowserScreen> {
           overflow: TextOverflow.ellipsis,
         ),
         actions: [
+          const HelpScreenButton(screenKey: 'inventory'),
           IconButton(
             tooltip: 'View QR Codes',
             icon: const Icon(Icons.qr_code_2_rounded),

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../shared/widgets/help_screen_button.dart';
 import '../../domain/entities/notification_item.dart';
 import '../providers/notifications_list_provider.dart';
 
@@ -120,6 +121,7 @@ class _NotificationCenterPageState
           onPressed: () => context.pop(),
         ),
         actions: [
+          const HelpScreenButton(screenKey: 'notifications'),
           if (unreadCount > 0 && _initialLoadCompleted)
             TextButton(
               onPressed: _markAllRead,

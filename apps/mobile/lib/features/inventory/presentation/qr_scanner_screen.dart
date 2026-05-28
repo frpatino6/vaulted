@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/help_screen_button.dart';
 
 class QrScannerScreen extends StatefulWidget {
   const QrScannerScreen({super.key});
@@ -59,6 +60,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
         title: const Text('Scan Item'),
         backgroundColor: AppColors.background,
         foregroundColor: AppColors.onBackground,
+        actions: [const HelpScreenButton(screenKey: 'inventory')],
       ),
       body: Stack(
         fit: StackFit.expand,

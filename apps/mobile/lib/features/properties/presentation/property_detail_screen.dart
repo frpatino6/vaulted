@@ -24,6 +24,8 @@ import 'add_room_sheet.dart';
 import 'edit_floor_sheet.dart';
 import 'edit_room_sheet.dart';
 import 'room_sections_screen.dart';
+import 'package:vaulted/shared/widgets/help_screen_button.dart';
+
 
 // Speed dial state
 enum _SpeedDialState { closed, open }
@@ -403,6 +405,7 @@ class _PropertyDetailBody extends ConsumerWidget {
               ],
             ),
           ),
+          actions: [const HelpScreenButton(screenKey: 'properties')],
         ),
         SliverToBoxAdapter(
           child: Padding(

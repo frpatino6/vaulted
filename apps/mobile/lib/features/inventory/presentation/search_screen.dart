@@ -9,6 +9,8 @@ import '../../../shared/widgets/room_inventory_asset_card.dart';
 import '../../users/domain/current_user_jwt.dart';
 import '../data/models/item_model.dart';
 import '../domain/search_notifier.dart';
+import 'package:vaulted/shared/widgets/help_screen_button.dart';
+
 
 const List<String> _categoryFilters = <String>[
   'All',
@@ -128,6 +130,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
+        actions: [const HelpScreenButton(screenKey: 'inventory')],
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
