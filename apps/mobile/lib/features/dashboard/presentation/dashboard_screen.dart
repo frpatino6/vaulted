@@ -375,11 +375,21 @@ class DashboardQuickActions extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'QUICK ACTIONS',
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
-            fontSize: 12.0,
-            letterSpacing: 1.5,
+          'Command Center',
+          style: GoogleFonts.inter(
+            color: AppColors.onBackground,
+            fontSize: 20.0,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.4,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Fast access to your most-used workflows',
+          style: GoogleFonts.inter(
+            color: AppColors.onSurfaceVariant,
+            fontSize: 13.0,
+            fontWeight: FontWeight.w500,
           ),
         ),
         const SizedBox(height: 16.0),
@@ -447,34 +457,74 @@ class _QuickActionTile extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        splashColor: Colors.white10,
+        splashColor: Colors.white12,
         highlightColor: Colors.white12,
-        borderRadius: BorderRadius.circular(16.0),
-        child: Container(
+        borderRadius: BorderRadius.circular(20.0),
+        child: Ink(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16.0),
-            // D3: replaced const Color(0xFF1E1E1E) → AppColors.surface
-            color: AppColors.surface,
-            border: Border.all(color: Colors.white10, width: 0.5),
+            borderRadius: BorderRadius.circular(20.0),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                AppColors.surface.withValues(alpha: 0.95),
+                const Color(0xFF131B2E),
+              ],
+            ),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.accent.withValues(alpha: 0.18),
+                blurRadius: 24,
+                offset: const Offset(0, 12),
+              ),
+            ],
           ),
-          child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
             child: Column(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(icon, color: AppColors.accentBright, size: 28.0),
-                const SizedBox(height: 12.0),
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                  ),
+                  child: Icon(icon, color: AppColors.accentBright, size: 22.0),
+                ),
+                const Spacer(),
                 Text(
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
+                  style: GoogleFonts.inter(
                     fontSize: 14.0,
-                    fontWeight: FontWeight.w500,
-                    // D3: replaced Colors.white.withValues(alpha:0.9) → AppColors.onBackground
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -0.1,
                     color: AppColors.onBackground,
                   ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Text(
+                      'Open',
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      Icons.north_east_rounded,
+                      size: 14,
+                      color: AppColors.onSurfaceVariant,
+                    ),
+                  ],
                 ),
               ],
             ),
