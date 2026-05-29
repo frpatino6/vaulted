@@ -2699,8 +2699,8 @@ class _RepairContextCard extends ConsumerWidget {
 
         // No active movement — item is stuck, show recovery banner
         return _shell(
-          borderColor: const AppColors.warning.withValues(alpha: 0.5),
-          bgColor: const AppColors.warning.withValues(alpha: 0.08),
+          borderColor: AppColors.warning.withValues(alpha: 0.5),
+          bgColor: AppColors.warning.withValues(alpha: 0.08),
           child: Row(
             children: [
               const Icon(Icons.warning_amber_rounded,
@@ -2764,10 +2764,10 @@ class _MarkReturnedButtonState extends ConsumerState<_MarkReturnedButton> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: const AppColors.warning.withValues(alpha: 0.15),
+          color: AppColors.warning.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(6),
           border: Border.all(
-              color: const AppColors.warning.withValues(alpha: 0.5)),
+              color: AppColors.warning.withValues(alpha: 0.5)),
         ),
         child: _loading
             ? const SizedBox(

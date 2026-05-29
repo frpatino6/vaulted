@@ -340,7 +340,7 @@ class _PropertyDetailBody extends ConsumerWidget {
                     errorWidget: (_, _, _) => _LuxuryGradientBackground(),
                   )
                 else
-                  const _LuxuryGradientBackground(),
+                  _LuxuryGradientBackground(),
                 // Dark gradient at base so title reads perfectly
                 DecoratedBox(
                   decoration: BoxDecoration(
