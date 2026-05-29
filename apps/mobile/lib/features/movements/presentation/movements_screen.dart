@@ -25,6 +25,10 @@ const _kBlue   = Color(0xFF64B5F6); // Transfer   — 6.8:1
 
 // ---------------------------------------------------------------------------
 
+const _kMuted = Color(0xFF8E8E9E);
+const _kFieldSurface = Color(0xFF13131C);
+const _kOutline = Color(0xFF252530);
+
 class MovementsScreen extends ConsumerStatefulWidget {
   const MovementsScreen({super.key});
 
@@ -118,7 +122,7 @@ class _MovementsScreenState extends ConsumerState<MovementsScreen>
               const Divider(
                 height: 1,
                 thickness: 1,
-                color: Color(0xFF1C1C26),
+                color: AppColors.surfaceVariant,
               ),
               TabBar(
                 controller: _tabs,
@@ -262,59 +266,83 @@ class _DraftBannerList extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: drafts.map((m) {
-        return GestureDetector(
-          onTap: () => onResume(m),
-          child: Container(
-            margin: const EdgeInsets.fromLTRB(
-              AppSpacing.md, AppSpacing.sm, AppSpacing.md, 0),
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.md, vertical: 10),
-            decoration: BoxDecoration(
+        return Semantics(
+          button: true,
+          label: 'Resume draft operation ${m.title}',
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              AppSpacing.sm,
+              AppSpacing.md,
+              0,
+            ),
+            child: Material(
               color: AppColors.accent.withValues(alpha: 0.10),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                  color: AppColors.accent.withValues(alpha: 0.35)),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.pending_rounded,
-                    color: AppColors.accent, size: 16),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              child: InkWell(
+                onTap: () => onResume(m),
+                borderRadius: BorderRadius.circular(12),
+                splashColor: AppColors.accent.withValues(alpha: 0.08),
+                highlightColor: AppColors.accent.withValues(alpha: 0.05),
+                child: Container(
+                  constraints: const BoxConstraints(minHeight: 56),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                    vertical: AppSpacing.sm,
+                  ),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppColors.accent.withValues(alpha: 0.35),
+                    ),
+                  ),
+                  child: Row(
                     children: [
-                      Text(
-                        'Draft in progress',
-                        style: TextStyle(
-                          color: AppColors.accent,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.3,
+                      Icon(
+                        Icons.pending_rounded,
+                        color: AppColors.accent,
+                        size: 18,
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'Draft in progress',
+                              style: TextStyle(
+                                color: AppColors.accent,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              m.title,
+                              style: const TextStyle(
+                                color: AppColors.onBackground,
+                                fontSize: 13,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 1),
                       Text(
-                        m.title,
-                        style: const TextStyle(
-                          color: AppColors.onBackground,
-                          fontSize: 13,
+                        'Resume',
+                        style: TextStyle(
+                          color: AppColors.accent,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
                 ),
-                Text(
-                  'Resume →',
-                  style: TextStyle(
-                    color: AppColors.accent,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         );
@@ -322,7 +350,6 @@ class _DraftBannerList extends StatelessWidget {
     );
   }
 }
-
 // ---------------------------------------------------------------------------
 // Movement list
 // ---------------------------------------------------------------------------
@@ -343,38 +370,50 @@ class _MovementList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (movements.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.xl),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.swap_horiz_rounded,
-                size: 52,
-                color: AppColors.onSurfaceVariant.withValues(alpha: 0.25),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              Text(
-                emptyMessage,
-                style: const TextStyle(
-                  color: AppColors.onBackground,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: -0.2,
+      return RefreshIndicator(
+        color: AppColors.accent,
+        backgroundColor: AppColors.surfaceVariant,
+        onRefresh: onRefresh,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            SizedBox(
+              height: MediaQuery.sizeOf(context).height * 0.52,
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.xl),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.swap_horiz_rounded,
+                      size: 52,
+                      color: AppColors.onSurfaceVariant.withValues(alpha: 0.25),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    Text(
+                      emptyMessage,
+                      style: const TextStyle(
+                        color: AppColors.onBackground,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: -0.2,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(
+                      emptySubtitle,
+                      style: const TextStyle(
+                        color: AppColors.onSurfaceVariant,
+                        fontSize: 13,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 6),
-              Text(
-                emptySubtitle,
-                style: const TextStyle(
-                  color: AppColors.onSurfaceVariant,
-                  fontSize: 13,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       );
     }
@@ -407,30 +446,33 @@ class MovementCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final typeInfo   = _typeInfo(movement.operationType);
+    final typeInfo = _typeInfo(movement.operationType);
     final statusInfo = _statusInfo(movement.status);
     final hasLocation = movement.destination.isNotEmpty;
-    final isActive    = movement.isActive;
-    final total       = movement.items.length;
-    final returned    = movement.returnedCount;
-    final progress    = total > 0 ? returned / total : 0.0;
+    final isActive = movement.isActive;
+    final total = movement.items.length;
+    final returned = movement.returnedCount;
+    final progress = total > 0 ? returned / total : 0.0;
 
     return Material(
-      color: Colors.transparent,
+      color: AppColors.surfaceVariant,
+      borderRadius: BorderRadius.circular(14),
+      clipBehavior: Clip.antiAlias,
+      elevation: 1,
+      shadowColor: Colors.black.withValues(alpha: 0.24),
       child: InkWell(
         onTap: () => context.push('/movements/${movement.id}'),
         borderRadius: BorderRadius.circular(14),
         splashColor: typeInfo.color.withValues(alpha: 0.06),
         highlightColor: typeInfo.color.withValues(alpha: 0.04),
-        child: Container(
-          padding: const EdgeInsets.all(14),
+        child: Ink(
+          padding: const EdgeInsets.all(AppSpacing.md),
           decoration: BoxDecoration(
-            color: AppColors.surfaceVariant,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: isActive
                   ? typeInfo.color.withValues(alpha: 0.25)
-                  : const Color(0xFF252530),
+                  : _kOutline,
               width: 1,
             ),
           ),
@@ -481,12 +523,16 @@ class MovementCard extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 5),
-                        Text(
-                          typeInfo.label,
-                          style: const TextStyle(
-                            color: AppColors.onSurface,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
+                        Flexible(
+                          child: Text(
+                            typeInfo.label,
+                            style: const TextStyle(
+                              color: AppColors.onSurface,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
@@ -508,7 +554,7 @@ class MovementCard extends StatelessWidget {
                               movement.destination,
                               style: const TextStyle(
                                 color: AppColors.onSurfaceVariant,
-                                fontSize: 11,
+                                fontSize: 12,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -535,7 +581,7 @@ class MovementCard extends StatelessWidget {
                           style: TextStyle(
                             color: AppColors.onSurfaceVariant
                                 .withValues(alpha: 0.7),
-                            fontSize: 11,
+                            fontSize: 12,
                           ),
                         ),
                       ],
@@ -568,7 +614,7 @@ class MovementCard extends StatelessWidget {
                             style: TextStyle(
                               color: AppColors.onSurfaceVariant
                                   .withValues(alpha: 0.8),
-                              fontSize: 10,
+                              fontSize: 12,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -581,22 +627,27 @@ class MovementCard extends StatelessWidget {
               const SizedBox(width: 10),
 
               // ── Right: status + date ─────────────────────────────────────
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _StatusChip(status: movement.status, info: statusInfo),
-                  const SizedBox(height: 5),
-                  Text(
-                    _formatDate(movement.createdAt),
-                    style: TextStyle(
-                      color: AppColors.onSurfaceVariant
-                          .withValues(alpha: 0.7),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w400,
+              SizedBox(
+                width: 84,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _StatusChip(status: movement.status, info: statusInfo),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      _formatDate(movement.createdAt),
+                      style: TextStyle(
+                        color:
+                            AppColors.onSurfaceVariant.withValues(alpha: 0.7),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w400,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ),
@@ -633,7 +684,8 @@ class _StatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      constraints: const BoxConstraints(minHeight: 24),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
       decoration: BoxDecoration(
         color: info.color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(20),
@@ -644,7 +696,7 @@ class _StatusChip extends StatelessWidget {
         info.label,
         style: TextStyle(
           color: info.color,
-          fontSize: 9,
+          fontSize: 12,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.6,
         ),
@@ -684,12 +736,12 @@ _TypeInfo _typeInfo(String type) => switch (type) {
     };
 
 _StatusInfo _statusInfo(String status) => switch (status) {
-      'draft'     => const _StatusInfo(Color(0xFF8E8E9E), 'DRAFT'),
-      'active'    => const _StatusInfo(Color(0xFF64B5F6), 'ACTIVE'),
-      'completed' => const _StatusInfo(Color(0xFF81C784), 'DONE'),
-      'partial'   => const _StatusInfo(Color(0xFFFFB74D), 'PARTIAL'),
-      'cancelled' => const _StatusInfo(Color(0xFF8E8E9E), 'CANCELLED'),
-      _           => const _StatusInfo(Color(0xFF8E8E9E), 'UNKNOWN'),
+      'draft' => const _StatusInfo(_kMuted, 'DRAFT'),
+      'active' => const _StatusInfo(_kBlue, 'ACTIVE'),
+      'completed' => const _StatusInfo(_kGreen, 'DONE'),
+      'partial' => const _StatusInfo(_kOrange, 'PARTIAL'),
+      'cancelled' => const _StatusInfo(_kMuted, 'CANCELLED'),
+      _ => const _StatusInfo(_kMuted, 'UNKNOWN'),
     };
 
 // Public helpers for other screens
@@ -742,24 +794,23 @@ class _SearchAndFilterBar extends StatelessWidget {
                     color: AppColors.onSurfaceVariant, size: 18),
                 suffixIcon: controller.text.isNotEmpty
                     ? IconButton(
+                        tooltip: 'Clear search',
                         icon: const Icon(Icons.close_rounded,
                             color: AppColors.onSurfaceVariant, size: 16),
                         onPressed: () => controller.clear(),
                       )
                     : null,
                 filled: true,
-                fillColor: const Color(0xFF13131C),
+                fillColor: _kFieldSurface,
                 contentPadding:
                     const EdgeInsets.symmetric(vertical: 0, horizontal: 12),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(
-                      color: Color(0xFF252530), width: 1),
+                  borderSide: const BorderSide(color: _kOutline, width: 1),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(
-                      color: Color(0xFF252530), width: 1),
+                  borderSide: const BorderSide(color: _kOutline, width: 1),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
@@ -851,45 +902,52 @@ class _FilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        curve: Curves.easeOut,
-        padding:
-            const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
-        decoration: BoxDecoration(
-          color: selected
-              ? color.withValues(alpha: 0.15)
-              : const Color(0xFF13131C),
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: 'Filter by $label operations',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: selected
-                ? color.withValues(alpha: 0.55)
-                : const Color(0xFF252530),
-            width: 1,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 12,
-              color: selected ? color : AppColors.onSurface,
-            ),
-            const SizedBox(width: 5),
-            Text(
-              label,
-              style: TextStyle(
-                color: selected ? color : AppColors.onSurface,
-                fontSize: 12,
-                fontWeight:
-                    selected ? FontWeight.w600 : FontWeight.w400,
-                letterSpacing: 0.1,
+          splashColor: color.withValues(alpha: 0.08),
+          highlightColor: color.withValues(alpha: 0.05),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            curve: Curves.easeOut,
+            constraints: const BoxConstraints(minHeight: 44),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color:
+                  selected ? color.withValues(alpha: 0.15) : _kFieldSurface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: selected ? color.withValues(alpha: 0.55) : _kOutline,
+                width: 1,
               ),
             ),
-          ],
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  icon,
+                  size: 14,
+                  color: selected ? color : AppColors.onSurface,
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: selected ? color : AppColors.onSurface,
+                    fontSize: 12,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                    letterSpacing: 0.1,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
