@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_theme.dart';
 
-enum AppTab { home, insurance, wardrobe }
+enum AppTab { home, assets, insurance, wardrobe, settings }
 
 /// Custom bottom navigation bar with a black background and a thin golden
 /// line indicator below the active item's icon.
@@ -28,22 +28,34 @@ class AppBottomNav extends StatelessWidget {
           child: Row(
             children: [
               _NavItem(
-                icon: Icons.home_filled,
+                icon: currentTab == AppTab.home ? Icons.home : Icons.home_outlined,
                 label: 'Home',
                 isSelected: currentTab == AppTab.home,
                 onTap: () => context.go('/dashboard'),
               ),
               _NavItem(
-                icon: Icons.shield_outlined,
+                icon: currentTab == AppTab.assets ? Icons.inventory_2 : Icons.inventory_2_outlined,
+                label: 'Assets',
+                isSelected: currentTab == AppTab.assets,
+                onTap: () => context.go('/assets'),
+              ),
+              _NavItem(
+                icon: currentTab == AppTab.insurance ? Icons.shield : Icons.shield_outlined,
                 label: 'Insurance',
                 isSelected: currentTab == AppTab.insurance,
                 onTap: () => context.go('/insurance'),
               ),
               _NavItem(
-                icon: Icons.checkroom,
+                icon: currentTab == AppTab.wardrobe ? Icons.checkroom : Icons.checkroom_outlined,
                 label: 'Wardrobe',
                 isSelected: currentTab == AppTab.wardrobe,
                 onTap: () => context.go('/wardrobe'),
+              ),
+              _NavItem(
+                icon: currentTab == AppTab.settings ? Icons.settings : Icons.settings_outlined,
+                label: 'Settings',
+                isSelected: currentTab == AppTab.settings,
+                onTap: () => context.go('/settings'),
               ),
             ],
           ),

@@ -597,24 +597,65 @@ class _UnlocatedItemsBanner extends ConsumerWidget {
     WidgetRef ref,
     dynamic item,
   ) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showModalBottomSheet<bool>(
       context: context,
-      builder:
-          (dialogCtx) => AlertDialog(
-            title: const Text('Delete item'),
-            content: Text('Delete "${item.name}"? This cannot be undone.'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogCtx, false),
-                child: const Text('Cancel'),
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.onSurfaceVariant.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
-              TextButton(
-                onPressed: () => Navigator.pop(dialogCtx, true),
-                style: TextButton.styleFrom(foregroundColor: Colors.red),
-                child: const Text('Delete'),
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Text(
+              'Delete item',
+              style: AppTypography.titleLarge.copyWith(color: AppColors.onBackground),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              'Delete "${item.name}"?',
+              style: AppTypography.bodyMedium.copyWith(color: AppColors.onSurface),
+            ),
+            Text(
+              'This cannot be undone.',
+              style: AppTypography.bodySmall.copyWith(color: AppColors.onSurfaceVariant),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(ctx, false),
+                    child: const Text('Cancel'),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () => Navigator.pop(ctx, true),
+                    style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+                    child: const Text('Delete'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
+        ),
+      ),
     );
     if (confirmed == true) {
       try {

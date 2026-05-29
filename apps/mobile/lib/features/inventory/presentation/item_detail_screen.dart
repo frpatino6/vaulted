@@ -34,8 +34,6 @@ import '../../../shared/widgets/status_badge.dart';
 import 'package:vaulted/shared/widgets/help_screen_button.dart';
 
 
-/// Catalog gold for price and accents (Sotheby's/Christie's style).
-const Color _kCatalogGold = Color(0xFFC5A059);
 
 String _formatCreatedAt(String value) {
   try {
@@ -138,25 +136,25 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                             vertical: AppSpacing.sm,
                           ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF9E9E9E).withValues(alpha: 0.12),
+                            color: AppColors.statusDisposed.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
-                              color: const Color(0xFF9E9E9E).withValues(alpha: 0.35),
+                              color: AppColors.statusDisposed.withValues(alpha: 0.35),
                             ),
                           ),
                           child: Row(
                             children: [
                               const Icon(
                                 Icons.archive_outlined,
-                                size: 15,
-                                color: Color(0xFF9E9E9E),
+                                size: 16,
+                                color: AppColors.statusDisposed,
                               ),
                               const SizedBox(width: AppSpacing.sm),
                               Expanded(
                                 child: Text(
                                   'This item has been disposed and is no longer active.',
                                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: const Color(0xFF9E9E9E),
+                                    color: AppColors.statusDisposed,
                                   ),
                                 ),
                               ),
@@ -409,7 +407,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
 
   Widget _buildFooter(BuildContext context, ItemModel item, bool canTransfer) {
     return Container(
-      color: const Color(0xFF0A0A0F),
+      color: AppColors.background,
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.md,
         AppSpacing.sm,
@@ -426,8 +424,8 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                       onPressed: () => _showTransferSheet(context, item),
                       icon: const Icon(Icons.swap_horiz_rounded, size: 18),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF2196F3),
-                        side: const BorderSide(color: Color(0xFF2196F3)),
+                        foregroundColor: AppColors.info,
+                        side: const BorderSide(color: AppColors.info),
                         padding: const EdgeInsets.symmetric(
                           vertical: AppSpacing.md,
                         ),
@@ -612,27 +610,62 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
   ) async {
     final isAtCleaner =
         item.wardrobeAttributes.cleaningStatus == 'at_dry_cleaner';
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showModalBottomSheet<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(
-          isAtCleaner ? 'Mark as Returned' : 'Send to Dry Cleaner',
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
-        content: Text(
-          isAtCleaner
-              ? 'Mark "${item.name}" as returned from the dry cleaner?'
-              : 'Send "${item.name}" to the dry cleaner?',
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.onSurfaceVariant.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Text(
+              isAtCleaner ? 'Mark as Returned' : 'Send to Dry Cleaner',
+              style: AppTypography.titleLarge.copyWith(color: AppColors.onBackground),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              isAtCleaner
+                  ? 'Mark "${item.name}" as returned from the dry cleaner?'
+                  : 'Send "${item.name}" to the dry cleaner?',
+              style: AppTypography.bodyMedium.copyWith(color: AppColors.onSurface),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.of(ctx).pop(false),
+                    child: const Text('Cancel'),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () => Navigator.of(ctx).pop(true),
+                    style: FilledButton.styleFrom(backgroundColor: AppColors.accent),
+                    child: Text(isAtCleaner ? 'Mark Returned' : 'Send'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(isAtCleaner ? 'Mark Returned' : 'Send'),
-          ),
-        ],
       ),
     );
     if (confirmed != true || !mounted) return;
@@ -1051,10 +1084,10 @@ class _MaintenanceSectionWidgetState
                     final isOverdue = r.isOverdue;
                     final color =
                         isOverdue
-                            ? const Color(0xFFCF6679)
+                            ? AppColors.error
                             : r.isUrgent
                             ? const Color(0xFFE07B39)
-                            : const Color(0xFFD4AF37);
+                            : AppColors.accentBright;
                     final date = DateTime.tryParse(r.scheduledDate);
                     final dateStr =
                         date != null
@@ -1137,7 +1170,7 @@ class _HistorySectionLabel extends StatelessWidget {
     return Text(
       'HISTORY',
       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-        color: _kCatalogGold,
+        color: AppColors.catalogGold,
         letterSpacing: 2.0,
         fontSize: 10,
         fontWeight: FontWeight.w600,
@@ -1172,7 +1205,7 @@ class _QrSection extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Theme.of(context).brightness == Brightness.dark ? AppColors.surface : Colors.white,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Image.memory(bytes, width: 180, height: 180),
@@ -1364,13 +1397,13 @@ class _CleaningStatusChip extends StatelessWidget {
     final Color color;
     switch (status) {
       case 'clean':
-        color = Colors.green;
+        color = AppColors.statusActive;
         break;
       case 'needs_cleaning':
-        color = Colors.amber;
+        color = AppColors.statusLoaned;
         break;
       case 'at_dry_cleaner':
-        color = Colors.blue;
+        color = AppColors.info;
         break;
       default:
         color = AppColors.onSurfaceVariant;
@@ -1468,37 +1501,43 @@ class _ItemImageHeaderState extends State<_ItemImageHeader> {
                               itemBuilder:
                                   (_, index) => GestureDetector(
                                     onTap: () => _openGallery(index),
-                                    child: CachedNetworkImage(
-                                      imageUrl: item.photos[index],
-                                      height: 220,
-                                      width: double.infinity,
-                                      fit: BoxFit.cover,
-                                      placeholder:
-                                          (_, _) => _gradientPlaceholder(
-                                            context,
-                                            item,
-                                          ),
-                                      errorWidget:
-                                          (_, _, _) => _gradientPlaceholder(
-                                            context,
-                                            item,
-                                          ),
+                                    child: Hero(
+                                      tag: 'item_photo_${item.id}',
+                                      child: CachedNetworkImage(
+                                        imageUrl: item.photos[index],
+                                        height: 220,
+                                        width: double.infinity,
+                                        fit: BoxFit.cover,
+                                        placeholder:
+                                            (_, _) => _gradientPlaceholder(
+                                              context,
+                                              item,
+                                            ),
+                                        errorWidget:
+                                            (_, _, _) => _gradientPlaceholder(
+                                              context,
+                                              item,
+                                            ),
+                                      ),
                                     ),
                                   ),
                             ),
                           )
                           : GestureDetector(
                             onTap: () => _openGallery(0),
-                            child: CachedNetworkImage(
-                              imageUrl: item.photos.first,
-                              height: 220,
-                              width: double.infinity,
-                              fit: BoxFit.cover,
-                              placeholder:
-                                  (_, _) => _gradientPlaceholder(context, item),
-                              errorWidget:
-                                  (_, _, _) =>
-                                      _gradientPlaceholder(context, item),
+                            child: Hero(
+                              tag: 'item_photo_${item.id}',
+                              child: CachedNetworkImage(
+                                imageUrl: item.photos.first,
+                                height: 220,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                                placeholder:
+                                    (_, _) => _gradientPlaceholder(context, item),
+                                errorWidget:
+                                    (_, _, _) =>
+                                        _gradientPlaceholder(context, item),
+                              ),
                             ),
                           )
                       : _gradientPlaceholder(context, item),
@@ -1518,7 +1557,7 @@ class _ItemImageHeaderState extends State<_ItemImageHeader> {
                       child: Icon(
                         Icons.camera_alt_outlined,
                         size: 22,
-                        color: _kCatalogGold,
+                        color: AppColors.catalogGold,
                       ),
                     ),
                   ),
@@ -1539,13 +1578,14 @@ class _ItemImageHeaderState extends State<_ItemImageHeader> {
                       duration: const Duration(milliseconds: 300),
                       curve: Curves.easeInOut,
                     ),
-                child: Container(
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
                   margin: const EdgeInsets.symmetric(horizontal: 3),
-                  width: 8,
+                  width: i == _currentPage ? 10 : 8,
                   height: 8,
                   decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: _kCatalogGold.withValues(
+                    borderRadius: BorderRadius.circular(4),
+                    color: AppColors.catalogGold.withValues(
                       alpha: i == _currentPage ? 1 : 0.4,
                     ),
                   ),
@@ -1644,7 +1684,7 @@ class _PriceHighlightSection extends StatelessWidget {
             Text(
               currentValue > 0 ? _currencyFormat.format(currentValue) : '—',
               style: AppTypography.displaySerif.copyWith(
-                color: _kCatalogGold,
+                color: AppColors.catalogGold,
                 fontSize: 32,
                 fontWeight: FontWeight.w600,
               ),
@@ -1954,7 +1994,7 @@ class _SectionPhotoPreviewState extends State<_SectionPhotoPreview> {
                     width: w,
                     height: h,
                     fit: BoxFit.contain,
-                    placeholder: (_, __) => Container(color: _kCatalogGold.withValues(alpha: 0.08)),
+                    placeholder: (_, __) => Container(color: AppColors.catalogGold.withValues(alpha: 0.08)),
                     errorWidget: (_, __, ___) => const SizedBox.shrink(),
                   ),
                   if (widget.boundingBox != null && _naturalSize != null)
@@ -1997,7 +2037,7 @@ class _SectionPhotoPreviewState extends State<_SectionPhotoPreview> {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.place_outlined, size: 13, color: _kCatalogGold),
+                          const Icon(Icons.place_outlined, size: 13, color: AppColors.catalogGold),
                           const SizedBox(width: 5),
                           Flexible(
                             child: Text(
@@ -2081,7 +2121,7 @@ class _SectionPhotoFullScreenState extends State<_SectionPhotoFullScreen> {
                         height: h,
                         fit: BoxFit.contain,
                         placeholder: (_, __) => const Center(
-                          child: CircularProgressIndicator(color: _kCatalogGold),
+                          child: CircularProgressIndicator(color: AppColors.catalogGold),
                         ),
                         errorWidget: (_, __, ___) => const SizedBox.shrink(),
                       ),
@@ -2123,7 +2163,7 @@ class _SectionPhotoFullScreenState extends State<_SectionPhotoFullScreen> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.place_outlined, size: 14, color: _kCatalogGold),
+                  const Icon(Icons.place_outlined, size: 14, color: AppColors.catalogGold),
                   const SizedBox(width: 6),
                   Text(
                     widget.sectionLabel!,
@@ -2302,7 +2342,7 @@ class _HistoryTimeline extends StatelessWidget {
                         width: 8,
                         height: 8,
                         decoration: const BoxDecoration(
-                          color: _kCatalogGold,
+                          color: AppColors.catalogGold,
                           shape: BoxShape.circle,
                         ),
                       ),
@@ -2311,7 +2351,7 @@ class _HistoryTimeline extends StatelessWidget {
                           width: 1,
                           margin: const EdgeInsets.only(top: 2),
                           height: 32,
-                          color: _kCatalogGold.withValues(alpha: 0.4),
+                          color: AppColors.catalogGold.withValues(alpha: 0.4),
                         ),
                     ],
                   ),
@@ -2416,13 +2456,13 @@ class _AiRiskBadge extends StatelessWidget {
     final Color color;
     final String label;
     if (score >= 75) {
-      color = const Color(0xFFCF6679);
+      color = AppColors.error;
       label = 'High risk';
     } else if (score >= 50) {
       color = const Color(0xFFE07B39);
       label = 'Medium risk';
     } else {
-      color = const Color(0xFF4CAF50);
+      color = AppColors.statusActive;
       label = 'Low risk';
     }
 
@@ -2504,8 +2544,8 @@ class _FullscreenGalleryState extends State<_FullscreenGallery> {
                     fit: BoxFit.contain,
                     placeholder:
                         (_, _) => const Center(
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
+                        child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.catalogGold),
+                      ),
                     errorWidget:
                         (_, _, _) => const Center(
                           child: Icon(
@@ -2544,7 +2584,8 @@ class _FullscreenGalleryState extends State<_FullscreenGallery> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(
                   widget.photos.length,
-                  (i) => Container(
+                  (i) => AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
                     margin: const EdgeInsets.symmetric(horizontal: 3),
                     width: i == _current ? 16 : 8,
                     height: 8,
@@ -2573,8 +2614,6 @@ class _RepairContextCard extends ConsumerWidget {
 
   final ItemModel item;
 
-  static const _orange = Color(0xFFFF9800);
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final asyncMovement = ref.watch(itemRepairMovementProvider(item.id));
@@ -2583,13 +2622,13 @@ class _RepairContextCard extends ConsumerWidget {
       loading: () => _shell(
         child: Row(
           children: [
-            const Icon(Icons.build_outlined, size: 16, color: _orange),
+            Icon(Icons.build_outlined, size: 16, color: AppColors.statusRepair),
             const SizedBox(width: 8),
             Expanded(
               child: Container(
                 height: 12,
                 decoration: BoxDecoration(
-                  color: _orange.withValues(alpha: 0.2),
+                  color: AppColors.statusRepair.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(4),
                 ),
               ),
@@ -2616,7 +2655,7 @@ class _RepairContextCard extends ConsumerWidget {
             child: _shell(
               child: Row(
                 children: [
-                  const Icon(Icons.build_outlined, size: 16, color: _orange),
+                  Icon(Icons.build_outlined, size: 16, color: AppColors.statusRepair),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Column(
@@ -2624,8 +2663,8 @@ class _RepairContextCard extends ConsumerWidget {
                       children: [
                         Text(
                           'Currently at $destination',
-                          style: const TextStyle(
-                            color: _orange,
+                          style: TextStyle(
+                            color: AppColors.statusRepair,
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
                           ),
@@ -2634,7 +2673,7 @@ class _RepairContextCard extends ConsumerWidget {
                           Text(
                             dueLabel,
                             style: TextStyle(
-                              color: _orange.withValues(alpha: 0.75),
+                              color: AppColors.statusRepair.withValues(alpha: 0.75),
                               fontSize: 12,
                             ),
                           ),
@@ -2644,7 +2683,7 @@ class _RepairContextCard extends ConsumerWidget {
                   Text(
                     'View Operation →',
                     style: TextStyle(
-                      color: _orange,
+                      color: AppColors.statusRepair,
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
@@ -2691,10 +2730,10 @@ class _RepairContextCard extends ConsumerWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: bgColor ?? _orange.withValues(alpha: 0.08),
+        color: bgColor ?? AppColors.statusRepair.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: borderColor ?? _orange.withValues(alpha: 0.35),
+          color: borderColor ?? AppColors.statusRepair.withValues(alpha: 0.35),
         ),
       ),
       child: child,

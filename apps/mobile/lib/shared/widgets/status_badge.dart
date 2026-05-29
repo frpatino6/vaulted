@@ -67,15 +67,15 @@ class StatusBadge extends StatelessWidget {
   static (Color tint, Color bg) _colorsForStatus(String status) {
     switch (status.toLowerCase()) {
       case 'active':
-        return (const Color(0xFF4CAF50), const Color(0xFF4CAF50).withValues(alpha: 0.18));
+        return (AppColors.statusActive, AppColors.statusActive.withValues(alpha: 0.18));
       case 'loaned':
-        return (const Color(0xFFFFB300), const Color(0xFFFFB300).withValues(alpha: 0.18));
+        return (AppColors.statusLoaned, AppColors.statusLoaned.withValues(alpha: 0.18));
       case 'repair':
-        return (const Color(0xFFFF9800), const Color(0xFFFF9800).withValues(alpha: 0.18));
+        return (AppColors.statusRepair, AppColors.statusRepair.withValues(alpha: 0.18));
       case 'storage':
-        return (const Color(0xFF2196F3), const Color(0xFF2196F3).withValues(alpha: 0.18));
+        return (AppColors.statusStorage, AppColors.statusStorage.withValues(alpha: 0.18));
       case 'disposed':
-        return (const Color(0xFF9E9E9E), const Color(0xFF9E9E9E).withValues(alpha: 0.18));
+        return (AppColors.statusDisposed, AppColors.statusDisposed.withValues(alpha: 0.15));
       default:
         return (AppColors.onSurfaceVariant, AppColors.onSurfaceVariant.withValues(alpha: 0.15));
     }
