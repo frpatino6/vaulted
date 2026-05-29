@@ -28,6 +28,7 @@ const _kBlue   = Color(0xFF64B5F6); // Transfer   — 6.8:1
 const _kMuted = Color(0xFF8E8E9E);
 const _kFieldSurface = Color(0xFF13131C);
 const _kOutline = Color(0xFF252530);
+const _kPremiumGold = AppColors.catalogGold;
 
 class MovementsScreen extends ConsumerStatefulWidget {
   const MovementsScreen({super.key});
@@ -114,7 +115,12 @@ class _MovementsScreenState extends ConsumerState<MovementsScreen>
             letterSpacing: -0.3,
           ),
         ),
-        actions: [const HelpScreenButton(screenKey: 'movements')],
+        actions: const [
+          SizedBox(
+            width: 56,
+            child: Center(child: HelpScreenButton(screenKey: 'movements')),
+          ),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(44),
           child: Column(
@@ -147,11 +153,6 @@ class _MovementsScreenState extends ConsumerState<MovementsScreen>
       ),
       body: Column(
         children: [
-          _SearchAndFilterBar(
-            controller: _searchController,
-            selectedType: _selectedType,
-            onTypeSelected: (t) => setState(() => _selectedType = t),
-          ),
           if (draftState.value != null && draftState.value!.isNotEmpty)
             _DraftBannerList(
               drafts: draftState.value!,
@@ -160,29 +161,49 @@ class _MovementsScreenState extends ConsumerState<MovementsScreen>
           Expanded(
             child: renderListState.when(
               data: (all) {
+                final hasOperations = all.isNotEmpty;
                 final active = _applyFilters(
                     all.where((m) => m.isDraft || m.isActive).toList());
                 final history =
                     _applyFilters(all.where((m) => m.isFinished).toList());
 
-                return TabBarView(
-                  controller: _tabs,
+                return Column(
                   children: [
-                    _MovementList(
-                      movements: active,
-                      emptyMessage: 'No active operations',
-                      emptySubtitle: canOperate
-                          ? 'Tap + to start a new operation'
-                          : 'No operations in progress',
-                      onRefresh: () =>
-                          ref.read(movementListNotifierProvider.notifier).load(),
+                    _SearchAndFilterBar(
+                      controller: _searchController,
+                      selectedType: _selectedType,
+                      showFilters: hasOperations,
+                      onTypeSelected: (t) => setState(() => _selectedType = t),
                     ),
-                    _MovementList(
-                      movements: history,
-                      emptyMessage: 'No history yet',
-                      emptySubtitle: 'Completed operations will appear here',
-                      onRefresh: () =>
-                          ref.read(movementListNotifierProvider.notifier).load(),
+                    Expanded(
+                      child: TabBarView(
+                        controller: _tabs,
+                        children: [
+                          _MovementList(
+                            movements: active,
+                            emptyTitle: hasOperations
+                                ? 'No active operations'
+                                : 'Start your first operation',
+                            emptySubtitle: hasOperations
+                                ? 'Nothing is currently in progress'
+                                : canOperate
+                                    ? 'Use + to create a new operation'
+                                    : 'No operations have been created yet',
+                            onRefresh: () => ref
+                                .read(movementListNotifierProvider.notifier)
+                                .load(),
+                          ),
+                          _MovementList(
+                            movements: history,
+                            emptyTitle: 'No history yet',
+                            emptySubtitle:
+                                'Completed operations will appear here',
+                            onRefresh: () => ref
+                                .read(movementListNotifierProvider.notifier)
+                                .load(),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 );
@@ -216,20 +237,14 @@ class _MovementsScreenState extends ConsumerState<MovementsScreen>
         ],
       ),
       floatingActionButton: canOperate
-          ? FloatingActionButton.extended(
-              backgroundColor: AppColors.accent,
-              foregroundColor: Colors.black,
+          ? FloatingActionButton(
+              tooltip: 'New Operation',
+              backgroundColor: _kPremiumGold,
+              foregroundColor: AppColors.background,
               elevation: 8,
               highlightElevation: 12,
-              icon: const Icon(Icons.add_rounded, size: 20),
-              label: const Text(
-                'New Operation',
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14,
-                  letterSpacing: 0.2,
-                ),
-              ),
+              shape: const CircleBorder(),
+              child: const Icon(Icons.add_rounded, size: 28),
               onPressed: () => _startNewMovement(context),
             )
           : null,
@@ -357,13 +372,13 @@ class _DraftBannerList extends StatelessWidget {
 class _MovementList extends StatelessWidget {
   const _MovementList({
     required this.movements,
-    required this.emptyMessage,
+    required this.emptyTitle,
     required this.emptySubtitle,
     required this.onRefresh,
   });
 
   final List<MovementModel> movements;
-  final String emptyMessage;
+  final String emptyTitle;
   final String emptySubtitle;
   final Future<void> Function() onRefresh;
 
@@ -379,38 +394,9 @@ class _MovementList extends StatelessWidget {
           children: [
             SizedBox(
               height: MediaQuery.sizeOf(context).height * 0.52,
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.xl),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.swap_horiz_rounded,
-                      size: 52,
-                      color: AppColors.onSurfaceVariant.withValues(alpha: 0.25),
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    Text(
-                      emptyMessage,
-                      style: const TextStyle(
-                        color: AppColors.onBackground,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: -0.2,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    Text(
-                      emptySubtitle,
-                      style: const TextStyle(
-                        color: AppColors.onSurfaceVariant,
-                        fontSize: 13,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
+              child: OperationsEmptyState(
+                title: emptyTitle,
+                subtitle: emptySubtitle,
               ),
             ),
           ],
@@ -429,6 +415,107 @@ class _MovementList extends StatelessWidget {
         itemBuilder: (context, i) => Padding(
           padding: const EdgeInsets.only(bottom: AppSpacing.sm),
           child: MovementCard(movement: movements[i]),
+        ),
+      ),
+    );
+  }
+}
+
+class OperationsEmptyState extends StatelessWidget {
+  const OperationsEmptyState({
+    super.key,
+    required this.title,
+    required this.subtitle,
+  });
+
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const _OperationIllustrationPlaceholder(),
+          const SizedBox(height: AppSpacing.lg),
+          Text(
+            title,
+            style: const TextStyle(
+              color: AppColors.onBackground,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.2,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            subtitle,
+            style: const TextStyle(
+              color: AppColors.onSurface,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              height: 1.45,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OperationIllustrationPlaceholder extends StatelessWidget {
+  const _OperationIllustrationPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      image: true,
+      label: 'Operations illustration placeholder',
+      child: SizedBox(
+        width: 112,
+        height: 112,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Container(
+              width: 112,
+              height: 112,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: _kPremiumGold.withValues(alpha: 0.08),
+                border: Border.all(
+                  color: _kPremiumGold.withValues(alpha: 0.18),
+                ),
+              ),
+            ),
+            Container(
+              width: 74,
+              height: 74,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(22),
+                color: AppColors.surfaceVariant,
+                border: Border.all(
+                  color: _kPremiumGold.withValues(alpha: 0.3),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.25),
+                    blurRadius: 18,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Icon(
+                Icons.add_task_rounded,
+                color: _kPremiumGold,
+                size: 34,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -756,11 +843,13 @@ class _SearchAndFilterBar extends StatelessWidget {
   const _SearchAndFilterBar({
     required this.controller,
     required this.selectedType,
+    required this.showFilters,
     required this.onTypeSelected,
   });
 
   final TextEditingController controller;
   final String? selectedType;
+  final bool showFilters;
   final ValueChanged<String?> onTypeSelected;
 
   static const _types = [
@@ -821,63 +910,65 @@ class _SearchAndFilterBar extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: AppSpacing.sm),
+          if (showFilters) ...[
+            const SizedBox(height: AppSpacing.sm),
 
-          // Chips with trailing fade
-          Stack(
-            children: [
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.only(right: 36),
-                child: Row(
-                  children: [
-                    _FilterChip(
-                      label: 'All',
-                      icon: Icons.apps_rounded,
-                      color: AppColors.accent,
-                      selected: selectedType == null,
-                      onTap: () => onTypeSelected(null),
-                    ),
-                    const SizedBox(width: 6),
-                    ..._types.map(
-                      (t) => Padding(
-                        padding: const EdgeInsets.only(right: 6),
-                        child: _FilterChip(
-                          label: t.$4,
-                          icon: t.$2,
-                          color: t.$3,
-                          selected: selectedType == t.$1,
-                          onTap: () => onTypeSelected(
-                              selectedType == t.$1 ? null : t.$1),
+            // Chips with trailing fade
+            Stack(
+              children: [
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.only(right: 36),
+                  child: Row(
+                    children: [
+                      _FilterChip(
+                        label: 'All',
+                        icon: Icons.apps_rounded,
+                        color: AppColors.accent,
+                        selected: selectedType == null,
+                        onTap: () => onTypeSelected(null),
+                      ),
+                      const SizedBox(width: 6),
+                      ..._types.map(
+                        (t) => Padding(
+                          padding: const EdgeInsets.only(right: 6),
+                          child: _FilterChip(
+                            label: t.$4,
+                            icon: t.$2,
+                            color: t.$3,
+                            selected: selectedType == t.$1,
+                            onTap: () => onTypeSelected(
+                                selectedType == t.$1 ? null : t.$1),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              // Trailing fade mask
-              Positioned(
-                right: 0,
-                top: 0,
-                bottom: 0,
-                child: IgnorePointer(
-                  child: Container(
-                    width: 36,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.centerLeft,
-                        end: Alignment.centerRight,
-                        colors: [
-                          AppColors.background.withValues(alpha: 0),
-                          AppColors.background,
-                        ],
+                // Trailing fade mask
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  bottom: 0,
+                  child: IgnorePointer(
+                    child: Container(
+                      width: 36,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                          colors: [
+                            AppColors.background.withValues(alpha: 0),
+                            AppColors.background,
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
+          ],
           const SizedBox(height: AppSpacing.sm),
         ],
       ),
@@ -920,10 +1011,12 @@ class _FilterChip extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
               color:
-                  selected ? color.withValues(alpha: 0.15) : _kFieldSurface,
+                  selected ? color.withValues(alpha: 0.24) : Colors.transparent,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: selected ? color.withValues(alpha: 0.55) : _kOutline,
+                color: selected
+                    ? color.withValues(alpha: 0.75)
+                    : AppColors.onSurfaceVariant.withValues(alpha: 0.45),
                 width: 1,
               ),
             ),
@@ -933,15 +1026,15 @@ class _FilterChip extends StatelessWidget {
                 Icon(
                   icon,
                   size: 14,
-                  color: selected ? color : AppColors.onSurface,
+                  color: selected ? color : AppColors.onBackground,
                 ),
                 const SizedBox(width: AppSpacing.xs),
                 Text(
                   label,
                   style: TextStyle(
-                    color: selected ? color : AppColors.onSurface,
+                    color: selected ? color : AppColors.onBackground,
                     fontSize: 12,
-                    fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
                     letterSpacing: 0.1,
                   ),
                 ),
