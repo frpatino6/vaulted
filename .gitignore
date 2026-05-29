@@ -46,3 +46,4 @@ logs/
 !apps/mobile/.firebaserc
 !packages/shared-types/package.json
 !.claude/settings.json
+!.mcp.json
