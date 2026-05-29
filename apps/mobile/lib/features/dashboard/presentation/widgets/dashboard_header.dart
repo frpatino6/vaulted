@@ -126,8 +126,18 @@ class DashboardHeader extends ConsumerWidget {
         final first = name.trim().split(' ').first;
         if (first.isNotEmpty) return first[0].toUpperCase() + first.substring(1);
       }
+      final email = decoded['email'] as String?;
+      final displayName = _displayNameFromEmail(email);
+      if (displayName != null) return displayName;
     } catch (_) {}
     return 'My Vault';
+  }
+
+  String? _displayNameFromEmail(String? email) {
+    if (email == null || email.trim().isEmpty) return null;
+    final localPart = email.trim().split('@').first;
+    if (localPart.isEmpty) return null;
+    return localPart[0].toUpperCase() + localPart.substring(1);
   }
 
   String? _emailFromJwt() {
