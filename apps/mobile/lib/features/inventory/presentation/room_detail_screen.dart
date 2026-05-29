@@ -350,8 +350,8 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
                         SlidableAction(
                           onPressed: (_) =>
                               _showTransferSheet(context, item),
-                          backgroundColor: const Color(0xFF1A3A5C),
-                          foregroundColor: const Color(0xFF2196F3),
+                          backgroundColor: AppColors.surfaceVariant,
+                          foregroundColor: AppColors.info,
                           icon: Icons.swap_horiz_rounded,
                           label: 'Transfer',
                         ),
@@ -367,7 +367,7 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
                         SlidableAction(
                           onPressed: (_) => _confirmDelete(context, item),
                           backgroundColor: AppColors.error,
-                          foregroundColor: Colors.white,
+                          foregroundColor: AppColors.onBackground,
                           icon: Icons.delete_outline,
                           label: 'Delete',
                         ),
@@ -620,24 +620,33 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
       decoration: InputDecoration(
         hintText: 'Search inventory...',
         hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.38)),
-        prefixIcon: Icon(Icons.search, size: 20, color: Colors.white24),
+        prefixIcon: Icon(
+          Icons.search,
+          size: 20,
+          color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
+        ),
         filled: true,
-        fillColor: Colors.white.withValues(alpha: 0.05),
+        fillColor: AppColors.surfaceVariant.withValues(alpha: 0.6),
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 10,
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.sm,
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.white10),
+          borderSide: BorderSide(
+            color: AppColors.onSurfaceVariant.withValues(alpha: 0.15),
+          ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.white10, width: 1),
+          borderSide: BorderSide(
+            color: AppColors.onSurfaceVariant.withValues(alpha: 0.15),
+            width: 1,
+          ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFC5A059), width: 0.8),
+          borderSide: const BorderSide(color: AppColors.catalogGold, width: 0.8),
         ),
       ),
     );

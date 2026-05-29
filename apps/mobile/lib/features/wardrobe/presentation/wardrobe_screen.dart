@@ -334,11 +334,7 @@ class _WardrobeStatsBar extends StatelessWidget {
               color: Colors.blue,
               showOverdueDot: stats.overdueItems > 0,
               showNavigationArrow: true,
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => const AtLaundryScreen(),
-                ),
-              ),
+              onTap: () => context.push('/wardrobe/at-laundry'),
             ),
             const SizedBox(width: AppSpacing.sm),
             _StatChip(
@@ -376,7 +372,7 @@ class _StatChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color accentColor = glowColor ?? color ?? Colors.white10;
+    final Color accentColor = glowColor ?? color ?? AppColors.onSurfaceVariant.withValues(alpha: 0.15);
     final Color borderColor = isActive ? accentColor : accentColor;
     final List<BoxShadow> shadows = glowColor != null
         ? [
@@ -520,7 +516,10 @@ class _TuneButton extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(10),
           color: AppColors.surfaceVariant,
-          border: Border.all(color: Colors.white12, width: 0.5),
+          border: Border.all(
+            color: AppColors.onSurfaceVariant.withValues(alpha: 0.2),
+            width: 0.5,
+          ),
         ),
         child: const Icon(
           Icons.tune,
@@ -553,7 +552,7 @@ class _GlowFilterChip extends StatelessWidget {
           borderRadius: BorderRadius.circular(999),
           color: AppColors.surfaceVariant,
           border: Border.all(
-            color: isSelected ? AppColors.accent : Colors.white10,
+            color: isSelected ? AppColors.accent : AppColors.onSurfaceVariant.withValues(alpha: 0.15),
             width: isSelected ? 1.0 : 0.5,
           ),
           boxShadow: isSelected
@@ -570,7 +569,7 @@ class _GlowFilterChip extends StatelessWidget {
           label,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: isSelected
-                    ? Colors.white
+                    ? AppColors.onBackground
                     : AppColors.onBackground.withValues(alpha: 0.7),
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
                 fontSize: 12,
@@ -618,13 +617,13 @@ class _StatusDot extends StatelessWidget {
     final Color color;
     switch (status) {
       case 'clean':
-        color = Colors.green;
+        color = AppColors.statusActive;
         break;
       case 'needs_cleaning':
-        color = Colors.amber;
+        color = AppColors.statusLoaned;
         break;
       case 'at_dry_cleaner':
-        color = Colors.blue;
+        color = AppColors.info;
         break;
       default:
         color = AppColors.onSurfaceVariant;
@@ -636,7 +635,10 @@ class _StatusDot extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: color,
-        border: Border.all(color: Colors.white, width: 1),
+        border: Border.all(
+          color: AppColors.onSurfaceVariant.withValues(alpha: 0.3),
+          width: 1,
+        ),
       ),
     );
   }

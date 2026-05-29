@@ -58,7 +58,25 @@ class _InsuranceDetailScreenState extends ConsumerState<InsuranceDetailScreen> {
         data:
             (policy) =>
                 policy == null
-                    ? const Center(child: Text('Policy not found'))
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.shield_outlined,
+                              size: 48,
+                              color: AppColors.onSurfaceVariant,
+                            ),
+                            SizedBox(height: AppSpacing.md),
+                            Text(
+                              'Policy not found',
+                              style: AppTypography.bodyMedium.copyWith(
+                                color: AppColors.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
                     : _buildContent(context, policy),
         loading: () => const AppScreenSkeleton(showHeader: false),
         error:

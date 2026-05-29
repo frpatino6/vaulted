@@ -9,6 +9,11 @@ import '../../properties/domain/properties_notifier.dart';
 import '../data/models/movement_model.dart';
 import '../domain/active_movement_notifier.dart';
 
+const _operationTransferColor = Color(0xFF64B5F6);
+const _operationLoanColor = Color(0xFFCE93D8);
+const _operationRepairColor = Color(0xFFFFB74D);
+const _operationDisposalColor = Color(0xFFEF9A9A);
+
 class NewMovementSheet extends ConsumerStatefulWidget {
   const NewMovementSheet({super.key, required this.onCreated});
 
@@ -57,18 +62,24 @@ class _NewMovementSheetState extends ConsumerState<NewMovementSheet> {
     final propertiesState = ref.watch(propertiesNotifierProvider);
     final properties = propertiesState.value ?? [];
 
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.surfaceVariant,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      padding: EdgeInsets.fromLTRB(
-          AppSpacing.md, AppSpacing.md, AppSpacing.md, bottom + AppSpacing.md),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+    return SafeArea(
+      top: false,
+      child: Container(
+        decoration: const BoxDecoration(
+          color: AppColors.surfaceVariant,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: EdgeInsets.fromLTRB(
+          AppSpacing.md,
+          AppSpacing.md,
+          AppSpacing.md,
+          bottom + AppSpacing.md,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
             Center(
               child: Container(
                 width: 40,
@@ -100,7 +111,7 @@ class _NewMovementSheetState extends ConsumerState<NewMovementSheet> {
               'TYPE',
               style: TextStyle(
                 color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
-                fontSize: 11,
+                fontSize: 12,
                 letterSpacing: 1.5,
                 fontWeight: FontWeight.w600,
               ),
@@ -135,7 +146,7 @@ class _NewMovementSheetState extends ConsumerState<NewMovementSheet> {
                 'TITLE',
                 style: TextStyle(
                   color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
-                  fontSize: 11,
+                  fontSize: 12,
                   letterSpacing: 1.5,
                   fontWeight: FontWeight.w600,
                 ),
@@ -156,7 +167,7 @@ class _NewMovementSheetState extends ConsumerState<NewMovementSheet> {
                   'DESTINATION',
                   style: TextStyle(
                     color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
-                    fontSize: 11,
+                    fontSize: 12,
                     letterSpacing: 1.5,
                     fontWeight: FontWeight.w600,
                   ),
@@ -183,7 +194,7 @@ class _NewMovementSheetState extends ConsumerState<NewMovementSheet> {
                   _destinationLabel(_selectedType!),
                   style: TextStyle(
                     color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
-                    fontSize: 11,
+                    fontSize: 12,
                     letterSpacing: 1.5,
                     fontWeight: FontWeight.w600,
                   ),
@@ -203,52 +214,69 @@ class _NewMovementSheetState extends ConsumerState<NewMovementSheet> {
                   'EXPECTED RETURN',
                   style: TextStyle(
                     color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
-                    fontSize: 11,
+                    fontSize: 12,
                     letterSpacing: 1.5,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: AppSpacing.xs),
-                GestureDetector(
-                  onTap: _pickDate,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.md, vertical: 14),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
+                Material(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  child: InkWell(
+                    onTap: _pickDate,
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      constraints: const BoxConstraints(minHeight: 52),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.md,
+                        vertical: AppSpacing.sm,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
                           color: AppColors.onSurfaceVariant
-                              .withValues(alpha: 0.15)),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.calendar_today_outlined,
+                              .withValues(alpha: 0.15),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.calendar_today_outlined,
                             size: 16,
                             color: _dueDate != null
                                 ? AppColors.accent
-                                : AppColors.onSurfaceVariant),
-                        const SizedBox(width: AppSpacing.sm),
-                        Text(
-                          _dueDate != null
-                              ? '${_dueDate!.day}/${_dueDate!.month}/${_dueDate!.year}'
-                              : 'Optional — tap to set',
-                          style: TextStyle(
-                            color: _dueDate != null
-                                ? AppColors.onBackground
                                 : AppColors.onSurfaceVariant,
-                            fontSize: 14,
                           ),
-                        ),
-                        if (_dueDate != null) ...[
-                          const Spacer(),
-                          GestureDetector(
-                            onTap: () => setState(() => _dueDate = null),
-                            child: Icon(Icons.close,
-                                size: 16, color: AppColors.onSurfaceVariant),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: Text(
+                              _dueDate != null
+                                  ? '${_dueDate!.day}/${_dueDate!.month}/${_dueDate!.year}'
+                                  : 'Optional - tap to set',
+                              style: TextStyle(
+                                color: _dueDate != null
+                                    ? AppColors.onBackground
+                                    : AppColors.onSurfaceVariant,
+                                fontSize: 14,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
+                          if (_dueDate != null)
+                            IconButton(
+                              tooltip: 'Clear expected return',
+                              visualDensity: VisualDensity.compact,
+                              onPressed: () => setState(() => _dueDate = null),
+                              icon: Icon(
+                                Icons.close,
+                                size: 16,
+                                color: AppColors.onSurfaceVariant,
+                              ),
+                            ),
                         ],
-                      ],
+                      ),
                     ),
                   ),
                 ),
@@ -260,7 +288,7 @@ class _NewMovementSheetState extends ConsumerState<NewMovementSheet> {
                 'NOTES',
                 style: TextStyle(
                   color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
-                  fontSize: 11,
+                  fontSize: 12,
                   letterSpacing: 1.5,
                   fontWeight: FontWeight.w600,
                 ),
@@ -329,7 +357,8 @@ class _NewMovementSheetState extends ConsumerState<NewMovementSheet> {
                 ),
               ),
             ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -489,21 +518,21 @@ class _DestinationSelector extends StatelessWidget {
             padding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.md, vertical: AppSpacing.sm),
             decoration: BoxDecoration(
-              color: const Color(0xFF2196F3).withValues(alpha: 0.08),
+              color: _operationTransferColor.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
-                  color: const Color(0xFF2196F3).withValues(alpha: 0.3)),
+                  color: _operationTransferColor.withValues(alpha: 0.3)),
             ),
             child: Row(
               children: [
                 const Icon(Icons.check_circle_outline,
-                    color: Color(0xFF2196F3), size: 16),
+                    color: _operationTransferColor, size: 16),
                 const SizedBox(width: AppSpacing.xs),
                 Expanded(
                   child: Text(
                     '${selectedProperty!.name} · ${selectedFloor?.name ?? ''} · ${selectedRoom!.name}',
                     style: const TextStyle(
-                        color: Color(0xFF2196F3),
+                        color: _operationTransferColor,
                         fontSize: 12,
                         fontWeight: FontWeight.w500),
                     maxLines: 1,
@@ -545,7 +574,7 @@ class _DropdownField<T> extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
             color: value != null
-                ? const Color(0xFF2196F3).withValues(alpha: 0.5)
+                ? _operationTransferColor.withValues(alpha: 0.5)
                 : AppColors.onSurfaceVariant.withValues(alpha: 0.15)),
       ),
       child: DropdownButtonHideUnderline(
@@ -597,52 +626,70 @@ class _TypeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md, vertical: AppSpacing.sm),
-        decoration: BoxDecoration(
-          color: selected
-              ? type.color.withValues(alpha: 0.15)
-              : AppColors.surface,
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: 'Select ${type.label} operation',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: selected
-                ? type.color.withValues(alpha: 0.7)
-                : AppColors.onSurfaceVariant.withValues(alpha: 0.15),
-            width: selected ? 1.5 : 1,
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(type.icon,
-                color: selected ? type.color : AppColors.onSurfaceVariant,
-                size: 20),
-            const SizedBox(width: AppSpacing.sm),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
+          splashColor: type.color.withValues(alpha: 0.08),
+          highlightColor: type.color.withValues(alpha: 0.05),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            constraints: const BoxConstraints(minHeight: 64),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            decoration: BoxDecoration(
+              color: selected
+                  ? type.color.withValues(alpha: 0.15)
+                  : AppColors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: selected
+                    ? type.color.withValues(alpha: 0.7)
+                    : AppColors.onSurfaceVariant.withValues(alpha: 0.15),
+                width: selected ? 1.5 : 1,
+              ),
+            ),
+            child: Row(
               children: [
-                Text(
-                  type.label,
-                  style: TextStyle(
-                    color: selected ? type.color : AppColors.onBackground,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                Text(
-                  type.subtitle,
-                  style: TextStyle(
-                    color: AppColors.onSurfaceVariant,
-                    fontSize: 10,
+                Icon(type.icon,
+                    color: selected ? type.color : AppColors.onSurfaceVariant,
+                    size: 20),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        type.label,
+                        style: TextStyle(
+                          color:
+                              selected ? type.color : AppColors.onBackground,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        type.subtitle,
+                        style: TextStyle(
+                          color: AppColors.onSurfaceVariant,
+                          fontSize: 12,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -677,7 +724,7 @@ class _Field extends StatelessWidget {
         hintStyle:
             TextStyle(color: AppColors.onSurfaceVariant, fontSize: 14),
         counterStyle:
-            TextStyle(color: AppColors.onSurfaceVariant, fontSize: 11),
+            TextStyle(color: AppColors.onSurfaceVariant, fontSize: 12),
         filled: true,
         fillColor: AppColors.surface,
         contentPadding: const EdgeInsets.symmetric(
@@ -724,28 +771,28 @@ const _types = [
   _OperationType(
     id: 'transfer',
     icon: Icons.swap_horiz_rounded,
-    color: Color(0xFF2196F3),
+    color: _operationTransferColor,
     label: 'Transfer',
     subtitle: 'Move to location',
   ),
   _OperationType(
     id: 'loan',
     icon: Icons.person_outline_rounded,
-    color: Color(0xFF9C27B0),
+    color: _operationLoanColor,
     label: 'Loan',
     subtitle: 'Lend to someone',
   ),
   _OperationType(
     id: 'repair',
     icon: Icons.build_outlined,
-    color: Color(0xFFFF9800),
+    color: _operationRepairColor,
     label: 'Repair',
     subtitle: 'Send for service',
   ),
   _OperationType(
     id: 'disposal',
     icon: Icons.delete_outline_rounded,
-    color: Color(0xFFCF6679),
+    color: _operationDisposalColor,
     label: 'Disposal',
     subtitle: 'Remove permanently',
   ),

@@ -378,30 +378,26 @@ class DashboardQuickActions extends ConsumerWidget {
       children: [
         Text(
           'Command Center',
-          style: GoogleFonts.inter(
-            color: AppColors.onBackground,
-            fontSize: 20.0,
+          style: AppTypography.titleLarge.copyWith(
             fontWeight: FontWeight.w700,
             letterSpacing: -0.4,
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: AppSpacing.xs),
         Text(
           'Fast access to your most-used workflows',
-          style: GoogleFonts.inter(
-            color: AppColors.onSurfaceVariant,
-            fontSize: 13.0,
+          style: AppTypography.bodySmall.copyWith(
             fontWeight: FontWeight.w500,
           ),
         ),
-        const SizedBox(height: 16.0),
+        const SizedBox(height: AppSpacing.md),
         // D1: removed wrapping Padding(all:16) — GridView sits flush with parent padding
         GridView.count(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           crossAxisCount: 2,
-          mainAxisSpacing: 16.0,
-          crossAxisSpacing: 16.0,
+          mainAxisSpacing: AppSpacing.md,
+          crossAxisSpacing: AppSpacing.md,
           childAspectRatio: 1.0,
           padding: EdgeInsets.zero,
           children: [
@@ -459,8 +455,8 @@ class _QuickActionTile extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        splashColor: Colors.white12,
-        highlightColor: Colors.white12,
+        splashColor: AppColors.onSurfaceVariant.withValues(alpha: 0.12),
+        highlightColor: AppColors.onSurfaceVariant.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(20.0),
         child: Ink(
           decoration: BoxDecoration(
@@ -470,10 +466,12 @@ class _QuickActionTile extends StatelessWidget {
               end: Alignment.bottomRight,
               colors: [
                 AppColors.surface.withValues(alpha: 0.95),
-                const Color(0xFF131B2E),
+                AppColors.background.withValues(alpha: 0.8),
               ],
             ),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+          border: Border.all(
+            color: AppColors.onSurfaceVariant.withValues(alpha: 0.2),
+          ),
             boxShadow: [
               BoxShadow(
                 color: AppColors.accent.withValues(alpha: 0.18),
@@ -491,9 +489,11 @@ class _QuickActionTile extends StatelessWidget {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.08),
+                    color: AppColors.onSurfaceVariant.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                    border: Border.all(
+                      color: AppColors.onSurfaceVariant.withValues(alpha: 0.25),
+                    ),
                   ),
                   child: Icon(icon, color: AppColors.accentBright, size: 22.0),
                 ),
@@ -502,11 +502,9 @@ class _QuickActionTile extends StatelessWidget {
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(
-                    fontSize: 14.0,
+                  style: AppTypography.bodyMedium.copyWith(
                     fontWeight: FontWeight.w600,
                     letterSpacing: -0.1,
-                    color: AppColors.onBackground,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -514,10 +512,8 @@ class _QuickActionTile extends StatelessWidget {
                   children: [
                     Text(
                       'Open',
-                      style: GoogleFonts.inter(
-                        fontSize: 11,
+                      style: AppTypography.bodySmall.copyWith(
                         fontWeight: FontWeight.w500,
-                        color: AppColors.onSurfaceVariant,
                       ),
                     ),
                     const SizedBox(width: 4),
@@ -582,8 +578,8 @@ class DashboardPropertyCard extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: () => context.push('/properties/${property.id}'),
-          splashColor: Colors.white10,
-          highlightColor: Colors.white10.withValues(alpha: 0.5),
+          splashColor: AppColors.onSurfaceVariant.withValues(alpha: 0.12),
+          highlightColor: AppColors.onSurfaceVariant.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(20),
           child: Container(
             height: 200,
@@ -688,9 +684,7 @@ class DashboardPropertyCard extends StatelessWidget {
                               style: Theme.of(
                                 context,
                               ).textTheme.bodySmall?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w500,
-                                fontSize: 13,
+                              color: AppColors.onBackground,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -704,11 +698,7 @@ class DashboardPropertyCard extends StatelessWidget {
                           padding: const EdgeInsets.only(bottom: 2),
                           child: Text(
                             '$itemCount items',
-                            style: Theme.of(
-                              context,
-                            ).textTheme.labelSmall?.copyWith(
-                              color: Colors.white,
-                              fontSize: 11,
+                            style: AppTypography.bodySmall.copyWith(
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -1208,11 +1198,9 @@ class _OperationListItem extends StatelessWidget {
               ),
               child: Text(
                 isDraft ? 'DRAFT' : 'ACTIVE',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 9,
+                style: AppTypography.labelSmall.copyWith(
+                  color: AppColors.onBackground,
                   fontWeight: FontWeight.w700,
-                  letterSpacing: 0.5,
                 ),
               ),
             ),

@@ -296,10 +296,6 @@ class _PropertyDetailBody extends ConsumerWidget {
 
   static const double _appBarExpandedHeight = 280;
 
-  /// Placeholder: modern luxury mansion when property has no photos.
-  static const String _placeholderMansionUrl =
-      'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800';
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final hasHeroImage = property.photos.isNotEmpty;
@@ -336,15 +332,15 @@ class _PropertyDetailBody extends ConsumerWidget {
             background: Stack(
               fit: StackFit.expand,
               children: [
-                CachedNetworkImage(
-                  imageUrl:
-                      hasHeroImage
-                          ? property.photos.first
-                          : _placeholderMansionUrl,
-                  fit: BoxFit.cover,
-                  placeholder: (_, _) => _LuxuryGradientBackground(),
-                  errorWidget: (_, _, _) => _LuxuryGradientBackground(),
-                ),
+                if (hasHeroImage)
+                  CachedNetworkImage(
+                    imageUrl: property.photos.first,
+                    fit: BoxFit.cover,
+                    placeholder: (_, _) => _LuxuryGradientBackground(),
+                    errorWidget: (_, _, _) => _LuxuryGradientBackground(),
+                  )
+                else
+                  _LuxuryGradientBackground(),
                 // Dark gradient at base so title reads perfectly
                 DecoratedBox(
                   decoration: BoxDecoration(
@@ -689,9 +685,9 @@ class _UnlocatedItemsBanner extends ConsumerWidget {
 
         return Container(
           decoration: BoxDecoration(
-            color: Colors.orange.withValues(alpha: 0.08),
+            color: AppColors.warning.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.orange.withValues(alpha: 0.35)),
+            border: Border.all(color: AppColors.warning.withValues(alpha: 0.35)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -709,14 +705,14 @@ class _UnlocatedItemsBanner extends ConsumerWidget {
                     const Icon(
                       Icons.location_off_outlined,
                       size: 18,
-                      color: Colors.orange,
+                      color: AppColors.warning,
                     ),
                     const SizedBox(width: AppSpacing.sm),
                     Expanded(
                       child: Text(
                         '${items.length} item${items.length == 1 ? '' : 's'} pending location',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.orange,
+                          color: AppColors.warning,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -724,7 +720,7 @@ class _UnlocatedItemsBanner extends ConsumerWidget {
                     TextButton(
                       onPressed: () => _openSheet(context, ref, items),
                       style: TextButton.styleFrom(
-                        foregroundColor: Colors.orange,
+                        foregroundColor: AppColors.warning,
                         padding: const EdgeInsets.symmetric(
                           horizontal: AppSpacing.sm,
                         ),
@@ -774,7 +770,7 @@ class _UnlocatedItemsBanner extends ConsumerWidget {
                         TextButton(
                           onPressed: () => onAssignLocation!(item.id),
                           style: TextButton.styleFrom(
-                            foregroundColor: Colors.orange,
+                            foregroundColor: AppColors.warning,
                             padding: const EdgeInsets.symmetric(
                               horizontal: AppSpacing.sm,
                             ),
@@ -815,16 +811,16 @@ class _UnlocatedItemsBanner extends ConsumerWidget {
                         vertical: AppSpacing.xs,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.orange.withValues(alpha: 0.15),
+                        color: AppColors.warning.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: Colors.orange.withValues(alpha: 0.4),
+                          color: AppColors.warning.withValues(alpha: 0.4),
                         ),
                       ),
                       child: Text(
                         '+$overflow more',
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: Colors.orange,
+                          color: AppColors.warning,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -1078,7 +1074,7 @@ class _UnlocatedItemsSheetState extends ConsumerState<_UnlocatedItemsSheet> {
                           onPressed:
                               items.isEmpty ? null : () => _toggleAll(items),
                           style: TextButton.styleFrom(
-                            foregroundColor: Colors.orange,
+                            foregroundColor: AppColors.warning,
                             padding: const EdgeInsets.symmetric(
                               horizontal: AppSpacing.sm,
                             ),
@@ -1159,7 +1155,7 @@ class _UnlocatedItemsSheetState extends ConsumerState<_UnlocatedItemsSheet> {
                                     CheckboxListTile(
                                       value: _selected.contains(item.id),
                                       onChanged: (_) => _toggleItem(item.id),
-                                      activeColor: Colors.orange,
+                                      activeColor: AppColors.warning,
                                       checkColor: Colors.white,
                                       contentPadding:
                                           const EdgeInsets.symmetric(
@@ -1227,9 +1223,9 @@ class _UnlocatedItemsSheetState extends ConsumerState<_UnlocatedItemsSheet> {
                                     ? null
                                     : () => _batchAssign(context, items),
                             style: FilledButton.styleFrom(
-                              backgroundColor: Colors.orange,
+                              backgroundColor: AppColors.warning,
                               foregroundColor: Colors.white,
-                              disabledBackgroundColor: Colors.orange.withValues(
+                              disabledBackgroundColor: AppColors.warning.withValues(
                                 alpha: 0.4,
                               ),
                               elevation: 0,
@@ -1531,7 +1527,7 @@ class _FloorTile extends ConsumerWidget {
         leading: const Icon(
           Icons.villa_outlined,
           size: 18,
-          color: Color(0xFFFFD700),
+          color: AppColors.accentBright,
         ),
         title: Text(
           floor.name,

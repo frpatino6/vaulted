@@ -25,6 +25,11 @@ const _kBlue   = Color(0xFF64B5F6); // Transfer   — 6.8:1
 
 // ---------------------------------------------------------------------------
 
+const _kMuted = Color(0xFF8E8E9E);
+const _kFieldSurface = Color(0xFF13131C);
+const _kOutline = Color(0xFF252530);
+const _kPremiumGold = AppColors.catalogGold;
+
 class MovementsScreen extends ConsumerStatefulWidget {
   const MovementsScreen({super.key});
 
@@ -110,7 +115,12 @@ class _MovementsScreenState extends ConsumerState<MovementsScreen>
             letterSpacing: -0.3,
           ),
         ),
-        actions: [const HelpScreenButton(screenKey: 'movements')],
+        actions: const [
+          SizedBox(
+            width: 56,
+            child: Center(child: HelpScreenButton(screenKey: 'movements')),
+          ),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(44),
           child: Column(
@@ -118,7 +128,7 @@ class _MovementsScreenState extends ConsumerState<MovementsScreen>
               const Divider(
                 height: 1,
                 thickness: 1,
-                color: Color(0xFF1C1C26),
+                color: AppColors.surfaceVariant,
               ),
               TabBar(
                 controller: _tabs,
@@ -143,11 +153,6 @@ class _MovementsScreenState extends ConsumerState<MovementsScreen>
       ),
       body: Column(
         children: [
-          _SearchAndFilterBar(
-            controller: _searchController,
-            selectedType: _selectedType,
-            onTypeSelected: (t) => setState(() => _selectedType = t),
-          ),
           if (draftState.value != null && draftState.value!.isNotEmpty)
             _DraftBannerList(
               drafts: draftState.value!,
@@ -156,29 +161,49 @@ class _MovementsScreenState extends ConsumerState<MovementsScreen>
           Expanded(
             child: renderListState.when(
               data: (all) {
+                final hasOperations = all.isNotEmpty;
                 final active = _applyFilters(
                     all.where((m) => m.isDraft || m.isActive).toList());
                 final history =
                     _applyFilters(all.where((m) => m.isFinished).toList());
 
-                return TabBarView(
-                  controller: _tabs,
+                return Column(
                   children: [
-                    _MovementList(
-                      movements: active,
-                      emptyMessage: 'No active operations',
-                      emptySubtitle: canOperate
-                          ? 'Tap + to start a new operation'
-                          : 'No operations in progress',
-                      onRefresh: () =>
-                          ref.read(movementListNotifierProvider.notifier).load(),
+                    _SearchAndFilterBar(
+                      controller: _searchController,
+                      selectedType: _selectedType,
+                      showFilters: hasOperations,
+                      onTypeSelected: (t) => setState(() => _selectedType = t),
                     ),
-                    _MovementList(
-                      movements: history,
-                      emptyMessage: 'No history yet',
-                      emptySubtitle: 'Completed operations will appear here',
-                      onRefresh: () =>
-                          ref.read(movementListNotifierProvider.notifier).load(),
+                    Expanded(
+                      child: TabBarView(
+                        controller: _tabs,
+                        children: [
+                          _MovementList(
+                            movements: active,
+                            emptyTitle: hasOperations
+                                ? 'No active operations'
+                                : 'Start your first operation',
+                            emptySubtitle: hasOperations
+                                ? 'Nothing is currently in progress'
+                                : canOperate
+                                    ? 'Use + to create a new operation'
+                                    : 'No operations have been created yet',
+                            onRefresh: () => ref
+                                .read(movementListNotifierProvider.notifier)
+                                .load(),
+                          ),
+                          _MovementList(
+                            movements: history,
+                            emptyTitle: 'No history yet',
+                            emptySubtitle:
+                                'Completed operations will appear here',
+                            onRefresh: () => ref
+                                .read(movementListNotifierProvider.notifier)
+                                .load(),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 );
@@ -212,20 +237,14 @@ class _MovementsScreenState extends ConsumerState<MovementsScreen>
         ],
       ),
       floatingActionButton: canOperate
-          ? FloatingActionButton.extended(
-              backgroundColor: AppColors.accent,
-              foregroundColor: Colors.black,
+          ? FloatingActionButton(
+              tooltip: 'New Operation',
+              backgroundColor: _kPremiumGold,
+              foregroundColor: AppColors.background,
               elevation: 8,
               highlightElevation: 12,
-              icon: const Icon(Icons.add_rounded, size: 20),
-              label: const Text(
-                'New Operation',
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14,
-                  letterSpacing: 0.2,
-                ),
-              ),
+              shape: const CircleBorder(),
+              child: const Icon(Icons.add_rounded, size: 28),
               onPressed: () => _startNewMovement(context),
             )
           : null,
@@ -262,59 +281,83 @@ class _DraftBannerList extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: drafts.map((m) {
-        return GestureDetector(
-          onTap: () => onResume(m),
-          child: Container(
-            margin: const EdgeInsets.fromLTRB(
-              AppSpacing.md, AppSpacing.sm, AppSpacing.md, 0),
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.md, vertical: 10),
-            decoration: BoxDecoration(
+        return Semantics(
+          button: true,
+          label: 'Resume draft operation ${m.title}',
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              AppSpacing.sm,
+              AppSpacing.md,
+              0,
+            ),
+            child: Material(
               color: AppColors.accent.withValues(alpha: 0.10),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                  color: AppColors.accent.withValues(alpha: 0.35)),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.pending_rounded,
-                    color: AppColors.accent, size: 16),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              child: InkWell(
+                onTap: () => onResume(m),
+                borderRadius: BorderRadius.circular(12),
+                splashColor: AppColors.accent.withValues(alpha: 0.08),
+                highlightColor: AppColors.accent.withValues(alpha: 0.05),
+                child: Container(
+                  constraints: const BoxConstraints(minHeight: 56),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                    vertical: AppSpacing.sm,
+                  ),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppColors.accent.withValues(alpha: 0.35),
+                    ),
+                  ),
+                  child: Row(
                     children: [
-                      Text(
-                        'Draft in progress',
-                        style: TextStyle(
-                          color: AppColors.accent,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.3,
+                      Icon(
+                        Icons.pending_rounded,
+                        color: AppColors.accent,
+                        size: 18,
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'Draft in progress',
+                              style: TextStyle(
+                                color: AppColors.accent,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              m.title,
+                              style: const TextStyle(
+                                color: AppColors.onBackground,
+                                fontSize: 13,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 1),
                       Text(
-                        m.title,
-                        style: const TextStyle(
-                          color: AppColors.onBackground,
-                          fontSize: 13,
+                        'Resume',
+                        style: TextStyle(
+                          color: AppColors.accent,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
                 ),
-                Text(
-                  'Resume →',
-                  style: TextStyle(
-                    color: AppColors.accent,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         );
@@ -322,7 +365,6 @@ class _DraftBannerList extends StatelessWidget {
     );
   }
 }
-
 // ---------------------------------------------------------------------------
 // Movement list
 // ---------------------------------------------------------------------------
@@ -330,51 +372,34 @@ class _DraftBannerList extends StatelessWidget {
 class _MovementList extends StatelessWidget {
   const _MovementList({
     required this.movements,
-    required this.emptyMessage,
+    required this.emptyTitle,
     required this.emptySubtitle,
     required this.onRefresh,
   });
 
   final List<MovementModel> movements;
-  final String emptyMessage;
+  final String emptyTitle;
   final String emptySubtitle;
   final Future<void> Function() onRefresh;
 
   @override
   Widget build(BuildContext context) {
     if (movements.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.xl),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.swap_horiz_rounded,
-                size: 52,
-                color: AppColors.onSurfaceVariant.withValues(alpha: 0.25),
+      return RefreshIndicator(
+        color: AppColors.accent,
+        backgroundColor: AppColors.surfaceVariant,
+        onRefresh: onRefresh,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            SizedBox(
+              height: MediaQuery.sizeOf(context).height * 0.52,
+              child: OperationsEmptyState(
+                title: emptyTitle,
+                subtitle: emptySubtitle,
               ),
-              const SizedBox(height: AppSpacing.md),
-              Text(
-                emptyMessage,
-                style: const TextStyle(
-                  color: AppColors.onBackground,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: -0.2,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                emptySubtitle,
-                style: const TextStyle(
-                  color: AppColors.onSurfaceVariant,
-                  fontSize: 13,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       );
     }
@@ -385,11 +410,117 @@ class _MovementList extends StatelessWidget {
       onRefresh: onRefresh,
       child: ListView.builder(
         padding: const EdgeInsets.fromLTRB(
-            AppSpacing.md, AppSpacing.sm, AppSpacing.md, 110),
-        itemCount: movements.length,
-        itemBuilder: (context, i) => Padding(
-          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-          child: MovementCard(movement: movements[i]),
+            AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.md),
+        itemCount: movements.length + 1,
+        itemBuilder: (context, i) {
+          if (i == movements.length) {
+            return const SizedBox(height: 112);
+          }
+          return Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: MovementCard(movement: movements[i]),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class OperationsEmptyState extends StatelessWidget {
+  const OperationsEmptyState({
+    super.key,
+    required this.title,
+    required this.subtitle,
+  });
+
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const _OperationIllustrationPlaceholder(),
+          const SizedBox(height: AppSpacing.lg),
+          Text(
+            title,
+            style: const TextStyle(
+              color: AppColors.onBackground,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.2,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            subtitle,
+            style: const TextStyle(
+              color: AppColors.onSurface,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              height: 1.45,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OperationIllustrationPlaceholder extends StatelessWidget {
+  const _OperationIllustrationPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      image: true,
+      label: 'Operations illustration placeholder',
+      child: SizedBox(
+        width: 112,
+        height: 112,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Container(
+              width: 112,
+              height: 112,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: _kPremiumGold.withValues(alpha: 0.08),
+                border: Border.all(
+                  color: _kPremiumGold.withValues(alpha: 0.18),
+                ),
+              ),
+            ),
+            Container(
+              width: 74,
+              height: 74,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(22),
+                color: AppColors.surfaceVariant,
+                border: Border.all(
+                  color: _kPremiumGold.withValues(alpha: 0.3),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.25),
+                    blurRadius: 18,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Icon(
+                Icons.add_task_rounded,
+                color: _kPremiumGold,
+                size: 34,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -407,30 +538,34 @@ class MovementCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final typeInfo   = _typeInfo(movement.operationType);
+    final typeInfo = _typeInfo(movement.operationType);
     final statusInfo = _statusInfo(movement.status);
     final hasLocation = movement.destination.isNotEmpty;
-    final isActive    = movement.isActive;
-    final total       = movement.items.length;
-    final returned    = movement.returnedCount;
-    final progress    = total > 0 ? returned / total : 0.0;
+    final isActive = movement.isActive;
+    final total = movement.items.length;
+    final returned = movement.returnedCount;
+    final progress = total > 0 ? returned / total : 0.0;
+    final displayTitle = _displayTitle(movement.title, typeInfo.label);
 
     return Material(
-      color: Colors.transparent,
+      color: AppColors.surfaceVariant,
+      borderRadius: BorderRadius.circular(14),
+      clipBehavior: Clip.antiAlias,
+      elevation: 1,
+      shadowColor: Colors.black.withValues(alpha: 0.24),
       child: InkWell(
         onTap: () => context.push('/movements/${movement.id}'),
         borderRadius: BorderRadius.circular(14),
         splashColor: typeInfo.color.withValues(alpha: 0.06),
         highlightColor: typeInfo.color.withValues(alpha: 0.04),
-        child: Container(
-          padding: const EdgeInsets.all(14),
+        child: Ink(
+          padding: const EdgeInsets.all(AppSpacing.md),
           decoration: BoxDecoration(
-            color: AppColors.surfaceVariant,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: isActive
                   ? typeInfo.color.withValues(alpha: 0.25)
-                  : const Color(0xFF252530),
+                  : _kOutline,
               width: 1,
             ),
           ),
@@ -438,15 +573,18 @@ class MovementCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // ── Left: type icon ──────────────────────────────────────────
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: typeInfo.color.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(11),
+              Align(
+                alignment: Alignment.center,
+                child: Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: typeInfo.color.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(11),
+                  ),
+                  child: Icon(typeInfo.icon,
+                      color: typeInfo.color, size: 20),
                 ),
-                child: Icon(typeInfo.icon,
-                    color: typeInfo.color, size: 20),
               ),
               const SizedBox(width: 12),
 
@@ -457,7 +595,7 @@ class MovementCard extends StatelessWidget {
                   children: [
                     // Title — first letter capitalized to handle user-entered lowercase titles
                     Text(
-                      _capitalizeFirst(movement.title),
+                      displayTitle,
                       style: const TextStyle(
                         color: AppColors.onBackground,
                         fontSize: 14,
@@ -481,12 +619,16 @@ class MovementCard extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 5),
-                        Text(
-                          typeInfo.label,
-                          style: const TextStyle(
-                            color: AppColors.onSurface,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
+                        Flexible(
+                          child: Text(
+                            typeInfo.label,
+                            style: const TextStyle(
+                              color: AppColors.onSurface,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
@@ -508,7 +650,7 @@ class MovementCard extends StatelessWidget {
                               movement.destination,
                               style: const TextStyle(
                                 color: AppColors.onSurfaceVariant,
-                                fontSize: 11,
+                                fontSize: 12,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -535,7 +677,7 @@ class MovementCard extends StatelessWidget {
                           style: TextStyle(
                             color: AppColors.onSurfaceVariant
                                 .withValues(alpha: 0.7),
-                            fontSize: 11,
+                            fontSize: 12,
                           ),
                         ),
                       ],
@@ -568,7 +710,7 @@ class MovementCard extends StatelessWidget {
                             style: TextStyle(
                               color: AppColors.onSurfaceVariant
                                   .withValues(alpha: 0.8),
-                              fontSize: 10,
+                              fontSize: 12,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -584,17 +726,20 @@ class MovementCard extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   _StatusChip(status: movement.status, info: statusInfo),
-                  const SizedBox(height: 5),
+                  const SizedBox(height: AppSpacing.xs),
                   Text(
                     _formatDate(movement.createdAt),
                     style: TextStyle(
-                      color: AppColors.onSurfaceVariant
-                          .withValues(alpha: 0.7),
-                      fontSize: 10,
+                      color:
+                          AppColors.onSurfaceVariant.withValues(alpha: 0.7),
+                      fontSize: 12,
                       fontWeight: FontWeight.w400,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
@@ -614,9 +759,30 @@ class MovementCard extends StatelessWidget {
     }
   }
 
-  String _capitalizeFirst(String value) {
-    if (value.isEmpty) return value;
-    return value[0].toUpperCase() + value.substring(1);
+  String _displayTitle(String title, String typeLabel) {
+    final cleaned = _removeRedundantPrefix(title.trim(), typeLabel).trim();
+    if (cleaned.isEmpty) return title;
+    return cleaned[0].toUpperCase() + cleaned.substring(1);
+  }
+
+  String _removeRedundantPrefix(String value, String typeLabel) {
+    final prefixes = [
+      '$typeLabel:',
+      'Item cataloged:',
+      'Cataloged:',
+      'Transfer:',
+      'Loan:',
+      'Repair:',
+      'Disposal:',
+    ];
+
+    for (final prefix in prefixes) {
+      if (value.toLowerCase().startsWith(prefix.toLowerCase())) {
+        return value.substring(prefix.length).trim();
+      }
+    }
+
+    return value;
   }
 }
 
@@ -633,18 +799,22 @@ class _StatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs,
+      ),
       decoration: BoxDecoration(
         color: info.color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-            color: info.color.withValues(alpha: 0.28), width: 1),
       ),
       child: Text(
         info.label,
+        softWrap: false,
+        maxLines: 1,
+        overflow: TextOverflow.visible,
         style: TextStyle(
           color: info.color,
-          fontSize: 9,
+          fontSize: 12,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.6,
         ),
@@ -684,12 +854,12 @@ _TypeInfo _typeInfo(String type) => switch (type) {
     };
 
 _StatusInfo _statusInfo(String status) => switch (status) {
-      'draft'     => const _StatusInfo(Color(0xFF8E8E9E), 'DRAFT'),
-      'active'    => const _StatusInfo(Color(0xFF64B5F6), 'ACTIVE'),
-      'completed' => const _StatusInfo(Color(0xFF81C784), 'DONE'),
-      'partial'   => const _StatusInfo(Color(0xFFFFB74D), 'PARTIAL'),
-      'cancelled' => const _StatusInfo(Color(0xFF8E8E9E), 'CANCELLED'),
-      _           => const _StatusInfo(Color(0xFF8E8E9E), 'UNKNOWN'),
+      'draft' => const _StatusInfo(_kMuted, 'DRAFT'),
+      'active' => const _StatusInfo(_kBlue, 'ACTIVE'),
+      'completed' => const _StatusInfo(_kGreen, 'DONE'),
+      'partial' => const _StatusInfo(_kOrange, 'PARTIAL'),
+      'cancelled' => const _StatusInfo(_kMuted, 'CANCELLED'),
+      _ => const _StatusInfo(_kMuted, 'UNKNOWN'),
     };
 
 // Public helpers for other screens
@@ -704,11 +874,13 @@ class _SearchAndFilterBar extends StatelessWidget {
   const _SearchAndFilterBar({
     required this.controller,
     required this.selectedType,
+    required this.showFilters,
     required this.onTypeSelected,
   });
 
   final TextEditingController controller;
   final String? selectedType;
+  final bool showFilters;
   final ValueChanged<String?> onTypeSelected;
 
   static const _types = [
@@ -742,24 +914,23 @@ class _SearchAndFilterBar extends StatelessWidget {
                     color: AppColors.onSurfaceVariant, size: 18),
                 suffixIcon: controller.text.isNotEmpty
                     ? IconButton(
+                        tooltip: 'Clear search',
                         icon: const Icon(Icons.close_rounded,
                             color: AppColors.onSurfaceVariant, size: 16),
                         onPressed: () => controller.clear(),
                       )
                     : null,
                 filled: true,
-                fillColor: const Color(0xFF13131C),
+                fillColor: _kFieldSurface,
                 contentPadding:
                     const EdgeInsets.symmetric(vertical: 0, horizontal: 12),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(
-                      color: Color(0xFF252530), width: 1),
+                  borderSide: const BorderSide(color: _kOutline, width: 1),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(
-                      color: Color(0xFF252530), width: 1),
+                  borderSide: const BorderSide(color: _kOutline, width: 1),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
@@ -770,63 +941,65 @@ class _SearchAndFilterBar extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: AppSpacing.sm),
+          if (showFilters) ...[
+            const SizedBox(height: AppSpacing.sm),
 
-          // Chips with trailing fade
-          Stack(
-            children: [
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.only(right: 36),
-                child: Row(
-                  children: [
-                    _FilterChip(
-                      label: 'All',
-                      icon: Icons.apps_rounded,
-                      color: AppColors.accent,
-                      selected: selectedType == null,
-                      onTap: () => onTypeSelected(null),
-                    ),
-                    const SizedBox(width: 6),
-                    ..._types.map(
-                      (t) => Padding(
-                        padding: const EdgeInsets.only(right: 6),
-                        child: _FilterChip(
-                          label: t.$4,
-                          icon: t.$2,
-                          color: t.$3,
-                          selected: selectedType == t.$1,
-                          onTap: () => onTypeSelected(
-                              selectedType == t.$1 ? null : t.$1),
+            // Chips with trailing fade
+            Stack(
+              children: [
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.only(right: 36),
+                  child: Row(
+                    children: [
+                      _FilterChip(
+                        label: 'All',
+                        icon: Icons.apps_rounded,
+                        color: AppColors.accent,
+                        selected: selectedType == null,
+                        onTap: () => onTypeSelected(null),
+                      ),
+                      const SizedBox(width: 6),
+                      ..._types.map(
+                        (t) => Padding(
+                          padding: const EdgeInsets.only(right: 6),
+                          child: _FilterChip(
+                            label: t.$4,
+                            icon: t.$2,
+                            color: t.$3,
+                            selected: selectedType == t.$1,
+                            onTap: () => onTypeSelected(
+                                selectedType == t.$1 ? null : t.$1),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              // Trailing fade mask
-              Positioned(
-                right: 0,
-                top: 0,
-                bottom: 0,
-                child: IgnorePointer(
-                  child: Container(
-                    width: 36,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.centerLeft,
-                        end: Alignment.centerRight,
-                        colors: [
-                          AppColors.background.withValues(alpha: 0),
-                          AppColors.background,
-                        ],
+                // Trailing fade mask
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  bottom: 0,
+                  child: IgnorePointer(
+                    child: Container(
+                      width: 36,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                          colors: [
+                            AppColors.background.withValues(alpha: 0),
+                            AppColors.background,
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
+          ],
           const SizedBox(height: AppSpacing.sm),
         ],
       ),
@@ -851,45 +1024,54 @@ class _FilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        curve: Curves.easeOut,
-        padding:
-            const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
-        decoration: BoxDecoration(
-          color: selected
-              ? color.withValues(alpha: 0.15)
-              : const Color(0xFF13131C),
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: 'Filter by $label operations',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: selected
-                ? color.withValues(alpha: 0.55)
-                : const Color(0xFF252530),
-            width: 1,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 12,
-              color: selected ? color : AppColors.onSurface,
-            ),
-            const SizedBox(width: 5),
-            Text(
-              label,
-              style: TextStyle(
-                color: selected ? color : AppColors.onSurface,
-                fontSize: 12,
-                fontWeight:
-                    selected ? FontWeight.w600 : FontWeight.w400,
-                letterSpacing: 0.1,
+          splashColor: color.withValues(alpha: 0.08),
+          highlightColor: color.withValues(alpha: 0.05),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            curve: Curves.easeOut,
+            constraints: const BoxConstraints(minHeight: 44),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color:
+                  selected ? color.withValues(alpha: 0.24) : Colors.transparent,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: selected
+                    ? color.withValues(alpha: 0.75)
+                    : AppColors.onSurfaceVariant.withValues(alpha: 0.45),
+                width: 1,
               ),
             ),
-          ],
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  icon,
+                  size: 14,
+                  color: selected ? color : AppColors.onBackground,
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: selected ? color : AppColors.onBackground,
+                    fontSize: 12,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                    letterSpacing: 0.1,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
