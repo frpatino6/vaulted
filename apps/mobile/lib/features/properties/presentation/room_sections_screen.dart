@@ -124,7 +124,7 @@ class _RoomSectionsScreenState extends ConsumerState<RoomSectionsScreen> {
     if (result == true) _load();
   }
 
-  Future<void> _delete(RoomSectionModel section) async {
+  Future<bool> _confirmDelete(RoomSectionModel section) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -144,7 +144,15 @@ class _RoomSectionsScreenState extends ConsumerState<RoomSectionsScreen> {
         ],
       ),
     );
-    if (confirm != true || !mounted) return;
+    return confirm == true;
+  }
+
+  Future<void> _delete(RoomSectionModel section) async {
+    if (!mounted) return;
+    setState(() {
+      _sections.removeWhere((s) => s.sectionId == section.sectionId);
+      _expandedSectionIds.remove(section.sectionId);
+    });
     try {
       await ref.read(propertyDetailNotifierProvider.notifier).deleteSection(
         widget.floorId, widget.roomId, section.sectionId,
@@ -158,6 +166,7 @@ class _RoomSectionsScreenState extends ConsumerState<RoomSectionsScreen> {
             backgroundColor: AppColors.error,
           ),
         );
+        _load();
       }
     }
   }
@@ -186,7 +195,13 @@ class _RoomSectionsScreenState extends ConsumerState<RoomSectionsScreen> {
         backgroundColor: AppColors.background,
         title: Text(
           '${widget.roomName} – Sections',
-          style: const TextStyle(color: AppColors.onBackground),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: AppColors.onBackground,
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         iconTheme: const IconThemeData(color: AppColors.onBackground),
         actions: [
@@ -248,6 +263,7 @@ class _RoomSectionsScreenState extends ConsumerState<RoomSectionsScreen> {
                                   }
                                 }),
                                 onEdit: () => _showAddSheet(editing: section),
+                                onConfirmDelete: () => _confirmDelete(section),
                                 onDelete: () => _delete(section),
                                 onSeeAll: () => context.push(
                                   '/properties/${widget.propertyId}/rooms/${widget.roomId}'
@@ -294,7 +310,7 @@ class _GroupHeader extends StatelessWidget {
             isUnlabeled ? Icons.help_outline : Icons.kitchen_outlined,
             size: 14,
             color: isUnlabeled
-                ? AppColors.onSurfaceVariant.withValues(alpha: 0.5)
+                ? AppColors.onSurfaceVariant.withValues(alpha: 0.9)
                 : AppColors.accent,
           ),
           const SizedBox(width: 6),
@@ -302,7 +318,7 @@ class _GroupHeader extends StatelessWidget {
             label,
             style: TextStyle(
               color: isUnlabeled
-                  ? AppColors.onSurfaceVariant.withValues(alpha: 0.5)
+                  ? AppColors.onSurfaceVariant.withValues(alpha: 0.9)
                   : AppColors.accent,
               fontSize: 12,
               fontWeight: FontWeight.w600,
@@ -325,6 +341,7 @@ class _SectionTile extends StatelessWidget {
     required this.isExpanded,
     required this.onToggle,
     required this.onEdit,
+    required this.onConfirmDelete,
     required this.onDelete,
     this.onSeeAll,
   });
@@ -335,6 +352,7 @@ class _SectionTile extends StatelessWidget {
   final bool isExpanded;
   final VoidCallback onToggle;
   final VoidCallback onEdit;
+  final Future<bool> Function() onConfirmDelete;
   final VoidCallback onDelete;
   final VoidCallback? onSeeAll;
 
@@ -371,111 +389,205 @@ class _SectionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surfaceVariant,
-        borderRadius: BorderRadius.circular(14),
+    return Dismissible(
+      key: ValueKey('section-${section.sectionId}'),
+      direction: DismissDirection.endToStart,
+      confirmDismiss: (_) => onConfirmDelete(),
+      onDismissed: (_) => onDelete(),
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: AppSpacing.lg),
+        decoration: BoxDecoration(
+          color: AppColors.error,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: const Icon(
+          Icons.delete_outline,
+          color: Colors.white,
+          size: 24,
+        ),
       ),
-      clipBehavior: Clip.hardEdge,
-      child: Column(
-        children: [
-          // ── Header row ──────────────────────────────────────────────────
-          InkWell(
-            onTap: onToggle,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              child: Row(
-                children: [
-                  _codeChip,
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          section.name,
-                          style: const TextStyle(
-                            color: AppColors.onBackground,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Row(
-                          children: [
-                            Icon(_icon, size: 12, color: AppColors.onSurfaceVariant),
-                            const SizedBox(width: 4),
-                            Text(
-                              section.type,
-                              style: const TextStyle(
-                                color: AppColors.onSurfaceVariant,
-                                fontSize: 12,
-                              ),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surfaceVariant,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        clipBehavior: Clip.hardEdge,
+        child: Column(
+          children: [
+            InkWell(
+              onTap: onToggle,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.sm,
+                ),
+                child: Row(
+                  children: [
+                    _codeChip,
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            section.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: AppColors.onBackground,
+                              fontWeight: FontWeight.w600,
                             ),
-                            if (sectionItems.isNotEmpty) ...[
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                                decoration: BoxDecoration(
-                                  color: AppColors.accent.withAlpha(30),
-                                  borderRadius: BorderRadius.circular(6),
+                          ),
+                          if (_showTypeSubtitle) ...[
+                            const SizedBox(height: 2),
+                            Row(
+                              children: [
+                                Icon(
+                                  _icon,
+                                  size: 12,
+                                  color: AppColors.onSurfaceVariant,
                                 ),
-                                child: Text(
-                                  '${sectionItems.length}',
-                                  style: const TextStyle(
-                                    color: AppColors.accent,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
+                                const SizedBox(width: AppSpacing.xs),
+                                Flexible(
+                                  child: Text(
+                                    section.type,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: AppColors.onSurfaceVariant,
+                                      fontSize: 12,
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ],
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.edit_outlined, size: 18),
-                    color: AppColors.onSurfaceVariant,
-                    visualDensity: VisualDensity.compact,
-                    onPressed: onEdit,
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline, size: 18),
-                    color: AppColors.error,
-                    visualDensity: VisualDensity.compact,
-                    onPressed: onDelete,
-                  ),
-                  Icon(
-                    isExpanded ? Icons.expand_less : Icons.expand_more,
-                    size: 18,
-                    color: AppColors.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: 4),
-                ],
+                    if (sectionItems.isNotEmpty) ...[
+                      const SizedBox(width: AppSpacing.sm),
+                      _ItemCountBadge(count: sectionItems.length),
+                    ],
+                    const SizedBox(width: AppSpacing.sm),
+                    _SectionTileActions(
+                      isExpanded: isExpanded,
+                      onEdit: onEdit,
+                      onToggle: onToggle,
+                    ),
+                  ],
+                ),
               ),
             ),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeInOut,
+              child: isExpanded
+                  ? _SectionItemsList(
+                      sectionItems: sectionItems,
+                      itemsLoading: itemsLoading,
+                      onSeeAll: onSeeAll,
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  bool get _showTypeSubtitle {
+    final normalizedName = section.name.trim().toLowerCase();
+    final normalizedType = section.type.trim().toLowerCase();
+    return normalizedType.isNotEmpty &&
+        normalizedName != normalizedType &&
+        !normalizedName.contains(normalizedType);
+  }
+}
+
+class _ItemCountBadge extends StatelessWidget {
+  const _ItemCountBadge({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: '$count items in this section',
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.xs,
+        ),
+        decoration: BoxDecoration(
+          color: AppColors.accent.withAlpha(30),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.inventory_2_outlined,
+              color: AppColors.accent,
+              size: 13,
+            ),
+            const SizedBox(width: AppSpacing.xs),
+            Text(
+              '$count',
+              style: const TextStyle(
+                color: AppColors.accent,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionTileActions extends StatelessWidget {
+  const _SectionTileActions({
+    required this.isExpanded,
+    required this.onEdit,
+    required this.onToggle,
+  });
+
+  final bool isExpanded;
+  final VoidCallback onEdit;
+  final VoidCallback onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: AppSpacing.xs),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            tooltip: 'Edit section',
+            icon: const Icon(Icons.edit_outlined, size: 18),
+            color: AppColors.onSurfaceVariant,
+            visualDensity: VisualDensity.compact,
+            onPressed: onEdit,
           ),
-          // ── Expandable items list ────────────────────────────────────────
-          AnimatedSize(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeInOut,
-            child: isExpanded
-                ? _SectionItemsList(
-                    sectionItems: sectionItems,
-                    itemsLoading: itemsLoading,
-                    onSeeAll: onSeeAll,
-                  )
-                : const SizedBox.shrink(),
+          IconButton(
+            tooltip: isExpanded ? 'Collapse section' : 'Expand section',
+            icon: Icon(
+              isExpanded ? Icons.expand_less : Icons.expand_more,
+              size: 20,
+            ),
+            color: AppColors.onSurfaceVariant,
+            visualDensity: VisualDensity.compact,
+            onPressed: onToggle,
           ),
         ],
       ),
     );
   }
 }
-
-// ── Items list inside expanded section ───────────────────────────────────────
-
 class _SectionItemsList extends StatelessWidget {
   const _SectionItemsList({
     required this.sectionItems,
