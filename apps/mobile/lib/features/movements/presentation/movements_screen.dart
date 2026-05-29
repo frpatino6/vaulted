@@ -410,12 +410,17 @@ class _MovementList extends StatelessWidget {
       onRefresh: onRefresh,
       child: ListView.builder(
         padding: const EdgeInsets.fromLTRB(
-            AppSpacing.md, AppSpacing.sm, AppSpacing.md, 110),
-        itemCount: movements.length,
-        itemBuilder: (context, i) => Padding(
-          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-          child: MovementCard(movement: movements[i]),
-        ),
+            AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.md),
+        itemCount: movements.length + 1,
+        itemBuilder: (context, i) {
+          if (i == movements.length) {
+            return const SizedBox(height: 112);
+          }
+          return Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: MovementCard(movement: movements[i]),
+          );
+        },
       ),
     );
   }
@@ -540,6 +545,7 @@ class MovementCard extends StatelessWidget {
     final total = movement.items.length;
     final returned = movement.returnedCount;
     final progress = total > 0 ? returned / total : 0.0;
+    final displayTitle = _displayTitle(movement.title, typeInfo.label);
 
     return Material(
       color: AppColors.surfaceVariant,
@@ -567,15 +573,18 @@ class MovementCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // ── Left: type icon ──────────────────────────────────────────
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: typeInfo.color.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(11),
+              Align(
+                alignment: Alignment.center,
+                child: Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: typeInfo.color.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(11),
+                  ),
+                  child: Icon(typeInfo.icon,
+                      color: typeInfo.color, size: 20),
                 ),
-                child: Icon(typeInfo.icon,
-                    color: typeInfo.color, size: 20),
               ),
               const SizedBox(width: 12),
 
@@ -586,7 +595,7 @@ class MovementCard extends StatelessWidget {
                   children: [
                     // Title — first letter capitalized to handle user-entered lowercase titles
                     Text(
-                      _capitalizeFirst(movement.title),
+                      displayTitle,
                       style: const TextStyle(
                         color: AppColors.onBackground,
                         fontSize: 14,
@@ -714,27 +723,25 @@ class MovementCard extends StatelessWidget {
               const SizedBox(width: 10),
 
               // ── Right: status + date ─────────────────────────────────────
-              SizedBox(
-                width: 84,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _StatusChip(status: movement.status, info: statusInfo),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      _formatDate(movement.createdAt),
-                      style: TextStyle(
-                        color:
-                            AppColors.onSurfaceVariant.withValues(alpha: 0.7),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w400,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _StatusChip(status: movement.status, info: statusInfo),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    _formatDate(movement.createdAt),
+                    style: TextStyle(
+                      color:
+                          AppColors.onSurfaceVariant.withValues(alpha: 0.7),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w400,
                     ),
-                  ],
-                ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
             ],
           ),
@@ -752,9 +759,30 @@ class MovementCard extends StatelessWidget {
     }
   }
 
-  String _capitalizeFirst(String value) {
-    if (value.isEmpty) return value;
-    return value[0].toUpperCase() + value.substring(1);
+  String _displayTitle(String title, String typeLabel) {
+    final cleaned = _removeRedundantPrefix(title.trim(), typeLabel).trim();
+    if (cleaned.isEmpty) return title;
+    return cleaned[0].toUpperCase() + cleaned.substring(1);
+  }
+
+  String _removeRedundantPrefix(String value, String typeLabel) {
+    final prefixes = [
+      '$typeLabel:',
+      'Item cataloged:',
+      'Cataloged:',
+      'Transfer:',
+      'Loan:',
+      'Repair:',
+      'Disposal:',
+    ];
+
+    for (final prefix in prefixes) {
+      if (value.toLowerCase().startsWith(prefix.toLowerCase())) {
+        return value.substring(prefix.length).trim();
+      }
+    }
+
+    return value;
   }
 }
 
@@ -771,16 +799,19 @@ class _StatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: const BoxConstraints(minHeight: 24),
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs,
+      ),
       decoration: BoxDecoration(
         color: info.color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-            color: info.color.withValues(alpha: 0.28), width: 1),
       ),
       child: Text(
         info.label,
+        softWrap: false,
+        maxLines: 1,
+        overflow: TextOverflow.visible,
         style: TextStyle(
           color: info.color,
           fontSize: 12,
