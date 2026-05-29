@@ -222,6 +222,14 @@ QR code caption: "Scan to identify this item"
 ### Item spec fields
 PROPERTY · ROOM (or "Unassigned") · CATEGORY · STATUS · SUBCATEGORY · SERIAL NUMBER (or "—") · SECTION · LOCATION
 
+### Global Search screen
+Accessible from the search icon. AppBar: **"Search results"** (when query active) or **"Global Search"** (empty).
+Search hint: "Search items..."
+Category chips: All · Furniture · Art · Technology · Wardrobe · Vehicles · Wine · Sports
+Status chips: Active · Loaned · Repair · Storage
+Empty (no query): "Search your inventory"
+No results: "No items found for '{query}'"
+
 ### QR Codes
 Tap the **View QR Codes** icon (top-right, tooltip: "View QR Codes") to see all item QR codes at once.
 QR Codes screen (AppBar: "QR Codes", subtitle: "{count} items"). Has a **Print** action button (web: opens print dialog; non-web: "Open the web app in a browser to print QR codes.").
@@ -600,6 +608,8 @@ The Team screen (AppBar title: **"Team"**) manages who has access to Vaulted.
 ### View team
 Navigate: **Settings** → **Team** (or tap the People icon in settings).
 Each member shows: avatar initial (or "?" fallback), display name (fallback "Member"), email, role badge (OWNER/MANAGER/STAFF/AUDITOR/GUEST uppercase), status, last seen ("Never" or date).
+
+The Team header shows a **Presence badge**: "{N} online" with a pulsing green dot — tap it to see all team members. Each user also has a small green dot indicator next to their name when online (grey when offline).
 Empty: "No team members yet. Invite someone." / "Only authorized members can access vault data."
 
 ### Invite a new user (Owner only)
