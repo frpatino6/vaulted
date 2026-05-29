@@ -548,8 +548,9 @@ class _ReviewGroupCard extends StatelessWidget {
                 spacing: AppSpacing.xs,
                 runSpacing: AppSpacing.xs,
                 children: [
-                  GestureDetector(
+                  InkWell(
                     onTap: onAssign,
+                    borderRadius: BorderRadius.circular(8),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 10,
@@ -581,11 +582,10 @@ class _ReviewGroupCard extends StatelessWidget {
                           const SizedBox(width: 6),
                           Text(
                             group.assignedUserName ?? 'Assign to…',
-                            style: TextStyle(
+                            style: AppTypography.bodySmall.copyWith(
                               color: group.assignedUserName != null
                                   ? AppColors.accent
                                   : AppColors.onSurfaceVariant,
-                              fontSize: 12,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -593,8 +593,9 @@ class _ReviewGroupCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  GestureDetector(
+                  InkWell(
                     onTap: onAddItem,
+                    borderRadius: BorderRadius.circular(8),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 10,
@@ -607,20 +608,19 @@ class _ReviewGroupCard extends StatelessWidget {
                           color: AppColors.onSurfaceVariant.withValues(alpha: 0.2),
                         ),
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.add,
                             size: 14,
                             color: AppColors.onSurfaceVariant,
                           ),
-                          SizedBox(width: 6),
+                          const SizedBox(width: 6),
                           Text(
                             'Add Item',
-                            style: TextStyle(
+                            style: AppTypography.bodySmall.copyWith(
                               color: AppColors.onSurfaceVariant,
-                              fontSize: 12,
                               fontWeight: FontWeight.w500,
                             ),
                           ),

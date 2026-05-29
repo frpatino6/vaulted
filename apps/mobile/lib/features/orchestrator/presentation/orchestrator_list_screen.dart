@@ -9,6 +9,7 @@ import '../../../shared/widgets/loading_skeleton.dart';
 import '../../users/domain/current_user_jwt.dart';
 import '../data/models/orchestrator_plan_model.dart';
 import '../domain/orchestrator_list_notifier.dart';
+import 'orchestrator_status_helpers.dart';
 
 class OrchestratorListScreen extends ConsumerStatefulWidget {
   const OrchestratorListScreen({super.key});
@@ -66,12 +67,10 @@ class _OrchestratorListScreenState
         foregroundColor: AppColors.onBackground,
         elevation: 0,
         scrolledUnderElevation: 0,
-        title: const Text(
+        title: Text(
           'Orchestrator',
-          style: TextStyle(
+          style: AppTypography.headlineSmall.copyWith(
             color: AppColors.onBackground,
-            fontSize: 22,
-            fontWeight: FontWeight.w600,
           ),
         ),
         actions: [const HelpScreenButton(screenKey: 'orchestrator')],
@@ -263,7 +262,7 @@ class _PlanCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final statusInfo = _planStatusInfo(plan.status);
+    final statusInfo = planStatusInfo(plan.status);
     final progress = plan.percentComplete;
     final assigneeCount = plan.taskGroups
         .map((g) => g.assignedUserId)
@@ -295,9 +294,8 @@ class _PlanCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       plan.title,
-                      style: const TextStyle(
+                      style: AppTypography.titleMedium.copyWith(
                         color: AppColors.onBackground,
-                        fontSize: 15,
                         fontWeight: FontWeight.w600,
                       ),
                       maxLines: 2,
@@ -312,7 +310,7 @@ class _PlanCard extends StatelessWidget {
               // Status + target date
               Row(
                 children: [
-                  _StatusBadge(status: plan.status),
+                  OrchestratorStatusBadge(status: plan.status),
                   const SizedBox(width: AppSpacing.sm),
                   if (plan.targetDate != null) ...[
                     const Icon(
@@ -376,55 +374,8 @@ class _PlanCard extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Status helpers
+// Command type chip (list-screen only)
 // ---------------------------------------------------------------------------
-
-class _StatusInfo {
-  const _StatusInfo(this.color, this.label);
-  final Color color;
-  final String label;
-}
-
-_StatusInfo _planStatusInfo(String status) {
-  switch (status) {
-    case 'published':
-      return const _StatusInfo(Color(0xFF2196F3), 'Published');
-    case 'in_progress':
-      return const _StatusInfo(Color(0xFFE07B39), 'In Progress');
-    case 'completed':
-      return const _StatusInfo(Color(0xFF6DB86F), 'Completed');
-    case 'cancelled':
-      return const _StatusInfo(Color(0xFF9E9E9E), 'Cancelled');
-    default:
-      return const _StatusInfo(Color(0xFF8A8AA8), 'Draft');
-  }
-}
-
-class _StatusBadge extends StatelessWidget {
-  const _StatusBadge({required this.status});
-
-  final String status;
-
-  @override
-  Widget build(BuildContext context) {
-    final info = _planStatusInfo(status);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-      decoration: BoxDecoration(
-        color: info.color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        info.label,
-        style: TextStyle(
-          color: info.color,
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-}
 
 class _CommandTypeChip extends StatelessWidget {
   const _CommandTypeChip({required this.commandType});
@@ -445,9 +396,8 @@ class _CommandTypeChip extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: const TextStyle(
+        style: AppTypography.labelSmall.copyWith(
           color: AppColors.accent,
-          fontSize: 11,
           fontWeight: FontWeight.w600,
         ),
       ),

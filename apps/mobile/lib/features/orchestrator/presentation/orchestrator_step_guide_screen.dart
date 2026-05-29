@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/help_screen_button.dart';
+import '../../../shared/widgets/loading_skeleton.dart';
 import '../../properties/data/models/room_section_model.dart';
 import '../data/models/orchestrator_plan_model.dart';
 import '../domain/orchestrator_detail_notifier.dart';
@@ -209,7 +210,7 @@ class _OrchestratorStepGuideScreenState
     return Scaffold(
       backgroundColor: AppColors.background,
       body: renderState.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const AppScreenSkeleton(showHeader: true, cardCount: 3),
         error: (e, _) => Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -606,9 +607,8 @@ class _Panel3Item extends StatelessWidget {
                     Expanded(
                       child: Text(
                         step.itemName,
-                        style: const TextStyle(
+                        style: AppTypography.titleMedium.copyWith(
                           color: AppColors.onBackground,
-                          fontSize: 16,
                           fontWeight: FontWeight.w600,
                         ),
                       ),

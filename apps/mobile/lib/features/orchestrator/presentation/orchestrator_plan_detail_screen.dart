@@ -12,6 +12,7 @@ import '../../users/domain/current_user_jwt.dart';
 import '../data/models/orchestrator_plan_model.dart';
 import '../domain/orchestrator_detail_notifier.dart';
 import 'orchestrator_assign_sheet.dart';
+import 'orchestrator_status_helpers.dart';
 
 class OrchestratorPlanDetailScreen extends ConsumerStatefulWidget {
   const OrchestratorPlanDetailScreen({super.key, required this.planId});
@@ -179,7 +180,7 @@ class _OrchestratorPlanDetailScreenState
   }
 
   Widget _buildContent(BuildContext context, OrchestratorPlanModel plan) {
-    final statusInfo = _planStatusInfo(plan.status);
+    final statusInfo = planStatusInfo(plan.status);
     final progress = plan.percentComplete;
 
     return CustomScrollView(
@@ -249,7 +250,7 @@ class _OrchestratorPlanDetailScreenState
                 // Status + date row
                 Row(
                   children: [
-                    _StatusBadge(status: plan.status),
+                    OrchestratorStatusBadge(status: plan.status),
                     const SizedBox(width: AppSpacing.sm),
                     if (plan.targetDate != null) ...[
                       const Icon(
@@ -656,22 +657,22 @@ class _TaskGroupCard extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: AppSpacing.sm),
-                        _GroupStatusChip(status: group.status),
+                        OrchestratorGroupStatusChip(status: group.status),
                       ],
                     ),
                     const SizedBox(height: 4),
-                    GestureDetector(
+                    InkWell(
                       onTap: onAssign,
+                      borderRadius: BorderRadius.circular(4),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
                             group.assignedUserName ?? 'Unassigned',
-                            style: TextStyle(
+                            style: AppTypography.bodySmall.copyWith(
                               color: onAssign != null
                                   ? AppColors.accent
                                   : AppColors.onSurfaceVariant,
-                              fontSize: 12,
                               decoration: onAssign != null
                                   ? TextDecoration.underline
                                   : null,
@@ -747,8 +748,9 @@ class _AddGroupButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return InkWell(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm + 4),
         decoration: BoxDecoration(
@@ -759,16 +761,15 @@ class _AddGroupButton extends StatelessWidget {
             style: BorderStyle.solid,
           ),
         ),
-        child: const Row(
+        child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.add, color: AppColors.onSurfaceVariant, size: 18),
-            SizedBox(width: 6),
+            const Icon(Icons.add, color: AppColors.onSurfaceVariant, size: 18),
+            const SizedBox(width: 6),
             Text(
               'Add Group',
-              style: TextStyle(
+              style: AppTypography.bodyMedium.copyWith(
                 color: AppColors.onSurfaceVariant,
-                fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -1119,89 +1120,3 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Reused status helpers
-// ---------------------------------------------------------------------------
-
-class _StatusInfo {
-  const _StatusInfo(this.color, this.label);
-  final Color color;
-  final String label;
-}
-
-_StatusInfo _planStatusInfo(String status) {
-  switch (status) {
-    case 'published':
-      return const _StatusInfo(Color(0xFF2196F3), 'Published');
-    case 'in_progress':
-      return const _StatusInfo(Color(0xFFE07B39), 'In Progress');
-    case 'completed':
-      return const _StatusInfo(Color(0xFF6DB86F), 'Completed');
-    case 'cancelled':
-      return const _StatusInfo(Color(0xFF9E9E9E), 'Cancelled');
-    default:
-      return const _StatusInfo(Color(0xFF8A8AA8), 'Draft');
-  }
-}
-
-class _StatusBadge extends StatelessWidget {
-  const _StatusBadge({required this.status});
-
-  final String status;
-
-  @override
-  Widget build(BuildContext context) {
-    final info = _planStatusInfo(status);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: info.color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        info.label,
-        style: TextStyle(
-          color: info.color,
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-}
-
-class _GroupStatusChip extends StatelessWidget {
-  const _GroupStatusChip({required this.status});
-
-  final String status;
-
-  @override
-  Widget build(BuildContext context) {
-    Color color;
-    String label;
-    switch (status) {
-      case 'in_progress':
-        color = const Color(0xFFE07B39);
-        label = 'In Progress';
-        break;
-      case 'completed':
-        color = const Color(0xFF6DB86F);
-        label = 'Done';
-        break;
-      default:
-        color = const Color(0xFF8A8AA8);
-        label = 'Pending';
-    }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(5),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w600),
-      ),
-    );
-  }
-}

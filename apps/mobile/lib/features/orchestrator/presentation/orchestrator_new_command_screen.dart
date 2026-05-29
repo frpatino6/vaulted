@@ -384,13 +384,15 @@ class _OrchestratorNewCommandScreenState
                           ),
                         ),
                         if (_targetDate != null)
-                          GestureDetector(
-                            onTap: () => setState(() => _targetDate = null),
-                            child: const Icon(
+                          IconButton(
+                            onPressed: () => setState(() => _targetDate = null),
+                            icon: const Icon(
                               Icons.close,
                               color: AppColors.onSurfaceVariant,
                               size: 18,
                             ),
+                            visualDensity: VisualDensity.compact,
+                            padding: EdgeInsets.zero,
                           ),
                       ],
                     ),
@@ -437,17 +439,19 @@ class _OrchestratorNewCommandScreenState
                       ].map(
                         (hint) => Padding(
                           padding: const EdgeInsets.only(top: 4),
-                          child: GestureDetector(
+                          child: InkWell(
                             onTap: () {
                               _commandController.text = hint;
                               setState(() {});
                             },
-                            child: Text(
-                              '• $hint',
-                              style: const TextStyle(
-                                color: AppColors.onSurfaceVariant,
-                                fontSize: 12,
-                                height: 1.4,
+                            borderRadius: BorderRadius.circular(4),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 2),
+                              child: Text(
+                                '• $hint',
+                                style: AppTypography.bodySmall.copyWith(
+                                  color: AppColors.onSurfaceVariant,
+                                ),
                               ),
                             ),
                           ),

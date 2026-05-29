@@ -298,6 +298,13 @@ BRAVE_SEARCH_API_KEY · VALUATION_SEARCH_ENGINE=brave
 
 ---
 
+## Style and Token Efficiency
+- **Minimalist edits:** Only modify the exact lines required. Use the shortest possible text replacements via `str_replace_editor`. Never rewrite large code blocks or entire files if it can be avoided.
+- **No explanations:** Do not explain what you changed, why you changed it, or how the code works unless explicitly asked to do so.
+- **Concise responses:** Keep your text replies to the absolute minimum. If a tool call or modification is successful, confirm it in a single line.
+
+---
+
 ## Coding Conventions
 
 ### Backend (NestJS)

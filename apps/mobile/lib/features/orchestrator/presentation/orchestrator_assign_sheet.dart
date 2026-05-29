@@ -106,9 +106,9 @@ class _OrchestratorAssignSheet extends ConsumerWidget {
                     vertical: AppSpacing.sm,
                   ),
                   itemCount: eligible.length,
-                  separatorBuilder: (_, __) => const Divider(
+                  separatorBuilder: (_, __) => Divider(
                     height: 1,
-                    color: Colors.white10,
+                    color: AppColors.onSurfaceVariant.withValues(alpha: 0.1),
                   ),
                   itemBuilder: (context, i) {
                     final user = eligible[i];
@@ -142,9 +142,9 @@ class _UserRow extends StatelessWidget {
   Color get _roleColor {
     switch (user.role.toLowerCase()) {
       case 'manager':
-        return Colors.blue;
+        return AppColors.info;
       case 'staff':
-        return Colors.green;
+        return AppColors.statusActive;
       default:
         return AppColors.onSurfaceVariant;
     }

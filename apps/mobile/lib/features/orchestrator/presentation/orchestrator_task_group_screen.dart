@@ -8,6 +8,7 @@ import '../../../shared/widgets/loading_skeleton.dart';
 import '../../users/domain/current_user_jwt.dart';
 import '../data/models/orchestrator_plan_model.dart';
 import '../domain/orchestrator_detail_notifier.dart';
+import 'orchestrator_status_helpers.dart';
 
 class OrchestratorTaskGroupScreen extends ConsumerStatefulWidget {
   const OrchestratorTaskGroupScreen({
@@ -152,7 +153,7 @@ class _OrchestratorTaskGroupScreenState
                           ),
                         ),
                         const Spacer(),
-                        _GroupStatusChip(status: group.status),
+                        OrchestratorGroupStatusChip(status: group.status),
                       ],
                     ),
                     const SizedBox(height: AppSpacing.sm),
@@ -350,7 +351,7 @@ class _StepTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final statusInfo = _stepStatusInfo(step.status);
+    final statusInfo = stepStatusInfo(step.status);
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -416,7 +417,7 @@ class _StepTile extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
-              _StepStatusChip(status: step.status),
+              OrchestratorStepStatusChip(status: step.status),
             ],
           ),
         ),
@@ -425,91 +426,3 @@ class _StepTile extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Status helpers
-// ---------------------------------------------------------------------------
-
-class _StepStatusInfo {
-  const _StepStatusInfo(this.color, this.label);
-  final Color color;
-  final String label;
-}
-
-_StepStatusInfo _stepStatusInfo(String status) {
-  switch (status) {
-    case 'done':
-      return const _StepStatusInfo(Color(0xFF6DB86F), 'Done');
-    case 'skipped':
-      return const _StepStatusInfo(Color(0xFFD4AF37), 'Skipped');
-    case 'orphaned':
-      return const _StepStatusInfo(Color(0xFFCF6679), 'Orphaned');
-    default:
-      return const _StepStatusInfo(Color(0xFF8A8AA8), 'Pending');
-  }
-}
-
-class _StepStatusChip extends StatelessWidget {
-  const _StepStatusChip({required this.status});
-
-  final String status;
-
-  @override
-  Widget build(BuildContext context) {
-    final info = _stepStatusInfo(status);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: info.color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        info.label,
-        style: TextStyle(
-          color: info.color,
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-}
-
-class _GroupStatusChip extends StatelessWidget {
-  const _GroupStatusChip({required this.status});
-
-  final String status;
-
-  @override
-  Widget build(BuildContext context) {
-    Color color;
-    String label;
-    switch (status) {
-      case 'in_progress':
-        color = const Color(0xFFE07B39);
-        label = 'In Progress';
-        break;
-      case 'completed':
-        color = const Color(0xFF6DB86F);
-        label = 'Completed';
-        break;
-      default:
-        color = const Color(0xFF8A8AA8);
-        label = 'Pending';
-    }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-}
