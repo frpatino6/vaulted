@@ -39,6 +39,8 @@ class AppColors {
   static const Color statusRepair = Color(0xFFFF9800);
   static const Color statusStorage = Color(0xFF2196F3);
   static const Color statusDisposed = Color(0xFF9E9E9E);
+  /// Warning / attention — amber orange for unlocated items, alerts.
+  static const Color warning = Color(0xFFFF9800);
 
   // Light palette — "Luxury Light" (ivory, pearl, deep gold)
   /// Warm ivory pearl — never pure white; evokes Cartier packaging.

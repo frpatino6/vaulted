@@ -23,11 +23,11 @@ class UsersScreen extends ConsumerWidget {
       case 'owner':
         return AppColors.accent;
       case 'manager':
-        return Colors.blue;
+        return AppColors.info;
       case 'staff':
-        return Colors.green;
+        return AppColors.statusActive;
       case 'auditor':
-        return Colors.purple;
+        return const Color(0xFF9C27B0);
       case 'guest':
         return AppColors.onSurfaceVariant;
       default:
@@ -412,7 +412,7 @@ class _TeamMemberCard extends StatelessWidget {
           vertical: 4,
         ),
         decoration: BoxDecoration(
-          color: Colors.black,
+          color: AppColors.background,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: AppColors.catalogGold.withValues(alpha: 0.8),

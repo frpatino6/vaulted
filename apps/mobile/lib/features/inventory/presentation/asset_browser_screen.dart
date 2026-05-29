@@ -227,7 +227,7 @@ class _AssetBrowserScreenState extends ConsumerState<AssetBrowserScreen> {
               decoration: InputDecoration(
                 hintText: 'Search by name, tag, serial…',
                 hintStyle:
-                    AppTypography.bodyLarge.copyWith(color: Colors.white38),
+                    AppTypography.bodyLarge.copyWith(color: AppColors.onSurfaceVariant.withValues(alpha: 0.6)),
                 prefixIcon: Icon(
                   Icons.search_rounded,
                   color: AppColors.onSurfaceVariant,

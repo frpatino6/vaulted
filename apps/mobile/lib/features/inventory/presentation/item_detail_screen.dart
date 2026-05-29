@@ -1329,7 +1329,10 @@ class _WardrobeDetailSection extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surfaceVariant,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white10, width: 0.5),
+        border: Border.all(
+          color: AppColors.onSurfaceVariant.withValues(alpha: 0.15),
+          width: 0.5,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1841,7 +1844,7 @@ class _SpecsTable extends StatelessWidget {
 
   static TextStyle _labelStyle(BuildContext context) {
     return Theme.of(context).textTheme.labelSmall!.copyWith(
-      color: Colors.white54,
+      color: AppColors.onSurfaceVariant,
       fontSize: 10,
       letterSpacing: 1.2,
       fontWeight: FontWeight.w600,
@@ -1988,7 +1991,7 @@ class _SectionPhotoPreviewState extends State<_SectionPhotoPreview> {
               return Stack(
                 fit: StackFit.expand,
                 children: [
-                  Container(color: Colors.black),
+                  Container(color: AppColors.surfaceVariant),
                   CachedNetworkImage(
                     imageUrl: widget.photoUrl,
                     width: w,
@@ -2366,7 +2369,7 @@ class _HistoryTimeline extends StatelessWidget {
                         Text(
                           entries[i].date,
                           style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(color: Colors.white54, fontSize: 10),
+                              ?.copyWith(color: AppColors.onSurfaceVariant, fontSize: 10),
                         ),
                         const SizedBox(height: 2),
                         Text(
@@ -2696,18 +2699,18 @@ class _RepairContextCard extends ConsumerWidget {
 
         // No active movement — item is stuck, show recovery banner
         return _shell(
-          borderColor: const Color(0xFFFFB300).withValues(alpha: 0.5),
-          bgColor: const Color(0xFFFFB300).withValues(alpha: 0.08),
+          borderColor: const AppColors.warning.withValues(alpha: 0.5),
+          bgColor: const AppColors.warning.withValues(alpha: 0.08),
           child: Row(
             children: [
               const Icon(Icons.warning_amber_rounded,
-                  size: 16, color: Color(0xFFFFB300)),
+                  size: 16, color: AppColors.warning),
               const SizedBox(width: 8),
               const Expanded(
                 child: Text(
                   'No active operation found for this item.',
                   style: TextStyle(
-                    color: Color(0xFFFFB300),
+                    color: AppColors.warning,
                     fontSize: 13,
                   ),
                 ),
@@ -2761,10 +2764,10 @@ class _MarkReturnedButtonState extends ConsumerState<_MarkReturnedButton> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: const Color(0xFFFFB300).withValues(alpha: 0.15),
+          color: const AppColors.warning.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(6),
           border: Border.all(
-              color: const Color(0xFFFFB300).withValues(alpha: 0.5)),
+              color: const AppColors.warning.withValues(alpha: 0.5)),
         ),
         child: _loading
             ? const SizedBox(
@@ -2772,13 +2775,13 @@ class _MarkReturnedButtonState extends ConsumerState<_MarkReturnedButton> {
                 height: 14,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: Color(0xFFFFB300),
+                  color: AppColors.warning,
                 ),
               )
             : const Text(
                 'Mark as Returned',
                 style: TextStyle(
-                  color: Color(0xFFFFB300),
+                  color: AppColors.warning,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                 ),

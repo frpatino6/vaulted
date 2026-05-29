@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -56,10 +57,10 @@ class RoomInventoryAssetCard extends ConsumerWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: const Color(0xFF1E1E28).withValues(alpha: 0.8),
+                color: AppColors.surfaceVariant.withValues(alpha: 0.8),
               ),
             ),
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(AppSpacing.md),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
@@ -76,11 +77,11 @@ class RoomInventoryAssetCard extends ConsumerWidget {
                           Container(
                             color: Colors.black.withValues(alpha: 0.45),
                             alignment: Alignment.center,
-                            child: const Text(
+                            child: Text(
                               'DISPOSED',
                               textAlign: TextAlign.center,
                               style: TextStyle(
-                                color: Colors.white,
+                                color: AppColors.onBackground,
                                 fontSize: 8,
                                 fontWeight: FontWeight.w700,
                                 letterSpacing: 0.8,
@@ -192,10 +193,11 @@ class RoomInventoryAssetCard extends ConsumerWidget {
     if (item.photos.isNotEmpty) {
       return Hero(
         tag: 'item_photo_${item.id}',
-        child: Image.network(
-          item.photos.first,
+        child: CachedNetworkImage(
+          imageUrl: item.photos.first,
           fit: BoxFit.cover,
-          errorBuilder: (_, _, _) => _placeholderIcon(),
+          placeholder: (_, _) => _placeholderIcon(),
+          errorWidget: (_, _, _) => _placeholderIcon(),
         ),
       );
     }
@@ -204,7 +206,7 @@ class RoomInventoryAssetCard extends ConsumerWidget {
 
   Widget _placeholderIcon() {
     return Container(
-      color: Colors.black26,
+      color: AppColors.surfaceVariant,
       child: Icon(
         ItemCategoryIcons.forCategory(item.category),
         size: 32,
