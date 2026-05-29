@@ -60,6 +60,7 @@ class DashboardHeader extends ConsumerWidget {
                 children: [
                   IconButton(
                     iconSize: 22,
+                    tooltip: 'Notifications',
                     icon: Icon(
                       Icons.notifications_outlined,
                       color: AppColors.onSurfaceVariant,
@@ -94,8 +95,8 @@ class DashboardHeader extends ConsumerWidget {
                   radius: 20,
                   backgroundColor: AppColors.accent.withValues(alpha: 0.15),
                   child: Text(
-                    email.isNotEmpty ? email[0].toUpperCase() : '?',
-                    style: TextStyle(
+                    displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
+                    style: const TextStyle(
                       color: AppColors.accent,
                       fontWeight: FontWeight.w700,
                       fontSize: 16,

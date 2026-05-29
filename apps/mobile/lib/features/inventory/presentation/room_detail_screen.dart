@@ -187,7 +187,7 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
                   },
                   icon: const Icon(
                     Icons.qr_code_2,
-                    color: AppColors.accentLight,
+                    color: AppColors.accent,
                   ),
                   tooltip: 'Section QR codes',
                   splashRadius: 24,

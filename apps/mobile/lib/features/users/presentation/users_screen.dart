@@ -73,7 +73,7 @@ class UsersScreen extends ConsumerWidget {
             IconButton(
               icon: const Icon(
                 Icons.person_add_outlined,
-                color: AppColors.catalogGold,
+                color: AppColors.accent,
               ),
               onPressed: () => _openInviteSheet(context),
             ),
