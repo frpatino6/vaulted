@@ -14,6 +14,8 @@ import '../domain/wardrobe_stats_provider.dart';
 import 'at_laundry_screen.dart';
 import 'wardrobe_filters_sheet.dart';
 import 'wardrobe_item_card.dart';
+import 'package:vaulted/shared/widgets/help_screen_button.dart';
+
 
 class WardrobeScreen extends ConsumerStatefulWidget {
   const WardrobeScreen({super.key});
@@ -61,6 +63,7 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
           ),
         ),
         actions: [
+          const HelpScreenButton(screenKey: 'wardrobe'),
           IconButton(
             tooltip: 'View QR Codes',
             icon: const Icon(Icons.qr_code_2_rounded),

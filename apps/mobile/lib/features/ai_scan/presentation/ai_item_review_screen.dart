@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/help_screen_button.dart';
 import '../../inventory/data/item_repository_provider.dart';
 import '../../inventory/domain/item_list_notifier.dart';
 import '../../properties/data/models/floor_model.dart';
@@ -104,6 +105,7 @@ class _AiItemReviewScreenState extends ConsumerState<AiItemReviewScreen> {
         foregroundColor: AppColors.onBackground,
         title: const Text('Review item'),
         actions: [
+          const HelpScreenButton(screenKey: 'ai_scan'),
           // Confidence badge
           Padding(
             padding: const EdgeInsets.only(right: AppSpacing.md),

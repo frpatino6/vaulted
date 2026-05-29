@@ -9,6 +9,8 @@ import '../../household_members/data/models/household_member_model.dart';
 import '../../household_members/domain/household_members_notifier.dart';
 import '../domain/outfit_notifier.dart';
 import '../domain/wardrobe_notifier.dart';
+import 'package:vaulted/shared/widgets/help_screen_button.dart';
+
 
 class CreateOutfitScreen extends ConsumerStatefulWidget {
   const CreateOutfitScreen({super.key});
@@ -41,6 +43,7 @@ class _CreateOutfitScreenState extends ConsumerState<CreateOutfitScreen> {
         backgroundColor: AppColors.background,
         foregroundColor: AppColors.onBackground,
         title: const Text('Create Outfit'),
+        actions: [const HelpScreenButton(screenKey: 'wardrobe')],
       ),
       body: wardrobeState.when(
         data: (items) {

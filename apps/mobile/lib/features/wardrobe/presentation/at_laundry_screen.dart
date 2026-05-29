@@ -9,6 +9,8 @@ import '../data/dry_cleaning_repository.dart';
 import '../data/dry_cleaning_repository_provider.dart';
 import '../domain/at_laundry_notifier.dart';
 import '../domain/wardrobe_stats_provider.dart';
+import 'package:vaulted/shared/widgets/help_screen_button.dart';
+
 
 class AtLaundryScreen extends ConsumerStatefulWidget {
   const AtLaundryScreen({super.key});
@@ -57,6 +59,7 @@ class _AtLaundryScreenState extends ConsumerState<AtLaundryScreen> {
             color: AppColors.onBackground,
           ),
         ),
+        actions: [const HelpScreenButton(screenKey: 'wardrobe')],
       ),
       body: state.when(
         data: (AtLaundryData? data) {

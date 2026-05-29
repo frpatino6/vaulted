@@ -18,6 +18,8 @@ import '../../properties/domain/property_detail_notifier.dart';
 import 'add_item_sheet.dart';
 import 'section_qr_sheet.dart';
 import '../../movements/presentation/quick_transfer_sheet.dart';
+import 'package:vaulted/shared/widgets/help_screen_button.dart';
+
 
 class RoomDetailScreen extends ConsumerStatefulWidget {
   const RoomDetailScreen({
@@ -149,6 +151,7 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
               ),
             ),
             actions: [
+              const HelpScreenButton(screenKey: 'inventory'),
               IconButton(
                 onPressed: () => context.push('/scanner'),
                 icon: const Icon(

@@ -11,6 +11,8 @@ import '../domain/movement_detail_notifier.dart';
 import '../domain/movement_list_notifier.dart';
 import 'movements_screen.dart' show movementTypeInfo, movementStatusInfo;
 import 'movement_checkin_screen.dart';
+import 'package:vaulted/shared/widgets/help_screen_button.dart';
+
 
 class MovementDetailScreen extends ConsumerStatefulWidget {
   const MovementDetailScreen({super.key, required this.movementId});
@@ -139,6 +141,7 @@ class _MovementDetailScreenState extends ConsumerState<MovementDetailScreen> {
             ],
           ),
           actions: [
+            const HelpScreenButton(screenKey: 'movements'),
             if (showMenu)
               PopupMenuButton<String>(
                 color: AppColors.surfaceVariant,

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/help_screen_button.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../data/models/insurance_policy_model.dart';
 import '../domain/coverage_gaps_notifier.dart';
@@ -57,6 +58,7 @@ class _CoverageGapsScreenState extends ConsumerState<CoverageGapsScreen> {
             fontWeight: FontWeight.w600,
           ),
         ),
+        actions: [const HelpScreenButton(screenKey: 'insurance')],
       ),
       body: renderState.when(
         data:

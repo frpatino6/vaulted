@@ -10,6 +10,8 @@ import '../../users/domain/current_user_jwt.dart';
 import '../data/models/maintenance_model.dart';
 import '../domain/maintenance_notifier.dart';
 import 'add_maintenance_sheet.dart';
+import 'package:vaulted/shared/widgets/help_screen_button.dart';
+
 
 class MaintenanceListScreen extends ConsumerStatefulWidget {
   const MaintenanceListScreen({super.key});
@@ -80,6 +82,7 @@ class _MaintenanceListScreenState extends ConsumerState<MaintenanceListScreen>
             fontSize: 22,
           ),
         ),
+        actions: [const HelpScreenButton(screenKey: 'maintenance')],
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,

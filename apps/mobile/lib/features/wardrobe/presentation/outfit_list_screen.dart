@@ -9,6 +9,8 @@ import '../../household_members/data/models/household_member_model.dart';
 import '../../household_members/domain/household_members_notifier.dart';
 import '../data/outfit_model.dart';
 import '../domain/outfit_notifier.dart';
+import 'package:vaulted/shared/widgets/help_screen_button.dart';
+
 
 class OutfitListScreen extends ConsumerStatefulWidget {
   const OutfitListScreen({super.key});
@@ -35,6 +37,7 @@ class _OutfitListScreenState extends ConsumerState<OutfitListScreen> {
         backgroundColor: AppColors.background,
         foregroundColor: AppColors.onBackground,
         title: const Text('Outfits'),
+        actions: [const HelpScreenButton(screenKey: 'wardrobe')],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push('/wardrobe/outfits/new'),

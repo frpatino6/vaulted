@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/help_screen_button.dart';
 import '../../properties/data/models/floor_model.dart';
 import '../domain/ai_scan_notifier.dart';
 import '../domain/ai_scan_state.dart';
@@ -183,7 +184,7 @@ class _CaptureStep extends StatelessWidget {
                   ),
                 ),
                 const Spacer(),
-                const SizedBox(width: 48),
+                const HelpScreenButton(screenKey: 'ai_scan'),
               ],
             ),
           ),

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'dart:ui' as ui;
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/help_screen_button.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../presence/presentation/providers/presence_provider.dart';
 import '../../presence/presentation/widgets/online_indicator.dart';
@@ -67,6 +68,7 @@ class UsersScreen extends ConsumerWidget {
           ),
         ),
         actions: [
+          const HelpScreenButton(screenKey: 'users'),
           if (canInvite)
             IconButton(
               icon: const Icon(

@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
+import '../../../shared/widgets/help_screen_button.dart';
 import '../../../shared/widgets/status_badge.dart';
 import '../../dashboard/data/models/dashboard_model.dart';
 import '../../dashboard/domain/dashboard_notifier.dart';
@@ -49,6 +50,7 @@ class ReportsScreen extends ConsumerWidget {
           ),
         ),
         actions: [
+          const HelpScreenButton(screenKey: 'reports'),
           Padding(
             padding: const EdgeInsets.only(right: AppSpacing.md, left: 8),
             child: OutlinedButton.icon(

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/help_screen_button.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../users/domain/current_user_jwt.dart';
 import '../data/models/orchestrator_plan_model.dart';
@@ -73,6 +74,7 @@ class _OrchestratorListScreenState
             fontWeight: FontWeight.w600,
           ),
         ),
+        actions: [const HelpScreenButton(screenKey: 'orchestrator')],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: AppColors.accent,

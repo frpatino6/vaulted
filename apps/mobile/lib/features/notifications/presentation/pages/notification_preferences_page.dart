@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../shared/widgets/help_screen_button.dart';
 import '../providers/notifications_provider.dart';
 
 class NotificationPreferencesPage extends ConsumerStatefulWidget {
@@ -65,6 +66,7 @@ class _NotificationPreferencesPageState
                 color: AppColors.onBackground,
               ),
         ),
+        actions: [const HelpScreenButton(screenKey: 'notifications')],
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.pop(),

@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../data/models/maintenance_model.dart';
 import '../domain/maintenance_notifier.dart';
+import 'package:vaulted/shared/widgets/help_screen_button.dart';
+
 
 class MaintenanceDetailScreen extends ConsumerWidget {
   const MaintenanceDetailScreen({
@@ -43,6 +45,7 @@ class MaintenanceDetailScreen extends ConsumerWidget {
             fontWeight: FontWeight.w600,
           ),
         ),
+        actions: [const HelpScreenButton(screenKey: 'maintenance')],
       ),
       body:
           record == null

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/help_screen_button.dart';
 import '../../properties/data/models/room_section_model.dart';
 import '../data/models/orchestrator_plan_model.dart';
 import '../domain/orchestrator_detail_notifier.dart';
@@ -286,6 +287,7 @@ class _OrchestratorStepGuideScreenState
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
+                const HelpScreenButton(screenKey: 'orchestrator'),
               ],
             ),
           ),

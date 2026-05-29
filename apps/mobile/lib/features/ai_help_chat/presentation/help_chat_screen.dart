@@ -9,9 +9,10 @@ import '../domain/ai_help_notifier.dart';
 import '../domain/ai_help_state.dart';
 
 class HelpChatScreen extends ConsumerStatefulWidget {
-  const HelpChatScreen({super.key, this.currentScreen});
+  const HelpChatScreen({super.key, this.currentScreen, this.initialQuery});
 
   final String? currentScreen;
+  final String? initialQuery;
 
   @override
   ConsumerState<HelpChatScreen> createState() => _HelpChatScreenState();
@@ -20,6 +21,20 @@ class HelpChatScreen extends ConsumerStatefulWidget {
 class _HelpChatScreenState extends ConsumerState<HelpChatScreen> {
   final _textController = TextEditingController();
   final _scrollController = ScrollController();
+  bool _hasSentInitialQuery = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialQuery != null && widget.initialQuery!.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_hasSentInitialQuery) {
+          _hasSentInitialQuery = true;
+          _sendText(widget.initialQuery!);
+        }
+      });
+    }
+  }
 
   @override
   void dispose() {
