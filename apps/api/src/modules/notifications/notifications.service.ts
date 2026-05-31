@@ -116,9 +116,9 @@ export class NotificationsService {
     });
   }
 
-  async unregisterDeviceToken(userId: string, token: string): Promise<void> {
+  async unregisterDeviceToken(userId: string, tenantId: string, token: string): Promise<void> {
     const existing = await this.deviceTokenRepository.findOne({
-      where: { token, userId },
+      where: { token, userId, tenantId },
     });
 
     if (!existing) {
@@ -228,7 +228,7 @@ export class NotificationsService {
         const raw: unknown = await response.json().catch(() => ({}));
         const body = raw as ResendErrorBody;
         this.logger.error(
-          `Resend email failed [${response.status}]: ${body.message ?? 'unknown error'} — to: ${params.to}`,
+          `Resend email failed [${response.status}]: ${body.message ?? 'unknown error'} — tenant: ${params.tenantId}`,
         );
         return false;
       }
@@ -236,7 +236,7 @@ export class NotificationsService {
       return true;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      this.logger.error(`Resend email error: ${message} — to: ${params.to}`);
+      this.logger.error(`Resend email error: ${message} — tenant: ${params.tenantId}`);
       return false;
     }
   }

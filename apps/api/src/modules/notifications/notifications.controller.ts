@@ -58,7 +58,7 @@ export class NotificationsController {
     @CurrentUser() user: JwtPayload,
     @Param('token') token: string,
   ): Promise<void> {
-    await this.notificationsService.unregisterDeviceToken(user.sub, token);
+    await this.notificationsService.unregisterDeviceToken(user.sub, user.tenantId, token);
   }
 
   @Get('preferences')

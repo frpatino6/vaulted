@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { CreateHouseholdMemberDto } from './dto/create-household-member.dto';
@@ -7,19 +7,31 @@ import {
   HouseholdMember,
   HouseholdMemberDocument,
 } from './schemas/household-member.schema';
+import { UsersService } from '../users/users.service';
 
 @Injectable()
 export class HouseholdMembersService {
   constructor(
     @InjectModel(HouseholdMember.name)
     private readonly householdMemberModel: Model<HouseholdMemberDocument>,
+    private readonly usersService: UsersService,
   ) {}
+
+  private async assertLinkedUserBelongsToTenant(linkedUserId: string, tenantId: string): Promise<void> {
+    const user = await this.usersService.findById(linkedUserId);
+    if (!user || user.tenantId !== tenantId) {
+      throw new BadRequestException('linkedUserId does not belong to this tenant');
+    }
+  }
 
   async create(
     tenantId: string,
     userId: string,
     dto: CreateHouseholdMemberDto,
   ): Promise<HouseholdMember> {
+    if (dto.linkedUserId) {
+      await this.assertLinkedUserBelongsToTenant(dto.linkedUserId, tenantId);
+    }
     return this.householdMemberModel.create({
       tenantId,
       name: dto.name,
@@ -47,6 +59,9 @@ export class HouseholdMembersService {
     memberId: string,
     dto: UpdateHouseholdMemberDto,
   ): Promise<HouseholdMember> {
+    if (dto.linkedUserId) {
+      await this.assertLinkedUserBelongsToTenant(dto.linkedUserId, tenantId);
+    }
     const member = await this.householdMemberModel
       .findOneAndUpdate(
         { _id: memberId, tenantId },
