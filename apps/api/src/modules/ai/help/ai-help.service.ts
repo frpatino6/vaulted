@@ -1106,7 +1106,7 @@ export class AiHelpService implements OnModuleInit {
   }
 
   async chat(tenantId: string, userId: string, dto: HelpRequestDto): Promise<AiHelpResponse> {
-    await this.enforceRateLimit(tenantId);
+    await this.enforceRateLimit(tenantId, userId);
 
     const sessionId = dto.sessionId ?? uuidv4();
     const history = await this.getSessionHistory(tenantId, userId, sessionId);
@@ -1237,11 +1237,18 @@ export class AiHelpService implements OnModuleInit {
     );
   }
 
-  private async enforceRateLimit(tenantId: string): Promise<void> {
-    const key = `ai:help:ratelimit:${tenantId}`;
-    const count = await this.redis.incr(key);
-    if (count === 1) await this.redis.expire(key, 60);
-    if (count > this.rateLimit) {
+  private async enforceRateLimit(tenantId: string, userId: string): Promise<void> {
+    const tenantKey = `ai:help:ratelimit:${tenantId}`;
+    const tenantCount = await this.redis.incr(tenantKey);
+    if (tenantCount === 1) await this.redis.expire(tenantKey, 60);
+    if (tenantCount > this.rateLimit) {
+      throw new HttpException('Rate limit exceeded', HttpStatus.TOO_MANY_REQUESTS);
+    }
+    const userKey = `ai:help:ratelimit:user:${userId}`;
+    const userCount = await this.redis.incr(userKey);
+    if (userCount === 1) await this.redis.expire(userKey, 60);
+    const userLimit = Math.max(1, Math.floor(this.rateLimit / 2));
+    if (userCount > userLimit) {
       throw new HttpException('Rate limit exceeded', HttpStatus.TOO_MANY_REQUESTS);
     }
   }

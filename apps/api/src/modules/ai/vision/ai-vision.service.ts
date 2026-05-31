@@ -67,9 +67,14 @@ export class AiVisionService {
       ? this.resolveImageToPart(dto.invoiceImageUrl)
       : null;
 
-    // Map rooms to simple indices so Gemini doesn't have to copy MongoDB ObjectIDs
+    // Map rooms to simple indices. Sanitize name/type to prevent prompt injection.
     const rooms = dto.propertyRooms ?? [];
-    const indexedRooms = rooms.map((r, i) => ({ ...r, index: `room_${i}` }));
+    const indexedRooms = rooms.map((r, i) => ({
+      ...r,
+      name: r.name.replace(/["\n\r\\]/g, ' ').slice(0, 200),
+      type: r.type.replace(/["\n\r\\]/g, ' ').slice(0, 100),
+      index: `room_${i}`,
+    }));
 
     const prompt = this.buildPrompt(indexedRooms, !!invoicePart);
     const parts: Part[] = [productPart];
@@ -200,7 +205,7 @@ Final rules:
       const clean = raw.replace(/```json|```/g, '').trim();
       parsed = JSON.parse(clean) as Record<string, unknown>;
     } catch {
-      this.logger.error(`Failed to parse sections AI response: ${raw}`);
+      this.logger.error(`Failed to parse sections AI response: ${raw.slice(0, 200)}`);
       throw new BadRequestException('AI returned an invalid response. Please try again.');
     }
 
@@ -352,7 +357,7 @@ Rules:
       const clean = raw.replace(/```json|```/g, '').trim();
       parsed = JSON.parse(clean) as Record<string, unknown>;
     } catch {
-      this.logger.error(`Failed to parse AI response: ${raw}`);
+      this.logger.error(`Failed to parse AI response: ${raw.slice(0, 200)}`);
       throw new BadRequestException('AI returned an invalid response. Please try again.');
     }
 

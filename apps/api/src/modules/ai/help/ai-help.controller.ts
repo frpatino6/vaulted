@@ -10,7 +10,7 @@ import { HelpRequestDto } from './dto/help-request.dto';
 
 @ApiTags('AI Help')
 @ApiBearerAuth()
-@Roles(Role.OWNER, Role.MANAGER, Role.STAFF, Role.AUDITOR, Role.GUEST)
+@Roles(Role.OWNER, Role.MANAGER, Role.STAFF, Role.AUDITOR)
 @Controller('ai/help')
 export class AiHelpController {
   constructor(private readonly aiHelpService: AiHelpService) {}
