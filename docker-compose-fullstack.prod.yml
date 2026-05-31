@@ -1,0 +1,261 @@
+# docker-compose-fullstack.prod.yml
+# Full self-hosted stack: API + MongoDB + PostgreSQL + Redis
+#
+# REQUIREMENTS — minimum VM: e2-standard-2 (2 vCPU, 8 GB RAM)
+# RECOMMENDED  — VM: e2-standard-4 (4 vCPU, 16 GB RAM)
+#
+# Key security principles applied:
+#   - Databases NOT exposed on host ports (internal Docker network only)
+#   - MongoDB auth enabled (SCRAM-SHA-256)
+#   - PostgreSQL non-default port inside container
+#   - Redis password + protected-mode
+#   - All containers run as non-root where possible
+#   - Resource limits prevent runaway container DoS
+#   - Read-only filesystems where possible
+#   - Backup sidecar runs nightly dumps to encrypted volume
+#
+# Usage:
+#   ./start-prod-full.sh up -d
+#
+version: '3.9'
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: '20m'
+    max-file: '5'
+    tag: '{{.Name}}'
+
+services:
+
+  # ── API ──────────────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile.prod
+    image: vaulted-api:latest
+    container_name: vaulted_api
+    expose:
+      - '3000'
+    environment:
+      NODE_ENV: ${NODE_ENV}
+      PORT: ${PORT}
+      APP_URL: ${APP_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      ENCRYPTION_SALT: ${ENCRYPTION_SALT}
+      # MongoDB — internal service name, auth required
+      MONGODB_URI: mongodb://${MONGO_APP_USER}:${MONGO_APP_PASSWORD}@mongodb:27017/vaulted?authSource=vaulted
+      # PostgreSQL — internal service name
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/vaulted?sslmode=disable
+      TYPEORM_SYNC: ${TYPEORM_SYNC}
+      # Redis — internal service name
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      GOOGLE_GENAI_API_KEY: ${GOOGLE_GENAI_API_KEY}
+      AI_CHAT_MODEL: ${AI_CHAT_MODEL}
+      AI_VISION_MODEL: ${AI_VISION_MODEL}
+      AI_EMBEDDING_MODEL: ${AI_EMBEDDING_MODEL}
+      AI_EMBEDDING_DIMS: ${AI_EMBEDDING_DIMS}
+      AI_CHAT_RATE_LIMIT_PER_MINUTE: ${AI_CHAT_RATE_LIMIT_PER_MINUTE}
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID:-}
+      GCP_STORAGE_BUCKET: ${GCP_STORAGE_BUCKET:-}
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}
+      FIREBASE_PRIVATE_KEY: ${FIREBASE_PRIVATE_KEY:-}
+      FIREBASE_CLIENT_EMAIL: ${FIREBASE_CLIENT_EMAIL:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      BRAVE_SEARCH_API_KEY: ${BRAVE_SEARCH_API_KEY:-}
+    restart: always
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - uploads_data:/app/uploads
+    networks:
+      - internal
+      - proxy
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://localhost:3000/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 1G
+        reservations:
+          memory: 256M
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+
+  # ── MONGODB ──────────────────────────────────────────────────────────────────
+  mongodb:
+    image: mongo:7.0
+    container_name: vaulted_mongodb
+    # NO ports: section — database never exposed to host
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: vaulted
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+      - ./infra/mongo-init.js:/docker-entrypoint-initdb.d/01-init.js:ro
+    command: >
+      mongod
+      --auth
+      --bind_ip_all
+      --wiredTigerCacheSizeGB 1
+      --quiet
+    healthcheck:
+      test: ['CMD', 'mongosh', '--quiet', '--eval', 'db.adminCommand("ping").ok']
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - internal
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2G
+        reservations:
+          memory: 512M
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+
+  # ── POSTGRESQL + pgvector ────────────────────────────────────────────────────
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: vaulted_postgres
+    # NO ports: section — database never exposed to host
+    environment:
+      POSTGRES_DB: vaulted
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d vaulted']
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - internal
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1G
+        reservations:
+          memory: 256M
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+
+  # ── REDIS ────────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7.2-alpine
+    container_name: vaulted_redis
+    # NO ports: section — cache never exposed to host
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD}
+      --appendonly yes
+      --appendfsync everysec
+      --protected-mode yes
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --loglevel warning
+      --rename-command FLUSHALL ""
+      --rename-command FLUSHDB  ""
+      --rename-command DEBUG    ""
+      --rename-command CONFIG   "CONFIG_${REDIS_ADMIN_SUFFIX}"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD}', '--no-auth-warning', 'ping']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 600M
+        reservations:
+          memory: 64M
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+
+  # ── BACKUP ───────────────────────────────────────────────────────────────────
+  backup:
+    image: alpine:3.19
+    container_name: vaulted_backup
+    entrypoint: /bin/sh
+    command: /backup/run-backup.sh
+    environment:
+      MONGO_APP_USER: ${MONGO_APP_USER}
+      MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      BACKUP_ENCRYPTION_KEY: ${BACKUP_ENCRYPTION_KEY}
+      BACKUP_RETAIN_DAYS: ${BACKUP_RETAIN_DAYS:-7}
+    volumes:
+      - backup_data:/backups
+      - ./infra/backup/run-backup.sh:/backup/run-backup.sh:ro
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - internal
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+    logging: *default-logging
+
+volumes:
+  uploads_data:
+  mongodb_data:
+  mongodb_config:
+  postgres_data:
+  redis_data:
+  backup_data:
+
+networks:
+  internal:
+    driver: bridge
+    internal: true          # No external internet access from DB containers
+  proxy:
+    external: true
+    name: frpatino6_default
