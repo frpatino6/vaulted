@@ -42,8 +42,8 @@ export class AiInsuranceService {
     userId: string,
     policyId: string,
   ): Promise<CoverageAnalysisResult> {
-    const rateLimitKey = `ai:insurance:analyze:${tenantId}`;
-    await this.enforceRateLimit(rateLimitKey, 10);
+    await this.enforceRateLimit(`ai:insurance:analyze:${tenantId}`, 10);
+    await this.enforceRateLimit(`ai:insurance:analyze:user:${userId}`, 5);
 
     const [policy, gapReportRaw] = await Promise.all([
       this.insuranceService.findPolicyById(tenantId, policyId),
@@ -82,12 +82,17 @@ export class AiInsuranceService {
       })),
     ];
 
+    // Mask policy number for analysis prompt — full number not needed for risk assessment (M-2)
+    const maskedPolicyNumber = policy.policyNumber.length > 4
+      ? `****${policy.policyNumber.slice(-4)}`
+      : '****';
+
     const prompt = `You are an insurance risk analyst for ultra-high-net-worth families.
 Analyze the following insurance policy and coverage data, then return a risk assessment.
 
 POLICY DETAILS:
 Provider: ${policy.provider}
-Policy Number: ${policy.policyNumber}
+Policy Number: ${maskedPolicyNumber}
 Coverage Type: ${policy.coverageType}
 Total Coverage: $${Number(policy.totalCoverageAmount).toLocaleString()} ${policy.currency}
 Status: ${policy.status}
@@ -138,8 +143,8 @@ Rules:
     itemId: string | undefined,
     incidentDescription: string,
   ): Promise<ClaimDraftResult> {
-    const rateLimitKey = `ai:insurance:claim:${tenantId}`;
-    await this.enforceRateLimit(rateLimitKey, 5);
+    await this.enforceRateLimit(`ai:insurance:claim:${tenantId}`, 5);
+    await this.enforceRateLimit(`ai:insurance:claim:user:${userId}`, 3);
 
     const policy = await this.insuranceService.findPolicyById(tenantId, policyId);
 

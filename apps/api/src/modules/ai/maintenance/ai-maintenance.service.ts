@@ -150,6 +150,13 @@ Respond ONLY with valid JSON (no markdown, no explanation):
     return this.parseGeminiResponse(result.text);
   }
 
+  private sanitizeText(value: unknown, maxLength: number): string {
+    return String(value ?? '')
+      .replace(/<[^>]*>/g, '')
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+      .slice(0, maxLength);
+  }
+
   private parseGeminiResponse(raw: string): AiMaintenanceSuggestion {
     try {
       const cleaned = raw
@@ -158,13 +165,13 @@ Respond ONLY with valid JSON (no markdown, no explanation):
         .trim();
       const parsed = JSON.parse(cleaned) as Record<string, unknown>;
       return {
-        riskScore: Number(parsed.riskScore ?? 0),
-        title: String(parsed.title ?? 'Maintenance recommended'),
-        reason: String(parsed.reason ?? ''),
-        recommendedAction: String(parsed.recommendedAction ?? ''),
+        riskScore: Math.min(100, Math.max(0, Number(parsed.riskScore ?? 0))),
+        title: this.sanitizeText(parsed.title ?? 'Maintenance recommended', 200),
+        reason: this.sanitizeText(parsed.reason ?? '', 500),
+        recommendedAction: this.sanitizeText(parsed.recommendedAction ?? '', 500),
         suggestedIntervalDays:
           parsed.suggestedIntervalDays !== null && parsed.suggestedIntervalDays !== undefined
-            ? Number(parsed.suggestedIntervalDays)
+            ? Math.min(3650, Math.max(1, Number(parsed.suggestedIntervalDays)))
             : null,
       };
     } catch {
