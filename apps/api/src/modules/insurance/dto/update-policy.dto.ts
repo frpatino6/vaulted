@@ -6,6 +6,7 @@ import {
   IsPositive,
   IsString,
   Length,
+  MaxLength,
   Min,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -56,8 +57,9 @@ export class UpdatePolicyDto {
   @IsEnum(['active', 'expired', 'cancelled'])
   status?: 'active' | 'expired' | 'cancelled';
 
-  @ApiPropertyOptional({ description: 'Policy notes', example: 'Premium jewelry policy' })
+  @ApiPropertyOptional({ description: 'Policy notes', example: 'Premium jewelry policy', maxLength: 2000 })
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   notes?: string;
 }

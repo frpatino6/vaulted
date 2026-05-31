@@ -14,7 +14,8 @@ export class CryptoService {
 
   constructor(config: ConfigService) {
     const secret = config.getOrThrow<string>('ENCRYPTION_KEY');
-    this.key = crypto.scryptSync(secret, 'vaulted-salt', 32);
+    const salt = config.get<string>('ENCRYPTION_SALT') ?? 'vaulted-salt';
+    this.key = crypto.scryptSync(secret, salt, 32);
   }
 
   // ── Tenant-scoped FLE helpers ─────────────────────────────────────────────
