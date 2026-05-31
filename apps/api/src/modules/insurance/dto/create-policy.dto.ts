@@ -7,6 +7,7 @@ import {
   IsPositive,
   IsString,
   Length,
+  MaxLength,
   Min,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -54,8 +55,9 @@ export class CreatePolicyDto {
   @IsDateString()
   expiresAt!: string;
 
-  @ApiPropertyOptional({ description: 'Policy notes', example: 'Premium jewelry policy' })
+  @ApiPropertyOptional({ description: 'Policy notes', example: 'Premium jewelry policy', maxLength: 2000 })
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   notes?: string;
 }

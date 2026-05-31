@@ -13,6 +13,7 @@ import { Redis } from 'ioredis';
 import { Server, Socket } from 'socket.io';
 
 import { InjectRedis } from '../../common/decorators/inject-redis.decorator';
+import { ALLOWED_ORIGINS } from '../../common/config/cors.constants';
 import { Role } from '../../common/enums/role.enum';
 import { MFA_REQUIRED_ROLES } from '../../common/enums/role.enum';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
@@ -20,7 +21,7 @@ import { PresenceService } from './presence.service';
 
 @WebSocketGateway({
   namespace: '/presence',
-  cors: { origin: true, credentials: true },
+  cors: { origin: [...ALLOWED_ORIGINS], credentials: true },
 })
 export class PresenceGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()

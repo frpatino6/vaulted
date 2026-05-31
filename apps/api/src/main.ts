@@ -9,6 +9,7 @@ const cookieParser = require('cookie-parser') as () => unknown;
 import { AppModule } from './app.module';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { ALLOWED_ORIGINS } from './common/config/cors.constants';
 
 async function bootstrap(): Promise<void> {
   const logger = new Logger('Bootstrap');
@@ -18,17 +19,7 @@ async function bootstrap(): Promise<void> {
   // middleware is registered on the raw path without the /api prefix.
   app.setGlobalPrefix('api');
 
-  const allowedOrigins = [
-    'http://localhost:3000',
-    'http://localhost:4200',
-    'http://localhost:8080',
-    'https://vaulted-prod-2026.web.app',
-    'https://vaulted-prod-2026.firebaseapp.com',
-    'https://vaulted.casacam.net',
-    // Allow the canonical API domain so Flutter Web (CanvasKit) can fetch
-    // /uploads/* when the web app and API share the same hostname.
-    'https://api-vaulted.casacam.net',
-  ].filter(Boolean);
+  const allowedOrigins = [...ALLOWED_ORIGINS];
 
   // Security headers — must be registered before CORS and routes.
   // crossOriginResourcePolicy set to 'cross-origin' because the API is on

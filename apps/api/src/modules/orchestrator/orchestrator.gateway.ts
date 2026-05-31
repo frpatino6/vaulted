@@ -11,6 +11,7 @@ import { Redis } from 'ioredis';
 import { Server, Socket } from 'socket.io';
 
 import { InjectRedis } from '../../common/decorators/inject-redis.decorator';
+import { ALLOWED_ORIGINS } from '../../common/config/cors.constants';
 import { MFA_REQUIRED_ROLES } from '../../common/enums/role.enum';
 import { Role } from '../../common/enums/role.enum';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
@@ -30,7 +31,7 @@ interface PlanCompletedPayload {
 
 @WebSocketGateway({
   namespace: '/orchestrator',
-  cors: { origin: '*' },
+  cors: { origin: [...ALLOWED_ORIGINS], credentials: true },
 })
 export class OrchestratorGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
