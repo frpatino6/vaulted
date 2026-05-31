@@ -255,6 +255,15 @@ export class MovementsService {
         );
       }
 
+      // Verify destination property belongs to this tenant (prevents cross-tenant IDOR)
+      const destProperty = await this.propertyModel.findOne({
+        _id: destPropertyId,
+        tenantId: user.tenantId,
+      }).exec();
+      if (!destProperty) {
+        throw new BadRequestException('Destination property not found');
+      }
+
       await Promise.all(
         movement.items.map((mi) =>
           this.itemModel.updateOne(

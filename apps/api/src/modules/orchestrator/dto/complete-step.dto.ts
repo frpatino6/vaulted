@@ -1,4 +1,4 @@
-import { IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsOptional, IsString, IsUrl, MaxLength } from 'class-validator';
 
 export class CompleteStepDto {
   @IsOptional()
@@ -7,6 +7,7 @@ export class CompleteStepDto {
   note?: string;
 
   @IsOptional()
-  @IsString()
+  @IsUrl({ require_tld: false })
+  @MaxLength(2000)
   completionPhotoUrl?: string;
 }

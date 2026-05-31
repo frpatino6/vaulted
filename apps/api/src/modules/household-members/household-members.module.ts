@@ -7,6 +7,7 @@ import {
   HouseholdMemberSchema,
 } from './schemas/household-member.schema';
 import { AuditModule } from '../audit/audit.module';
+import { UsersModule } from '../users/users.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { AuditModule } from '../audit/audit.module';
       { name: HouseholdMember.name, schema: HouseholdMemberSchema },
     ]),
     AuditModule,
+    UsersModule,
   ],
   controllers: [HouseholdMembersController],
   providers: [HouseholdMembersService],
