@@ -124,6 +124,76 @@ check "Weak password rejected" "400" "$(echo "$R" | python3 -c "import sys,json;
 R=$(curl -s -o /dev/null -w "%{http_code}" "$API/users")
 check "Unauthenticated request rejected" "401" "$R"
 
+# 2.9 Refresh token replay (one-time-use enforcement)
+_info "Testing refresh token replay..."
+LOGIN_R=$(curl -s -X POST "$API/auth/login" \
+  -H "Content-Type: application/json" \
+  -c /tmp/vaulted-replay-cookies.txt \
+  -d "{\"email\":\"$EMAIL\",\"password\":\"$PASSWORD\"}")
+# Save a copy of the cookies BEFORE first refresh
+cp /tmp/vaulted-replay-cookies.txt /tmp/vaulted-replay-old-cookies.txt
+# First refresh — valid, should succeed
+FIRST_REFRESH=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$API/auth/refresh" \
+  -b /tmp/vaulted-replay-cookies.txt \
+  -c /tmp/vaulted-replay-cookies.txt)
+# Replay: try to reuse the original refresh token (should be blacklisted)
+REPLAY=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$API/auth/refresh" \
+  -b /tmp/vaulted-replay-old-cookies.txt)
+if [[ "$FIRST_REFRESH" == "200" || "$FIRST_REFRESH" == "201" ]]; then
+  check "Refresh token replay rejected (401)" "401" "$REPLAY"
+else
+  _info "First refresh returned $FIRST_REFRESH — skipping replay check (no active refresh token)"
+  echo "SKIP | Refresh replay — no active refresh token" >> "$LOG"
+fi
+rm -f /tmp/vaulted-replay-cookies.txt /tmp/vaulted-replay-old-cookies.txt
+
+# 2.10 MFA brute force throttle
+_info "Testing MFA verify throttle (6 rapid wrong-code attempts)..."
+MFA_LOGIN=$(curl -s -X POST "$API/auth/login" \
+  -H "Content-Type: application/json" \
+  -c /tmp/vaulted-mfa-cookies.txt \
+  -d "{\"email\":\"$EMAIL\",\"password\":\"$PASSWORD\"}")
+MFA_REQ=$(echo "$MFA_LOGIN" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('data',{}).get('mfaRequired',False))" 2>/dev/null || echo "False")
+if [[ "$MFA_REQ" == "True" || "$MFA_REQ" == "true" ]]; then
+  MFA_LAST=""
+  for i in $(seq 1 6); do
+    MFA_LAST=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$API/auth/mfa/verify" \
+      -b /tmp/vaulted-mfa-cookies.txt \
+      -H "Content-Type: application/json" \
+      -d '{"code":"000000"}')
+  done
+  check "MFA verify brute force throttled (429)" "429" "$MFA_LAST"
+else
+  _info "MFA not triggered on login — skipping MFA brute force test"
+  echo "SKIP | MFA brute force — MFA not required" >> "$LOG"
+fi
+rm -f /tmp/vaulted-mfa-cookies.txt
+
+# 2.11 Logout + session invalidation
+_info "Testing token revocation after logout..."
+LOGOUT_LOGIN=$(curl -s -X POST "$API/auth/login" \
+  -H "Content-Type: application/json" \
+  -c /tmp/vaulted-logout-cookies.txt \
+  -d "{\"email\":\"$EMAIL\",\"password\":\"$PASSWORD\"}")
+LOGOUT_TOKEN=$(echo "$LOGOUT_LOGIN" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('data',{}).get('accessToken',''))" 2>/dev/null || echo "")
+if [[ -n "$LOGOUT_TOKEN" ]]; then
+  # Verify the token works before logout
+  PRE=$(curl -s -o /dev/null -w "%{http_code}" "$API/users" -H "Authorization: Bearer $LOGOUT_TOKEN")
+  # Logout
+  curl -s -X POST "$API/auth/logout" \
+    -H "Authorization: Bearer $LOGOUT_TOKEN" \
+    -b /tmp/vaulted-logout-cookies.txt > /dev/null
+  # Token must now be rejected
+  POST=$(curl -s -o /dev/null -w "%{http_code}" "$API/users" -H "Authorization: Bearer $LOGOUT_TOKEN")
+  if [[ "$PRE" == "200" ]]; then
+    check "Access token revoked after logout (401)" "401" "$POST"
+  else
+    _info "Pre-logout request returned $PRE — skipping revocation check"
+    echo "SKIP | Token revocation — pre-logout check failed ($PRE)" >> "$LOG"
+  fi
+fi
+rm -f /tmp/vaulted-logout-cookies.txt
+
 # ── PHASE 3: AUTHORIZATION & IDOR ───────────────────────────
 _section "Phase 3 — Authorization & IDOR"
 
@@ -146,6 +216,24 @@ STATUS=$(echo "$R" | python3 -c "import sys,json; d=json.load(sys.stdin); print(
 warn_if_present "Mass assignment: tenantId not accepted from client" "" ""
 # Just log it
 echo "INFO | Mass assignment test response: $R" >> "$LOG"
+
+# 3.4 Guest expiration bypass — expired/manipulated JWT
+_info "Testing guest expiration enforcement..."
+GUEST_HEADER=$(echo -n '{"alg":"HS256","typ":"JWT"}' | base64 | tr -d '=' | tr '+/' '-_')
+# Expired guest token (exp=1 → year 1970)
+EXP_GUEST_PAYLOAD=$(echo -n '{"sub":"fake-guest","role":"guest","tenantId":"fake","exp":1}' | base64 | tr -d '=' | tr '+/' '-_')
+EXP_GUEST_JWT="${GUEST_HEADER}.${EXP_GUEST_PAYLOAD}.invalidsig"
+R=$(curl -s -o /dev/null -w "%{http_code}" "$API/properties" \
+  -H "Authorization: Bearer $EXP_GUEST_JWT")
+check "Expired guest token rejected (401)" "401" "$R"
+# Token without role field (no role claim)
+NOROLE_PAYLOAD=$(echo -n '{"sub":"fake","tenantId":"fake","exp":9999999999}' | base64 | tr -d '=' | tr '+/' '-_')
+NOROLE_JWT="${GUEST_HEADER}.${NOROLE_PAYLOAD}.invalidsig"
+R=$(curl -s -o /dev/null -w "%{http_code}" "$API/properties" \
+  -H "Authorization: Bearer $NOROLE_JWT")
+check "Token without role rejected (401)" "401" "$R"
+_info "MANUAL CHECK: Create a real guest user with expiresAt in the past, confirm login returns 401"
+echo "MANUAL | Guest expiration: create guest with past expiresAt, verify login rejected" >> "$LOG"
 
 # ── PHASE 4: INJECTION ──────────────────────────────────────
 _section "Phase 4 — Injection"
@@ -339,6 +427,102 @@ fi
 # 9.3 Verify HSTS
 HSTS=$(curl -sI "https://api-vaulted.casacam.net/api/health" | grep -i "strict-transport" || echo "")
 check "HSTS header present" "max-age" "$HSTS"
+
+# 9.4 TLS 1.1 rejected
+TLS11=$(curl -sv --tlsv1.1 --tls-max 1.1 "$API/health" 2>&1 || true)
+if echo "$TLS11" | grep -q "SSL connection\|TLSv1.1"; then
+  _red "FAIL | TLS 1.1 accepted"
+  echo "FAIL | TLS 1.1 accepted" >> "$LOG"
+  ((FAIL++))
+else
+  _green "PASS | TLS 1.1 not accepted"
+  echo "PASS | TLS 1.1 rejected" >> "$LOG"
+  ((PASS++))
+fi
+
+# 9.5 TLS cipher check (testssl.sh if available)
+if command -v testssl.sh &>/dev/null || command -v testssl &>/dev/null; then
+  TESTSSL=$(command -v testssl.sh || command -v testssl)
+  _info "Running testssl.sh scan..."
+  $TESTSSL --severity HIGH --quiet --color 0 api-vaulted.casacam.net 2>/dev/null | tee -a "$LOG" || true
+else
+  _info "testssl.sh not installed — install for full cipher audit: https://testssl.sh"
+  echo "SKIP | testssl cipher scan — install testssl.sh" >> "$LOG"
+fi
+
+# ── PHASE 10: KEY MATERIAL & ENCRYPTION ──────────────────────
+_section "Phase 10 — Key Material & Encryption Exposure"
+
+# 10.1 API responses must not leak MFA secrets or password hashes
+R=$(curl -s "$API/users/me" -H "Authorization: Bearer $TOKEN")
+warn_if_present "User profile doesn't expose MFA secret"     "mfa_secret"    "$R"
+warn_if_present "User profile doesn't expose password hash"  "\"password\":"  "$R"
+warn_if_present "User profile doesn't expose encryption key" "HKDF"           "$R"
+
+# 10.2 Error messages must not leak DB connection strings
+R=$(curl -s "$API/inventory/000000000000000000000bad" \
+  -H "Authorization: Bearer $TOKEN")
+warn_if_present "Error doesn't expose MongoDB URI"     "mongodb://"    "${R,,}"
+warn_if_present "Error doesn't expose DB host"         "mongodb.net"   "${R,,}"
+warn_if_present "Error doesn't leak stack trace"       "at Object."    "$R"
+warn_if_present "Error doesn't expose internal paths"  "/home/"        "$R"
+
+# 10.3 Health endpoint must not expose secrets
+R=$(curl -s "$API/health")
+warn_if_present "Health endpoint doesn't expose JWT secret" "jwt_secret"  "${R,,}"
+warn_if_present "Health endpoint doesn't expose DB URI"     "mongodb"     "${R,,}"
+warn_if_present "Health endpoint doesn't expose passwords"  "password"    "${R,,}"
+
+# 10.4 Timing consistency for invalid vs valid tokens (manual note)
+_info "MANUAL CHECK: Verify response time is consistent for valid vs invalid tokens"
+_info "  curl -w '%{time_total}' $API/users -H 'Authorization: Bearer \$VALID_TOKEN'"
+_info "  curl -w '%{time_total}' $API/users -H 'Authorization: Bearer invalidtoken'"
+echo "MANUAL | Timing consistency: valid vs invalid token — diff should be < 50ms" >> "$LOG"
+
+# ── PHASE 11: INFRASTRUCTURE ─────────────────────────────────
+_section "Phase 11 — Infrastructure & Container Security"
+
+# 11.1 Port scan (nmap)
+if command -v nmap &>/dev/null; then
+  _info "Running nmap port scan..."
+  NMAP_OUT=$(nmap -Pn --open -p 21,22,80,443,3000,5432,6379,27017 api-vaulted.casacam.net 2>/dev/null || echo "")
+  warn_if_present "Port 3000 (API) not exposed directly"  "3000/tcp open"  "$NMAP_OUT"
+  warn_if_present "Port 5432 (PostgreSQL) not exposed"    "5432/tcp open"  "$NMAP_OUT"
+  warn_if_present "Port 6379 (Redis) not exposed"         "6379/tcp open"  "$NMAP_OUT"
+  warn_if_present "Port 27017 (MongoDB) not exposed"      "27017/tcp open" "$NMAP_OUT"
+  warn_if_present "Port 21 (FTP) not open"                "21/tcp open"    "$NMAP_OUT"
+  if echo "$NMAP_OUT" | grep -q "443/tcp open"; then
+    _green "PASS | Port 443 (HTTPS) is open"
+    echo "PASS | Port 443 open" >> "$LOG"
+    ((PASS++))
+  fi
+  echo "INFO | nmap output:" >> "$LOG"
+  echo "$NMAP_OUT" >> "$LOG"
+else
+  _info "nmap not installed — skipping port scan"
+  _info "  Manual: nmap -Pn --open -p 21,22,80,443,3000,5432,6379,27017 api-vaulted.casacam.net"
+  echo "SKIP | nmap port scan — install nmap" >> "$LOG"
+fi
+
+# 11.2 Container non-root check (requires SSH)
+_info "MANUAL CHECK: Verify container runs as non-root:"
+_info "  gcloud compute ssh tennis-backend -- docker exec vaulted_api id"
+_info "  Expected: uid != 0 (e.g. uid=1000(node))"
+echo "MANUAL | Container user: docker exec vaulted_api id — expect uid != 0" >> "$LOG"
+
+# 11.3 Sensitive files not accessible via HTTP
+for path in ".env" ".env.prod" "package.json" "docker-compose.prod.yml"; do
+  R=$(curl -s -o /dev/null -w "%{http_code}" "https://api-vaulted.casacam.net/$path")
+  if [[ "$R" == "200" ]]; then
+    _red "FAIL | Sensitive file accessible: /$path ($R)"
+    echo "FAIL | Sensitive file exposed: /$path" >> "$LOG"
+    ((FAIL++))
+  else
+    _green "PASS | $path not exposed ($R)"
+    echo "PASS | $path not exposed" >> "$LOG"
+    ((PASS++))
+  fi
+done
 
 # ── RESULTS ─────────────────────────────────────────────────
 echo ""
