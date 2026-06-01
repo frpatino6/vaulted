@@ -14,7 +14,7 @@ export class CryptoService {
 
   constructor(config: ConfigService) {
     const secret = config.getOrThrow<string>('ENCRYPTION_KEY');
-    const salt = config.get<string>('ENCRYPTION_SALT') ?? 'vaulted-salt';
+    const salt = config.get<string>('ENCRYPTION_SALT') || 'vaulted-salt';
     this.key = crypto.scryptSync(secret, salt, 32);
   }
 
