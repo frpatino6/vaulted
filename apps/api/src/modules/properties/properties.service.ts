@@ -3,10 +3,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
+import { ConfigService } from '@nestjs/config';
 import { Model } from 'mongoose';
 import { v4 as uuidv4 } from 'uuid';
 import { Role } from '../../common/enums/role.enum';
 import { AccessControlService } from '../../common/services/access-control.service';
+import { MediaService } from '../media/media.service';
 import { AddFloorDto } from './dto/add-floor.dto';
 import { AddRoomDto } from './dto/add-room.dto';
 import { AddSectionDto } from './dto/add-section.dto';
@@ -19,13 +21,38 @@ import { Item, ItemDocument } from '../inventory/schemas/item.schema';
 
 @Injectable()
 export class PropertiesService {
+  private readonly appUrl: string;
+
   constructor(
     @InjectModel(Property.name)
     private readonly propertyModel: Model<PropertyDocument>,
     @InjectModel(Item.name)
     private readonly itemModel: Model<ItemDocument>,
     private readonly accessControl: AccessControlService,
-  ) {}
+    private readonly mediaService: MediaService,
+    private readonly config: ConfigService,
+  ) {
+    this.appUrl = this.config.get<string>('APP_URL') ?? 'http://localhost:3000';
+  }
+
+  private withSignedPhotos(property: Property, tenantId: string, userId: string): Property {
+    const sign = (url: string) =>
+      `${this.appUrl}/api/media/${this.mediaService.generateFileToken(url, tenantId, userId)}`;
+    return {
+      ...property,
+      photos: (property.photos ?? []).map(sign),
+      floors: (property.floors ?? []).map((floor) => ({
+        ...floor,
+        rooms: (floor.rooms ?? []).map((room) => ({
+          ...room,
+          sections: (room.sections ?? []).map((section) => ({
+            ...section,
+            photo: section.photo ? sign(section.photo) : section.photo,
+          })),
+        })),
+      })),
+    } as Property;
+  }
 
   async create(tenantId: string, dto: CreatePropertyDto): Promise<Property> {
     const property = await this.propertyModel.create({
@@ -43,14 +70,18 @@ export class PropertiesService {
 
   async findAll(tenantId: string, role: Role, userId: string): Promise<Property[]> {
     const allowedPropertyIds = await this.accessControl.getAllowedPropertyIds(userId, role);
+    let properties: Property[];
     if (allowedPropertyIds !== null) {
       if (allowedPropertyIds.length === 0) return [];
-      return this.propertyModel
+      properties = await this.propertyModel
         .find({ tenantId, _id: { $in: allowedPropertyIds } })
         .sort({ createdAt: -1 })
+        .lean()
         .exec();
+    } else {
+      properties = await this.propertyModel.find({ tenantId }).sort({ createdAt: -1 }).lean().exec();
     }
-    return this.propertyModel.find({ tenantId }).sort({ createdAt: -1 }).exec();
+    return properties.map((p) => this.withSignedPhotos(p, tenantId, userId));
   }
 
   async findById(tenantId: string, propertyId: string, role: Role, userId: string): Promise<Property> {
@@ -59,7 +90,7 @@ export class PropertiesService {
     if (allowedPropertyIds !== null && !allowedPropertyIds.includes(propertyId)) {
       throw new NotFoundException('Property not found');
     }
-    return property;
+    return this.withSignedPhotos(property.toObject(), tenantId, userId);
   }
 
   async update(
