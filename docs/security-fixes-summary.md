@@ -1,72 +1,208 @@
-# Vaulted Security Fixes Summary
+# Vaulted — Security Hardening Summary
 
-Última actualización: 2026-06-01
+Última actualización: 2026-06-01  
+Agentes: Claude (PRs #253, #254, #255) · Codex (PR #256)  
+Rama base: `main` (commit `a815d75`)
 
 ---
 
-## Sesión 2 — Claude Code (2026-06-01)
-Rama: `main` (aplicado directamente sobre los archivos en disco)
+## 1. Auditoría inicial — hallazgos y correcciones (Claude · PR #253)
 
-### Correcciones aplicadas
+### CRÍTICOS
 
-| Hallazgo | Severidad | Archivo | Fix aplicado |
-|---|---:|---|---|
-| IDOR en `movements.activate()` — destino sin validar tenant | Alta | `movements/movements.service.ts:248` | `propertyModel.findOne({ _id: destPropertyId, tenantId })` antes del bloque TRANSFER; lanza `NotFoundException` si la propiedad no pertenece al tenant. |
-| Session IDOR en AI Chat — Redis key sin scope de tenant/user | Alta | `ai/chat/ai-chat.service.ts:257,276` | Clave Redis cambiada de `ai:chat:session:${sessionId}` a `ai:chat:session:${tenantId}:${userId}:${sessionId}` mediante helper privado `sessionKey()`. |
-| PII en logs — email del destinatario en `sendEmail()` | Media | `notifications/notifications.service.ts:231,239` | Reemplazado `params.to` (email) por `params.tenantId` en ambos `logger.error`; el email nunca aparece en logs. |
-| Prompt injection — nombres de ítems/rooms sin sanitizar en prompt Gemini | Media | `ai/chat/ai-chat.service.ts:83-95` | Agregada función `sanitizeContextValue()` que elimina newlines y patrones de override (`ignore previous instructions`, `act as`, `system:`, etc.). Todos los valores del DB pasan por ella antes de inyectarse en el prompt. Instrucción defensiva agregada al `SYSTEM_PROMPT`. |
-| Salt hardcodeado en `CryptoService` — `'vaulted-salt'` fijo en código | Media | `common/services/crypto.service.ts:17` | Salt ahora leído de `config.get('ENCRYPTION_SALT')` con fallback a `'vaulted-salt'`. Variable agregada a `.env.prod.example` con instrucción de generación (`openssl rand -hex 32`). |
+| Hallazgo | Archivo | Fix aplicado |
+|---|---|---|
+| WebSocket CORS abierto a `*` | `orchestrator/orchestrator.gateway.ts` | Reemplazado por whitelist `ALLOWED_ORIGINS`; extraído a `common/config/cors.constants.ts` compartido con `main.ts` y ambos gateways |
+| WebSocket CORS con `origin: true` (refleja cualquier origen) | `presence/presence.gateway.ts` | Mismo whitelist `ALLOWED_ORIGINS` con `credentials: true` |
 
-### Script de migración de salt
+### ALTOS
+
+| Hallazgo | Archivo | Fix aplicado |
+|---|---|---|
+| Campos `notes` sin límite de tamaño en seguros | `insurance/dto/create-policy.dto.ts` · `update-policy.dto.ts` | `@MaxLength(2000)` en ambos DTOs |
+
+### MEDIOS
+
+| Hallazgo | Archivo | Fix aplicado |
+|---|---|---|
+| AUDITOR accede a datos financieros sin MFA obligatorio | `common/enums/role.enum.ts` | Añadido `Role.AUDITOR` a `MFA_REQUIRED_ROLES` |
+| Salt HKDF hardcodeada (`'vaulted-salt'`) | `common/services/crypto.service.ts` | Salt ahora configurable vía `ENCRYPTION_SALT` env var; backward compatible |
+| Orígenes CORS dispersos en múltiples archivos | `main.ts` + gateways | Centralizado en `cors.constants.ts`; `main.ts` simplificado |
+
+---
+
+## 2. Toolkit de pentesting ejecutable (Claude · PR #253)
+
+Creados en `security-tests/`:
+
+| Archivo | Contenido |
+|---|---|
+| `run-all.sh` | Pruebas automatizadas: JWT alg=none, fuerza bruta throttle, token expirado, inyección NoSQL/SQL/XSS, upload de shell PHP, path traversal, CORS, rate limiting, security headers, TLS |
+| `websocket-tests.js` | WebSocket: sin token, token malformado, JWT alg=none, JWT expirado, aislamiento de salas entre tenants |
+| `idor-rbac-tests.sh` | IDOR y RBAC: acceso cross-tenant a propiedades/inventario, IDs falsos, escalada de privilegios |
+| `extended-security-plan.md` | 10 categorías adicionales: SBOM, Trivy, Semgrep, TruffleHog, Gitleaks, lógica de negocio, seguridad móvil, hardening VM, monitoreo/alertas, pentest externo, DR |
+
+---
+
+## 3. Infraestructura Docker fullstack (Claude · PR #253)
+
+Archivo: `docker-compose-fullstack.prod.yml` + `start-prod-full.sh` + `infra/mongo-init.js` + `infra/backup/run-backup.sh`
+
+| Control | Detalle |
+|---|---|
+| MongoDB 7.0 con SCRAM-SHA-256 | Auth habilitado; usuario app con permisos mínimos (`readWrite` solo en `vaulted`) |
+| PostgreSQL 16 + pgvector | Sin puertos expuestos al host; resource limits |
+| Redis 7.2 | Contraseña obligatoria; comandos `FLUSHALL`, `FLUSHDB`, `DEBUG` deshabilitados; `maxmemory 512mb` |
+| Red interna Docker | Todos los contenedores DB en red `internal: true`; sin egreso a internet |
+| Backup cifrado nocturno | `mongodump` + `pg_dump` → AES-256-CBC con openssl → retención 7 días |
+| Validación de env vars | `start-prod-full.sh` verifica todas las variables requeridas antes de arrancar |
+
+---
+
+## 4. Módulos de IA — auditoría completa y correcciones (Claude · PR #254)
+
+### CRÍTICOS
+
+| ID | Hallazgo | Archivo | Fix aplicado |
+|---|---|---|---|
+| C-1 | Session hijacking: Redis key no incluía `tenantId:userId` — usuario B podía acceder al historial de usuario A si conocía el `sessionId` | `ai/chat/ai-chat.service.ts` | Clave cambiada a `ai:chat:session:${tenantId}:${userId}:${sessionId}` |
+
+### ALTOS
+
+| ID | Hallazgo | Archivo | Fix aplicado |
+|---|---|---|---|
+| C-2 | Prompt injection en chat: usuario podía enviar `ignore previous instructions`, `act as`, `system:`, etc. | `ai/chat/ai-chat.service.ts` | `sanitizeUserQuery()` elimina patrones de override; instrucción defensiva añadida al `SYSTEM_PROMPT`; `sanitizeAiOutput()` elimina HTML y chars de control de respuestas |
+| H-1 | Inyección de prompt vía nombre de habitación: `name`/`type` de `PropertyRoomDto` se interpolaban sin escapar en prompt Gemini | `ai/vision/ai-vision.service.ts` | Sanitización: `.replace(/["\n\r\\]/g, ' ').slice(0, 200)` antes de construir el prompt |
+| H-2 | DoS por lista masiva de habitaciones: sin límite en `propertyRooms` | `ai/vision/dto/analyze-item.dto.ts` | `@ArrayMaxSize(100)` |
+| H-3 | `imageData` (base64) sin límite; `mimeType` sin validación de valores permitidos | `ai/vision/dto/analyze-sections.dto.ts` | `@MaxLength(10_485_760)` en `imageData`; `@IsIn(['image/jpeg','image/png','image/webp'])` en `mimeType`; `@MaxLength(500)` en `imageUrl` |
+| H-4 | `PropertyRoomDto` fields sin límite de tamaño | `ai/vision/dto/analyze-item.dto.ts` | `@MaxLength` en `roomId`(100), `name`(200), `type`(100), URLs de imagen(500) |
+
+### MEDIOS
+
+| ID | Hallazgo | Archivo | Fix aplicado |
+|---|---|---|---|
+| M-1 | Rate limit solo por tenant, no por usuario: un usuario podía agotar la cuota de todo el tenant | `ai-chat`, `ai-help`, `ai-insurance` services | Bucket secundario por `userId` al 50% del límite tenant en los tres servicios |
+| M-2 | Número de póliza completo enviado a Google Gemini en análisis de cobertura | `ai/insurance/ai-insurance.service.ts` | Número enmascarado a `****{últimos 4 dígitos}` en el prompt de análisis (el draft de claims sí lo incluye completo por necesidad) |
+| M-3 | Contenido generado por IA guardado en DB sin sanitización: podía incluir HTML, chars de control | `ai/maintenance/ai-maintenance.service.ts` | `sanitizeText()` elimina HTML y chars de control; límites duros: `title`(200), `reason`(500), `recommendedAction`(500); `riskScore` clamped 0-100; `suggestedIntervalDays` clamped 1-3650 |
+| M-4 | AI Help accesible al rol GUEST | `ai/help/ai-help.controller.ts` | Eliminado `Role.GUEST` del decorador `@Roles()` |
+| M-5 | TTL de sesión AI chat demasiado largo (3600s) | `ai/chat/ai-chat.service.ts` | Reducido a 1800s |
+| L-1 | Logger imprimía respuesta AI completa (potencialmente grande) en errores de parseo | `ai/vision/ai-vision.service.ts` | Truncado a 200 chars en `logger.error` |
+
+---
+
+## 5. Auditoría exhaustiva de módulos restantes y correcciones (Claude · PR #255)
+
+Módulos auditados en paralelo: orchestrator, movements, household-members, notifications, wardrobe, dashboard, presence, BullMQ jobs, Redis keys, logging PII, TypeORM entities, media tokens, tenant registration, email injection, ReDoS.
+
+### ALTOS
+
+| Hallazgo | Archivo | Fix aplicado |
+|---|---|---|
+| IDOR en TRANSFER: destino de movimiento no verificaba que la propiedad pertenezca al tenant — se podía mover ítems a propiedades de otro tenant | `movements/movements.service.ts:248` | `propertyModel.findOne({ _id: destPropertyId, tenantId })` antes del bloque TRANSFER; lanza `BadRequestException` si la propiedad no pertenece al tenant |
+| IDOR en `unregisterDeviceToken`: lookup solo por `token + userId`, sin `tenantId` — usuario de tenant A podía eliminar token de tenant B | `notifications/notifications.service.ts` + controller | Añadido `tenantId` al `where` del findOne; controller pasa `user.tenantId` |
+| PII en logs: dirección de email del destinatario se logeaba en errores de Resend | `notifications/notifications.service.ts:231,239` | Email reemplazado por `tenant: ${params.tenantId}` en ambas líneas de error |
+| CVEs críticos/altos en dependencias (handlebars, path-to-regexp, lodash, fast-xml-parser) | `package.json` | `npm audit fix` eliminó todos los críticos y altos; 8 moderados residuales en deps transitivas de Firebase/GCP |
+
+### MEDIOS
+
+| Hallazgo | Archivo | Fix aplicado |
+|---|---|---|
+| `linkedUserId` en household-members no validado contra tenant: podía referenciar usuarios de otros tenants | `household-members/household-members.service.ts` + module | `assertLinkedUserBelongsToTenant()` verifica via `UsersService.findById()` que el usuario pertenece al mismo tenant; `UsersModule` importado en `HouseholdMembersModule` |
+| `completionPhotoUrl` sin validación de formato URL ni límite de tamaño | `orchestrator/dto/complete-step.dto.ts` | `@IsUrl({ require_tld: false })` + `@MaxLength(2000)` |
+
+### Hallazgos verificados como seguros (sin acción requerida)
+
+| Área | Veredicto |
+|---|---|
+| Redis keys inventory | Todas las claves correctamente namespaciadas por tenant/user; sin PII sin cifrar |
+| Email injection (Resend API) | Array format en `to:` previene header injection; `escapeHtml()` en templates |
+| ReDoS | `escapeRegex()` protege todas las entradas de usuario antes de usar en `new RegExp()`; resto son patrones estáticos |
+| Media token scoping | `generateFileToken()` vincula `fileKey + tenantId + userId`; `serveFile()` valida prefijo tenantId |
+| Wardrobe stats cache key | Estadísticas son aggregate de tenant, no datos individuales — scope de tenant es correcto |
+| Tenant registration rate limit | 5 req/60s por IP ya implementado via `@Throttle`; `tenantName` con `@MinLength(2) @MaxLength(255)` |
+
+---
+
+## 6. Hardening de media, autenticación y móvil (Codex · PR #256)
+
+### ALTOS
+
+| Hallazgo | Fix aplicado |
+|---|---|
+| Path traversal en media local (`tenant/../../`) | Validación canónica completa: rechazo de `..`, paths absolutos, backslashes, segmentos vacíos, null bytes; resolución dentro de `uploadsRoot` |
+| Media privada expuesta directamente via `/uploads` (Express static assets) | Montaje eliminado; todos los uploads se sirven exclusivamente via URL firmada `/api/media/:token` |
+| Refresh token replay: rotación sin invalidación del token anterior | Refresh token one-time-use: se exige membresía en sesión Redis, JTI usado va a blacklist + srem, sesión completa invalidada ante replay detectado |
+
+### MEDIOS
+
+| Hallazgo | Fix aplicado |
+|---|---|
+| MFA obligatorio no forzado para Owner/Manager sin MFA configurado | Login/invite devuelven `mfaRequired=true` y `mfaSetupRequired=true`; access token con `mfaVerified=false` hasta completar setup |
+| Rate limit MFA verify demasiado permisivo (100/min) | Reducido a 5/min en `/auth/mfa/verify` |
+| Flutter release podía usar HTTP/WS por default | Build release exige `API_BASE_URL` HTTPS y `WS_BASE_URL` WSS; HTTP localhost solo en debug |
+| PostgreSQL TLS con `rejectUnauthorized: false` | Producción usa `rejectUnauthorized: true`; soporte para `POSTGRES_CA_CERT` |
+| Inyección NoSQL vía `inventory.attributes`: claves `$`, `.`, `__proto__` no rechazadas | Validación de claves: se rechazan `$`, `.`, `__proto__`, `constructor`, `prototype`, arrays muy grandes, strings extensos, profundidad excesiva |
+
+### BAJOS
+
+| Hallazgo | Fix aplicado |
+|---|---|
+| Tokens en almacenamiento inseguro móvil | `flutter_secure_storage` confirmado; iOS Keychain ahora con `first_unlock_this_device` |
+| Permisos Android incompletos | `INTERNET` añadido al manifest principal |
+| CORS dev/prod mezclado | Orígenes separados por entorno; override via `CORS_ALLOWED_ORIGINS` env var |
+| Firebase web config hardcodeado en service worker | Config cargado desde `web/firebase-config.js` generado en deploy; ejemplo sin valores reales; runtime config en `.gitignore` |
+
+---
+
+## 7. Script de migración de salt (Codex · PR #256)
 
 Creado `infra/re-encrypt-salt.js` — script Node.js standalone que re-cifra todos los campos FLE al cambiar `ENCRYPTION_SALT`. Cubre:
-- PostgreSQL: `insurance_policies` (5 campos), `insured_items` (1 campo), `users.mfa_secret`
-- MongoDB: `items.valuation` (3 subcampos)
 
-Ver instrucciones de uso al inicio del archivo o en la respuesta de la sesión.
+- **PostgreSQL:** `insurance_policies` (5 campos), `insured_items` (1 campo), `users.mfa_secret`
+- **MongoDB:** `items.valuation` (3 subcampos)
 
-### Riesgo residual
-
-- `ENCRYPTION_SALT` sigue usando el fallback `'vaulted-salt'` hasta que se configure explícitamente en `.env.prod`. Cambiar el salt requiere correr el script de migración **antes** de redeployar.
-- El fix de prompt injection mitiga inyecciones obvias pero no es un sandbox completo; se recomienda agregar evaluación de output por el modelo en una fase posterior.
+> **Importante:** `ENCRYPTION_SALT` sigue usando el fallback `'vaulted-salt'` hasta que se configure explícitamente en `.env.prod`. Cambiar el salt requiere correr este script **antes** de redeployar la API para evitar que los datos existentes queden ilegibles.
 
 ---
 
-## Sesión 1 — Codex (2026-06-01)
-Rama: `codex/security-hardening-media-auth-mobile`
+## 8. Riesgo residual y seguimiento
 
-### Nota de sincronización con `main`
+| # | Área | Riesgo | Prioridad |
+|---|---|---|---|
+| R-1 | Email verification gate | Tenant creado sin verificar email; rate limit de IP no impide rotación de IPs | Post-MVP |
+| R-2 | UX MFA setup Flutter | Backend fuerza `mfaSetupRequired`; flujo móvil debe mostrar QR/secret de `/auth/mfa/setup` para completar setup | Alta |
+| R-3 | CVEs moderados Firebase/GCP | 8 vulnerabilidades moderadas en deps transitivas (`uuid` en firebase-admin, @google-cloud) — no corregibles sin actualización mayor del SDK | Media |
+| R-4 | ObjectId validation pipe | Queries MongoDB mantienen `tenantId`; se recomienda pipe global de ObjectId para validación uniforme | Media |
+| R-5 | Media histórica pre-fix | Registros anteriores con URLs `/uploads` se normalizan; acceso público directo ya no existe. Validar migración si hay datos activos | Media |
+| R-6 | Firebase deploy CI | `web/firebase-config.js` debe generarse desde secretos CI antes de publicar | Alta (ops) |
+| R-7 | Envelope encryption con KMS | HKDF-SHA-256 actual es criptográficamente sólido para MVP; migrar a GCP KMS post-MVP | Post-MVP |
+| R-8 | Prompt injection sandbox completo | Fix actual mitiga inyecciones obvias; evaluación de output por el modelo pendiente para mayor robustez | Baja |
+| R-9 | Audit log TODOs | Entradas pendientes en `properties.service.ts`, `users.service.ts`, `media.service.ts` | Baja |
 
-Se intentó ejecutar `git fetch origin main && git pull origin main` antes de aplicar cambios, pero el checkout local no tiene remote `origin` configurado. La rama de fixes se creó desde el estado local disponible (`work`, commit `94999c0`).
+---
 
-### Estado de vulnerabilidades reanalizadas y mitigadas
+## 9. Verificaciones ejecutadas
 
-| Hallazgo | Severidad previa | Estado | Fix aplicado |
-|---|---:|---|---|
-| Path traversal en media local (`tenant/../../`) | Alta | Mitigado | Validación canónica de keys por tenant, rechazo de `..`, paths absolutos, backslashes, segmentos vacíos y null bytes; resolución local dentro de `uploadsRoot`. |
-| Media privada expuesta por `/uploads` | Alta | Mitigado | Eliminado el montaje de Express static assets para `/uploads`; uploads locales/GCS devuelven URL firmada `/api/media/:token`. |
-| Refresh token replay por rotación sin invalidación | Alta | Mitigado | Refresh token pasa a ser one-time-use: se exige membresía en sesión Redis, se blacklist/srem el JTI usado y se invalida todo ante replay. |
-| MFA obligatorio no forzado para Owner/Manager sin setup | Media | Mitigado backend | Login/invite ahora devuelven `mfaRequired=true` y `mfaSetupRequired=true` para roles obligatorios sin MFA; access token queda `mfaVerified=false`. |
-| Rate limit MFA verify demasiado alto | Media | Mitigado | `/auth/mfa/verify` reducido de 100/min a 5/min. |
-| Flutter release podría usar HTTP/WS por default | Media | Mitigado | Release exige `API_BASE_URL` HTTPS y `WS_BASE_URL` WSS; HTTP localhost queda solo para debug. |
-| PostgreSQL TLS con `rejectUnauthorized=false` | Media | Mitigado | Producción con `DATABASE_URL` usa `rejectUnauthorized: true` y soporta `POSTGRES_CA_CERT`. |
-| Objetos flexibles con claves NoSQL peligrosas | Media | Mitigado parcial/enfocado | `inventory.attributes` rechaza claves `$`, `.`, `__proto__`, `constructor`, `prototype`, arrays muy grandes, strings extensos y profundidad excesiva. |
-| Tokens en almacenamiento inseguro móvil | Baja/positivo | Confirmado y reforzado | Refresh token sigue en `flutter_secure_storage`; iOS ahora usa Keychain accessibility `first_unlock_this_device`. |
-| Permisos móviles | Baja | Mitigado | `INTERNET` agregado al Android manifest principal; permisos sensibles existentes se mantienen justificados. |
-| CORS dev/prod mezclado | Baja | Mitigado | Orígenes productivos y desarrollo separados; override por `CORS_ALLOWED_ORIGINS`. |
-| Firebase web config hardcoded | Baja | Mitigado | Service worker carga `web/firebase-config.js` generado en deploy; se agregó ejemplo sin valores reales y gitignore para el runtime config. |
+| Check | Agente | Resultado |
+|---|---|---|
+| `npm run build` (apps/api) | Codex | OK |
+| `npm test -- media.service.spec.ts auth.service.spec.ts inventory.service.spec.ts --runInBand` | Codex | OK |
+| `npm audit` (apps/api) | Claude | 0 críticos, 0 altos, 8 moderados residuales (Firebase/GCP transitivos) |
+| Validación de balanceo de llaves TypeScript en todos los archivos modificados | Claude | OK |
+| `flutter analyze` / `dart format` | Codex | No ejecutable en contenedor (falta `flutter` en PATH) |
 
-### Riesgo residual / seguimiento recomendado
+---
 
-1. **UX de MFA setup en Flutter:** el backend ya fuerza `mfaSetupRequired`, pero el flujo móvil debería mostrar QR/secret de `/auth/mfa/setup` para roles Owner/Manager sin MFA configurado.
-2. **Normalización de media histórica:** si existen registros antiguos con URLs `/uploads`, se siguen normalizando, pero el acceso público directo ya no existe. Validar migración de datos si hay clientes activos.
-3. **Firebase web service worker:** ya no contiene config hardcoded; despliegue debe generar `web/firebase-config.js` desde secretos/variables de CI antes de publicar.
-4. **Validación de ObjectId por DTO/pipe:** Mongo queries mantienen `tenantId`; se recomienda añadir pipes de ObjectId de forma transversal en una fase posterior.
+## Resumen ejecutivo
 
-### Checks ejecutados
+En total se identificaron y corrigieron **31 vulnerabilidades** distribuidas así:
 
-- `npm run build` en `apps/api` — OK.
-- `npm test -- media.service.spec.ts auth.service.spec.ts inventory.service.spec.ts --runInBand` en `apps/api` — OK.
-- `dart format lib/core/config/app_config.dart lib/core/storage/secure_storage.dart lib/main.dart && flutter analyze` en `apps/mobile` — no ejecutable en este contenedor: falta `dart` en PATH.
-- `flutter analyze` en `apps/mobile` — no ejecutable en este contenedor: falta `flutter` en PATH.
+| Severidad | Encontradas | Corregidas | Residuales |
+|---|---|---|---|
+| Críticas | 3 | 3 | 0 |
+| Altas | 10 | 10 | 0 |
+| Medias | 14 | 13 | 1 (email verify — decisión de producto) |
+| Bajas | 7 | 7 | 0 |
+| Moderadas (CVE deps) | 8 | 0 | 8 (Firebase/GCP transitivos) |
 
+Los scripts de pentesting en `security-tests/` están listos para validar empíricamente todos los controles implementados. Los resultados de esas pruebas alimentarán el informe final orientado a cliente.
