@@ -37,6 +37,7 @@ class AuthRepository {
 
     final accessToken = result.data['accessToken'] as String?;
     final mfaRequired = result.data['mfaRequired'] as bool? ?? false;
+    final mfaSetupRequired = result.data['mfaSetupRequired'] as bool? ?? false;
 
     if (accessToken == null) {
       throw Exception('No access token in response');
@@ -49,7 +50,11 @@ class AuthRepository {
 
     _tokenStore.setToken(accessToken);
 
-    return {'accessToken': accessToken, 'mfaRequired': mfaRequired};
+    return {
+      'accessToken': accessToken,
+      'mfaRequired': mfaRequired,
+      'mfaSetupRequired': mfaSetupRequired,
+    };
   }
 
   Future<Map<String, dynamic>> acceptInvite({
@@ -60,6 +65,7 @@ class AuthRepository {
 
     final accessToken = result.data['accessToken'] as String?;
     final mfaRequired = result.data['mfaRequired'] as bool? ?? false;
+    final mfaSetupRequired = result.data['mfaSetupRequired'] as bool? ?? false;
 
     if (accessToken == null || accessToken.isEmpty) {
       throw Exception('No access token in response');
@@ -72,7 +78,11 @@ class AuthRepository {
 
     _tokenStore.setToken(accessToken);
 
-    return {'accessToken': accessToken, 'mfaRequired': mfaRequired};
+    return {
+      'accessToken': accessToken,
+      'mfaRequired': mfaRequired,
+      'mfaSetupRequired': mfaSetupRequired,
+    };
   }
 
   Future<Map<String, dynamic>> verifyMfa(String code) async {

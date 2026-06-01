@@ -12,7 +12,8 @@ jest.mock('node:fs', () => {
 });
 
 jest.mock('node:fs/promises', () => {
-  const actual = jest.requireActual<typeof import('node:fs/promises')>('node:fs/promises');
+  const actual =
+    jest.requireActual<typeof import('node:fs/promises')>('node:fs/promises');
   return {
     ...actual,
     stat: jest.fn(),
@@ -26,7 +27,11 @@ jest.mock('node:stream/promises', () => ({
   pipeline: jest.fn(),
 }));
 
-import { ForbiddenException, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -37,10 +42,14 @@ import { MediaService } from './media.service';
 
 describe('MediaService', () => {
   let service: MediaService;
-  let jwtService: { sign: jest.Mock; verify: jest.Mock };
+  let jwtService: { sign: jest.Mock; verify: jest.Mock; decode: jest.Mock };
 
-  const mockStat = fsPromises.stat as jest.MockedFunction<typeof fsPromises.stat>;
-  const mockPipeline = streamPromises.pipeline as jest.MockedFunction<typeof streamPromises.pipeline>;
+  const mockStat = fsPromises.stat as jest.MockedFunction<
+    typeof fsPromises.stat
+  >;
+  const mockPipeline = streamPromises.pipeline as jest.MockedFunction<
+    typeof streamPromises.pipeline
+  >;
 
   const configService = {
     get: jest.fn((key: string) => {
@@ -57,6 +66,7 @@ describe('MediaService', () => {
     jwtService = {
       sign: jest.fn().mockReturnValue('signed-token'),
       verify: jest.fn(),
+      decode: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -79,8 +89,14 @@ describe('MediaService', () => {
 
     expect(token).toBe('signed-token');
     expect(jwtService.sign).toHaveBeenCalledWith(
-      { fileKey: 'tenant-1/file.jpg', tenantId: 'tenant-1', userId: 'user-9' },
-      { expiresIn: '15m' },
+      {
+        fileKey: 'tenant-1/file.jpg',
+        tenantId: 'tenant-1',
+        userId: 'user-9',
+        iat: expect.any(Number),
+        exp: expect.any(Number),
+      },
+      { noTimestamp: true },
     );
   });
 
@@ -88,9 +104,14 @@ describe('MediaService', () => {
     jwtService.verify.mockImplementation(() => {
       throw new Error('invalid');
     });
-    const res = { setHeader: jest.fn(), redirect: jest.fn() } as unknown as Response;
+    const res = {
+      setHeader: jest.fn(),
+      redirect: jest.fn(),
+    } as unknown as Response;
 
-    await expect(service.serveFile('bad', res)).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(service.serveFile('bad', res)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
     expect(mockStat).not.toHaveBeenCalled();
   });
 
@@ -102,7 +123,22 @@ describe('MediaService', () => {
     });
     const res = {} as Response;
 
-    await expect(service.serveFile('tok', res)).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(service.serveFile('tok', res)).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+  });
+
+  it('serveFile() rejects path traversal inside the tenant prefix', async () => {
+    jwtService.verify.mockReturnValue({
+      fileKey: 'tenant-1/../../.env',
+      tenantId: 'tenant-1',
+      userId: 'user-1',
+    });
+    const res = {} as Response;
+
+    await expect(service.serveFile('tok', res)).rejects.toThrow(
+      'Invalid file key',
+    );
   });
 
   it('serveFile() streams local file when storage bucket is not configured', async () => {
@@ -131,11 +167,15 @@ describe('MediaService', () => {
     });
     const res = { setHeader: jest.fn() } as unknown as Response;
 
-    await expect(service.serveFile('tok', res)).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.serveFile('tok', res)).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
   });
 
   it('upload() throws BadRequestException when file is missing', async () => {
-    await expect(service.upload('tenant-1', undefined)).rejects.toThrow();
+    await expect(
+      service.upload('tenant-1', 'user-1', undefined),
+    ).rejects.toThrow();
   });
 
   it('upload() throws BadRequestException when file exceeds 10MB', async () => {
@@ -144,7 +184,9 @@ describe('MediaService', () => {
       buffer: Buffer.alloc(15 * 1024 * 1024),
     } as Express.Multer.File;
 
-    await expect(service.upload('tenant-1', largeFile)).rejects.toThrow('exceeds 10MB');
+    await expect(
+      service.upload('tenant-1', 'user-1', largeFile),
+    ).rejects.toThrow('exceeds 10MB');
   });
 
   it('upload() throws BadRequestException for unsupported file type', async () => {
@@ -153,27 +195,35 @@ describe('MediaService', () => {
       buffer: Buffer.from([0x00, 0x01, 0x02]),
     } as Express.Multer.File;
 
-    await expect(service.upload('tenant-1', invalidFile)).rejects.toThrow('Unsupported file type');
+    await expect(
+      service.upload('tenant-1', 'user-1', invalidFile),
+    ).rejects.toThrow('Unsupported file type');
   });
 
   it('upload() saves file locally and returns URL', async () => {
     const validFile = {
       size: 1024,
-      buffer: Buffer.from([0xff, 0xd8, 0xff, 0xe0]), // JPEG magic bytes
+      buffer: Buffer.from([0x25, 0x50, 0x44, 0x46]), // PDF magic bytes
     } as Express.Multer.File;
 
-    const result = await service.upload('tenant-1', validFile);
+    const result = await service.upload('tenant-1', 'user-1', validFile);
 
     expect(result.filename).toContain('tenant-1/');
-    expect(result.url).toContain('http://localhost:3000/uploads/');
-    expect(result.mimeType).toBe('image/jpeg');
+    expect(result.url).toContain(
+      'http://localhost:3000/api/media/signed-token',
+    );
+    expect(result.mimeType).toBe('application/pdf');
   });
 
   it('delete() throws BadRequestException when key is missing', async () => {
-    await expect(service.delete('tenant-1', undefined)).rejects.toThrow('key query parameter');
+    await expect(service.delete('tenant-1', undefined)).rejects.toThrow(
+      'key query parameter',
+    );
   });
 
   it('delete() throws BadRequestException when key does not belong to tenant', async () => {
-    await expect(service.delete('tenant-1', 'other-tenant/file.jpg')).rejects.toThrow('Invalid file key');
+    await expect(
+      service.delete('tenant-1', 'other-tenant/file.jpg'),
+    ).rejects.toThrow('Invalid file key');
   });
 });

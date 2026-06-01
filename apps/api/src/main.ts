@@ -1,6 +1,5 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
-import { join } from 'node:path';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import helmet from 'helmet';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
@@ -15,8 +14,7 @@ async function bootstrap(): Promise<void> {
   const logger = new Logger('Bootstrap');
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  // Global prefix must be set BEFORE static assets so Express static
-  // middleware is registered on the raw path without the /api prefix.
+  // Global prefix keeps all API routes under /api.
   app.setGlobalPrefix('api');
 
   const allowedOrigins = [...ALLOWED_ORIGINS];
@@ -26,10 +24,12 @@ async function bootstrap(): Promise<void> {
   // api-vaulted.casacam.net and the web app runs on vaulted.casacam.net
   // (different subdomains = cross-site). The CORS config below already
   // restricts allowed origins, so this is safe.
-  app.use(helmet({
-    crossOriginResourcePolicy: { policy: 'cross-origin' },
-    contentSecurityPolicy: false, // API-only server, no HTML served
-  }));
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+      contentSecurityPolicy: false, // API-only server, no HTML served
+    }),
+  );
 
   app.enableCors({
     origin: allowedOrigins,
@@ -43,26 +43,9 @@ async function bootstrap(): Promise<void> {
   // Increase JSON body limit for base64 image payloads (AI vision endpoints)
   app.useBodyParser('json', { limit: '20mb' });
 
-  // Serve uploaded files at /uploads/*.
-  // CORS for /uploads is handled per-request: only set the header when
-  // the request Origin is in the allowedOrigins list. This prevents any
-  // third-party site from fetching private inventory media.
-  app.use('/uploads', (
-    req: import('express').Request,
-    res: import('express').Response,
-    next: import('express').NextFunction,
-  ) => {
-    const origin = req.headers['origin'] as string | undefined;
-    if (origin && (allowedOrigins as string[]).includes(origin)) {
-      res.setHeader('Access-Control-Allow-Origin', origin);
-      res.setHeader('Vary', 'Origin');
-    }
-    next();
-  });
-
-  app.useStaticAssets(join(process.cwd(), 'uploads'), {
-    prefix: '/uploads',
-  });
+  // Uploaded media is intentionally not exposed via Express static assets.
+  // All private inventory media must be accessed through /api/media/:token,
+  // where MediaService validates the signed token, tenant prefix, and local path.
 
   app.useGlobalPipes(
     new ValidationPipe({

@@ -15,12 +15,14 @@ import { Item } from './schemas/item.schema';
 import { ItemCategory, ItemStatus } from './dto/create-item.dto';
 import { ItemHistory } from './schemas/item-history.schema';
 import { Property } from '../properties/schemas/property.schema';
+import { Movement } from '../movements/schemas/movement.schema';
 import { AccessControlService } from '../../common/services/access-control.service';
 import { CryptoService } from '../../common/services/crypto.service';
 import { AuditService } from '../audit/audit.service';
 import { MediaService } from '../media/media.service';
 import { ConfigService } from '@nestjs/config';
 import { Role } from '../../common/enums/role.enum';
+import { REDIS_CLIENT } from '../../common/decorators/inject-redis.decorator';
 describe('InventoryService', () => {
   let service: InventoryService;
 
@@ -54,6 +56,7 @@ describe('InventoryService', () => {
 
   const propertyModel = {
     find: jest.fn(() => propertyFindChain),
+    findOne: jest.fn(),
   };
 
   const dataSource = {} as DataSource;
@@ -88,6 +91,7 @@ describe('InventoryService', () => {
 
   const mediaService = {
     generateFileToken: jest.fn().mockReturnValue('media-jwt'),
+    normalizeTenantKey: jest.fn((key: string) => key),
   };
 
   beforeEach(async () => {
@@ -97,21 +101,29 @@ describe('InventoryService', () => {
       providers: [
         InventoryService,
         { provide: getModelToken(Item.name), useValue: itemModel },
-        { provide: getModelToken(ItemHistory.name), useValue: itemHistoryModel },
+        {
+          provide: getModelToken(ItemHistory.name),
+          useValue: itemHistoryModel,
+        },
         { provide: getModelToken(Property.name), useValue: propertyModel },
+        {
+          provide: getModelToken(Movement.name),
+          useValue: { create: jest.fn() },
+        },
         { provide: DataSource, useValue: dataSource },
         { provide: AccessControlService, useValue: accessControl },
         { provide: CryptoService, useValue: crypto },
         { provide: AuditService, useValue: audit },
         { provide: ConfigService, useValue: configService },
         { provide: MediaService, useValue: mediaService },
+        { provide: REDIS_CLIENT, useValue: { del: jest.fn() } },
       ],
     }).compile();
 
     service = module.get<InventoryService>(InventoryService);
   });
 
-  it('findAll() for manager decrypts valuation, signs media URLs, and logs valuation view audit', async () => {
+  it('findAll() for owner decrypts valuation, signs media URLs, and logs valuation view audit', async () => {
     accessControl.getAllowedPropertyIds.mockResolvedValue(null);
 
     const doc = {
@@ -126,7 +138,7 @@ describe('InventoryService', () => {
     };
     itemFindChain.exec.mockResolvedValue([doc]);
 
-    const items = await service.findAll('t1', {}, Role.MANAGER, 'u1');
+    const items = await service.findAll('t1', {}, Role.OWNER, 'u1');
 
     expect(items).toHaveLength(1);
     expect(items[0].photos?.[0]).toBe(
@@ -156,7 +168,13 @@ describe('InventoryService', () => {
         valuation: { currentValue: 900 },
       }),
     };
-    itemModel.findOne.mockReturnValue({ exec: jest.fn().mockResolvedValue(itemDoc) });
+    itemModel.findOne.mockReturnValue({
+      exec: jest.fn().mockResolvedValue(itemDoc),
+    });
+    propertyModel.findOne.mockReturnValue({
+      select: jest.fn().mockReturnThis(),
+      exec: jest.fn().mockResolvedValue(null),
+    });
 
     const item = await service.findById('t1', 'i1', Role.STAFF, 'u-staff');
 
@@ -171,11 +189,13 @@ describe('InventoryService', () => {
       propertyId: 'prop-1',
       toObject: jest.fn(),
     };
-    itemModel.findOne.mockReturnValue({ exec: jest.fn().mockResolvedValue(itemDoc) });
+    itemModel.findOne.mockReturnValue({
+      exec: jest.fn().mockResolvedValue(itemDoc),
+    });
 
-    await expect(service.findById('t1', 'i1', Role.STAFF, 'u-staff')).rejects.toBeInstanceOf(
-      NotFoundException,
-    );
+    await expect(
+      service.findById('t1', 'i1', Role.STAFF, 'u-staff'),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('search() for owner logs search valuation view audit with result count', async () => {
@@ -192,7 +212,9 @@ describe('InventoryService', () => {
       }),
     };
     itemFindChain.exec.mockResolvedValue([doc]);
-    itemModel.countDocuments.mockReturnValue({ exec: jest.fn().mockResolvedValue(3) });
+    itemModel.countDocuments.mockReturnValue({
+      exec: jest.fn().mockResolvedValue(3),
+    });
     propertyFindChain.exec.mockResolvedValue([
       {
         _id: 'p1',
@@ -248,16 +270,20 @@ describe('InventoryService', () => {
   });
 
   it('update() updates item and re-indexes embedding', async () => {
-    itemModel.findOne.mockReturnValue({ exec: jest.fn().mockResolvedValue({ _id: 'i1', tenantId: 't1' }) });
-    itemModel.findOneAndUpdate.mockReturnValue({ exec: jest.fn().mockResolvedValue({
-      _id: 'i1',
-      name: 'Updated Name',
-      toObject: jest.fn().mockReturnValue({
+    itemModel.findOne.mockReturnValue({
+      exec: jest.fn().mockResolvedValue({ _id: 'i1', tenantId: 't1' }),
+    });
+    itemModel.findOneAndUpdate.mockReturnValue({
+      exec: jest.fn().mockResolvedValue({
         _id: 'i1',
         name: 'Updated Name',
-        valuation: { currentValue: 6000 },
+        toObject: jest.fn().mockReturnValue({
+          _id: 'i1',
+          name: 'Updated Name',
+          valuation: { currentValue: 6000 },
+        }),
       }),
-    })});
+    });
 
     const result = await service.update('t1', 'i1', { name: 'Updated Name' });
 
@@ -265,11 +291,15 @@ describe('InventoryService', () => {
   });
 
   it('delete() soft deletes item by setting status to disposed', async () => {
-    itemModel.findOne.mockReturnValue({ exec: jest.fn().mockResolvedValue({ _id: 'i1', tenantId: 't1' }) });
-    itemModel.findOneAndUpdate.mockReturnValue({ exec: jest.fn().mockResolvedValue({
-      _id: 'i1',
-      status: 'disposed',
-    })});
+    itemModel.findOne.mockReturnValue({
+      exec: jest.fn().mockResolvedValue({ _id: 'i1', tenantId: 't1' }),
+    });
+    itemModel.findOneAndUpdate.mockReturnValue({
+      exec: jest.fn().mockResolvedValue({
+        _id: 'i1',
+        status: 'disposed',
+      }),
+    });
 
     const result = await service.delete('t1', 'i1');
 
@@ -290,17 +320,21 @@ describe('InventoryService', () => {
   });
 
   it('move() moves item to new property/room and logs history', async () => {
-    itemModel.findOne.mockReturnValue({ exec: jest.fn().mockResolvedValue({
-      _id: 'i1',
-      tenantId: 't1',
-      propertyId: 'p1',
-      roomId: 'r1',
-    })});
-    itemModel.findOneAndUpdate.mockReturnValue({ exec: jest.fn().mockResolvedValue({
-      _id: 'i1',
-      propertyId: 'p2',
-      roomId: 'r2',
-    })});
+    itemModel.findOne.mockReturnValue({
+      exec: jest.fn().mockResolvedValue({
+        _id: 'i1',
+        tenantId: 't1',
+        propertyId: 'p1',
+        roomId: 'r1',
+      }),
+    });
+    itemModel.findOneAndUpdate.mockReturnValue({
+      exec: jest.fn().mockResolvedValue({
+        _id: 'i1',
+        propertyId: 'p2',
+        roomId: 'r2',
+      }),
+    });
 
     const result = await service.move('t1', 'i1', 'u1', {
       toPropertyId: 'p2',
@@ -328,16 +362,20 @@ describe('InventoryService', () => {
   });
 
   it('loan() sets item status to loaned and logs history', async () => {
-    itemModel.findOne.mockReturnValue({ exec: jest.fn().mockResolvedValue({
-      _id: 'i1',
-      tenantId: 't1',
-      propertyId: 'p1',
-      attributes: {},
-    })});
-    itemModel.findOneAndUpdate.mockReturnValue({ exec: jest.fn().mockResolvedValue({
-      _id: 'i1',
-      status: 'loaned',
-    })});
+    itemModel.findOne.mockReturnValue({
+      exec: jest.fn().mockResolvedValue({
+        _id: 'i1',
+        tenantId: 't1',
+        propertyId: 'p1',
+        attributes: {},
+      }),
+    });
+    itemModel.findOneAndUpdate.mockReturnValue({
+      exec: jest.fn().mockResolvedValue({
+        _id: 'i1',
+        status: 'loaned',
+      }),
+    });
 
     const result = await service.loan('t1', 'i1', 'u1', {
       borrowerName: 'John Doe',
@@ -348,7 +386,9 @@ describe('InventoryService', () => {
 
     expect(itemModel.findOneAndUpdate).toHaveBeenCalledWith(
       expect.objectContaining({ _id: 'i1', tenantId: 't1' }),
-      expect.objectContaining({ $set: expect.objectContaining({ status: 'loaned' }) }),
+      expect.objectContaining({
+        $set: expect.objectContaining({ status: 'loaned' }),
+      }),
       expect.any(Object),
     );
     expect(itemHistoryModel.create).toHaveBeenCalledWith(
@@ -357,7 +397,9 @@ describe('InventoryService', () => {
   });
 
   it('getHistory() returns item history sorted by timestamp desc', async () => {
-    itemModel.findOne.mockReturnValue({ exec: jest.fn().mockResolvedValue({ _id: 'i1', tenantId: 't1' }) });
+    itemModel.findOne.mockReturnValue({
+      exec: jest.fn().mockResolvedValue({ _id: 'i1', tenantId: 't1' }),
+    });
     const mockHistory = [
       { action: 'moved', timestamp: new Date('2025-01-02') },
       { action: 'created', timestamp: new Date('2025-01-01') },
