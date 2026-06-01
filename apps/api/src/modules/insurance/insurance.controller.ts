@@ -6,6 +6,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  ParseUUIDPipe,
   Post,
   Put,
   Query,
@@ -60,7 +61,7 @@ export class InsuranceController {
   @ApiResponse({ status: 200, description: 'Policy retrieved' })
   findPolicyById(
     @CurrentUser() user: JwtPayload,
-    @Param('id') policyId: string,
+    @Param('id', ParseUUIDPipe) policyId: string,
   ) {
     return this.insuranceService.findPolicyById(user.tenantId, policyId);
   }
@@ -72,7 +73,7 @@ export class InsuranceController {
   @ApiResponse({ status: 200, description: 'Policy updated' })
   updatePolicy(
     @CurrentUser() user: JwtPayload,
-    @Param('id') policyId: string,
+    @Param('id', ParseUUIDPipe) policyId: string,
     @Body() dto: UpdatePolicyDto,
   ) {
     return this.insuranceService.updatePolicy(user.tenantId, policyId, user.sub, dto);
@@ -86,7 +87,7 @@ export class InsuranceController {
   @ApiResponse({ status: 204, description: 'Policy deleted' })
   deletePolicy(
     @CurrentUser() user: JwtPayload,
-    @Param('id') policyId: string,
+    @Param('id', ParseUUIDPipe) policyId: string,
   ) {
     return this.insuranceService.deletePolicy(user.tenantId, policyId, user.sub);
   }
@@ -100,7 +101,7 @@ export class InsuranceController {
   @ApiResponse({ status: 201, description: 'Item attached' })
   attachItem(
     @CurrentUser() user: JwtPayload,
-    @Param('id') policyId: string,
+    @Param('id', ParseUUIDPipe) policyId: string,
     @Body() dto: AttachItemDto,
   ) {
     return this.insuranceService.attachItem(user.tenantId, policyId, user.sub, dto);
@@ -114,7 +115,7 @@ export class InsuranceController {
   @ApiResponse({ status: 204, description: 'Item detached' })
   detachItem(
     @CurrentUser() user: JwtPayload,
-    @Param('id') policyId: string,
+    @Param('id', ParseUUIDPipe) policyId: string,
     @Param('itemId') itemId: string,
   ) {
     return this.insuranceService.detachItem(user.tenantId, policyId, itemId, user.sub);
