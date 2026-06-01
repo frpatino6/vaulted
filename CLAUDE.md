@@ -83,9 +83,10 @@ Guest    → temporary access with expiration date
 - **Rotation**: each refresh generates a new token; blacklist in Redis
 - **MFA**: mandatory for Owner and Manager (TOTP + YubiKey); Passkeys/FIDO2 supported
 - **Data**: AES-256 at rest, TLS 1.3, MongoDB CSFLE for sensitive fields
-- **Mobile**: certificate pinning (Dio), Secure Enclave/Keystore, jailbreak detection, screenshot guard
+- **Mobile**: certificate pinning (Dio) ✅ implementado 2026-06-01, Secure Enclave/Keystore, jailbreak detection ❌ pendiente, screenshot guard ❌ pendiente
 - **Audit logs**: immutable PostgreSQL table (no UPDATE/DELETE), 2-year retention
 - **Compliance targets**: SOC 2 Type II, CCPA, ISO 27001 (post-launch)
+- **Security audit**: `/cso --comprehensive` ejecutado 2026-06-01 — 6 hallazgos corregidos (1 crítico, 2 altos, 3 medios). Ver `docs/security-fixes-summary.md` sección 10.
 
 ---
 
@@ -448,6 +449,18 @@ Skills available via `/skill-name` in Claude Code:
 - **Cuando retomar**: Al migrar a GCP KMS (post-MVP con clientes pagos). Usar `@google-cloud/kms` para wrap/unwrap de dataKeys. No implementar KMS casero.
 - **Archivos relevantes**: `apps/api/src/common/services/crypto.service.ts` · `apps/api/src/modules/tenants/entities/tenant.entity.ts`
 - **Priority**: Post-MVP — bloquea hasta tener GCP KMS configurado
+
+### Certificate Pinning — rotación obligatoria cada ~90 días
+- **Date**: 2026-06-01
+- **Context**: Cert pinning implementado en `apps/mobile/lib/core/network/api_client.dart` con SHA-256 via `package:crypto`. Fingerprint actual almacenado en `AppConfig.pinnedCertFingerprints` (`apps/mobile/lib/core/config/app_config.dart`).
+- **Procedimiento de rotación** (Let's Encrypt renueva automáticamente via Caddy cada ~90 días):
+  1. Obtener el nuevo fingerprint: `echo | openssl s_client -connect api-vaulted.casacam.net:443 2>/dev/null | openssl x509 -noout -fingerprint -sha256 | sed 's/sha256 Fingerprint=//' | tr -d ':' | tr '[:upper:]' '[:lower:]'`
+  2. **Agregar** el nuevo fingerprint al array en `AppConfig.pinnedCertFingerprints` (mantener el viejo también).
+  3. Publicar un release de la app mobile con ambos fingerprints.
+  4. Una vez que la mayoría de usuarios actualizó, **remover** el fingerprint viejo en el siguiente release.
+- **Por qué dos fingerprints en transición**: si se elimina el viejo antes de que todos actualicen, los usuarios con la versión anterior no pueden conectarse.
+- **Archivos relevantes**: `apps/mobile/lib/core/network/api_client.dart` · `apps/mobile/lib/core/config/app_config.dart`
+- **Priority**: Alta (operativa) — incumplir bloquea la app a todos los usuarios mobile
 
 ### App Icon — Android & iOS not updated
 - **Date**: 2026-04-10

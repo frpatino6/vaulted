@@ -1,7 +1,7 @@
 # Vaulted — Security Hardening Summary
 
 Última actualización: 2026-06-01  
-Agentes: Claude (PRs #253, #254, #255) · Codex (PR #256)  
+Agentes: Claude (PRs #253, #254, #255, sesión 2026-06-01) · Codex (PR #256)  
 Rama base: `main` (commit `a815d75`)
 
 ---
@@ -165,6 +165,41 @@ Creado `infra/re-encrypt-salt.js` — script Node.js standalone que re-cifra tod
 
 ---
 
+## 10. Auditoría CSO completa y correcciones (Claude · 2026-06-01)
+
+Auditoría ejecutada con `/cso --comprehensive` (modo exhaustivo, gate 2/10) sobre el estado actual de `main`. Se escanearon las 14 fases (secretos, supply chain, CI/CD, infraestructura, OWASP Top 10, STRIDE, AI security). Verificación independiente paralela en los dos hallazgos críticos/altos con sub-agentes.
+
+### CRÍTICO
+
+| Hallazgo | Archivo | Fix aplicado |
+|---|---|---|
+| Escalación de privilegios: Manager podía promover cualquier usuario a Owner via `PUT /users/:id` con `{ role: 'owner' }`. `updateUser()` nunca recibía el rol del actor y carecía del mismo check que ya existía en `invite()` | `users/users.service.ts:265` · `users/users.controller.ts` | Agregado parámetro `actorRole: Role` a `updateUser()`; guard `if (dto.role === OWNER && actorRole !== OWNER) → ForbiddenException`; controller pasa `user.role`; test actualizado |
+
+### ALTOS
+
+| Hallazgo | Archivo | Fix aplicado |
+|---|---|---|
+| `TYPEORM_SYNC=true` en template de producción + lógica `\|\|` cortocircuitable: si el env var estaba en `true`, TypeORM ejecutaba `ALTER TABLE DROP COLUMN` contra Neon.tech en cada deploy | `.env.prod.example:25` · `app.module.ts:83` | Template cambiado a `TYPEORM_SYNC=false`; lógica invertida a `!isProd && TYPEORM_SYNC === 'true'` — producción nunca sincroniza |
+| `Dockerfile.prod` sin directiva `USER`: proceso Node corría como root dentro del contenedor | `apps/api/Dockerfile.prod` | Agregado usuario `vaulted` no-root (`addgroup`/`adduser`), `chown -R vaulted:vaulted /app`, directiva `USER vaulted` antes de `CMD` |
+
+### MEDIOS
+
+| Hallazgo | Archivo | Fix aplicado |
+|---|---|---|
+| Swagger UI accesible públicamente en producción: `SwaggerModule.setup()` corría sin guard de entorno | `main.ts:69` | Todo el bloque Swagger (setup + file write) envuelto en `if (NODE_ENV !== 'production')` |
+| GitHub Actions con tags mutables: `subosito/flutter-action@v2` y `FirebaseExtended/action-hosting-deploy@v0` — un ataque de supply chain al repo de la acción comprometería el deploy key de Firebase | `.github/workflows/deploy-web.yml` | Ambas acciones fijadas a SHA completo: `@1a449444c387...` (flutter-action) y `@092436dca3ec...` (action-hosting-deploy) |
+| Certificate pinning ausente en app mobile (marcado como TODO desde la sesión anterior) | `apps/mobile/lib/core/network/api_client.dart` | Pinning implementado con `IOHttpClientAdapter` + SHA-256 via `package:crypto`; fingerprint actual de `api-vaulted.casacam.net` almacenado en `AppConfig.pinnedCertFingerprints`; debug mode permisivo para desarrollo local; web skipeado (los browsers gestionan TLS nativamente) |
+
+### Hallazgos descartados (FP)
+
+| Área | Veredicto |
+|---|---|
+| TOTP replay attack | Tasa de 5/min hace inviable el brute-force; window de 90s limita la ventana de uso; sin acción |
+| Salt `'vaulted-salt'` hardcodeada | Intencional para backward compatibility (documentado en `.env.prod.example`); ENCRYPTION_KEY es el secreto real; sin acción |
+| Jailbreak detection / screenshot guard | En requirements del CLAUDE.md pero no implementado aún; pendiente pre-App Store |
+
+---
+
 ## 8. Riesgo residual y seguimiento
 
 | # | Área | Riesgo | Prioridad |
@@ -178,6 +213,8 @@ Creado `infra/re-encrypt-salt.js` — script Node.js standalone que re-cifra tod
 | R-7 | Envelope encryption con KMS | HKDF-SHA-256 actual es criptográficamente sólido para MVP; migrar a GCP KMS post-MVP | Post-MVP |
 | R-8 | Prompt injection sandbox completo | Fix actual mitiga inyecciones obvias; evaluación de output por el modelo pendiente para mayor robustez | Baja |
 | R-9 | Audit log TODOs | Entradas pendientes en `properties.service.ts`, `users.service.ts`, `media.service.ts` | Baja |
+| R-10 | Rotación de cert pinning | El fingerprint en `AppConfig.pinnedCertFingerprints` corresponde al cert actual de Let's Encrypt (TTL ~90 días via Caddy). Antes de cada renovación: agregar el nuevo fingerprint, publicar release, luego remover el viejo. Ver procedimiento en CLAUDE.md | Alta (ops) |
+| R-11 | Jailbreak detection / screenshot guard | Listados en Security Requirements del CLAUDE.md pero no implementados en Flutter. Necesarios antes de App Store / Google Play | Media |
 
 ---
 
@@ -195,13 +232,13 @@ Creado `infra/re-encrypt-salt.js` — script Node.js standalone que re-cifra tod
 
 ## Resumen ejecutivo
 
-En total se identificaron y corrigieron **36 vulnerabilidades** distribuidas así:
+En total se identificaron y corrigieron **42 vulnerabilidades** distribuidas así:
 
 | Severidad | Encontradas | Corregidas | Residuales |
 |---|---|---|---|
-| Críticas | 3 | 3 | 0 |
-| Altas | 13 | 13 | 0 |
-| Medias | 15 | 14 | 1 (email verify — decisión de producto) |
+| Críticas | 4 | 4 | 0 |
+| Altas | 15 | 15 | 0 |
+| Medias | 18 | 17 | 1 (email verify — decisión de producto) |
 | Bajas | 5 | 5 | 0 |
 | Moderadas (CVE deps) | 8 | 0 | 8 (Firebase/GCP transitivos) |
 
