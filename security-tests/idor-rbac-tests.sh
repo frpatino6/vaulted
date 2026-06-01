@@ -35,10 +35,11 @@ key = base64.b32decode('${MFA_SECRET}'.upper().replace(' ',''))
 msg = struct.pack('>Q', int(time.time()) // 30)
 h = hmac.new(key, msg, hashlib.sha1).digest()
 o = h[-1] & 0xf
-print(str(struct.unpack('>I', h[o:o+4])[0] & 0x7fffffff % 1000000).zfill(6))
+print(str((struct.unpack('>I', h[o:o+4])[0] & 0x7fffffff) % 1000000).zfill(6))
 " 2>/dev/null || echo "")
     MFA_RESP=$(curl -s -X POST "$API/auth/mfa/verify" \
       -H "Content-Type: application/json" \
+      -H "Authorization: Bearer $OWNER_TOKEN" \
       -b /tmp/owner-cookies.txt \
       -c /tmp/owner-cookies.txt \
       -d "{\"code\":\"$MFA_CODE\"}")
