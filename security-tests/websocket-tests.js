@@ -42,36 +42,44 @@ function testSocket(name, namespace, auth, expectConnect) {
       reconnection: false,
     });
 
-    const timer = setTimeout(() => {
+    let settled = false;
+    const settle = (passed, detail = '') => {
+      if (settled) return;
+      settled = true;
+      socket.removeAllListeners();
       socket.disconnect();
-      if (!expectConnect) {
-        check(name, true, 'timed out without connecting (expected)');
-      } else {
-        check(name, false, 'connection timed out');
-      }
+      check(name, passed, detail);
       resolve();
+    };
+
+    // Overall timeout
+    setTimeout(() => {
+      settle(!expectConnect, expectConnect ? 'timed out' : 'timed out without connecting (expected)');
     }, TIMEOUT);
 
-    socket.on('connect', () => {
-      clearTimeout(timer);
-      socket.disconnect();
-      if (expectConnect) {
-        check(name, true, 'connected as expected');
-      } else {
-        check(name, false, 'connected when it should have been rejected');
-      }
-      resolve();
+    // Transport-level rejection (e.g. CORS, HTTP 401 on upgrade)
+    socket.on('connect_error', (err) => {
+      settle(!expectConnect,
+        !expectConnect ? `rejected at transport: ${err.message}` : `rejected unexpectedly: ${err.message}`);
     });
 
-    socket.on('connect_error', (err) => {
-      clearTimeout(timer);
-      socket.disconnect();
-      if (!expectConnect) {
-        check(name, true, `rejected: ${err.message}`);
+    socket.on('connect', () => {
+      if (expectConnect) {
+        // Wanted to connect — success
+        settle(true, 'connected as expected');
       } else {
-        check(name, false, `rejected unexpectedly: ${err.message}`);
+        // Socket.io fires 'connect' on WS handshake, before NestJS handleConnection
+        // runs. The server calls client.disconnect(true) async — wait up to 1s for it.
+        const grace = setTimeout(() => {
+          if (socket.connected) {
+            settle(false, 'still connected after grace period — server did not reject invalid token');
+          }
+        }, 1000);
+        socket.once('disconnect', (reason) => {
+          clearTimeout(grace);
+          settle(true, `server rejected after handshake: ${reason}`);
+        });
       }
-      resolve();
     });
   });
 }
