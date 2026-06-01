@@ -20,7 +20,13 @@ import { Role } from '../../common/enums/role.enum';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { UploadResponseDto } from './dto/upload-response.dto';
 import { MediaService } from './media.service';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiConsumes,
+} from '@nestjs/swagger';
 
 @ApiTags('Media')
 @Controller('media')
@@ -43,7 +49,7 @@ export class MediaController {
     @CurrentUser() user: JwtPayload,
     @UploadedFile() file: Express.Multer.File | undefined,
   ): Promise<UploadResponseDto> {
-    return this.mediaService.upload(user.tenantId, file);
+    return this.mediaService.upload(user.tenantId, user.sub, file);
   }
 
   @Roles(Role.OWNER, Role.MANAGER)

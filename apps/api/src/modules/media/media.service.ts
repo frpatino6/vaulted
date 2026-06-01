@@ -11,7 +11,7 @@ import { ConfigService } from '@nestjs/config';
 import { Storage } from '@google-cloud/storage';
 import { createReadStream } from 'node:fs';
 import { mkdir, stat, unlink, writeFile } from 'node:fs/promises';
-import { dirname, extname, join } from 'node:path';
+import { dirname, extname, join, resolve, sep } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import type { Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
@@ -60,7 +60,6 @@ function detectMimeType(buffer: Buffer): string | null {
 export class MediaService {
   private readonly storage?: Storage;
   private readonly bucketName?: string;
-  private readonly usePublicUrls: boolean;
   private readonly uploadsRoot: string;
   private readonly appUrl: string;
   private readonly useLocalStorage: boolean;
@@ -70,8 +69,6 @@ export class MediaService {
     private readonly jwtService: JwtService,
   ) {
     this.bucketName = this.configService.get<string>('GCP_STORAGE_BUCKET');
-    this.usePublicUrls =
-      this.configService.get<string>('GCP_STORAGE_PUBLIC') === 'true';
     this.appUrl = (
       this.configService.get<string>('APP_URL') ?? 'http://localhost:3000'
     ).replace(/\/+$/, '');
@@ -93,7 +90,7 @@ export class MediaService {
   }
 
   generateFileToken(fileUrl: string, tenantId: string, userId: string): string {
-    const normalizedKey = this.normalizeKey(fileUrl);
+    const normalizedKey = this.normalizeTenantKey(fileUrl, tenantId);
     // Deterministic per 1-hour window: same file+user within the same hour always
     // produces the same JWT, so cached_network_image can reuse cached responses.
     const windowStart = Math.floor(Date.now() / (60 * 60 * 1000)) * 60 * 60;
@@ -107,20 +104,20 @@ export class MediaService {
   async serveFile(token: string, res: Response): Promise<void> {
     let payload: { fileKey: string; tenantId: string; userId: string };
     try {
-      payload = this.jwtService.verify<{ fileKey: string; tenantId: string; userId: string }>(
-        token,
-      );
+      payload = this.jwtService.verify<{
+        fileKey: string;
+        tenantId: string;
+        userId: string;
+      }>(token);
     } catch {
       throw new UnauthorizedException('Invalid or expired media token');
     }
 
-    if (!payload.fileKey.startsWith(`${payload.tenantId}/`)) {
-      throw new ForbiddenException();
-    }
+    const safeKey = this.assertSafeTenantKey(payload.fileKey, payload.tenantId);
 
     if (this.useLocalStorage) {
-      const fullPath = join(this.uploadsRoot, payload.fileKey);
-      const ext = extname(payload.fileKey).toLowerCase();
+      const fullPath = this.resolveLocalPath(safeKey, payload.tenantId);
+      const ext = extname(safeKey).toLowerCase();
       let mimeType = 'application/octet-stream';
       if (ext === '.jpg' || ext === '.jpeg') {
         mimeType = 'image/jpeg';
@@ -145,13 +142,16 @@ export class MediaService {
         await pipeline(createReadStream(fullPath), res);
       } catch (err: unknown) {
         // Client closed the connection before the stream finished — not an error
-        if ((err as NodeJS.ErrnoException).code === 'ERR_STREAM_PREMATURE_CLOSE') return;
+        if (
+          (err as NodeJS.ErrnoException).code === 'ERR_STREAM_PREMATURE_CLOSE'
+        )
+          return;
         throw err;
       }
       return;
     }
 
-    const storageFile = this.storage!.bucket(this.bucketName!).file(payload.fileKey);
+    const storageFile = this.storage!.bucket(this.bucketName!).file(safeKey);
     const [signedUrl] = await storageFile.getSignedUrl({
       action: 'read',
       expires: Date.now() + 5 * 60 * 1000,
@@ -162,6 +162,7 @@ export class MediaService {
 
   async upload(
     tenantId: string,
+    userId: string,
     file: Express.Multer.File | undefined,
   ): Promise<UploadResponseDto> {
     if (!file) {
@@ -174,8 +175,18 @@ export class MediaService {
     const filename = this.buildFilename(tenantId, processedMime);
 
     if (this.useLocalStorage) {
-      const processedFile = { ...file, buffer: processedBuffer, size: processedBuffer.length };
-      return this.saveLocally(filename, processedFile, processedMime);
+      const processedFile = {
+        ...file,
+        buffer: processedBuffer,
+        size: processedBuffer.length,
+      };
+      return this.saveLocally(
+        tenantId,
+        filename,
+        userId,
+        processedFile,
+        processedMime,
+      );
     }
 
     const bucket = this.storage!.bucket(this.bucketName!);
@@ -189,13 +200,9 @@ export class MediaService {
         },
       });
 
-      const url = this.usePublicUrls
-        ? await this.getPublicUrl(bucket, storageFile)
-        : await this.getSignedUrl(storageFile);
-
       // TODO: audit log on upload
       return {
-        url,
+        url: this.buildSignedMediaUrl(filename, tenantId, userId),
         filename,
         size: processedBuffer.length,
         mimeType: processedMime,
@@ -215,7 +222,12 @@ export class MediaService {
     try {
       const processed = await sharp(buffer)
         .rotate()
-        .resize({ width: 2048, height: 2048, fit: 'inside', withoutEnlargement: true })
+        .resize({
+          width: 2048,
+          height: 2048,
+          fit: 'inside',
+          withoutEnlargement: true,
+        })
         .jpeg({ quality: 85, mozjpeg: true })
         .toBuffer();
       return { buffer: processed, mimeType: 'image/jpeg' };
@@ -232,10 +244,7 @@ export class MediaService {
       throw new BadRequestException('key query parameter is required');
     }
 
-    const normalizedKey = this.normalizeKey(key);
-    if (!normalizedKey.startsWith(`${tenantId}/`)) {
-      throw new BadRequestException('Invalid file key');
-    }
+    const normalizedKey = this.normalizeTenantKey(key, tenantId);
 
     if (this.useLocalStorage) {
       return this.deleteLocally(normalizedKey);
@@ -274,17 +283,19 @@ export class MediaService {
   }
 
   private async saveLocally(
+    tenantId: string,
     filename: string,
+    userId: string,
     file: Express.Multer.File,
     detectedMime: string,
   ): Promise<UploadResponseDto> {
-    const fullPath = join(this.uploadsRoot, filename);
+    const fullPath = this.resolveLocalPath(filename, tenantId);
     await mkdir(dirname(fullPath), { recursive: true });
 
     try {
       await writeFile(fullPath, file.buffer);
       return {
-        url: `${this.appUrl}/uploads/${filename}`,
+        url: this.buildSignedMediaUrl(filename, tenantId, userId),
         filename,
         size: file.size,
         mimeType: detectedMime,
@@ -296,11 +307,64 @@ export class MediaService {
 
   private async deleteLocally(key: string): Promise<{ deleted: true }> {
     try {
-      await unlink(join(this.uploadsRoot, key));
+      const tenantId = key.split('/')[0];
+      if (!tenantId) throw new BadRequestException('Invalid file key');
+      await unlink(this.resolveLocalPath(key, tenantId));
       return { deleted: true };
     } catch {
       throw new InternalServerErrorException('Failed to delete file');
     }
+  }
+
+  private buildSignedMediaUrl(
+    filename: string,
+    tenantId: string,
+    userId: string,
+  ): string {
+    return `${this.appUrl}/api/media/${this.generateFileToken(filename, tenantId, userId)}`;
+  }
+
+  private resolveLocalPath(key: string, tenantId: string): string {
+    const safeKey = this.assertSafeTenantKey(key, tenantId);
+    const uploadsRoot = resolve(this.uploadsRoot);
+    const fullPath = resolve(uploadsRoot, safeKey);
+
+    if (
+      fullPath !== uploadsRoot &&
+      !fullPath.startsWith(`${uploadsRoot}${sep}`)
+    ) {
+      throw new ForbiddenException('Invalid file path');
+    }
+
+    return fullPath;
+  }
+
+  private assertSafeTenantKey(key: string, tenantId: string): string {
+    let decodedKey: string;
+    try {
+      decodedKey = decodeURIComponent(key);
+    } catch {
+      throw new BadRequestException('Invalid file key');
+    }
+
+    if (
+      decodedKey.includes('\\') ||
+      decodedKey.includes('\0') ||
+      decodedKey.startsWith('/') ||
+      decodedKey
+        .split('/')
+        .some(
+          (segment) => segment === '' || segment === '.' || segment === '..',
+        )
+    ) {
+      throw new BadRequestException('Invalid file key');
+    }
+
+    if (!decodedKey.startsWith(`${tenantId}/`)) {
+      throw new ForbiddenException('Invalid file key');
+    }
+
+    return decodedKey;
   }
 
   private extensionFromMime(mimeType: string): string {
@@ -313,30 +377,13 @@ export class MediaService {
     return map[mimeType] ?? 'bin';
   }
 
-  private async getPublicUrl(
-    bucket: ReturnType<Storage['bucket']>,
-    storageFile: ReturnType<ReturnType<Storage['bucket']>['file']>,
-  ): Promise<string> {
-    await storageFile.makePublic();
-    return `https://storage.googleapis.com/${bucket.name}/${storageFile.name}`;
-  }
-
-  private async getSignedUrl(
-    storageFile: ReturnType<ReturnType<Storage['bucket']>['file']>,
-  ): Promise<string> {
-    const [signedUrl] = await storageFile.getSignedUrl({
-      action: 'read',
-      expires: Date.now() + 60 * 60 * 1000,
-      version: 'v4',
-    });
-
-    return signedUrl;
+  normalizeTenantKey(key: string, tenantId: string): string {
+    return this.assertSafeTenantKey(this.normalizeKey(key), tenantId);
   }
 
   normalizeKey(key: string): string {
-    // Strip any domain's /uploads/ prefix — handles domain migrations where APP_URL changes.
     const uploadsMatch = key.match(/^https?:\/\/[^/]+\/uploads\/(.+)$/);
-    if (uploadsMatch) {
+    if (uploadsMatch?.[1]) {
       return uploadsMatch[1];
     }
 
@@ -347,18 +394,11 @@ export class MediaService {
       return key.slice(gcsPublicPrefix.length);
     }
 
-    // Already a signed media token URL — extract the original fileKey from the JWT payload.
-    // Use decode (not verify) so expired tokens still resolve to the correct fileKey.
-    // Match any domain's /api/media/ prefix to handle domain migrations.
     const mediaTokenMatch = key.match(/^https?:\/\/[^/]+\/api\/media\/(.+)$/);
-    if (mediaTokenMatch) {
+    if (mediaTokenMatch?.[1]) {
       const token = mediaTokenMatch[1];
-      try {
-        const payload = this.jwtService.decode<{ fileKey: string }>(token);
-        if (payload?.fileKey) return payload.fileKey;
-      } catch {
-        // ignore
-      }
+      const payload = this.jwtService.decode<{ fileKey: string }>(token);
+      if (payload?.fileKey) return payload.fileKey;
     }
 
     return key;

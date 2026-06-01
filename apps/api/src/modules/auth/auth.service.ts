@@ -48,18 +48,20 @@ export class AuthService {
     ipAddress: string,
   ): Promise<{ accessToken: string; refreshToken: string }> {
     // Atomic transaction: tenant + user created together or not at all
-    const { tenant, user } = await this.dataSource.transaction(async (manager) => {
-      const tenantRepo = manager.getRepository(Tenant);
-      const tenant = tenantRepo.create({ name: tenantName });
-      const savedTenant = await tenantRepo.save(tenant);
+    const { tenant, user } = await this.dataSource.transaction(
+      async (manager) => {
+        const tenantRepo = manager.getRepository(Tenant);
+        const tenant = tenantRepo.create({ name: tenantName });
+        const savedTenant = await tenantRepo.save(tenant);
 
-      const savedUser = await this.usersService.create(
-        { tenantId: savedTenant.id, email, password, role: Role.OWNER },
-        manager,
-      );
+        const savedUser = await this.usersService.create(
+          { tenantId: savedTenant.id, email, password, role: Role.OWNER },
+          manager,
+        );
 
-      return { tenant: savedTenant, user: savedUser };
-    });
+        return { tenant: savedTenant, user: savedUser };
+      },
+    );
 
     await this.auditService.log({
       tenantId: tenant.id,
@@ -77,24 +79,31 @@ export class AuthService {
     email: string,
     password: string,
     ipAddress: string,
-  ): Promise<{ accessToken: string; refreshToken: string; mfaRequired: boolean }> {
+  ): Promise<{
+    accessToken: string;
+    refreshToken: string;
+    mfaRequired: boolean;
+    mfaSetupRequired: boolean;
+  }> {
     const user = await this.usersService.findByEmail(email);
 
     if (!user || !user.isActive) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const passwordValid = await this.usersService.verifyPassword(password, user.passwordHash);
+    const passwordValid = await this.usersService.verifyPassword(
+      password,
+      user.passwordHash,
+    );
     if (!passwordValid) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
     await this.usersService.updateLastLogin(user.id);
 
-    // Require MFA only if role is in MFA_REQUIRED_ROLES AND user has MFA enabled
-    const roleRequiresMfa =
-      MFA_REQUIRED_ROLES.includes(user.role) && user.mfaEnabled;
+    const roleRequiresMfa = MFA_REQUIRED_ROLES.includes(user.role);
     const mfaRequired = roleRequiresMfa;
+    const mfaSetupRequired = roleRequiresMfa && !user.mfaEnabled;
 
     await this.auditService.log({
       tenantId: user.tenantId,
@@ -111,7 +120,7 @@ export class AuthService {
       mfaVerified: !roleRequiresMfa,
     });
 
-    return { ...tokens, mfaRequired };
+    return { ...tokens, mfaRequired, mfaSetupRequired };
   }
 
   async refresh(
@@ -121,18 +130,35 @@ export class AuthService {
     const { refreshTokenId, sub: userId } = payload;
     const blacklistKey = `blacklist:refresh:${refreshTokenId}`;
 
-    // Reject only if explicitly revoked (logout / logout-all).
-    // Tokens are NOT blacklisted on normal refresh use — rotating the cookie
-    // requires withCredentials on the browser XHR, which can be unreliable.
-    const isRevoked = await this.redis.get(blacklistKey);
-    if (isRevoked) {
-      throw new UnauthorizedException('Session has been revoked. Please log in again.');
+    const [isRevoked, activeTokenIds] = await Promise.all([
+      this.redis.get(blacklistKey),
+      this.redis.smembers(`sessions:${userId}`),
+    ]);
+
+    if (isRevoked || !activeTokenIds.includes(refreshTokenId)) {
+      await this.auditService.log({
+        tenantId: payload.tenantId,
+        userId,
+        action: 'user.token_replay_detected',
+        entityType: 'user',
+        entityId: userId,
+        ipAddress,
+      });
+      await this.invalidateAllSessions(userId);
+      throw new UnauthorizedException(
+        'Session has been revoked. Please log in again.',
+      );
     }
 
     const user = await this.usersService.findById(userId);
     if (!user || !user.isActive) {
       throw new UnauthorizedException('User not found or inactive');
     }
+
+    await Promise.all([
+      this.redis.setex(blacklistKey, REFRESH_TOKEN_TTL_SECONDS, '1'),
+      this.redis.srem(`sessions:${userId}`, refreshTokenId),
+    ]);
 
     await this.auditService.log({
       tenantId: user.tenantId,
@@ -153,7 +179,11 @@ export class AuthService {
     ipAddress: string,
   ): Promise<void> {
     const ops: Promise<unknown>[] = [
-      this.redis.setex(`blacklist:${accessToken}`, ACCESS_TOKEN_TTL_SECONDS, '1'),
+      this.redis.setex(
+        `blacklist:${accessToken}`,
+        ACCESS_TOKEN_TTL_SECONDS,
+        '1',
+      ),
     ];
 
     // Decode (not verify) the refresh cookie to extract the jti and blacklist it
@@ -166,7 +196,10 @@ export class AuthService {
             REFRESH_TOKEN_TTL_SECONDS,
             '1',
           ),
-          this.redis.srem(`sessions:${payload.sub}`, refreshPayload.refreshTokenId),
+          this.redis.srem(
+            `sessions:${payload.sub}`,
+            refreshPayload.refreshTokenId,
+          ),
         );
       }
     }
@@ -192,7 +225,11 @@ export class AuthService {
     await Promise.all([
       this.invalidateAllSessions(userId),
       // Also blacklist the current access token
-      this.redis.setex(`blacklist:${accessToken}`, ACCESS_TOKEN_TTL_SECONDS, '1'),
+      this.redis.setex(
+        `blacklist:${accessToken}`,
+        ACCESS_TOKEN_TTL_SECONDS,
+        '1',
+      ),
     ]);
 
     await this.auditService.log({
@@ -247,7 +284,8 @@ export class AuthService {
     const pendingSecret = await this.redis.get(`mfa:pending:${userId}`);
 
     // Pending = first-time setup; otherwise use stored (encrypted) secret
-    const secretToVerify = pendingSecret ?? (await this.usersService.getMfaSecret(user));
+    const secretToVerify =
+      pendingSecret ?? (await this.usersService.getMfaSecret(user));
 
     if (!secretToVerify) {
       throw new ForbiddenException('MFA not configured');
@@ -321,7 +359,12 @@ export class AuthService {
   async acceptInvite(
     dto: AcceptInviteDto,
     ipAddress: string,
-  ): Promise<{ accessToken: string; refreshToken: string; mfaRequired: boolean }> {
+  ): Promise<{
+    accessToken: string;
+    refreshToken: string;
+    mfaRequired: boolean;
+    mfaSetupRequired: boolean;
+  }> {
     const tokenHash = createHash('sha256').update(dto.token).digest('hex');
     const user = await this.usersService.findByInviteTokenHash(tokenHash);
 
@@ -338,7 +381,10 @@ export class AuthService {
     }
 
     const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
-    const updatedUser = await this.usersService.completeInvite(user.id, passwordHash);
+    const updatedUser = await this.usersService.completeInvite(
+      user.id,
+      passwordHash,
+    );
 
     await this.usersService.updateLastLogin(updatedUser.id);
 
@@ -351,13 +397,16 @@ export class AuthService {
       ipAddress,
     });
 
-    const roleRequiresMfa =
-      MFA_REQUIRED_ROLES.includes(updatedUser.role) && updatedUser.mfaEnabled;
+    const roleRequiresMfa = MFA_REQUIRED_ROLES.includes(updatedUser.role);
     const tokens = await this.generateTokenPair(updatedUser, {
       mfaVerified: !roleRequiresMfa,
     });
 
-    return { ...tokens, mfaRequired: roleRequiresMfa };
+    return {
+      ...tokens,
+      mfaRequired: roleRequiresMfa,
+      mfaSetupRequired: roleRequiresMfa && !updatedUser.mfaEnabled,
+    };
   }
 
   private async invalidateAllSessions(userId: string): Promise<void> {
@@ -367,7 +416,11 @@ export class AuthService {
     if (activeTokenIds.length > 0) {
       const pipeline = this.redis.pipeline();
       for (const jti of activeTokenIds) {
-        pipeline.setex(`blacklist:refresh:${jti}`, REFRESH_TOKEN_TTL_SECONDS, '1');
+        pipeline.setex(
+          `blacklist:refresh:${jti}`,
+          REFRESH_TOKEN_TTL_SECONDS,
+          '1',
+        );
       }
       pipeline.del(sessionKey);
       await pipeline.exec();

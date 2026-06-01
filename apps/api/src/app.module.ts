@@ -70,15 +70,32 @@ import { InsuredItem } from './modules/insurance/entities/insured-item.entity';
         const isProd = config.get<string>('NODE_ENV') === 'production';
         const base = {
           type: 'postgres' as const,
-          entities: [Tenant, User, AuditLog, InsurancePolicy, InsuredItem, UserDeviceToken, NotificationPreference, NotificationLog],
+          entities: [
+            Tenant,
+            User,
+            AuditLog,
+            InsurancePolicy,
+            InsuredItem,
+            UserDeviceToken,
+            NotificationPreference,
+            NotificationLog,
+          ],
           synchronize: config.get<string>('TYPEORM_SYNC') === 'true' || !isProd,
           logging: !isProd,
         };
         if (databaseUrl) {
+          const postgresCaCert = config
+            .get<string>('POSTGRES_CA_CERT')
+            ?.replace(/\\n/g, '\n');
           return {
             ...base,
             url: databaseUrl,
-            ssl: { rejectUnauthorized: false },
+            ssl: isProd
+              ? {
+                  rejectUnauthorized: true,
+                  ...(postgresCaCert ? { ca: postgresCaCert } : {}),
+                }
+              : false,
           };
         }
         return {

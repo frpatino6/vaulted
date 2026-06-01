@@ -57,7 +57,10 @@ export class AuthController {
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('register')
   @ApiOperation({ summary: 'Register a new tenant and owner account' })
-  @ApiResponse({ status: 201, description: 'Registration successful, returns access token' })
+  @ApiResponse({
+    status: 201,
+    description: 'Registration successful, returns access token',
+  })
   @ApiResponse({ status: 400, description: 'Invalid input' })
   @ApiResponse({ status: 409, description: 'Email already registered' })
   async register(
@@ -82,7 +85,10 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login with email and password' })
-  @ApiResponse({ status: 200, description: 'Login successful, returns access token and mfaRequired flag' })
+  @ApiResponse({
+    status: 200,
+    description: 'Login successful, returns access token and mfaRequired flag',
+  })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
   async login(
     @Body() dto: LoginDto,
@@ -90,14 +96,11 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const ip = req.ip ?? 'unknown';
-    const { accessToken, refreshToken, mfaRequired } = await this.authService.login(
-      dto.email,
-      dto.password,
-      ip,
-    );
+    const { accessToken, refreshToken, mfaRequired, mfaSetupRequired } =
+      await this.authService.login(dto.email, dto.password, ip);
 
     res.cookie('refresh_token', refreshToken, REFRESH_COOKIE_OPTIONS);
-    return { accessToken, mfaRequired };
+    return { accessToken, mfaRequired, mfaSetupRequired };
   }
 
   @Public()
@@ -113,13 +116,11 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const ip = req.ip ?? 'unknown';
-    const { accessToken, refreshToken, mfaRequired } = await this.authService.acceptInvite(
-      dto,
-      ip,
-    );
+    const { accessToken, refreshToken, mfaRequired, mfaSetupRequired } =
+      await this.authService.acceptInvite(dto, ip);
 
     res.cookie('refresh_token', refreshToken, REFRESH_COOKIE_OPTIONS);
-    return { accessToken, mfaRequired };
+    return { accessToken, mfaRequired, mfaSetupRequired };
   }
 
   @Public()
@@ -136,7 +137,10 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const ip = req.ip ?? 'unknown';
-    const { accessToken, refreshToken } = await this.authService.refresh(payload, ip);
+    const { accessToken, refreshToken } = await this.authService.refresh(
+      payload,
+      ip,
+    );
 
     res.cookie('refresh_token', refreshToken, REFRESH_COOKIE_OPTIONS);
     return { accessToken };
@@ -180,7 +184,12 @@ export class AuthController {
     const accessToken = req.headers.authorization?.replace('Bearer ', '') ?? '';
     const ip = req.ip ?? 'unknown';
 
-    await this.authService.logoutAll(payload.sub, payload.tenantId, accessToken, ip);
+    await this.authService.logoutAll(
+      payload.sub,
+      payload.tenantId,
+      accessToken,
+      ip,
+    );
 
     res.clearCookie('refresh_token', CLEAR_COOKIE_OPTIONS);
     return { message: 'All sessions have been terminated' };
@@ -191,14 +200,17 @@ export class AuthController {
   @Post('mfa/setup')
   @ApiOperation({ summary: 'Setup MFA for the account' })
   @ApiBearerAuth()
-  @ApiResponse({ status: 201, description: 'MFA setup successful, returns QR code' })
+  @ApiResponse({
+    status: 201,
+    description: 'MFA setup successful, returns QR code',
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async setupMfa(@CurrentUser() user: JwtPayload) {
     return this.authService.setupMfa(user.sub, user.tenantId, user.email);
   }
 
   @SkipMfa()
-  @Throttle({ default: { limit: 100, ttl: 60000 } })
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('mfa/verify')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Verify and enable MFA' })

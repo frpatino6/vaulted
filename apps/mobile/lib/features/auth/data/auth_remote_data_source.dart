@@ -9,7 +9,7 @@ class AuthRemoteDataSource {
 
   /// POST /auth/login
   /// Returns (data, setCookieHeader) for repository to persist refresh token.
-  /// Response format: { success: true, data: { accessToken, mfaRequired } }
+  /// Response format: { success: true, data: { accessToken, mfaRequired, mfaSetupRequired } }
   Future<({Map<String, dynamic> data, List<String> setCookies})> login(
     String email,
     String password,

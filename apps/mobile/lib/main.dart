@@ -83,6 +83,9 @@ Future<void> _tryRestoreSession() async {
     } else {
       storage = const FlutterSecureStorage(
         aOptions: AndroidOptions(encryptedSharedPreferences: true),
+        iOptions: IOSOptions(
+          accessibility: KeychainAccessibility.first_unlock_this_device,
+        ),
       );
       final refreshToken = await storage.read(key: 'refresh_token');
       if (refreshToken == null || refreshToken.isEmpty) return;

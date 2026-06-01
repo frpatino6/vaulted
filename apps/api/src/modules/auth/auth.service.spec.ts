@@ -1,4 +1,8 @@
-import { ConflictException, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import {
+  ConflictException,
+  UnauthorizedException,
+  BadRequestException,
+} from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -97,9 +101,14 @@ describe('AuthService', () => {
       .mockResolvedValueOnce('refresh-token');
 
     tenantRepository.create.mockImplementation((input) => input);
-    tenantRepository.save.mockResolvedValue({ id: 'tenant-1', name: 'Vaulted Family' });
+    tenantRepository.save.mockResolvedValue({
+      id: 'tenant-1',
+      name: 'Vaulted Family',
+    });
     entityManager.getRepository.mockReturnValue(tenantRepository);
-    dataSource.transaction.mockImplementation(async (callback) => callback(entityManager));
+    dataSource.transaction.mockImplementation(async (callback) =>
+      callback(entityManager),
+    );
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -133,8 +142,12 @@ describe('AuthService', () => {
     );
 
     expect(dataSource.transaction).toHaveBeenCalledTimes(1);
-    expect(tenantRepository.create).toHaveBeenCalledWith({ name: 'Vaulted Family' });
-    expect(tenantRepository.save).toHaveBeenCalledWith({ name: 'Vaulted Family' });
+    expect(tenantRepository.create).toHaveBeenCalledWith({
+      name: 'Vaulted Family',
+    });
+    expect(tenantRepository.save).toHaveBeenCalledWith({
+      name: 'Vaulted Family',
+    });
     expect(usersService.create).toHaveBeenCalledWith(
       {
         tenantId: 'tenant-1',
@@ -158,10 +171,17 @@ describe('AuthService', () => {
   });
 
   it('register() throws ConflictException if email already exists', async () => {
-    usersService.create.mockRejectedValue(new ConflictException('Email already registered'));
+    usersService.create.mockRejectedValue(
+      new ConflictException('Email already registered'),
+    );
 
     await expect(
-      service.register('Vaulted Family', 'owner@vaulted.com', 'Password123!', '127.0.0.1'),
+      service.register(
+        'Vaulted Family',
+        'owner@vaulted.com',
+        'Password123!',
+        '127.0.0.1',
+      ),
     ).rejects.toBeInstanceOf(ConflictException);
 
     expect(auditService.log).not.toHaveBeenCalled();
@@ -178,7 +198,11 @@ describe('AuthService', () => {
     });
     usersService.verifyPassword.mockResolvedValue(true);
 
-    const result = await service.login('staff@vaulted.com', 'Password123!', '127.0.0.1');
+    const result = await service.login(
+      'staff@vaulted.com',
+      'Password123!',
+      '127.0.0.1',
+    );
 
     expect(usersService.updateLastLogin).toHaveBeenCalledWith('user-1');
     expect(auditService.log).toHaveBeenCalledWith(
@@ -192,6 +216,7 @@ describe('AuthService', () => {
       accessToken: 'access-token',
       refreshToken: 'refresh-token',
       mfaRequired: false,
+      mfaSetupRequired: false,
     });
   });
 
@@ -214,7 +239,7 @@ describe('AuthService', () => {
     expect(auditService.log).not.toHaveBeenCalled();
   });
 
-it('logout() calls redis.setex to blacklist the token', async () => {
+  it('logout() calls redis.setex to blacklist the token', async () => {
     await service.logout(
       'access-token',
       {
@@ -237,7 +262,14 @@ it('logout() calls redis.setex to blacklist the token', async () => {
 
     await expect(
       service.refresh(
-        { sub: 'user-1', tenantId: 'tenant-1', email: 'user@vaulted.com', role: Role.OWNER, refreshTokenId: 'rt-1', mfaVerified: true },
+        {
+          sub: 'user-1',
+          tenantId: 'tenant-1',
+          email: 'user@vaulted.com',
+          role: Role.OWNER,
+          refreshTokenId: 'rt-1',
+          mfaVerified: true,
+        },
         '127.0.0.1',
       ),
     ).rejects.toThrow();
@@ -274,7 +306,14 @@ it('logout() calls redis.setex to blacklist the token', async () => {
 
     await expect(
       service.refresh(
-        { sub: 'user-1', tenantId: 'tenant-1', email: 'user@vaulted.com', role: Role.OWNER, refreshTokenId: 'rt-1', mfaVerified: true },
+        {
+          sub: 'user-1',
+          tenantId: 'tenant-1',
+          email: 'user@vaulted.com',
+          role: Role.OWNER,
+          refreshTokenId: 'rt-1',
+          mfaVerified: true,
+        },
         '127.0.0.1',
       ),
     ).rejects.toBeInstanceOf(UnauthorizedException);
@@ -286,6 +325,7 @@ it('logout() calls redis.setex to blacklist the token', async () => {
 
   it('refresh() rotates token and removes from active sessions', async () => {
     redisClient.get.mockResolvedValue(null);
+    redisClient.smembers.mockResolvedValue(['rt-1']);
     usersService.findById.mockResolvedValue({
       id: 'user-1',
       tenantId: 'tenant-1',
@@ -295,11 +335,22 @@ it('logout() calls redis.setex to blacklist the token', async () => {
     });
 
     const result = await service.refresh(
-      { sub: 'user-1', tenantId: 'tenant-1', email: 'user@vaulted.com', role: Role.OWNER, refreshTokenId: 'rt-1', mfaVerified: true },
+      {
+        sub: 'user-1',
+        tenantId: 'tenant-1',
+        email: 'user@vaulted.com',
+        role: Role.OWNER,
+        refreshTokenId: 'rt-1',
+        mfaVerified: true,
+      },
       '127.0.0.1',
     );
 
-    expect(redisClient.setex).toHaveBeenCalledWith('blacklist:refresh:rt-1', 7 * 24 * 60 * 60, '1');
+    expect(redisClient.setex).toHaveBeenCalledWith(
+      'blacklist:refresh:rt-1',
+      7 * 24 * 60 * 60,
+      '1',
+    );
     expect(redisClient.srem).toHaveBeenCalledWith('sessions:user-1', 'rt-1');
     expect(result.accessToken).toBeDefined();
   });
@@ -313,7 +364,11 @@ it('logout() calls redis.setex to blacklist the token', async () => {
   });
 
   it('setupMfa() generates secret and stores in Redis with 10min TTL', async () => {
-    const result = await service.setupMfa('user-1', 'tenant-1', 'owner@vaulted.com');
+    const result = await service.setupMfa(
+      'user-1',
+      'tenant-1',
+      'owner@vaulted.com',
+    );
 
     expect(redisClient.setex).toHaveBeenCalledWith(
       'mfa:pending:user-1',
@@ -362,7 +417,10 @@ it('logout() calls redis.setex to blacklist the token', async () => {
     });
 
     await expect(
-      service.acceptInvite({ token: 'expiredtoken', password: 'Pass123!' }, '127.0.0.1'),
+      service.acceptInvite(
+        { token: 'expiredtoken', password: 'Pass123!' },
+        '127.0.0.1',
+      ),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 });

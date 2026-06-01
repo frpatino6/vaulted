@@ -1,4 +1,11 @@
-import { Injectable, InternalServerErrorException, Logger, NotFoundException, Optional } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+  NotFoundException,
+  Optional,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -12,9 +19,21 @@ import { LoanItemDto } from './dto/loan-item.dto';
 import { MoveItemDto } from './dto/move-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
 import { Item, ItemDocument, ItemValuation } from './schemas/item.schema';
-import { ItemHistory, ItemHistoryDocument } from './schemas/item-history.schema';
-import { Movement, MovementDocument, MovementStatus, MovementType, MovementItemStatus } from '../movements/schemas/movement.schema';
-import { Property, PropertyDocument } from '../properties/schemas/property.schema';
+import {
+  ItemHistory,
+  ItemHistoryDocument,
+} from './schemas/item-history.schema';
+import {
+  Movement,
+  MovementDocument,
+  MovementStatus,
+  MovementType,
+  MovementItemStatus,
+} from '../movements/schemas/movement.schema';
+import {
+  Property,
+  PropertyDocument,
+} from '../properties/schemas/property.schema';
 import { EmbeddingService } from '../ai/shared/embedding.service';
 import { Role } from '../../common/enums/role.enum';
 import { AccessControlService } from '../../common/services/access-control.service';
@@ -43,7 +62,13 @@ interface InventorySearchFilters {
 }
 
 export interface InventorySearchResponse {
-  items: Array<ItemDocument & { propertyName: string | null; roomName: string | null; sectionPhoto: string | null }>;
+  items: Array<
+    ItemDocument & {
+      propertyName: string | null;
+      roomName: string | null;
+      sectionPhoto: string | null;
+    }
+  >;
   total: number;
   page: number;
   limit: number;
@@ -51,6 +76,46 @@ export interface InventorySearchResponse {
 
 function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function assertSafeFlexibleObject(
+  value: unknown,
+  path = 'attributes',
+  depth = 0,
+): void {
+  if (depth > 5) {
+    throw new BadRequestException(`${path} exceeds maximum nesting depth`);
+  }
+
+  if (Array.isArray(value)) {
+    if (value.length > 100) {
+      throw new BadRequestException(`${path} exceeds maximum array size`);
+    }
+    value.forEach((entry, index) =>
+      assertSafeFlexibleObject(entry, `${path}[${index}]`, depth + 1),
+    );
+    return;
+  }
+
+  if (value === null || typeof value !== 'object') {
+    if (typeof value === 'string' && value.length > 2000) {
+      throw new BadRequestException(`${path} exceeds maximum string length`);
+    }
+    return;
+  }
+
+  for (const [key, child] of Object.entries(value)) {
+    if (
+      key.startsWith('$') ||
+      key.includes('.') ||
+      key === '__proto__' ||
+      key === 'constructor' ||
+      key === 'prototype'
+    ) {
+      throw new BadRequestException(`${path} contains an unsafe key`);
+    }
+    assertSafeFlexibleObject(child, `${path}.${key}`, depth + 1);
+  }
 }
 
 @Injectable()
@@ -82,7 +147,15 @@ export class InventoryService {
     ).replace(/\/+$/, '');
   }
 
-  async create(tenantId: string, userId: string, dto: CreateItemDto): Promise<Item> {
+  async create(
+    tenantId: string,
+    userId: string,
+    dto: CreateItemDto,
+  ): Promise<Item> {
+    if (dto.attributes !== undefined) {
+      assertSafeFlexibleObject(dto.attributes);
+    }
+
     const item = await this.itemModel.create({
       tenantId,
       propertyId: dto.propertyId,
@@ -93,8 +166,12 @@ export class InventoryService {
       attributes: dto.attributes,
       valuation: this.encryptValuation(dto.valuation, tenantId),
       status: dto.status ?? ItemStatus.ACTIVE,
-      photos: (dto.photos ?? []).map((u) => this.mediaService.normalizeKey(u)),
-      documents: (dto.documents ?? []).map((u) => this.mediaService.normalizeKey(u)),
+      photos: (dto.photos ?? []).map((u) =>
+        this.mediaService.normalizeTenantKey(u, tenantId),
+      ),
+      documents: (dto.documents ?? []).map((u) =>
+        this.mediaService.normalizeTenantKey(u, tenantId),
+      ),
       tags: dto.tags ?? [],
       serialNumber: dto.serialNumber,
       locationDetail: dto.locationDetail,
@@ -103,7 +180,9 @@ export class InventoryService {
       createdBy: userId,
     });
 
-    const qrCode = await QRCode.toDataURL(`vaulted://items/${String(item._id)}`);
+    const qrCode = await QRCode.toDataURL(
+      `vaulted://items/${String(item._id)}`,
+    );
     item.qrCode = qrCode;
     await item.save();
 
@@ -116,7 +195,10 @@ export class InventoryService {
     return plain as Item;
   }
 
-  private async notifyItemAdded(item: ItemDocument, tenantId: string): Promise<void> {
+  private async notifyItemAdded(
+    item: ItemDocument,
+    tenantId: string,
+  ): Promise<void> {
     if (!this.notificationsService) return;
     try {
       await this.notificationsService.notifyTenantRoles({
@@ -184,7 +266,10 @@ export class InventoryService {
         performedBy: userId,
       });
     } catch (err) {
-      this.logger.error(`Failed to record creation movement for item ${String(item._id)}`, err);
+      this.logger.error(
+        `Failed to record creation movement for item ${String(item._id)}`,
+        err,
+      );
     }
   }
 
@@ -195,7 +280,10 @@ export class InventoryService {
     userId: string,
   ): Promise<Item[]> {
     const query: Record<string, unknown> = { tenantId };
-    const allowedPropertyIds = await this.accessControl.getAllowedPropertyIds(userId, role);
+    const allowedPropertyIds = await this.accessControl.getAllowedPropertyIds(
+      userId,
+      role,
+    );
 
     if (allowedPropertyIds !== null) {
       if (allowedPropertyIds.length === 0) return [];
@@ -211,7 +299,10 @@ export class InventoryService {
 
     if (filters.unlocated) {
       if (filters.propertyId) {
-        const property = await this.propertyModel.findOne({ _id: filters.propertyId, tenantId });
+        const property = await this.propertyModel.findOne({
+          _id: filters.propertyId,
+          tenantId,
+        });
         const validRoomIds = (property?.floors ?? [])
           .flatMap((f) => f.rooms.map((r) => r.roomId))
           .filter(Boolean);
@@ -257,7 +348,11 @@ export class InventoryService {
       return result;
     }
     return items.map((item) =>
-      this.withSignedUrls(this.accessControl.stripValuation(item.toObject()) as Item, userId, tenantId),
+      this.withSignedUrls(
+        this.accessControl.stripValuation(item.toObject()) as Item,
+        userId,
+        tenantId,
+      ),
     );
   }
 
@@ -269,8 +364,14 @@ export class InventoryService {
   ): Promise<Item> {
     const item = await this.findOwnedItemOrThrow(tenantId, itemId);
     if (userId) {
-      const allowedPropertyIds = await this.accessControl.getAllowedPropertyIds(userId, role);
-      if (allowedPropertyIds !== null && !allowedPropertyIds.includes(String(item.propertyId))) {
+      const allowedPropertyIds = await this.accessControl.getAllowedPropertyIds(
+        userId,
+        role,
+      );
+      if (
+        allowedPropertyIds !== null &&
+        !allowedPropertyIds.includes(String(item.propertyId))
+      ) {
         throw new NotFoundException('Item not found');
       }
     }
@@ -283,7 +384,12 @@ export class InventoryService {
     const propertyName = property?.name ?? null;
     let roomName: string | null = null;
     let sectionPhoto: string | null = null;
-    let sectionBoundingBox: { x: number; y: number; width: number; height: number } | null = null;
+    let sectionBoundingBox: {
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    } | null = null;
     let sectionCode: string | null = null;
     let sectionFurnitureName: string | null = null;
     if (property && item.roomId) {
@@ -292,12 +398,19 @@ export class InventoryService {
         if (room) {
           roomName = room.name;
           if (item.sectionId) {
-            const section = room.sections?.find((s) => s.sectionId === String(item.sectionId));
+            const section = room.sections?.find(
+              (s) => s.sectionId === String(item.sectionId),
+            );
             sectionPhoto = section?.photo ?? null;
             sectionCode = section?.code ?? null;
             sectionFurnitureName = section?.furnitureName ?? null;
             sectionBoundingBox = section?.boundingBox
-              ? { x: section.boundingBox.x, y: section.boundingBox.y, width: section.boundingBox.width, height: section.boundingBox.height }
+              ? {
+                  x: section.boundingBox.x,
+                  y: section.boundingBox.y,
+                  width: section.boundingBox.width,
+                  height: section.boundingBox.height,
+                }
               : null;
           }
           break;
@@ -307,7 +420,10 @@ export class InventoryService {
 
     if (role === Role.OWNER || role === Role.AUDITOR) {
       const plain = item.toObject();
-      plain.valuation = this.decryptValuation(plain.valuation, String(item.tenantId));
+      plain.valuation = this.decryptValuation(
+        plain.valuation,
+        String(item.tenantId),
+      );
       await this.audit.log({
         tenantId,
         userId,
@@ -318,43 +434,126 @@ export class InventoryService {
           role,
           valueRange: toValueRange(
             (plain.valuation?.currentValue as number | undefined) ??
-            (plain.valuation?.purchasePrice as number | undefined) ??
-            0,
+              (plain.valuation?.purchasePrice as number | undefined) ??
+              0,
           ),
         },
       });
-      return this.withSignedUrls({ ...plain, propertyName, roomName, sectionPhoto, sectionBoundingBox, sectionCode, sectionFurnitureName } as Item & { propertyName: string | null; roomName: string | null; sectionPhoto: string | null; sectionBoundingBox: { x: number; y: number; width: number; height: number } | null; sectionCode: string | null; sectionFurnitureName: string | null }, userId, tenantId);
+      return this.withSignedUrls(
+        {
+          ...plain,
+          propertyName,
+          roomName,
+          sectionPhoto,
+          sectionBoundingBox,
+          sectionCode,
+          sectionFurnitureName,
+        } as Item & {
+          propertyName: string | null;
+          roomName: string | null;
+          sectionPhoto: string | null;
+          sectionBoundingBox: {
+            x: number;
+            y: number;
+            width: number;
+            height: number;
+          } | null;
+          sectionCode: string | null;
+          sectionFurnitureName: string | null;
+        },
+        userId,
+        tenantId,
+      );
     }
     const stripped = this.accessControl.stripValuation(item.toObject()) as Item;
-    return this.withSignedUrls({ ...stripped, propertyName, roomName, sectionPhoto, sectionBoundingBox, sectionCode, sectionFurnitureName } as Item & { propertyName: string | null; roomName: string | null; sectionPhoto: string | null; sectionBoundingBox: { x: number; y: number; width: number; height: number } | null; sectionCode: string | null; sectionFurnitureName: string | null }, userId, tenantId);
+    return this.withSignedUrls(
+      {
+        ...stripped,
+        propertyName,
+        roomName,
+        sectionPhoto,
+        sectionBoundingBox,
+        sectionCode,
+        sectionFurnitureName,
+      } as Item & {
+        propertyName: string | null;
+        roomName: string | null;
+        sectionPhoto: string | null;
+        sectionBoundingBox: {
+          x: number;
+          y: number;
+          width: number;
+          height: number;
+        } | null;
+        sectionCode: string | null;
+        sectionFurnitureName: string | null;
+      },
+      userId,
+      tenantId,
+    );
   }
 
-  async update(tenantId: string, itemId: string, dto: UpdateItemDto): Promise<Item> {
+  async update(
+    tenantId: string,
+    itemId: string,
+    dto: UpdateItemDto,
+  ): Promise<Item> {
     await this.findOwnedItemOrThrow(tenantId, itemId);
 
-    const encryptedValuation = dto.valuation !== undefined
-      ? this.encryptValuation(dto.valuation, tenantId)
-      : undefined;
+    if (dto.attributes !== undefined) {
+      assertSafeFlexibleObject(dto.attributes);
+    }
+
+    const encryptedValuation =
+      dto.valuation !== undefined
+        ? this.encryptValuation(dto.valuation, tenantId)
+        : undefined;
 
     const item = await this.itemModel
       .findOneAndUpdate(
         { _id: itemId, tenantId },
         {
           $set: {
-            ...(dto.propertyId !== undefined ? { propertyId: dto.propertyId } : {}),
+            ...(dto.propertyId !== undefined
+              ? { propertyId: dto.propertyId }
+              : {}),
             ...(dto.roomId !== undefined ? { roomId: dto.roomId } : {}),
             ...(dto.name !== undefined ? { name: dto.name } : {}),
             ...(dto.category !== undefined ? { category: dto.category } : {}),
-            ...(dto.subcategory !== undefined ? { subcategory: dto.subcategory } : {}),
-            ...(dto.attributes !== undefined ? { attributes: dto.attributes } : {}),
-            ...(encryptedValuation !== undefined ? { valuation: encryptedValuation } : {}),
+            ...(dto.subcategory !== undefined
+              ? { subcategory: dto.subcategory }
+              : {}),
+            ...(dto.attributes !== undefined
+              ? { attributes: dto.attributes }
+              : {}),
+            ...(encryptedValuation !== undefined
+              ? { valuation: encryptedValuation }
+              : {}),
             ...(dto.status !== undefined ? { status: dto.status } : {}),
-            ...(dto.photos !== undefined ? { photos: dto.photos.map((u) => this.mediaService.normalizeKey(u)) } : {}),
-            ...(dto.documents !== undefined ? { documents: dto.documents.map((u) => this.mediaService.normalizeKey(u)) } : {}),
+            ...(dto.photos !== undefined
+              ? {
+                  photos: dto.photos.map((u) =>
+                    this.mediaService.normalizeTenantKey(u, tenantId),
+                  ),
+                }
+              : {}),
+            ...(dto.documents !== undefined
+              ? {
+                  documents: dto.documents.map((u) =>
+                    this.mediaService.normalizeTenantKey(u, tenantId),
+                  ),
+                }
+              : {}),
             ...(dto.tags !== undefined ? { tags: dto.tags } : {}),
-            ...(dto.serialNumber !== undefined ? { serialNumber: dto.serialNumber } : {}),
-            ...(dto.locationDetail !== undefined ? { locationDetail: dto.locationDetail } : {}),
-            ...(dto.sectionId !== undefined ? { sectionId: dto.sectionId } : {}),
+            ...(dto.serialNumber !== undefined
+              ? { serialNumber: dto.serialNumber }
+              : {}),
+            ...(dto.locationDetail !== undefined
+              ? { locationDetail: dto.locationDetail }
+              : {}),
+            ...(dto.sectionId !== undefined
+              ? { sectionId: dto.sectionId }
+              : {}),
             ...(dto.quantity !== undefined ? { quantity: dto.quantity } : {}),
           },
         },
@@ -510,7 +709,10 @@ export class InventoryService {
 
     const query: Record<string, unknown> = { tenantId };
     const normalizedQuery = filters.query?.trim();
-    const allowedPropertyIds = await this.accessControl.getAllowedPropertyIds(userId, role);
+    const allowedPropertyIds = await this.accessControl.getAllowedPropertyIds(
+      userId,
+      role,
+    );
 
     if (allowedPropertyIds !== null) {
       if (allowedPropertyIds.length === 0) {
@@ -549,14 +751,18 @@ export class InventoryService {
       this.itemModel.countDocuments(query).exec(),
     ]);
 
-    const propertyIds = [...new Set(items.map((item) => String(item.propertyId)))];
+    const propertyIds = [
+      ...new Set(items.map((item) => String(item.propertyId))),
+    ];
 
     const properties = await this.propertyModel
       .find({ _id: { $in: propertyIds }, tenantId })
       .select('_id name floors')
       .exec();
 
-    const propertyMap = new Map(properties.map((property) => [String(property._id), property]));
+    const propertyMap = new Map(
+      properties.map((property) => [String(property._id), property]),
+    );
 
     const enrichedItems = items.map((item) => {
       const property = propertyMap.get(String(item.propertyId));
@@ -564,21 +770,35 @@ export class InventoryService {
 
       let roomName: string | null = null;
       let sectionPhoto: string | null = null;
-      let sectionBoundingBox: { x: number; y: number; width: number; height: number } | null = null;
+      let sectionBoundingBox: {
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+      } | null = null;
       let sectionCode: string | null = null;
       let sectionFurnitureName: string | null = null;
       if (property && item.roomId) {
         for (const floor of property.floors ?? []) {
-          const room = floor.rooms?.find((candidate) => candidate.roomId === String(item.roomId));
+          const room = floor.rooms?.find(
+            (candidate) => candidate.roomId === String(item.roomId),
+          );
           if (room) {
             roomName = room.name;
             if (item.sectionId) {
-              const section = room.sections?.find((s) => s.sectionId === String(item.sectionId));
+              const section = room.sections?.find(
+                (s) => s.sectionId === String(item.sectionId),
+              );
               sectionPhoto = section?.photo ?? null;
               sectionCode = section?.code ?? null;
               sectionFurnitureName = section?.furnitureName ?? null;
               sectionBoundingBox = section?.boundingBox
-                ? { x: section.boundingBox.x, y: section.boundingBox.y, width: section.boundingBox.width, height: section.boundingBox.height }
+                ? {
+                    x: section.boundingBox.x,
+                    y: section.boundingBox.y,
+                    width: section.boundingBox.width,
+                    height: section.boundingBox.height,
+                  }
                 : null;
             }
             break;
@@ -597,16 +817,33 @@ export class InventoryService {
         sectionBoundingBox,
         sectionCode,
         sectionFurnitureName,
-      } as ItemDocument & { propertyName: string | null; roomName: string | null; sectionPhoto: string | null; sectionBoundingBox: { x: number; y: number; width: number; height: number } | null; sectionCode: string | null; sectionFurnitureName: string | null };
+      } as ItemDocument & {
+        propertyName: string | null;
+        roomName: string | null;
+        sectionPhoto: string | null;
+        sectionBoundingBox: {
+          x: number;
+          y: number;
+          width: number;
+          height: number;
+        } | null;
+        sectionCode: string | null;
+        sectionFurnitureName: string | null;
+      };
     });
 
-    const finalItems = role === Role.OWNER || role === Role.AUDITOR
-      ? enrichedItems.map((item) =>
-          this.withSignedUrls(item as unknown as Item, userId, tenantId),
-        )
-      : enrichedItems.map((item) =>
-          this.withSignedUrls(this.accessControl.stripValuation(item) as unknown as Item, userId, tenantId),
-        );
+    const finalItems =
+      role === Role.OWNER || role === Role.AUDITOR
+        ? enrichedItems.map((item) =>
+            this.withSignedUrls(item as unknown as Item, userId, tenantId),
+          )
+        : enrichedItems.map((item) =>
+            this.withSignedUrls(
+              this.accessControl.stripValuation(item) as unknown as Item,
+              userId,
+              tenantId,
+            ),
+          );
 
     if (role === Role.OWNER || role === Role.AUDITOR) {
       void this.audit.log({
@@ -642,7 +879,13 @@ export class InventoryService {
       photos: (item.photos ?? []).map(sign),
       documents: (item.documents ?? []).map(sign),
       ...((item as unknown as Record<string, unknown>)['sectionPhoto']
-        ? { sectionPhoto: sign((item as unknown as Record<string, unknown>)['sectionPhoto'] as string) }
+        ? {
+            sectionPhoto: sign(
+              (item as unknown as Record<string, unknown>)[
+                'sectionPhoto'
+              ] as string,
+            ),
+          }
         : {}),
     };
   }
@@ -684,10 +927,22 @@ export class InventoryService {
     const raw = valuation as unknown as Record<string, unknown>;
     return {
       ...valuation,
-      purchasePrice: this.encryptFleField(raw, 'purchasePrice', tenantId, String) as unknown as number,
-      currentValue: this.encryptFleField(raw, 'currentValue', tenantId, String) as unknown as number,
+      purchasePrice: this.encryptFleField(
+        raw,
+        'purchasePrice',
+        tenantId,
+        String,
+      ) as unknown as number,
+      currentValue: this.encryptFleField(
+        raw,
+        'currentValue',
+        tenantId,
+        String,
+      ) as unknown as number,
       lastAppraisalDate: this.encryptFleField(
-        raw, 'lastAppraisalDate', tenantId,
+        raw,
+        'lastAppraisalDate',
+        tenantId,
         (v) => (v instanceof Date ? v.toISOString() : String(v)),
       ) as unknown as Date,
     };
@@ -702,13 +957,30 @@ export class InventoryService {
     try {
       return {
         ...valuation,
-        purchasePrice:     this.decryptFleField(raw, 'purchasePrice',     tenantId, parseFloat),
-        currentValue:      this.decryptFleField(raw, 'currentValue',      tenantId, parseFloat),
-        lastAppraisalDate: this.decryptFleField(raw, 'lastAppraisalDate', tenantId, (s) => new Date(s)),
+        purchasePrice: this.decryptFleField(
+          raw,
+          'purchasePrice',
+          tenantId,
+          parseFloat,
+        ),
+        currentValue: this.decryptFleField(
+          raw,
+          'currentValue',
+          tenantId,
+          parseFloat,
+        ),
+        lastAppraisalDate: this.decryptFleField(
+          raw,
+          'lastAppraisalDate',
+          tenantId,
+          (s) => new Date(s),
+        ),
       };
     } catch (err) {
       this.logger.error(`FLE decryption failed for tenant ${tenantId}`, err);
-      throw new InternalServerErrorException('Failed to decrypt item valuation');
+      throw new InternalServerErrorException(
+        'Failed to decrypt item valuation',
+      );
     }
   }
 
@@ -733,16 +1005,19 @@ export class InventoryService {
     const text = svc.buildItemText(item);
     const itemId = String(item._id);
     const tenantId = String(item.tenantId);
-    svc.generateEmbedding(text).then((embedding) => {
-      const vector = `[${embedding.join(',')}]`;
-      const upsertSql = [
-        'INSERT INTO item_embeddings (item_id, tenant_id, embedding, updated_at)',
-        'VALUES ($1, $2, $3::vector, NOW())',
-        'ON CONFLICT (item_id) DO UPDATE SET embedding = EXCLUDED.embedding, updated_at = NOW()',
-      ].join(' ');
-      return ds.query(upsertSql, [itemId, tenantId, vector]);
-    }).catch((err: unknown) => {
-      logger.error(`Embedding index failed for item ${itemId}`, err);
-    });
+    svc
+      .generateEmbedding(text)
+      .then((embedding) => {
+        const vector = `[${embedding.join(',')}]`;
+        const upsertSql = [
+          'INSERT INTO item_embeddings (item_id, tenant_id, embedding, updated_at)',
+          'VALUES ($1, $2, $3::vector, NOW())',
+          'ON CONFLICT (item_id) DO UPDATE SET embedding = EXCLUDED.embedding, updated_at = NOW()',
+        ].join(' ');
+        return ds.query(upsertSql, [itemId, tenantId, vector]);
+      })
+      .catch((err: unknown) => {
+        logger.error(`Embedding index failed for item ${itemId}`, err);
+      });
   }
 }
