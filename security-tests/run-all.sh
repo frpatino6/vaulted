@@ -68,7 +68,7 @@ if [[ "$MFA_REQ_SETUP" == "True" || "$MFA_REQ_SETUP" == "true" ]]; then
   if [[ -n "$MFA_SECRET" ]]; then
     MFA_CODE=$(python3 -c "
 import hmac, hashlib, struct, time, base64
-key = base64.b32decode('${MFA_SECRET}'.upper().replace(' ',''))
+s = '${MFA_SECRET}'.upper().replace(' ',''); key = base64.b32decode(s + '=' * ((8 - len(s) % 8) % 8))
 msg = struct.pack('>Q', int(time.time()) // 30)
 h = hmac.new(key, msg, hashlib.sha1).digest()
 o = h[-1] & 0xf
