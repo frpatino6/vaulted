@@ -1,3 +1,13 @@
+jest.mock('sharp', () => ({
+  __esModule: true,
+  default: jest.fn(() => ({
+    rotate: jest.fn().mockReturnThis(),
+    resize: jest.fn().mockReturnThis(),
+    jpeg: jest.fn().mockReturnThis(),
+    toBuffer: jest.fn().mockResolvedValue(Buffer.from('processed')),
+  })),
+}), { virtual: true });
+
 jest.mock('uuid', () => ({
   v4: jest.fn(() => 'test-uuid'),
 }));
@@ -54,9 +64,15 @@ describe('InventoryService', () => {
     exec: jest.fn(),
   };
 
+  const propertyFindOneChain = {
+    select: jest.fn().mockReturnThis(),
+    lean: jest.fn().mockReturnThis(),
+    exec: jest.fn(),
+  };
+
   const propertyModel = {
     find: jest.fn(() => propertyFindChain),
-    findOne: jest.fn(),
+    findOne: jest.fn(() => propertyFindOneChain),
   };
 
   const dataSource = {} as DataSource;
@@ -96,6 +112,14 @@ describe('InventoryService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    propertyModel.findOne.mockImplementation(() => propertyFindOneChain);
+    propertyFindOneChain.exec.mockResolvedValue({
+      _id: 'p1',
+      floors: [
+        { rooms: [{ roomId: 'r1', sections: [] }] },
+        { rooms: [{ roomId: 'r2', sections: [] }] },
+      ],
+    });
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -171,8 +195,9 @@ describe('InventoryService', () => {
     itemModel.findOne.mockReturnValue({
       exec: jest.fn().mockResolvedValue(itemDoc),
     });
-    propertyModel.findOne.mockReturnValue({
+    propertyModel.findOne.mockReturnValueOnce({
       select: jest.fn().mockReturnThis(),
+      lean: jest.fn().mockReturnThis(),
       exec: jest.fn().mockResolvedValue(null),
     });
 
@@ -271,7 +296,7 @@ describe('InventoryService', () => {
 
   it('update() updates item and re-indexes embedding', async () => {
     itemModel.findOne.mockReturnValue({
-      exec: jest.fn().mockResolvedValue({ _id: 'i1', tenantId: 't1' }),
+      exec: jest.fn().mockResolvedValue({ _id: 'i1', tenantId: 't1', propertyId: 'p1' }),
     });
     itemModel.findOneAndUpdate.mockReturnValue({
       exec: jest.fn().mockResolvedValue({
@@ -292,7 +317,7 @@ describe('InventoryService', () => {
 
   it('delete() soft deletes item by setting status to disposed', async () => {
     itemModel.findOne.mockReturnValue({
-      exec: jest.fn().mockResolvedValue({ _id: 'i1', tenantId: 't1' }),
+      exec: jest.fn().mockResolvedValue({ _id: 'i1', tenantId: 't1', propertyId: 'p1' }),
     });
     itemModel.findOneAndUpdate.mockReturnValue({
       exec: jest.fn().mockResolvedValue({
@@ -327,6 +352,10 @@ describe('InventoryService', () => {
         propertyId: 'p1',
         roomId: 'r1',
       }),
+    });
+    propertyFindOneChain.exec.mockResolvedValue({
+      _id: 'p2',
+      floors: [{ rooms: [{ roomId: 'r2', sections: [] }] }],
     });
     itemModel.findOneAndUpdate.mockReturnValue({
       exec: jest.fn().mockResolvedValue({
@@ -398,7 +427,7 @@ describe('InventoryService', () => {
 
   it('getHistory() returns item history sorted by timestamp desc', async () => {
     itemModel.findOne.mockReturnValue({
-      exec: jest.fn().mockResolvedValue({ _id: 'i1', tenantId: 't1' }),
+      exec: jest.fn().mockResolvedValue({ _id: 'i1', tenantId: 't1', propertyId: 'p1' }),
     });
     const mockHistory = [
       { action: 'moved', timestamp: new Date('2025-01-02') },
@@ -409,7 +438,7 @@ describe('InventoryService', () => {
       exec: jest.fn().mockResolvedValue(mockHistory),
     });
 
-    const result = await service.getHistory('t1', 'i1');
+    const result = await service.getHistory('t1', 'i1', Role.OWNER, 'u1');
 
     expect(result).toHaveLength(2);
     expect(itemHistoryModel.find).toHaveBeenCalled();

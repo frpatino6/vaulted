@@ -22,14 +22,7 @@ export class AppThrottlerGuard extends ThrottlerGuard {
   }
 
   protected async shouldSkip(context: ExecutionContext): Promise<boolean> {
-    if (await super.shouldSkip(context)) return true;
-    const request = context.switchToHttp().getRequest<Request>();
-
-    // Media routes carry auth in the JWT path param, not the Authorization header
-    if ((request.path ?? '').startsWith('/api/media/')) return true;
-
-    const authHeader = (request as unknown as { headers: Record<string, string> }).headers['authorization'];
-    return typeof authHeader === 'string' && authHeader.startsWith('Bearer ');
+    return super.shouldSkip(context);
   }
 
   private extractUserId(request: Request): string | null {

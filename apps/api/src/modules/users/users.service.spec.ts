@@ -114,9 +114,18 @@ userRepository = {
     userRepository.update.mockResolvedValue({});
     userRepository.findOne.mockResolvedValue({ id: 'user-target', tenantId: 'tenant-1', email: 'test@vaulted.com', role: Role.STAFF });
 
-    const result = await service.updateUser('tenant-1', 'user-manager', Role.MANAGER, 'user-target', { role: Role.MANAGER });
+    const result = await service.updateUser('tenant-1', 'owner-1', Role.OWNER, 'user-target', { role: Role.MANAGER });
 
     expect(result).toBeDefined();
+  });
+
+
+  it('updateUser rejects non-owner actors', async () => {
+    await expect(
+      service.updateUser('tenant-1', 'manager-1', Role.MANAGER, 'user-target', {
+        role: Role.STAFF,
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
   it('findByEmail returns user by email', async () => {

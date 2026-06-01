@@ -30,11 +30,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await _initFirebase();
   await _tryRestoreSession();
-  runApp(
-    const ProviderScope(
-      child: VaultedApp(),
-    ),
-  );
+  runApp(const ProviderScope(child: VaultedApp()));
 }
 
 Future<void> _initFirebase() async {
@@ -43,11 +39,7 @@ Future<void> _initFirebase() async {
       options: DefaultFirebaseOptions.currentPlatform,
     );
     final messaging = FirebaseMessaging.instance;
-    await messaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
+    await messaging.requestPermission(alert: true, badge: true, sound: true);
     FirebaseMessaging.onBackgroundMessage(_firebaseBackgroundHandler);
     _pendingInitialMessage =
         await FirebaseMessaging.instance.getInitialMessage();
@@ -65,12 +57,14 @@ Future<void> _initFirebase() async {
 /// returns silently and the user proceeds through the normal login flow.
 Future<void> _tryRestoreSession() async {
   try {
-    final dio = Dio(BaseOptions(
-      baseUrl: AppConfig.apiBaseUrl,
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 10),
-      headers: {'Content-Type': 'application/json'},
-    ));
+    final dio = Dio(
+      BaseOptions(
+        baseUrl: AppConfig.apiBaseUrl,
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 10),
+        headers: {'Content-Type': 'application/json'},
+      ),
+    );
 
     applyWebCredentials(dio);
 
@@ -84,7 +78,7 @@ Future<void> _tryRestoreSession() async {
       storage = const FlutterSecureStorage(
         aOptions: AndroidOptions(encryptedSharedPreferences: true),
         iOptions: IOSOptions(
-          accessibility: KeychainAccessibility.first_unlock_this_device,
+          accessibility: KeychainAccessibility.unlocked_this_device,
         ),
       );
       final refreshToken = await storage.read(key: 'refresh_token');
@@ -110,7 +104,8 @@ Future<void> _tryRestoreSession() async {
 
     // Save the rotated refresh token (mobile only — web uses httpOnly cookie)
     if (storage != null) {
-      final setCookie = response.headers.value('set-cookie') ??
+      final setCookie =
+          response.headers.value('set-cookie') ??
           response.headers.value('Set-Cookie');
       if (setCookie != null) {
         final newRefreshToken = _parseRefreshToken(setCookie);

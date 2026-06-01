@@ -1,3 +1,6 @@
+jest.mock('uuid', () => ({ v4: jest.fn(() => 'test-uuid') }));
+jest.mock('sharp', () => ({ __esModule: true, default: jest.fn() }), { virtual: true });
+
 import { Test, TestingModule } from '@nestjs/testing';
 import { getModelToken } from '@nestjs/mongoose';
 import { ConfigService } from '@nestjs/config';
@@ -10,8 +13,9 @@ import { REDIS_CLIENT } from '../../../common/decorators/inject-redis.decorator'
 import { EmbeddingService } from '../shared/embedding.service';
 import { GeminiClient } from '../shared/gemini.client';
 import { AiCostLoggerService } from '../shared/ai-cost-logger.service';
+import { AccessControlService } from '../../../common/services/access-control.service';
+import { MediaService } from '../../media/media.service';
 
-jest.mock('uuid', () => ({ v4: jest.fn(() => 'test-uuid') }));
 
 describe('AiChatService', () => {
   let service: AiChatService;
@@ -23,6 +27,8 @@ describe('AiChatService', () => {
   let geminiClient: any;
   let costLogger: any;
   let config: any;
+  let accessControl: any;
+  let mediaService: any;
 
   beforeEach(async () => {
     itemModel = {
@@ -61,6 +67,14 @@ describe('AiChatService', () => {
       get: jest.fn().mockReturnValue(20),
     };
 
+    accessControl = {
+      getAllowedPropertyIds: jest.fn().mockResolvedValue(null),
+    };
+
+    mediaService = {
+      generateFileToken: jest.fn().mockReturnValue('media-token'),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AiChatService,
@@ -72,6 +86,9 @@ describe('AiChatService', () => {
         { provide: GeminiClient, useValue: geminiClient },
         { provide: AiCostLoggerService, useValue: costLogger },
         { provide: ConfigService, useValue: config },
+        { provide: MediaService, useValue: { signExistingUrl: jest.fn((url: string) => url) } },
+        { provide: AccessControlService, useValue: accessControl },
+        { provide: MediaService, useValue: mediaService },
       ],
     }).compile();
 

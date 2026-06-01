@@ -130,12 +130,28 @@ export class AuthService {
     const { refreshTokenId, sub: userId } = payload;
     const blacklistKey = `blacklist:refresh:${refreshTokenId}`;
 
-    const [isRevoked, activeTokenIds] = await Promise.all([
-      this.redis.get(blacklistKey),
-      this.redis.smembers(`sessions:${userId}`),
-    ]);
+    const consumed = await this.redis.eval(
+      `
+      local sessionKey = KEYS[1]
+      local blacklistKey = KEYS[2]
+      local jti = ARGV[1]
+      local ttl = tonumber(ARGV[2])
 
-    if (isRevoked || !activeTokenIds.includes(refreshTokenId)) {
+      if redis.call('GET', blacklistKey) then return 0 end
+      if redis.call('SISMEMBER', sessionKey, jti) ~= 1 then return 0 end
+
+      redis.call('SREM', sessionKey, jti)
+      redis.call('SETEX', blacklistKey, ttl, '1')
+      return 1
+      `,
+      2,
+      `sessions:${userId}`,
+      blacklistKey,
+      refreshTokenId,
+      REFRESH_TOKEN_TTL_SECONDS,
+    );
+
+    if (consumed !== 1) {
       await this.auditService.log({
         tenantId: payload.tenantId,
         userId,
@@ -154,11 +170,6 @@ export class AuthService {
     if (!user || !user.isActive) {
       throw new UnauthorizedException('User not found or inactive');
     }
-
-    await Promise.all([
-      this.redis.setex(blacklistKey, REFRESH_TOKEN_TTL_SECONDS, '1'),
-      this.redis.srem(`sessions:${userId}`, refreshTokenId),
-    ]);
 
     await this.auditService.log({
       tenantId: user.tenantId,

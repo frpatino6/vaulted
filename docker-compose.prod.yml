@@ -22,6 +22,7 @@ services:
       TYPEORM_SYNC: ${TYPEORM_SYNC}
       REDIS_URL: ${REDIS_URL}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      ENCRYPTION_SALT: ${ENCRYPTION_SALT}
       GOOGLE_GENAI_API_KEY: ${GOOGLE_GENAI_API_KEY}
       AI_CHAT_MODEL: ${AI_CHAT_MODEL}
       AI_EMBEDDING_MODEL: ${AI_EMBEDDING_MODEL}
@@ -32,6 +33,21 @@ services:
     restart: always
     volumes:
       - uploads_data:/app/uploads
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 256
+    deploy:
+      resources:
+        limits:
+          cpus: '0.75'
+          memory: 512M
+        reservations:
+          memory: 128M
     networks:
       - default
       - proxy

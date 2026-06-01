@@ -8,7 +8,11 @@ describe('CryptoService', () => {
 
   beforeEach(async () => {
     configService = {
-      getOrThrow: jest.fn().mockReturnValue('test-encryption-key-32-bytes-long!!'),
+      getOrThrow: jest.fn((key: string) => {
+        if (key === 'ENCRYPTION_KEY') return 'test-encryption-key-32-bytes-long!!';
+        if (key === 'ENCRYPTION_SALT') return 'test-encryption-salt-32-bytes-long!!';
+        throw new Error(`Missing config ${key}`);
+      }),
     };
 
     const module: TestingModule = await Test.createTestingModule({

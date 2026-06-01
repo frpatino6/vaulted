@@ -319,7 +319,14 @@ export class PropertiesService {
     propertyId: string,
     floorId: string,
     roomId: string,
+    role: Role,
+    userId: string,
   ): Promise<RoomSection[]> {
+    const allowedPropertyIds = await this.accessControl.getAllowedPropertyIds(userId, role);
+    if (allowedPropertyIds !== null && !allowedPropertyIds.includes(propertyId)) {
+      throw new NotFoundException('Property not found');
+    }
+
     const property = await this.findOwnedPropertyOrThrow(tenantId, propertyId);
     const floor = property.floors.find((f) => f.floorId === floorId);
     if (!floor) throw new NotFoundException('Floor not found');

@@ -15,8 +15,8 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen>
     with SingleTickerProviderStateMixin {
-  final _emailController = TextEditingController(text: 'owner@test.com');
-  final _passwordController = TextEditingController(text: 'Test1234!Secure');
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   late AnimationController _shimmerController;
   late Animation<double> _shimmerAnimation;
@@ -90,23 +90,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                       children: [
                         Text(
                           'VAULTED',
-                          style: Theme.of(context).textTheme.headlineMedium
-                              ?.copyWith(
-                                color: AppColors.accent,
-                                fontWeight: FontWeight.w300,
-                                fontSize: 28,
-                                letterSpacing: 8,
-                              ),
+                          style: Theme.of(
+                            context,
+                          ).textTheme.headlineMedium?.copyWith(
+                            color: AppColors.accent,
+                            fontWeight: FontWeight.w300,
+                            fontSize: 28,
+                            letterSpacing: 8,
+                          ),
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: AppSpacing.sm),
                         Text(
                           'Everything you own. Protected.',
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(
-                                color: AppColors.onSurfaceVariant,
-                                fontSize: 13,
-                              ),
+                          style: Theme.of(
+                            context,
+                          ).textTheme.bodyMedium?.copyWith(
+                            color: AppColors.onSurfaceVariant,
+                            fontSize: 13,
+                          ),
                           textAlign: TextAlign.center,
                         ),
                       ],
@@ -139,8 +141,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                     keyboardType: TextInputType.emailAddress,
                     autocorrect: false,
                     enabled: !isLoading,
-                    validator: (v) =>
-                        (v == null || v.isEmpty) ? 'Email is required' : null,
+                    validator:
+                        (v) =>
+                            (v == null || v.isEmpty)
+                                ? 'Email is required'
+                                : null,
                   ),
                   const SizedBox(height: AppSpacing.md),
                   TextFormField(
@@ -168,9 +173,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                     ),
                     obscureText: true,
                     enabled: !isLoading,
-                    validator: (v) => (v == null || v.isEmpty)
-                        ? 'Password is required'
-                        : null,
+                    validator:
+                        (v) =>
+                            (v == null || v.isEmpty)
+                                ? 'Password is required'
+                                : null,
                     onFieldSubmitted: (_) => _submit(),
                   ),
                   if (errorMsg != null) ...[
@@ -217,16 +224,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                           borderRadius: BorderRadius.circular(14),
                         ),
                       ),
-                      child: isLoading
-                          ? const SizedBox(
-                              height: 24,
-                              width: 24,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: AppColors.background,
-                              ),
-                            )
-                          : const Text('Log in'),
+                      child:
+                          isLoading
+                              ? const SizedBox(
+                                height: 24,
+                                width: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: AppColors.background,
+                                ),
+                              )
+                              : const Text('Log in'),
                     ),
                   ),
                 ],

@@ -30,7 +30,7 @@ export class UsersController {
     return this.usersService.createDirect(user.tenantId, dto);
   }
 
-  @Roles(Role.OWNER, Role.MANAGER)
+  @Roles(Role.OWNER)
   @Post('invite')
   @ApiOperation({ summary: 'Invite a new user' })
   @ApiBearerAuth()
@@ -39,7 +39,7 @@ export class UsersController {
     return this.usersService.invite(user.tenantId, user.sub, user.role, dto);
   }
 
-  @Roles(Role.OWNER, Role.MANAGER)
+  @Roles(Role.OWNER)
   @Get()
   @ApiOperation({ summary: 'Get all users' })
   @ApiBearerAuth()
@@ -48,7 +48,7 @@ export class UsersController {
     return this.usersService.findAllByTenant(user.tenantId);
   }
 
-  @Roles(Role.OWNER, Role.MANAGER)
+  @Roles(Role.OWNER)
   @Get(':id')
   @ApiOperation({ summary: 'Get user by ID' })
   @ApiBearerAuth()
@@ -57,7 +57,7 @@ export class UsersController {
     return this.usersService.findSanitizedById(user.tenantId, userId);
   }
 
-  @Roles(Role.OWNER, Role.MANAGER)
+  @Roles(Role.OWNER)
   @Put(':id')
   @ApiOperation({ summary: 'Update user' })
   @ApiBearerAuth()

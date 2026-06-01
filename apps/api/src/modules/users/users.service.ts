@@ -269,6 +269,10 @@ export class UsersService {
     userId: string,
     dto: UpdateUserDto,
   ): Promise<SanitizedUser> {
+    if (actorRole !== Role.OWNER) {
+      throw new ForbiddenException('Only owners can update users');
+    }
+
     if (actorUserId === userId && dto.role !== undefined) {
       throw new BadRequestException('You cannot change your own role');
     }

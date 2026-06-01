@@ -156,6 +156,13 @@ export class InventoryService {
       assertSafeFlexibleObject(dto.attributes);
     }
 
+    await this.assertLocationBelongsToTenant(
+      tenantId,
+      dto.propertyId,
+      dto.roomId,
+      dto.sectionId,
+    );
+
     const item = await this.itemModel.create({
       tenantId,
       propertyId: dto.propertyId,
@@ -173,8 +180,8 @@ export class InventoryService {
         this.mediaService.normalizeTenantKey(u, tenantId),
       ),
       tags: dto.tags ?? [],
-      serialNumber: dto.serialNumber,
-      locationDetail: dto.locationDetail,
+      serialNumber: this.encryptSensitiveString(dto.serialNumber, tenantId),
+      locationDetail: this.encryptSensitiveString(dto.locationDetail, tenantId),
       sectionId: dto.sectionId ?? null,
       quantity: dto.quantity ?? 1,
       createdBy: userId,
@@ -192,7 +199,7 @@ export class InventoryService {
 
     const plain = item.toObject();
     plain.valuation = this.decryptValuation(plain.valuation, tenantId);
-    return plain as Item;
+    return this.decryptSensitiveFields(plain as Item, tenantId);
   }
 
   private async notifyItemAdded(
@@ -328,7 +335,11 @@ export class InventoryService {
       const result = items.map((item) => {
         const plain = item.toObject();
         plain.valuation = this.decryptValuation(plain.valuation, tenantId);
-        return this.withSignedUrls(plain as Item, userId, tenantId);
+        return this.withSignedUrls(
+          this.decryptSensitiveFields(plain as Item, tenantId),
+          userId,
+          tenantId,
+        );
       });
       void this.audit.log({
         tenantId,
@@ -349,7 +360,10 @@ export class InventoryService {
     }
     return items.map((item) =>
       this.withSignedUrls(
-        this.accessControl.stripValuation(item.toObject()) as Item,
+        this.decryptSensitiveFields(
+          this.accessControl.stripValuation(item.toObject()) as Item,
+          tenantId,
+        ),
         userId,
         tenantId,
       ),
@@ -424,6 +438,7 @@ export class InventoryService {
         plain.valuation,
         String(item.tenantId),
       );
+      const safePlain = this.decryptSensitiveFields(plain as Item, tenantId);
       await this.audit.log({
         tenantId,
         userId,
@@ -441,7 +456,7 @@ export class InventoryService {
       });
       return this.withSignedUrls(
         {
-          ...plain,
+          ...safePlain,
           propertyName,
           roomName,
           sectionPhoto,
@@ -465,7 +480,10 @@ export class InventoryService {
         tenantId,
       );
     }
-    const stripped = this.accessControl.stripValuation(item.toObject()) as Item;
+    const stripped = this.decryptSensitiveFields(
+      this.accessControl.stripValuation(item.toObject()) as Item,
+      tenantId,
+    );
     return this.withSignedUrls(
       {
         ...stripped,
@@ -498,7 +516,7 @@ export class InventoryService {
     itemId: string,
     dto: UpdateItemDto,
   ): Promise<Item> {
-    await this.findOwnedItemOrThrow(tenantId, itemId);
+    const existingItem = await this.findOwnedItemOrThrow(tenantId, itemId);
 
     if (dto.attributes !== undefined) {
       assertSafeFlexibleObject(dto.attributes);
@@ -508,6 +526,17 @@ export class InventoryService {
       dto.valuation !== undefined
         ? this.encryptValuation(dto.valuation, tenantId)
         : undefined;
+
+    const targetPropertyId = dto.propertyId ?? String(existingItem.propertyId);
+    const targetRoomId = dto.roomId !== undefined ? dto.roomId : existingItem.roomId;
+    const targetSectionId =
+      dto.sectionId !== undefined ? dto.sectionId : existingItem.sectionId;
+    await this.assertLocationBelongsToTenant(
+      tenantId,
+      targetPropertyId,
+      targetRoomId ?? undefined,
+      targetSectionId ?? undefined,
+    );
 
     const item = await this.itemModel
       .findOneAndUpdate(
@@ -546,10 +575,10 @@ export class InventoryService {
               : {}),
             ...(dto.tags !== undefined ? { tags: dto.tags } : {}),
             ...(dto.serialNumber !== undefined
-              ? { serialNumber: dto.serialNumber }
+              ? { serialNumber: this.encryptSensitiveString(dto.serialNumber, tenantId) }
               : {}),
             ...(dto.locationDetail !== undefined
-              ? { locationDetail: dto.locationDetail }
+              ? { locationDetail: this.encryptSensitiveString(dto.locationDetail, tenantId) }
               : {}),
             ...(dto.sectionId !== undefined
               ? { sectionId: dto.sectionId }
@@ -573,7 +602,7 @@ export class InventoryService {
 
     const plain = item.toObject();
     plain.valuation = this.decryptValuation(plain.valuation, tenantId);
-    return plain as Item;
+    return this.decryptSensitiveFields(plain as Item, tenantId);
   }
 
   async delete(tenantId: string, itemId: string): Promise<Item> {
@@ -599,7 +628,7 @@ export class InventoryService {
       notes: 'Soft deleted by setting status to disposed',
     });
 
-    return item;
+    return this.decryptSensitiveFields(item.toObject ? item.toObject() as Item : item as unknown as Item, tenantId);
   }
 
   async move(
@@ -609,6 +638,11 @@ export class InventoryService {
     dto: MoveItemDto,
   ): Promise<Item> {
     const item = await this.findOwnedItemOrThrow(tenantId, itemId);
+    await this.assertLocationBelongsToTenant(
+      tenantId,
+      dto.toPropertyId,
+      dto.toRoomId,
+    );
 
     const updatedItem = await this.itemModel
       .findOneAndUpdate(
@@ -639,7 +673,10 @@ export class InventoryService {
       notes: dto.notes,
     });
 
-    return updatedItem;
+    return this.decryptSensitiveFields(
+      updatedItem.toObject ? updatedItem.toObject() as Item : updatedItem as unknown as Item,
+      tenantId,
+    );
   }
 
   async loan(
@@ -686,11 +723,29 @@ export class InventoryService {
       notes: dto.notes,
     });
 
-    return updatedItem;
+    return this.decryptSensitiveFields(
+      updatedItem.toObject ? updatedItem.toObject() as Item : updatedItem as unknown as Item,
+      tenantId,
+    );
   }
 
-  async getHistory(tenantId: string, itemId: string): Promise<ItemHistory[]> {
-    await this.findOwnedItemOrThrow(tenantId, itemId);
+  async getHistory(
+    tenantId: string,
+    itemId: string,
+    role: Role,
+    userId: string,
+  ): Promise<ItemHistory[]> {
+    const item = await this.findOwnedItemOrThrow(tenantId, itemId);
+    const allowedPropertyIds = await this.accessControl.getAllowedPropertyIds(
+      userId,
+      role,
+    );
+    if (
+      allowedPropertyIds !== null &&
+      !allowedPropertyIds.includes(String(item.propertyId))
+    ) {
+      throw new NotFoundException('Item not found');
+    }
     return this.itemHistoryModel
       .find({ tenantId, itemId })
       .sort({ timestamp: -1 })
@@ -728,7 +783,6 @@ export class InventoryService {
         { category: searchRegex },
         { subcategory: searchRegex },
         { tags: searchRegex },
-        { serialNumber: searchRegex },
       ];
     }
 
@@ -808,9 +862,10 @@ export class InventoryService {
 
       const plain = item.toObject();
       plain.valuation = this.decryptValuation(plain.valuation, tenantId);
+      const safePlain = this.decryptSensitiveFields(plain as Item, tenantId);
 
       return {
-        ...plain,
+        ...safePlain,
         propertyName,
         roomName,
         sectionPhoto,
@@ -919,6 +974,31 @@ export class InventoryService {
     return transform(this.crypto.decryptField(value as string, tenantId));
   }
 
+  private encryptSensitiveString(
+    value: string | undefined,
+    tenantId: string,
+  ): string | undefined {
+    if (value === undefined || value === '') return value;
+    if (this.crypto.isEncryptedField(value)) return value;
+    return this.crypto.encryptField(value, tenantId);
+  }
+
+  private decryptSensitiveFields<T extends object>(
+    item: T,
+    tenantId: string,
+  ): T {
+    const next: Record<string, unknown> = {
+      ...(item as Record<string, unknown>),
+    };
+    for (const field of ['serialNumber', 'locationDetail'] as const) {
+      const value = next[field];
+      if (this.crypto.isEncryptedField(value)) {
+        next[field] = this.crypto.decryptField(value as string, tenantId);
+      }
+    }
+    return next as T;
+  }
+
   private encryptValuation(
     valuation: ItemValuation | undefined,
     tenantId: string,
@@ -981,6 +1061,40 @@ export class InventoryService {
       throw new InternalServerErrorException(
         'Failed to decrypt item valuation',
       );
+    }
+  }
+
+  private async assertLocationBelongsToTenant(
+    tenantId: string,
+    propertyId: string,
+    roomId?: string | null,
+    sectionId?: string | null,
+  ): Promise<void> {
+    const property = await this.propertyModel
+      .findOne({ _id: propertyId, tenantId })
+      .select('_id floors')
+      .lean()
+      .exec();
+
+    if (!property) {
+      throw new BadRequestException('Invalid propertyId');
+    }
+
+    if (!roomId) return;
+
+    const room = (property.floors ?? [])
+      .flatMap((floor) => floor.rooms ?? [])
+      .find((candidate) => candidate.roomId === roomId);
+
+    if (!room) {
+      throw new BadRequestException('Invalid roomId');
+    }
+
+    if (
+      sectionId &&
+      !(room.sections ?? []).some((section) => section.sectionId === sectionId)
+    ) {
+      throw new BadRequestException('Invalid sectionId');
     }
   }
 

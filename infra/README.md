@@ -94,6 +94,7 @@ openssl rand -hex 64   # use for JWT_SECRET and JWT_REFRESH_SECRET
 
 # Encryption key
 openssl rand -hex 32   # use for ENCRYPTION_KEY
+openssl rand -hex 32   # use for ENCRYPTION_SALT
 ```
 
 ### Key variables
@@ -103,6 +104,7 @@ openssl rand -hex 32   # use for ENCRYPTION_KEY
 | `JWT_SECRET` | `openssl rand -hex 64` | Access token signing |
 | `JWT_REFRESH_SECRET` | `openssl rand -hex 64` | Refresh token signing |
 | `ENCRYPTION_KEY` | `openssl rand -hex 32` | AES-256 data encryption |
+| `ENCRYPTION_SALT` | `openssl rand -hex 32` | Mandatory KDF salt; rotate only with infra/re-encrypt-salt.js |
 | `MONGODB_URI` | MongoDB Atlas | Copy connection string from Atlas dashboard |
 | `DATABASE_URL` | Neon.tech | Include `?sslmode=require` at the end |
 | `REDIS_URL` | Upstash | Use `rediss://` (TLS) format |

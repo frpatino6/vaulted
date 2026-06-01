@@ -61,6 +61,7 @@ describe('AuthService', () => {
     expire: jest.fn(),
     smembers: jest.fn(),
     srem: jest.fn(),
+    eval: jest.fn(),
     pipeline: jest.fn(() => ({
       setex: jest.fn().mockReturnThis(),
       del: jest.fn().mockReturnThis(),
@@ -257,7 +258,7 @@ describe('AuthService', () => {
   });
 
   it('refresh() throws UnauthorizedException when token is blacklisted (replay attack)', async () => {
-    redisClient.get.mockResolvedValue('1');
+    redisClient.eval.mockResolvedValue(0);
     redisClient.smembers.mockResolvedValue([]);
 
     await expect(
@@ -302,7 +303,8 @@ describe('AuthService', () => {
   });
 
   it('refresh() throws UnauthorizedException when token is blacklisted (replay attack)', async () => {
-    redisClient.get.mockResolvedValue('1');
+    redisClient.eval.mockResolvedValue(0);
+    redisClient.smembers.mockResolvedValue([]);
 
     await expect(
       service.refresh(
@@ -324,8 +326,7 @@ describe('AuthService', () => {
   });
 
   it('refresh() rotates token and removes from active sessions', async () => {
-    redisClient.get.mockResolvedValue(null);
-    redisClient.smembers.mockResolvedValue(['rt-1']);
+    redisClient.eval.mockResolvedValue(1);
     usersService.findById.mockResolvedValue({
       id: 'user-1',
       tenantId: 'tenant-1',
@@ -346,12 +347,14 @@ describe('AuthService', () => {
       '127.0.0.1',
     );
 
-    expect(redisClient.setex).toHaveBeenCalledWith(
+    expect(redisClient.eval).toHaveBeenCalledWith(
+      expect.any(String),
+      2,
+      'sessions:user-1',
       'blacklist:refresh:rt-1',
+      'rt-1',
       7 * 24 * 60 * 60,
-      '1',
     );
-    expect(redisClient.srem).toHaveBeenCalledWith('sessions:user-1', 'rt-1');
     expect(result.accessToken).toBeDefined();
   });
 

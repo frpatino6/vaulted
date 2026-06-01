@@ -161,7 +161,7 @@ Creado `infra/re-encrypt-salt.js` — script Node.js standalone que re-cifra tod
 - **PostgreSQL:** `insurance_policies` (5 campos), `insured_items` (1 campo), `users.mfa_secret`
 - **MongoDB:** `items.valuation` (3 subcampos)
 
-> **Importante:** `ENCRYPTION_SALT` sigue usando el fallback `'vaulted-salt'` hasta que se configure explícitamente en `.env.prod`. Cambiar el salt requiere correr este script **antes** de redeployar la API para evitar que los datos existentes queden ilegibles.
+> **Importante:** `ENCRYPTION_SALT` ahora es obligatorio en todos los entornos que usen cifrado. Deploys históricos que dependían del fallback `'vaulted-salt'` deben correr este script **antes** de redeployar la API para evitar que los datos existentes queden ilegibles.
 
 ---
 
@@ -195,8 +195,47 @@ Auditoría ejecutada con `/cso --comprehensive` (modo exhaustivo, gate 2/10) sob
 | Área | Veredicto |
 |---|---|
 | TOTP replay attack | Tasa de 5/min hace inviable el brute-force; window de 90s limita la ventana de uso; sin acción |
-| Salt `'vaulted-salt'` hardcodeada | Intencional para backward compatibility (documentado en `.env.prod.example`); ENCRYPTION_KEY es el secreto real; sin acción |
+| Salt `'vaulted-salt'` hardcodeada | Reclasificado en auditoría posterior y corregido: `ENCRYPTION_SALT` es obligatorio, mínimo 32 caracteres, sin fallback en runtime |
 | Jailbreak detection / screenshot guard | En requirements del CLAUDE.md pero no implementado aún; pendiente pre-App Store |
+
+---
+
+
+## 11. Remediación auditoría Principal Security Engineer (Codex · 2026-06-01)
+
+### CRÍTICO
+
+| Hallazgo | Archivo | Fix aplicado |
+|---|---|---|
+| Rate limit global bypassable para usuarios autenticados: `AppThrottlerGuard.shouldSkip()` desactivaba throttling cuando había `Authorization: Bearer`, permitiendo abusar endpoints AI y mutaciones autenticadas sin límite efectivo | `apps/api/src/common/guards/throttler.guard.ts` | Eliminado el bypass por bearer token; el guard vuelve a delegar en `super.shouldSkip(context)` y aplica throttling también a sesiones autenticadas |
+
+### ALTOS
+
+| Hallazgo | Archivo | Fix aplicado |
+|---|---|---|
+| Manager podía administrar usuarios de tenant, listar usuarios y editar cuentas pese a que el rol Manager no debe poder modificar roles, staff ni datos de otros usuarios | `apps/api/src/modules/users/users.controller.ts` · `apps/api/src/modules/users/users.service.ts` | Endpoints de administración cambiados a `@Roles(Role.OWNER)` y `updateUser()` agrega check defensivo server-side contra actores no Owner |
+| Refresh token rotation tenía ventana TOCTOU entre blacklist y `SREM`, permitiendo doble consumo concurrente del mismo refresh token | `apps/api/src/modules/auth/auth.service.ts` | Consumo atómico con Redis Lua: verifica blacklist, verifica membresía en `sessions:<userId>`, remueve JTI y escribe blacklist en una sola operación; replay invalida todas las sesiones |
+| Certificate pinning móvil de release seguía usando `badCertificateCallback`, lo que solo se ejecuta para certificados inválidos y no valida certificados CA-válidos pero maliciosos | `apps/mobile/lib/core/network/api_client.dart` | Release usa `IOHttpClientAdapter.validateCertificate` y compara fingerprint SHA-256 DER contra `AppConfig.pinnedCertFingerprints`; debug conserva certificados locales |
+| AI chat filtraba valuaciones exactas y contexto sensible a roles no Owner | `apps/api/src/modules/ai/chat/ai-chat.controller.ts` · `apps/api/src/modules/ai/chat/ai-chat.service.ts` | `chat()` recibe rol; valuación y campos financieros se incluyen solo para Owner; respuestas a Manager/Staff omiten `valuation` |
+| AI vector search no respetaba scope por propiedad para Staff/roles restringidos | `apps/api/src/modules/ai/chat/ai-chat.service.ts` | `resolveAllowedPropertyIds()` limita resultados vectoriales a propiedades permitidas por `AccessControlService` antes de construir contexto para el modelo |
+| `GET /properties/:id/sections` validaba solo `tenantId`, no permisos por propiedad, permitiendo a Staff ver secciones de propiedades fuera de su scope | `apps/api/src/modules/properties/properties.controller.ts` · `apps/api/src/modules/properties/properties.service.ts` | `getSections()` recibe `role` y `userId`; consulta propiedades permitidas y devuelve `NotFoundException` si el usuario no tiene acceso |
+| Items podían crearse, moverse o actualizarse con `propertyId`/`roomId`/`sectionId` inexistentes o de otra estructura del tenant, rompiendo aislamiento lógico y habilitando referencias maliciosas | `apps/api/src/modules/inventory/inventory.service.ts` | Nuevo `assertLocationBelongsToTenant()` valida propiedad, cuarto y sección contra el documento `Property` antes de `create()`, `update()` y `move()` |
+| Audit log PostgreSQL dependía de disciplina de aplicación; un usuario DB con SQL directo podía ejecutar `UPDATE`, `DELETE` o `TRUNCATE` sobre `audit_logs` | `infra/postgres-init.sql` · `apps/api/src/migrations/enforce-audit-log-immutability.sql` | Triggers `BEFORE UPDATE/DELETE` bloquean mutaciones y se revocan privilegios `UPDATE`, `DELETE`, `TRUNCATE`; migración standalone para despliegues existentes |
+
+### MEDIOS
+
+| Hallazgo | Archivo | Fix aplicado |
+|---|---|---|
+| Metadata de auditoría de insurance registraba `coveredValue` exacto, filtrando valores financieros sensibles a logs operacionales | `apps/api/src/modules/insurance/insurance.service.ts` | Reemplazado por `coveredValueRange`, evitando guardar montos exactos en audit metadata |
+| `ENCRYPTION_SALT` tenía fallback determinístico (`vaulted-salt`), debilitando separación criptográfica entre entornos y tenants si faltaba configuración | `apps/api/src/common/services/crypto.service.ts` · `.env.example` · `.env.prod.example` · `docker-compose.prod.yml` · `start-prod.sh` · `infra/README.md` | `ENCRYPTION_SALT` ahora es obligatorio con `getOrThrow`, mínimo 32 caracteres, se valida antes de deploy y se documenta generación segura |
+| Mobile refresh rotation no persistía el nuevo refresh token en almacenamiento seguro cuando el backend rotaba cookies, provocando sesiones stale y riesgo de comportamiento inconsistente entre web/native | `apps/mobile/lib/core/network/api_client.dart` | `_doRefresh()` parsea `Set-Cookie` en native y guarda el refresh token rotado en `flutter_secure_storage` |
+| Bulk add sections aceptaba arrays sin límite ni DTO explícito, permitiendo payloads grandes y validación incompleta | `apps/api/src/modules/properties/dto/add-sections.dto.ts` · `apps/api/src/modules/properties/properties.controller.ts` | Nuevo `AddSectionsDto` con `@IsArray`, `@ArrayMaxSize(100)`, `@ValidateNested({ each: true })` y `@Type(() => AddSectionDto)` |
+
+### BAJO
+
+| Hallazgo | Archivo | Fix aplicado |
+|---|---|---|
+| Pantalla de login móvil contenía credenciales de prueba hardcodeadas (`owner@test.com` / `Test1234!Secure`) visibles en builds | `apps/mobile/lib/features/auth/presentation/login_screen.dart` | Controladores inicializan vacíos; no quedan credenciales embebidas en UI |
 
 ---
 
@@ -210,10 +249,10 @@ Auditoría ejecutada con `/cso --comprehensive` (modo exhaustivo, gate 2/10) sob
 | R-4 | ObjectId validation pipe | Queries MongoDB mantienen `tenantId`; se recomienda pipe global de ObjectId para validación uniforme | Media |
 | R-5 | Media histórica pre-fix | Registros anteriores con URLs `/uploads` se normalizan; acceso público directo ya no existe. Validar migración si hay datos activos | Media |
 | R-6 | Firebase deploy CI | `web/firebase-config.js` debe generarse desde secretos CI antes de publicar | Alta (ops) |
-| R-7 | Envelope encryption con KMS | HKDF-SHA-256 actual es criptográficamente sólido para MVP; migrar a GCP KMS post-MVP | Post-MVP |
+| R-7 | Envelope encryption con KMS | HKDF-SHA-256 con `ENCRYPTION_KEY` + `ENCRYPTION_SALT` obligatorio es aceptable para MVP; migrar a GCP KMS envelope encryption post-MVP | Post-MVP |
 | R-8 | Prompt injection sandbox completo | Fix actual mitiga inyecciones obvias; evaluación de output por el modelo pendiente para mayor robustez | Baja |
 | R-9 | Audit log TODOs | Entradas pendientes en `properties.service.ts`, `users.service.ts`, `media.service.ts` | Baja |
-| R-10 | Rotación de cert pinning | El fingerprint en `AppConfig.pinnedCertFingerprints` corresponde al cert actual de Let's Encrypt (TTL ~90 días via Caddy). Antes de cada renovación: agregar el nuevo fingerprint, publicar release, luego remover el viejo. Ver procedimiento en CLAUDE.md | Alta (ops) |
+| R-10 | Rotación de cert pinning | Pinning release ya valida certificados CA-válidos; queda pendiente el proceso operativo de rotación de fingerprints antes de renovaciones TLS | Alta (ops) |
 | R-11 | Jailbreak detection / screenshot guard | Listados en Security Requirements del CLAUDE.md pero no implementados en Flutter. Necesarios antes de App Store / Google Play | Media |
 
 ---
@@ -378,19 +417,23 @@ Código HTTP `000` en los resultados = Cloudflare/WAF bloqueó la conexión ante
 | `npm test -- media.service.spec.ts auth.service.spec.ts inventory.service.spec.ts --runInBand` | Codex | OK |
 | `npm audit` (apps/api) | Claude | 0 críticos, 0 altos, 8 moderados residuales (Firebase/GCP transitivos) |
 | Validación de balanceo de llaves TypeScript en todos los archivos modificados | Claude | OK |
-| `flutter analyze` / `dart format` | Codex | No ejecutable en contenedor (falta `flutter` en PATH) |
+| `flutter analyze` completo | Codex | No ejecutado; se validaron con `dart analyze` los archivos Flutter modificados |
+| `npm test -- auth.service.spec.ts inventory.service.spec.ts users.service.spec.ts crypto.service.spec.ts --runInBand` | Codex | OK (35 tests) |
+| `npm test -- ai-chat.service.spec.ts --runInBand` | Codex | OK (1 test) |
+| `dart format lib/core/network/api_client.dart lib/features/auth/presentation/login_screen.dart` | Codex | OK |
+| `dart analyze lib/core/network/api_client.dart lib/features/auth/presentation/login_screen.dart` | Codex | OK, no issues found |
 
 ---
 
 ## Resumen ejecutivo
 
-En total se identificaron y corrigieron **50 vulnerabilidades y bugs de seguridad** distribuidos así:
+En total se identificaron y corrigieron **56 vulnerabilidades y bugs de seguridad** distribuidos así:
 
 | Severidad | Encontradas | Corregidas | Residuales |
 |---|---|---|---|
-| Críticas | 4 | 4 | 0 |
-| Altas | 15 | 15 | 0 |
-| Medias | 18 | 17 | 1 (email verify — decisión de producto) |
+| Críticas | 5 | 5 | 0 |
+| Altas | 17 | 17 | 0 |
+| Medias | 21 | 20 | 1 (email verify — decisión de producto) |
 | Bajas | 5 | 5 | 0 |
 | Bugs de scripting/pentest | 8 | 8 | 0 |
 | Moderadas (CVE deps) | 8 | 0 | 8 (Firebase/GCP transitivos) |

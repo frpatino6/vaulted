@@ -301,7 +301,11 @@ export class InsuranceService {
       action: 'insurance.item.attach',
       entityType: 'insured_item',
       entityId: saved.id,
-      metadata: { policyId, itemId: dto.itemId, coveredValue: dto.coveredValue },
+      metadata: {
+        policyId,
+        itemId: dto.itemId,
+        coveredValueRange: toValueRange(dto.coveredValue),
+      },
     });
 
     return this.decryptInsuredItemFields(saved, tenantId);

@@ -20,31 +20,33 @@ class ApiClient {
     VoidCallback? onAuthFailure,
     VoidCallback? onMfaRequired,
     void Function(String newToken)? onTokenRefreshed,
-  })  : _secureStorage = secureStorage,
-        _tokenStore = tokenStore,
-        _onAuthFailure = onAuthFailure,
-        _onMfaRequired = onMfaRequired,
-        _dio = Dio(
-          BaseOptions(
-            baseUrl: AppConfig.apiBaseUrl,
-            connectTimeout: const Duration(seconds: 30),
-            receiveTimeout: const Duration(seconds: 30),
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-            },
-          ),
-        ) {
+  }) : _secureStorage = secureStorage,
+       _tokenStore = tokenStore,
+       _onAuthFailure = onAuthFailure,
+       _onMfaRequired = onMfaRequired,
+       _dio = Dio(
+         BaseOptions(
+           baseUrl: AppConfig.apiBaseUrl,
+           connectTimeout: const Duration(seconds: 30),
+           receiveTimeout: const Duration(seconds: 30),
+           headers: {
+             'Content-Type': 'application/json',
+             'Accept': 'application/json',
+           },
+         ),
+       ) {
     applyWebCredentials(_dio);
     _applyCertificatePinning(_dio);
-    _dio.interceptors.add(_AuthInterceptor(
-      dio: _dio,
-      secureStorage: _secureStorage,
-      tokenStore: _tokenStore,
-      onAuthFailure: _onAuthFailure,
-      onMfaRequired: _onMfaRequired,
-      onTokenRefreshed: onTokenRefreshed,
-    ));
+    _dio.interceptors.add(
+      _AuthInterceptor(
+        dio: _dio,
+        secureStorage: _secureStorage,
+        tokenStore: _tokenStore,
+        onAuthFailure: _onAuthFailure,
+        onMfaRequired: _onMfaRequired,
+        onTokenRefreshed: onTokenRefreshed,
+      ),
+    );
   }
 
   final SecureStorage _secureStorage;
@@ -56,19 +58,26 @@ class ApiClient {
   Dio get dio => _dio;
 
   /// Enforces certificate pinning on native platforms (iOS/Android).
-  /// Web is skipped — browsers manage TLS trust natively.
-  /// Debug builds allow all certs to avoid issues with local dev proxies.
+  /// Web is skipped because browsers own TLS validation. Debug builds allow
+  /// local development certificates; release builds validate every trusted
+  /// server certificate against the configured SHA-256 DER fingerprints.
   static void _applyCertificatePinning(Dio dio) {
     if (kIsWeb) return;
-    (dio.httpClientAdapter as IOHttpClientAdapter).createHttpClient = () {
-      final client = HttpClient();
-      client.badCertificateCallback =
-          (X509Certificate cert, String host, int port) {
-        if (kDebugMode) return true;
-        final fingerprint = sha256.convert(cert.der).toString();
-        return AppConfig.pinnedCertFingerprints.contains(fingerprint);
+    final adapter = dio.httpClientAdapter as IOHttpClientAdapter;
+
+    if (kDebugMode) {
+      adapter.createHttpClient = () {
+        final client = HttpClient();
+        client.badCertificateCallback = (cert, host, port) => true;
+        return client;
       };
-      return client;
+      return;
+    }
+
+    adapter.validateCertificate = (cert, host, port) {
+      if (cert == null) return false;
+      final fingerprint = sha256.convert(cert.der).toString();
+      return AppConfig.pinnedCertFingerprints.contains(fingerprint);
     };
   }
 }
@@ -81,12 +90,12 @@ class _AuthInterceptor extends Interceptor {
     VoidCallback? onAuthFailure,
     VoidCallback? onMfaRequired,
     void Function(String newToken)? onTokenRefreshed,
-  })  : _dio = dio,
-        _secureStorage = secureStorage,
-        _tokenStore = tokenStore,
-        _onAuthFailure = onAuthFailure,
-        _onMfaRequired = onMfaRequired,
-        _onTokenRefreshed = onTokenRefreshed;
+  }) : _dio = dio,
+       _secureStorage = secureStorage,
+       _tokenStore = tokenStore,
+       _onAuthFailure = onAuthFailure,
+       _onMfaRequired = onMfaRequired,
+       _onTokenRefreshed = onTokenRefreshed;
 
   final Dio _dio;
   final SecureStorage _secureStorage;
@@ -96,7 +105,8 @@ class _AuthInterceptor extends Interceptor {
   final void Function(String newToken)? _onTokenRefreshed;
 
   Future<String?>? _refreshFuture;
-  final List<({RequestOptions options, ErrorInterceptorHandler handler})> _pending = [];
+  final List<({RequestOptions options, ErrorInterceptorHandler handler})>
+  _pending = [];
 
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
@@ -108,7 +118,10 @@ class _AuthInterceptor extends Interceptor {
   }
 
   @override
-  Future<void> onError(DioException err, ErrorInterceptorHandler handler) async {
+  Future<void> onError(
+    DioException err,
+    ErrorInterceptorHandler handler,
+  ) async {
     final status = err.response?.statusCode;
     final body = err.response?.data;
 
@@ -190,6 +203,15 @@ class _AuthInterceptor extends Interceptor {
         final inner = data['data'];
         if (inner is Map<String, dynamic> && inner['accessToken'] != null) {
           final accessToken = inner['accessToken'] as String;
+          if (!kIsWeb) {
+            final setCookie =
+                response.headers.value('set-cookie') ??
+                response.headers.value('Set-Cookie');
+            final rotatedRefreshToken = _parseRefreshToken(setCookie);
+            if (rotatedRefreshToken != null && rotatedRefreshToken.isNotEmpty) {
+              await _secureStorage.saveRefreshToken(rotatedRefreshToken);
+            }
+          }
           _tokenStore.setToken(accessToken);
           _onTokenRefreshed?.call(accessToken);
           return accessToken;
@@ -201,23 +223,44 @@ class _AuthInterceptor extends Interceptor {
     return null;
   }
 
+  static String? _parseRefreshToken(String? setCookie) {
+    if (setCookie == null || setCookie.isEmpty) return null;
+    const prefix = 'refresh_token=';
+    final start = setCookie.indexOf(prefix);
+    if (start == -1) return null;
+    final valueStart = start + prefix.length;
+    final end = setCookie.indexOf(';', valueStart);
+    return end == -1
+        ? setCookie.substring(valueStart).trim()
+        : setCookie.substring(valueStart, end).trim();
+  }
+
   void _processPending(String? newToken) {
     for (final p in List.of(_pending)) {
       if (newToken != null) {
         p.options.headers['Authorization'] = 'Bearer $newToken';
         p.options.extra['_refreshed'] = true;
-        _dio.fetch(p.options).then(
-          (r) => p.handler.resolve(r),
-          onError: (e) {
-            if (e is DioException) {
-              p.handler.next(e);
-            } else {
-              p.handler.next(DioException(requestOptions: p.options, error: e));
-            }
-          },
-        );
+        _dio
+            .fetch(p.options)
+            .then(
+              (r) => p.handler.resolve(r),
+              onError: (e) {
+                if (e is DioException) {
+                  p.handler.next(e);
+                } else {
+                  p.handler.next(
+                    DioException(requestOptions: p.options, error: e),
+                  );
+                }
+              },
+            );
       } else {
-        p.handler.next(DioException(requestOptions: p.options, type: DioExceptionType.unknown));
+        p.handler.next(
+          DioException(
+            requestOptions: p.options,
+            type: DioExceptionType.unknown,
+          ),
+        );
       }
     }
     _pending.clear();
@@ -231,8 +274,12 @@ class _AuthInterceptor extends Interceptor {
 
   static bool _isMfaRequiredMessage(dynamic body) {
     if (body is! Map) return false;
-    final msg = body['error'] is Map ? (body['error'] as Map)['message'] : body['message'];
+    final msg =
+        body['error'] is Map
+            ? (body['error'] as Map)['message']
+            : body['message'];
     final s = msg?.toString().toLowerCase() ?? '';
-    return s.contains('mfa') && (s.contains('verification') || s.contains('required'));
+    return s.contains('mfa') &&
+        (s.contains('verification') || s.contains('required'));
   }
 }

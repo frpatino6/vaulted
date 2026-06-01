@@ -7,9 +7,11 @@ import { Property, PropertySchema } from '../../properties/schemas/property.sche
 import { MediaModule } from '../../media/media.module';
 import { AiChatService } from './ai-chat.service';
 import { AiChatController } from './ai-chat.controller';
+import { CommonModule } from '../../../common/common.module';
 
 @Module({
   imports: [
+    CommonModule,
     MongooseModule.forFeature([
       { name: Item.name, schema: ItemSchema },
       { name: Property.name, schema: PropertySchema },

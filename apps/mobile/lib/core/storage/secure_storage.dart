@@ -4,12 +4,14 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 /// Access token is NOT stored here — it lives only in memory (AuthTokenStore).
 class SecureStorage {
   SecureStorage({FlutterSecureStorage? storage})
-      : _storage = storage ?? const FlutterSecureStorage(
-          aOptions: AndroidOptions(encryptedSharedPreferences: true),
-          iOptions: IOSOptions(
-            accessibility: KeychainAccessibility.first_unlock_this_device,
-          ),
-        );
+    : _storage =
+          storage ??
+          const FlutterSecureStorage(
+            aOptions: AndroidOptions(encryptedSharedPreferences: true),
+            iOptions: IOSOptions(
+              accessibility: KeychainAccessibility.unlocked_this_device,
+            ),
+          );
 
   static const _refreshTokenKey = 'refresh_token';
 

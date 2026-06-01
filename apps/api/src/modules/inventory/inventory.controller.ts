@@ -253,6 +253,11 @@ export class InventoryController {
   @ApiBearerAuth()
   @ApiResponse({ status: 200, description: 'History retrieved successfully' })
   getHistory(@CurrentUser() user: JwtPayload, @Param('id') itemId: string) {
-    return this.inventoryService.getHistory(user.tenantId, itemId);
+    return this.inventoryService.getHistory(
+      user.tenantId,
+      itemId,
+      user.role,
+      user.sub,
+    );
   }
 }

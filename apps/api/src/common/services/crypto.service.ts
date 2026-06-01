@@ -14,7 +14,10 @@ export class CryptoService {
 
   constructor(config: ConfigService) {
     const secret = config.getOrThrow<string>('ENCRYPTION_KEY');
-    const salt = config.get<string>('ENCRYPTION_SALT') || 'vaulted-salt';
+    const salt = config.getOrThrow<string>('ENCRYPTION_SALT');
+    if (salt.length < 32) {
+      throw new Error('ENCRYPTION_SALT must be at least 32 characters');
+    }
     this.key = crypto.scryptSync(secret, salt, 32);
   }
 

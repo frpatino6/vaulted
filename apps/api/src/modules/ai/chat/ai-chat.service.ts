@@ -13,6 +13,8 @@ import { ChatRequestDto } from './dto/chat-request.dto';
 import { Item, ItemDocument } from '../../inventory/schemas/item.schema';
 import { Property, PropertyDocument } from '../../properties/schemas/property.schema';
 import { MediaService } from '../../media/media.service';
+import { Role } from '../../../common/enums/role.enum';
+import { AccessControlService } from '../../../common/services/access-control.service';
 
 const SYSTEM_PROMPT = `You are Vaulted, a premium AI assistant for high-net-worth family inventory management.
 You help owners find items, get valuations, and manage their collections across multiple properties.
@@ -93,20 +95,40 @@ export class AiChatService {
     private readonly costLogger: AiCostLoggerService,
     private readonly config: ConfigService,
     private readonly mediaService: MediaService,
+    private readonly accessControl: AccessControlService,
   ) {
     this.rateLimit = config.get<number>('AI_CHAT_RATE_LIMIT_PER_MINUTE') ?? 20;
     this.appUrl = config.get<string>('APP_URL') ?? '';
   }
 
-  async chat(tenantId: string, userId: string, dto: ChatRequestDto): Promise<ChatResponse> {
+  async chat(
+    tenantId: string,
+    userId: string,
+    role: Role,
+    dto: ChatRequestDto,
+  ): Promise<ChatResponse> {
     await this.enforceRateLimit(tenantId, userId);
 
     const sessionId = dto.sessionId ?? uuidv4();
     const history = await this.getSessionHistory(sessionId, tenantId, userId);
 
     const safeQuery = sanitizeUserQuery(dto.query);
+    const canSeeValuation = role === Role.OWNER;
+    const allowedPropertyIds = await this.resolveAllowedPropertyIds(
+      userId,
+      role,
+      dto.propertyId,
+    );
+    if (allowedPropertyIds !== null && allowedPropertyIds.length === 0) {
+      return { answer: 'No matching inventory items were found.', items: [], sessionId, sources: [] };
+    }
+
     const queryEmbedding = await this.embeddingService.generateEmbedding(safeQuery);
-    const vectorRows = await this.vectorSearch(tenantId, queryEmbedding, dto.propertyId);
+    const vectorRows = await this.vectorSearch(
+      tenantId,
+      queryEmbedding,
+      allowedPropertyIds,
+    );
     const itemIds = vectorRows.map((r) => r.item_id);
     const scoreMap = new Map(vectorRows.map((r) => [r.item_id, r.score]));
 
@@ -116,17 +138,18 @@ export class AiChatService {
       .map((item) => {
         const val = item.valuation;
         const valuePart =
-          val?.currentValue ? ` | value: ${val.currentValue} ${(val.currency as string | undefined) ?? 'USD'}` : '';
+          canSeeValuation && val?.currentValue
+            ? ` | value: ${val.currentValue} ${(val.currency as string | undefined) ?? 'USD'}`
+            : '';
         const name = sanitizeContextValue(String(item.name));
         const category = sanitizeContextValue(String(item.category));
         const subcategory = item.subcategory ? '/' + sanitizeContextValue(String(item.subcategory)) : '';
         const propName = sanitizeContextValue(item.propertyName ?? 'unknown');
         const roomName = sanitizeContextValue(item.roomName ?? 'unknown room');
-        const locationDetail = item.locationDetail ? ' → ' + sanitizeContextValue(String(item.locationDetail)) : '';
         return (
           `- ${name} (${category}${subcategory})` +
           ` | status: ${item.status}` +
-          ` | location: ${propName} → ${roomName}${locationDetail}` +
+          ` | location: ${propName} → ${roomName}` +
           valuePart
         );
       })
@@ -168,7 +191,7 @@ export class AiChatService {
         roomName: item.roomName,
         photos: ((item.photos as string[] | undefined) ?? []).map(signUrl),
         valuation:
-          item.valuation?.currentValue
+          canSeeValuation && item.valuation?.currentValue
             ? {
                 currentValue: item.valuation.currentValue as number,
                 currency: (item.valuation.currency as string | undefined) ?? 'USD',
@@ -219,7 +242,7 @@ export class AiChatService {
   private async vectorSearch(
     tenantId: string,
     embedding: number[],
-    propertyId?: string,
+    allowedPropertyIds: string[] | null,
   ): Promise<Array<{ item_id: string; score: number }>> {
     const vector = `[${embedding.join(',')}]`;
     const rows = await this.dataSource.query<Array<{ item_id: string; score: string }>>(
@@ -227,22 +250,41 @@ export class AiChatService {
        FROM item_embeddings
        WHERE tenant_id = $2
        ORDER BY embedding <=> $1::vector
-       LIMIT 20`,
+       LIMIT 100`,
       [vector, tenantId],
     );
 
-    // propertyId filter applied post-query to avoid JOIN complexity
-    if (!propertyId) return rows.map((r) => ({ item_id: r.item_id, score: Number(r.score) }));
+    if (allowedPropertyIds === null) {
+      return rows.slice(0, 20).map((r) => ({ item_id: r.item_id, score: Number(r.score) }));
+    }
 
-    const propertyItems = await this.itemModel
-      .find({ propertyId, tenantId, status: { $ne: 'disposed' } })
+    if (allowedPropertyIds.length === 0) return [];
+
+    const scopedItems = await this.itemModel
+      .find({ propertyId: { $in: allowedPropertyIds }, tenantId, status: { $ne: 'disposed' } })
       .select('_id')
       .lean()
       .exec();
-    const allowed = new Set(propertyItems.map((i) => String(i._id)));
+    const allowed = new Set(scopedItems.map((i) => String(i._id)));
     return rows
       .filter((r) => allowed.has(r.item_id))
+      .slice(0, 20)
       .map((r) => ({ item_id: r.item_id, score: Number(r.score) }));
+  }
+
+  private async resolveAllowedPropertyIds(
+    userId: string,
+    role: Role,
+    requestedPropertyId?: string,
+  ): Promise<string[] | null> {
+    const allowed = await this.accessControl.getAllowedPropertyIds(userId, role);
+    if (allowed === null) {
+      return requestedPropertyId ? [requestedPropertyId] : null;
+    }
+    if (requestedPropertyId) {
+      return allowed.includes(requestedPropertyId) ? [requestedPropertyId] : [];
+    }
+    return allowed;
   }
 
   private async fetchItemsWithLocation(

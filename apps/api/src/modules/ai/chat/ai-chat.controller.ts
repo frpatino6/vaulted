@@ -21,7 +21,7 @@ export class AiChatController {
     @CurrentUser() user: JwtPayload,
     @Body() dto: ChatRequestDto,
   ): Promise<ChatResponse> {
-    return this.aiChatService.chat(user.tenantId, user.sub, dto);
+    return this.aiChatService.chat(user.tenantId, user.sub, user.role, dto);
   }
 
   @Post('reindex')

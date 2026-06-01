@@ -17,6 +17,7 @@ import { AuditService } from '../audit/audit.service';
 import { AddFloorDto } from './dto/add-floor.dto';
 import { AddRoomDto } from './dto/add-room.dto';
 import { AddSectionDto } from './dto/add-section.dto';
+import { AddSectionsDto } from './dto/add-sections.dto';
 import { UpdateSectionDto } from './dto/update-section.dto';
 import { CreatePropertyDto } from './dto/create-property.dto';
 import { UpdatePropertyDto } from './dto/update-property.dto';
@@ -290,7 +291,14 @@ export class PropertiesController {
     @Param('floorId') floorId: string,
     @Param('roomId') roomId: string,
   ) {
-    return this.propertiesService.getSections(user.tenantId, propertyId, floorId, roomId);
+    return this.propertiesService.getSections(
+      user.tenantId,
+      propertyId,
+      floorId,
+      roomId,
+      user.role,
+      user.sub,
+    );
   }
 
   @Roles(Role.OWNER, Role.MANAGER)
@@ -331,7 +339,7 @@ export class PropertiesController {
     @Param('id') propertyId: string,
     @Param('floorId') floorId: string,
     @Param('roomId') roomId: string,
-    @Body() body: { sections: AddSectionDto[] },
+    @Body() body: AddSectionsDto,
   ) {
     const property = await this.propertiesService.addSections(
       user.tenantId, propertyId, floorId, roomId, body.sections,
