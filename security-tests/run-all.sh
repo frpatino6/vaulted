@@ -8,6 +8,10 @@ set -euo pipefail
 API="https://api-vaulted.casacam.net/api"
 EMAIL="owner@test.com"
 PASSWORD="Test1234!Secure"
+# MFA_SECRET: base32 TOTP secret for the test account.
+# Set via: MFA_SECRET=XXXX bash run-all.sh
+# Leave empty to skip endpoints that require mfaVerified=true.
+MFA_SECRET="${MFA_SECRET:-}"
 
 PASS=0; FAIL=0; WARN=0
 LOG="pentest-$(date +%Y%m%d-%H%M%S).log"
@@ -23,11 +27,11 @@ check() {
   if [[ "$actual" == *"$expected"* ]]; then
     _green "PASS | $name"
     echo "PASS | $name | expected=$expected actual=$actual" >> "$LOG"
-    ((PASS++))
+    PASS=$((PASS+1))
   else
     _red   "FAIL | $name"
     echo "FAIL | $name | expected=$expected actual=$actual $detail" >> "$LOG"
-    ((FAIL++))
+    FAIL=$((FAIL+1))
   fi
 }
 
@@ -36,11 +40,11 @@ warn_if_present() {
   if [[ "$actual" == *"$unwanted"* ]]; then
     _warn  "WARN | $name — found: $unwanted"
     echo "WARN | $name | $unwanted present" >> "$LOG"
-    ((WARN++))
+    WARN=$((WARN+1))
   else
     _green "PASS | $name"
     echo "PASS | $name" >> "$LOG"
-    ((PASS++))
+    PASS=$((PASS+1))
   fi
 }
 
@@ -58,7 +62,37 @@ if [[ -z "$TOKEN" ]]; then
   _red "Could not obtain token — check credentials or API availability"
   exit 1
 fi
-_green "Token obtained (${#TOKEN} chars)"
+MFA_REQ_SETUP=$(echo "$LOGIN" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('data',{}).get('mfaRequired',False))" 2>/dev/null || echo "False")
+if [[ "$MFA_REQ_SETUP" == "True" || "$MFA_REQ_SETUP" == "true" ]]; then
+  if [[ -n "$MFA_SECRET" ]]; then
+    MFA_CODE=$(python3 -c "
+import hmac, hashlib, struct, time, base64
+key = base64.b32decode('${MFA_SECRET}'.upper().replace(' ',''))
+msg = struct.pack('>Q', int(time.time()) // 30)
+h = hmac.new(key, msg, hashlib.sha1).digest()
+o = h[-1] & 0xf
+print(str((struct.unpack('>I', h[o:o+4])[0] & 0x7fffffff) % 1000000).zfill(6))
+" 2>/dev/null || echo "")
+    MFA_RESP=$(curl -s -X POST "$API/auth/mfa/verify" \
+      -H "Content-Type: application/json" \
+      -H "Authorization: Bearer $TOKEN" \
+      -b /tmp/vaulted-cookies.txt \
+      -c /tmp/vaulted-cookies.txt \
+      -d "{\"code\":\"$MFA_CODE\"}")
+    MFA_TOKEN=$(echo "$MFA_RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('data',{}).get('accessToken',''))" 2>/dev/null || echo "")
+    if [[ -n "$MFA_TOKEN" ]]; then
+      TOKEN="$MFA_TOKEN"
+      _green "MFA verified — full token obtained (${#TOKEN} chars)"
+    else
+      _warn "MFA verify failed — running with pre-MFA token (endpoints requiring mfaVerified=true will return 403)"
+    fi
+  else
+    _warn "MFA required but MFA_SECRET not set. Run with: MFA_SECRET=YOUR_BASE32_SECRET bash run-all.sh"
+    _warn "Using pre-MFA token — endpoints requiring mfaVerified=true will return 403 (not a bug)"
+  fi
+else
+  _green "Token obtained (${#TOKEN} chars)"
+fi
 
 # ── PHASE 1: SECURITY HEADERS ───────────────────────────────
 _section "Phase 1 — Security Headers"
@@ -331,15 +365,15 @@ ACAO=$(echo "$R" | grep -i "access-control-allow-origin" | tr -d '\r' || echo ""
 if [[ -z "$ACAO" ]]; then
   _green "PASS | Unauthorized origin gets no ACAO header"
   echo "PASS | CORS blocked evil origin" >> "$LOG"
-  ((PASS++))
+  PASS=$((PASS+1))
 elif [[ "$ACAO" == *"evil-attacker.com"* ]]; then
   _red   "FAIL | CORS allows evil-attacker.com"
   echo "FAIL | CORS | $ACAO" >> "$LOG"
-  ((FAIL++))
+  FAIL=$((FAIL+1))
 else
   _green "PASS | CORS did not reflect evil origin"
   echo "PASS | CORS" >> "$LOG"
-  ((PASS++))
+  PASS=$((PASS+1))
 fi
 
 # 6.2 Request from authorized origin
@@ -386,11 +420,11 @@ R=$(curl -s -o /dev/null -w "%{http_code}" "https://api-vaulted.casacam.net/api-
 if [[ "$R" == "200" ]]; then
   _warn "WARN | Swagger UI is publicly accessible at /api-docs (consider restricting in production)"
   echo "WARN | Swagger public at /api-docs" >> "$LOG"
-  ((WARN++))
+  WARN=$((WARN+1))
 else
   _green "PASS | Swagger not accessible (or restricted)"
   echo "PASS | Swagger restricted" >> "$LOG"
-  ((PASS++))
+  PASS=$((PASS+1))
 fi
 
 # ── PHASE 9: TLS / HTTP SECURITY ────────────────────────────
@@ -401,15 +435,15 @@ R=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 http://api-vaulted.casac
 if [[ "$R" == "301" ]] || [[ "$R" == "302" ]] || [[ "$R" == "308" ]]; then
   _green "PASS | HTTP redirects to HTTPS ($R)"
   echo "PASS | HTTP→HTTPS redirect" >> "$LOG"
-  ((PASS++))
+  PASS=$((PASS+1))
 elif [[ "$R" == "000" ]]; then
   _green "PASS | HTTP port not open (connection refused)"
   echo "PASS | HTTP port closed" >> "$LOG"
-  ((PASS++))
+  PASS=$((PASS+1))
 else
   _warn "WARN | HTTP returns $R (expected redirect)"
   echo "WARN | HTTP no redirect: $R" >> "$LOG"
-  ((WARN++))
+  WARN=$((WARN+1))
 fi
 
 # 9.2 TLS version via curl
@@ -417,11 +451,11 @@ TLS_INFO=$(curl -sv --tlsv1.0 --tls-max 1.0 "$API/health" 2>&1 || true)
 if echo "$TLS_INFO" | grep -q "SSL connection\|TLSv1.0"; then
   _red "FAIL | TLS 1.0 accepted"
   echo "FAIL | TLS 1.0 accepted" >> "$LOG"
-  ((FAIL++))
+  FAIL=$((FAIL+1))
 else
   _green "PASS | TLS 1.0 not accepted"
   echo "PASS | TLS 1.0 rejected" >> "$LOG"
-  ((PASS++))
+  PASS=$((PASS+1))
 fi
 
 # 9.3 Verify HSTS
@@ -433,11 +467,11 @@ TLS11=$(curl -sv --tlsv1.1 --tls-max 1.1 "$API/health" 2>&1 || true)
 if echo "$TLS11" | grep -q "SSL connection\|TLSv1.1"; then
   _red "FAIL | TLS 1.1 accepted"
   echo "FAIL | TLS 1.1 accepted" >> "$LOG"
-  ((FAIL++))
+  FAIL=$((FAIL+1))
 else
   _green "PASS | TLS 1.1 not accepted"
   echo "PASS | TLS 1.1 rejected" >> "$LOG"
-  ((PASS++))
+  PASS=$((PASS+1))
 fi
 
 # 9.5 TLS cipher check (testssl.sh if available)
@@ -494,7 +528,7 @@ if command -v nmap &>/dev/null; then
   if echo "$NMAP_OUT" | grep -q "443/tcp open"; then
     _green "PASS | Port 443 (HTTPS) is open"
     echo "PASS | Port 443 open" >> "$LOG"
-    ((PASS++))
+    PASS=$((PASS+1))
   fi
   echo "INFO | nmap output:" >> "$LOG"
   echo "$NMAP_OUT" >> "$LOG"
@@ -516,11 +550,11 @@ for path in ".env" ".env.prod" "package.json" "docker-compose.prod.yml"; do
   if [[ "$R" == "200" ]]; then
     _red "FAIL | Sensitive file accessible: /$path ($R)"
     echo "FAIL | Sensitive file exposed: /$path" >> "$LOG"
-    ((FAIL++))
+    FAIL=$((FAIL+1))
   else
     _green "PASS | $path not exposed ($R)"
     echo "PASS | $path not exposed" >> "$LOG"
-    ((PASS++))
+    PASS=$((PASS+1))
   fi
 done
 
