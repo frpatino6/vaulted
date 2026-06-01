@@ -1,0 +1,12 @@
+{
+  "name": "vaulted-security-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Vaulted pentest scripts",
+  "scripts": {
+    "ws": "node websocket-tests.js"
+  },
+  "dependencies": {
+    "socket.io-client": "^4.7.5"
+  }
+}
