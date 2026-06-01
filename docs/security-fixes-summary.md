@@ -195,14 +195,14 @@ Creado `infra/re-encrypt-salt.js` — script Node.js standalone que re-cifra tod
 
 ## Resumen ejecutivo
 
-En total se identificaron y corrigieron **31 vulnerabilidades** distribuidas así:
+En total se identificaron y corrigieron **36 vulnerabilidades** distribuidas así:
 
 | Severidad | Encontradas | Corregidas | Residuales |
 |---|---|---|---|
 | Críticas | 3 | 3 | 0 |
-| Altas | 10 | 10 | 0 |
-| Medias | 14 | 13 | 1 (email verify — decisión de producto) |
-| Bajas | 7 | 7 | 0 |
+| Altas | 13 | 13 | 0 |
+| Medias | 15 | 14 | 1 (email verify — decisión de producto) |
+| Bajas | 5 | 5 | 0 |
 | Moderadas (CVE deps) | 8 | 0 | 8 (Firebase/GCP transitivos) |
 
 Los scripts de pentesting en `security-tests/` están listos para validar empíricamente todos los controles implementados. Los resultados de esas pruebas alimentarán el informe final orientado a cliente.
