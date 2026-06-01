@@ -106,7 +106,7 @@ class _MfaScreenState extends ConsumerState<MfaScreen> {
                 maxLength: 6,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 textAlign: TextAlign.center,
-                enableInteractiveSelection: false,
+                enableInteractiveSelection: true,
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       letterSpacing: 8,
                       fontSize: 32,
