@@ -21,9 +21,15 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
+RUN addgroup -S vaulted && adduser -S vaulted -G vaulted
+
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY package*.json ./
+
+RUN mkdir -p /app/uploads && chown -R vaulted:vaulted /app
+
+USER vaulted
 
 EXPOSE 3000
 

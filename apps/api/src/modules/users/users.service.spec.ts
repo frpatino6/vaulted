@@ -114,7 +114,7 @@ userRepository = {
     userRepository.update.mockResolvedValue({});
     userRepository.findOne.mockResolvedValue({ id: 'user-target', tenantId: 'tenant-1', email: 'test@vaulted.com', role: Role.STAFF });
 
-    const result = await service.updateUser('tenant-1', 'user-manager', 'user-target', { role: Role.MANAGER });
+    const result = await service.updateUser('tenant-1', 'user-manager', Role.MANAGER, 'user-target', { role: Role.MANAGER });
 
     expect(result).toBeDefined();
   });

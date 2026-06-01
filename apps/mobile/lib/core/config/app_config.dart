@@ -45,6 +45,13 @@ class AppConfig {
     return 'http://localhost:3000';
   }
 
+  /// SHA-256 fingerprints of allowed TLS certificates for api-vaulted.casacam.net.
+  /// Rotate when the certificate is renewed — include both old and new during the
+  /// transition window, then remove the old one after the next release.
+  static const List<String> pinnedCertFingerprints = [
+    '4b114a094ae2bff492b9fe39b623da262d33810ac0d4bedbfbd31c537b7c516b',
+  ];
+
   static void _assertSecureUrl(
     String value, {
     required String expectedReleaseScheme,

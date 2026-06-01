@@ -58,21 +58,23 @@ async function bootstrap(): Promise<void> {
   app.useGlobalInterceptors(new ResponseInterceptor());
   app.useGlobalFilters(new HttpExceptionFilter());
 
-  const config = new DocumentBuilder()
-    .setTitle('Vaulted API')
-    .setDescription('Premium home inventory management API')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
+  if (process.env['NODE_ENV'] !== 'production') {
+    const config = new DocumentBuilder()
+      .setTitle('Vaulted API')
+      .setDescription('Premium home inventory management API')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
 
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api-docs', app, document);
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api-docs', app, document);
 
-  if (process.env['NODE_ENV'] === 'development') {
-    const fs = require('fs');
-    const path = require('path');
-    const openApiPath = path.join(__dirname, '../../../../docs/openapi.json');
-    fs.writeFileSync(openApiPath, JSON.stringify(document, null, 2));
+    if (process.env['NODE_ENV'] === 'development') {
+      const fs = require('fs');
+      const path = require('path');
+      const openApiPath = path.join(__dirname, '../../../../docs/openapi.json');
+      fs.writeFileSync(openApiPath, JSON.stringify(document, null, 2));
+    }
   }
 
   const port = process.env['PORT'] ?? 3000;

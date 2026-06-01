@@ -1,5 +1,9 @@
+import 'dart:io';
+
+import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:dio/io.dart';
+import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
 import 'package:flutter/material.dart';
 
 import '../config/app_config.dart';
@@ -7,9 +11,8 @@ import '../storage/auth_token_store.dart';
 import '../storage/secure_storage.dart';
 import 'dio_credentials.dart';
 
-/// Shared Dio instance with auth interceptor.
+/// Shared Dio instance with auth interceptor and certificate pinning.
 /// Access token in memory (AuthTokenStore), refresh token in SecureStorage.
-// TODO: add certificate pinning before production
 class ApiClient {
   ApiClient({
     required SecureStorage secureStorage,
@@ -33,6 +36,7 @@ class ApiClient {
           ),
         ) {
     applyWebCredentials(_dio);
+    _applyCertificatePinning(_dio);
     _dio.interceptors.add(_AuthInterceptor(
       dio: _dio,
       secureStorage: _secureStorage,
@@ -50,6 +54,23 @@ class ApiClient {
   final Dio _dio;
 
   Dio get dio => _dio;
+
+  /// Enforces certificate pinning on native platforms (iOS/Android).
+  /// Web is skipped — browsers manage TLS trust natively.
+  /// Debug builds allow all certs to avoid issues with local dev proxies.
+  static void _applyCertificatePinning(Dio dio) {
+    if (kIsWeb) return;
+    (dio.httpClientAdapter as IOHttpClientAdapter).createHttpClient = () {
+      final client = HttpClient();
+      client.badCertificateCallback =
+          (X509Certificate cert, String host, int port) {
+        if (kDebugMode) return true;
+        final fingerprint = sha256.convert(cert.der).toString();
+        return AppConfig.pinnedCertFingerprints.contains(fingerprint);
+      };
+      return client;
+    };
+  }
 }
 
 class _AuthInterceptor extends Interceptor {

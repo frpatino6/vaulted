@@ -80,7 +80,7 @@ import { InsuredItem } from './modules/insurance/entities/insured-item.entity';
             NotificationPreference,
             NotificationLog,
           ],
-          synchronize: config.get<string>('TYPEORM_SYNC') === 'true' || !isProd,
+          synchronize: !isProd && config.get<string>('TYPEORM_SYNC') === 'true',
           logging: !isProd,
         };
         if (databaseUrl) {

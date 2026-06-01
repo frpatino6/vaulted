@@ -67,7 +67,7 @@ export class UsersController {
     @Param('id') userId: string,
     @Body() dto: UpdateUserDto,
   ) {
-    return this.usersService.updateUser(user.tenantId, user.sub, userId, dto);
+    return this.usersService.updateUser(user.tenantId, user.sub, user.role, userId, dto);
   }
 
   @Roles(Role.OWNER)

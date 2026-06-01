@@ -387,6 +387,57 @@ Production target (paid): ~$125-130/month on e2-standard-4.
 
 ---
 
+## G Stack Skills (installed at `~/.claude/skills/gstack`)
+
+Skills available via `/skill-name` in Claude Code:
+
+| Skill | Purpose |
+|---|---|
+| `/autoplan` | Auto-generate a plan before coding |
+| `/review` | Full code review of current changes |
+| `/ship` | End-to-end ship workflow (review → merge → deploy) |
+| `/land-and-deploy` | Land PR and trigger deploy |
+| `/qa` | QA pass on current changes |
+| `/qa-only` | QA without code review |
+| `/health` | Project health check |
+| `/cso` | Chief Security Officer security audit |
+| `/design-review` | Design review of UI changes |
+| `/design-consultation` | UI/UX design consultation |
+| `/design-html` | Generate HTML design mockup |
+| `/design-shotgun` | Generate multiple design variants |
+| `/devex-review` | Developer experience review |
+| `/plan-eng-review` | Engineering plan review |
+| `/plan-design-review` | Design plan review |
+| `/plan-devex-review` | DevEx plan review |
+| `/plan-ceo-review` | CEO-level plan review |
+| `/plan-tune` | Tune/refine an existing plan |
+| `/investigate` | Deep investigation of a problem |
+| `/learn` | Learn a topic from the codebase |
+| `/retro` | Run a retrospective |
+| `/pair-agent` | Spawn a pair programming agent |
+| `/canary` | Canary deploy check |
+| `/careful` | Careful/safe mode for risky changes |
+| `/freeze` / `/unfreeze` | Freeze/unfreeze code changes |
+| `/guard` | Guard a file from changes |
+| `/benchmark` | Benchmark current code |
+| `/benchmark-models` | Compare LLM models on a task |
+| `/browse` | Browser automation |
+| `/scrape` | Scrape a URL |
+| `/make-pdf` | Generate a PDF |
+| `/document-generate` | Generate documentation |
+| `/document-release` | Generate release notes |
+| `/context-save` / `/context-restore` | Save/restore conversation context |
+| `/setup-deploy` | Set up deployment pipeline |
+| `/setup-gbrain` / `/sync-gbrain` | Set up/sync GBrain knowledge base |
+| `/setup-browser-cookies` | Configure browser cookies |
+| `/skillify` | Turn a prompt into a reusable skill |
+| `/ios-fix` / `/ios-clean` / `/ios-qa` / `/ios-sync` / `/ios-design-review` | iOS-specific workflows |
+| `/office-hours` | Open office hours Q&A mode |
+| `/landing-report` | Audit a landing page |
+| `/gstack-upgrade` | Upgrade gstack to latest version |
+
+---
+
 ## Technical Debt
 
 ### Envelope Encryption con rotación de claves (post-MVP)

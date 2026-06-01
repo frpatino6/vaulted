@@ -265,11 +265,16 @@ export class UsersService {
   async updateUser(
     tenantId: string,
     actorUserId: string,
+    actorRole: Role,
     userId: string,
     dto: UpdateUserDto,
   ): Promise<SanitizedUser> {
     if (actorUserId === userId && dto.role !== undefined) {
       throw new BadRequestException('You cannot change your own role');
+    }
+
+    if (dto.role === Role.OWNER && actorRole !== Role.OWNER) {
+      throw new ForbiddenException('Only owners can promote users to owner role');
     }
 
     if (actorUserId === userId && dto.isActive === false) {

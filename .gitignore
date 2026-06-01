@@ -48,3 +48,4 @@ logs/
 !security-tests/package.json
 !.claude/settings.json
 !.mcp.json
+.gstack/
