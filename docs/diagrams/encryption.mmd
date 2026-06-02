@@ -1,0 +1,64 @@
+graph LR
+    classDef envvar fill:#4a0000,color:#ffaaaa,stroke:#cc2222,stroke-width:2px
+    classDef kdf fill:#1a1a4a,color:#aaaaff,stroke:#4444cc,stroke-width:2px
+    classDef key fill:#002a00,color:#aaffaa,stroke:#008800,stroke-width:2px
+    classDef encrypted fill:#2d1b4e,color:#d4b8ff,stroke:#6a3fbf,stroke-width:2px
+    classDef algo fill:#1a3a1a,color:#ccffcc,stroke:#2a8a2a,stroke-width:2px
+
+    ENV["🔑 ENCRYPTION_KEY\n.env.prod\nnever in git\nnever in DB"]
+    SALT["🧂 ENCRYPTION_SALT\n.env.prod\ndefault: 'vaulted-salt'\n(domain separation only)"]
+
+    SCRYPT["scryptSync\nN=16384 · r=8 · p=1\noutput: 32 bytes\nmemory-hard KDF"]
+
+    BASEKEY["Base Key\n256 bits\nin memory only\nnever logged"]
+
+    HKDF["HKDF-SHA-256\ninfo: 'vaulted-fle:{tenantId}'\nsalt: empty\noutput: 32 bytes"]
+
+    TENANTKEY["Tenant Key A\n256 bits\nderived per-operation\nisolated per tenant"]
+
+    TENANTKEY2["Tenant Key B\n256 bits\ncryptographically independent\nfrom Tenant Key A"]
+
+    AES["AES-256-GCM\nIV: crypto.randomBytes(12)\nAuth tag: 128-bit\nAEAD — tamper detected"]
+
+    subgraph MONGO_FIELDS["MongoDB · items collection"]
+        MF1["valuation.purchasePrice"]
+        MF2["valuation.currentValue"]
+        MF3["valuation.lastAppraisalDate"]
+    end
+
+    subgraph PG_INSURANCE["PostgreSQL · insurance_policies"]
+        PI1["provider"]
+        PI2["policyNumber"]
+        PI3["totalCoverageAmount"]
+        PI4["premium"]
+        PI5["notes"]
+    end
+
+    subgraph PG_ITEMS["PostgreSQL · insured_items"]
+        PII1["coveredValue"]
+    end
+
+    subgraph PG_USERS["PostgreSQL · users\n(global base key — not tenant-scoped)"]
+        PU1["mfaSecret\n(TOTP seed)"]
+    end
+
+    FORMAT["Stored format\n{iv_hex}:{authTag_hex}:{ciphertext_hex}\nExample:\na3f1c2...:88d4...:ff920a..."]
+
+    ENV --> SCRYPT
+    SALT --> SCRYPT
+    SCRYPT --> BASEKEY
+    BASEKEY --> HKDF
+    HKDF -->|"tenantId=A"| TENANTKEY
+    HKDF -->|"tenantId=B"| TENANTKEY2
+    TENANTKEY --> AES
+    AES --> MF1 & MF2 & MF3
+    AES --> PI1 & PI2 & PI3 & PI4 & PI5
+    AES --> PII1
+    BASEKEY -->|"direct (no HKDF)"| PU1
+    MF1 & MF2 & MF3 & PI1 & PI2 & PI3 & PI4 & PI5 & PII1 & PU1 --> FORMAT
+
+    class ENV,SALT envvar
+    class SCRYPT,HKDF kdf
+    class BASEKEY,TENANTKEY,TENANTKEY2 key
+    class MF1,MF2,MF3,PI1,PI2,PI3,PI4,PI5,PII1,PU1 encrypted
+    class AES,FORMAT algo

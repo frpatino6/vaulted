@@ -1,0 +1,61 @@
+sequenceDiagram
+    autonumber
+    participant APP as 📱 App (Flutter)
+    participant API as ⚙️ NestJS API
+    participant REDIS as 🗄️ Redis
+    participant PG as 🗄️ PostgreSQL
+
+    note over APP,PG: ── LOGIN FLOW ──────────────────────────────────────────
+
+    APP->>API: POST /auth/login {email, password}
+    API->>PG: SELECT user WHERE email = ?
+    PG-->>API: user record
+    API->>API: bcrypt.compare(password, hash)
+    alt password invalid
+        API-->>APP: 401 Unauthorized
+    end
+    API->>API: Check mfaEnabled
+    alt MFA enabled (Owner / Manager)
+        API-->>APP: 200 { mfaRequired: true, tempToken }
+        APP->>API: POST /auth/mfa/verify { code, tempToken }
+        API->>PG: GET mfaSecret (AES-256-GCM decrypted)
+        API->>API: speakeasy.totp.verify(code, secret)\nwindow ±1, rate-limit 5/min
+        alt code invalid
+            API-->>APP: 401 Invalid MFA code
+        end
+    end
+    API->>API: sign Access Token (24h, mfaVerified=true)
+    API->>API: sign Refresh Token (7d, JTI = uuid)
+    API->>REDIS: SET session:{userId}:{jti} TTL 7d
+    API-->>APP: 200 { accessToken }\n+ Set-Cookie: refreshToken (httpOnly, secure)
+
+    note over APP,PG: ── REQUEST WITH ACCESS TOKEN ────────────────────────────
+
+    APP->>API: GET /api/inventory\nAuthorization: Bearer {accessToken}
+    API->>API: JwtAuthGuard: verify signature + expiry
+    API->>API: MfaVerifiedGuard: check mfaVerified claim
+    API->>API: RolesGuard: check role ≥ required
+    API->>REDIS: GET blacklist:{jti}  (revocation check)
+    REDIS-->>API: null (not revoked)
+    API-->>APP: 200 { items[] }
+
+    note over APP,PG: ── TOKEN REFRESH ───────────────────────────────────────
+
+    APP->>API: POST /auth/refresh\nCookie: refreshToken
+    API->>API: Verify refresh token signature
+    API->>REDIS: GET session:{userId}:{jti}
+    alt session not found (replay attack)
+        API->>REDIS: DEL all sessions for userId  ← full invalidation
+        API-->>APP: 401 Session invalid
+    end
+    API->>REDIS: DEL session:{userId}:{oldJti}\nSET blacklist:{oldJti} TTL 7d
+    API->>API: Issue new Access + Refresh Token (new JTI)
+    API->>REDIS: SET session:{userId}:{newJti} TTL 7d
+    API-->>APP: 200 { accessToken }\n+ Set-Cookie: new refreshToken
+
+    note over APP,PG: ── LOGOUT ──────────────────────────────────────────────
+
+    APP->>API: POST /auth/logout
+    API->>REDIS: DEL session:{userId}:{jti}
+    API->>REDIS: SET blacklist:{jti} TTL 7d
+    API-->>APP: 200 OK\n+ Clear-Cookie: refreshToken
