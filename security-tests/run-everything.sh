@@ -111,7 +111,7 @@ fi
 # ═══════════════════════════════════════════════════════════════
 _banner "Suite 1/3 — idor-rbac-tests.sh (IDOR + RBAC)"
 set +e
-IDOR_OUT=$(bash "$DIR/idor-rbac-tests.sh" 2>&1)
+IDOR_OUT=$(OWNER_TOKEN="$FULL_TOKEN" bash "$DIR/idor-rbac-tests.sh" 2>&1)
 IDOR_EXIT=$?
 set -e
 echo "$IDOR_OUT" | tee -a "$LOG"
