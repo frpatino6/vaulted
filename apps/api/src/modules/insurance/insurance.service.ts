@@ -585,11 +585,11 @@ export class InsuranceService {
 
     const result: InsurancePolicy = {
       ...raw,
-      provider: provider ?? raw.provider,
-      policyNumber: policyNumber ?? raw.policyNumber,
-      totalCoverageAmount: (totalCoverageAmount ?? parseFloat(raw.totalCoverageAmount as string)) as never,
-      premium: (premium ?? raw.premium as unknown as number) as never,
-      notes: notes ?? raw.notes,
+      provider: provider ?? (this.crypto.isEncryptedField(raw.provider) ? '' : raw.provider),
+      policyNumber: policyNumber ?? (this.crypto.isEncryptedField(raw.policyNumber) ? '' : raw.policyNumber),
+      totalCoverageAmount: (totalCoverageAmount ?? (this.crypto.isEncryptedField(raw.totalCoverageAmount) ? 0 : parseFloat(raw.totalCoverageAmount as string))) as never,
+      premium: (premium !== undefined ? premium : (this.crypto.isEncryptedField(raw.premium) ? null : raw.premium as unknown as number)) as never,
+      notes: notes !== undefined ? notes : (this.crypto.isEncryptedField(raw.notes) ? null : raw.notes),
     };
     return result;
   }
@@ -617,7 +617,7 @@ export class InsuranceService {
 
     const result: InsuredItem = {
       ...raw,
-      coveredValue: (coveredValue ?? parseFloat(raw.coveredValue)) as never,
+      coveredValue: (coveredValue ?? (this.crypto.isEncryptedField(raw.coveredValue) ? 0 : parseFloat(raw.coveredValue))) as never,
     };
     return result;
   }
@@ -634,7 +634,12 @@ export class InsuranceService {
       if (typeof value === 'string') return transform(value);
       return value as T | undefined;
     }
-    return transform(this.crypto.decryptField(value as string, tenantId));
+    try {
+      return transform(this.crypto.decryptField(value as string, tenantId));
+    } catch {
+      // Key mismatch (env rotation) — field is inaccessible; caller returns placeholder
+      return undefined;
+    }
   }
 
   /**
