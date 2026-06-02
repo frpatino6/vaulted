@@ -21,7 +21,12 @@
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
-const { Client } = require('pg');
+const { createRequire } = require('module');
+
+// Resuelve pg desde apps/api/node_modules sin importar desde dónde se corra el script
+const apiDir = path.join(__dirname, '..', 'apps', 'api');
+const requireFromApi = createRequire(path.join(apiDir, 'package.json'));
+const { Client } = requireFromApi('pg');
 
 // ── Carga .env sin dotenv ─────────────────────────────────────────────────────
 
