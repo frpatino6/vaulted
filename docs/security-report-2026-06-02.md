@@ -193,6 +193,113 @@ All tests pass against production (`https://api-vaulted.casacam.net`).
 | **REMAINING OPEN** | **0** | **0** | **2** | **3** | **5** |
 
 ---
+
+## 11. Database Architecture & Security
+
+Vaulted uses three purpose-specific databases. Each stores a different class of data with distinct security requirements.
+
+### MongoDB Atlas M0 — Primary Inventory Database
+**Provider:** MongoDB Atlas (cloud-managed, free tier / M0)
+**Connection:** `MONGODB_URI` env var (TLS enforced by Atlas)
+
+| Purpose | Collections |
+|---|---|
+| Properties, floors, rooms, sections | `properties` |
+| Inventory items and item history | `items`, `item_history` |
+| Movements, loans, repairs | `movements` |
+| Maintenance records | `maintenance` |
+| Wardrobe: outfits + dry-cleaning | `outfits`, `dry_cleaning` |
+| AI chat sessions | `ai_chat_sessions` |
+| Orchestrator task plans | `orchestrator_tasks` |
+| Household members | `household_members` |
+
+**Why MongoDB for this data:** Inventory items have highly variable schemas (a watch has different attributes than a painting). MongoDB's document model handles heterogeneous `attributes: {}` natively without schema migrations.
+
+**Security controls applied:**
+- SCRAM-SHA-256 authentication (Atlas enforced)
+- App user has `readWrite` only on `vaulted` database — no admin access
+- Field-Level Encryption (AES-256-GCM) on `valuation.purchasePrice`, `valuation.currentValue`, `valuation.lastAppraisalDate` — even a DB dump does not expose financial values
+- `tenantId` on every document — all queries filter by tenant before returning data
+- `escapeRegex()` on all user-supplied search terms before `new RegExp()` — prevents ReDoS
+- `$`, `.`, `__proto__`, `constructor`, `prototype` rejected in `attributes` keys — prevents NoSQL injection
+
+---
+
+### PostgreSQL (Neon.tech) — Users, Financials & Audit
+**Provider:** Neon.tech (serverless PostgreSQL, free tier)
+**Connection:** `DATABASE_URL` env var (TLS, `rejectUnauthorized: true` in production)
+**ORM:** TypeORM (`TYPEORM_SYNC=false` in production)
+**Extension:** `pgvector` (AI embeddings, 3072 dimensions)
+
+| Purpose | Tables |
+|---|---|
+| User accounts and credentials | `users` |
+| Tenant / client families | `tenants` |
+| Insurance policies and coverage | `insurance_policies`, `insured_items` |
+| AI knowledge base embeddings | `embeddings` (pgvector) |
+| Immutable audit trail | `audit_logs` |
+
+**Why PostgreSQL for this data:** Users and insurance policies have relational structure (users belong to tenants; policies cover specific items). The audit log requires strict immutability guarantees that SQL constraints enforce. `pgvector` enables semantic search for AI features without an external vector database.
+
+**Security controls applied:**
+- `rejectUnauthorized: true` — TLS certificate verified on every connection
+- `TYPEORM_SYNC=false` in production — TypeORM cannot auto-drop or alter columns in prod
+- `audit_logs` table has no `UPDATE` or `DELETE` permissions for the app user — immutable by design
+- AES-256-GCM encryption on sensitive insurance fields (`policyNumber`, `premiumAmount`, `coverageAmount`, `deductible`, `notes`) and `users.mfa_secret`
+- `pgvector` embeddings contain only AI-generated text vectors — no raw user content stored as plaintext in that table
+- 2-year retention policy on audit logs
+
+---
+
+### Redis (Upstash) — Session State & Rate Limiting
+**Provider:** Upstash (serverless Redis, free tier)
+**Connection:** `REDIS_URL` with `rediss://` scheme (TLS enforced)
+
+| Purpose | Key pattern |
+|---|---|
+| JWT refresh token sessions (one-time-use) | `session:{userId}:{jti}` |
+| JWT blacklist (revoked tokens) | `blacklist:{jti}` |
+| MFA pending secrets (10-min TTL) | `mfa:pending:{userId}` |
+| Rate limiting counters | `throttler:{name}:{tracker}` |
+| AI chat session history | `ai:chat:session:{tenantId}:{userId}:{sessionId}` |
+| Dashboard KPI cache | `dashboard:{tenantId}:{propertyId}` |
+| Wardrobe stats cache | `wardrobe:stats:{tenantId}` |
+| Orchestrator WebSocket progress | `orchestrator:progress:{taskId}` |
+
+**Why Redis for this data:** All data here is ephemeral by design — sessions expire, rate limit windows reset, caches are re-populated. Redis TTL enforcement is native and atomic. Storing JWT blacklists in a relational DB would create contention on every authenticated request.
+
+**Security controls applied:**
+- `rediss://` (TLS) — data encrypted in transit to Upstash
+- Password authentication required
+- `FLUSHALL`, `FLUSHDB`, `DEBUG` commands disabled — prevents accidental or malicious cache wipe
+- `maxmemory 512mb` with eviction policy — prevents OOM DoS
+- All AI chat keys scoped to `tenantId:userId` — cross-tenant session hijacking blocked
+- No plaintext PII stored in Redis — financial values and personal data stay in MongoDB/PostgreSQL
+
+---
+
+### Data Flow Summary
+
+```
+Mobile / Web App
+      │
+      ▼
+NestJS API (Docker, port 3000)
+      │
+      ├──► MongoDB Atlas ──────── inventory, properties, items, wardrobe, movements
+      │                           (document model, FLE on valuations)
+      │
+      ├──► PostgreSQL (Neon) ──── users, tenants, insurance, audit logs, AI embeddings
+      │                           (relational, immutable audit, pgvector)
+      │
+      ├──► Redis (Upstash TLS) ── sessions, blacklist, rate limits, cache
+      │                           (ephemeral, TTL-based, no PII)
+      │
+      └──► GCP Storage / Docker volume ── media files (photos, PDFs)
+                                          (JWT-signed access tokens, tenant-prefixed paths)
+```
+
+---
 ---
 
 # VERSIÓN EN ESPAÑOL
@@ -368,6 +475,113 @@ Todas las pruebas pasan contra producción (`https://api-vaulted.casacam.net`).
 | 🟢 Baja | SBOM + Trivy en CI/CD | DevOps |
 | 🔲 Post-MVP | Envelope encryption con GCP KMS | Arquitectura |
 | 🔲 Post-MVP | Auditoría SOC 2 Type II | Compliance |
+
+---
+
+## 11. Arquitectura de Bases de Datos y Seguridad
+
+Vaulted utiliza tres bases de datos especializadas. Cada una almacena una clase diferente de datos con requisitos de seguridad distintos.
+
+### MongoDB Atlas M0 — Base de Datos Principal de Inventario
+**Proveedor:** MongoDB Atlas (cloud-managed, free tier / M0)
+**Conexión:** variable de entorno `MONGODB_URI` (TLS enforced por Atlas)
+
+| Propósito | Colecciones |
+|---|---|
+| Propiedades, pisos, habitaciones, secciones | `properties` |
+| Ítems de inventario e historial | `items`, `item_history` |
+| Movimientos, préstamos, reparaciones | `movements` |
+| Registros de mantenimiento | `maintenance` |
+| Wardrobe: outfits + tintorería | `outfits`, `dry_cleaning` |
+| Sesiones de chat IA | `ai_chat_sessions` |
+| Planes de tareas del orquestador | `orchestrator_tasks` |
+| Miembros del hogar | `household_members` |
+
+**Por qué MongoDB para estos datos:** Los ítems de inventario tienen esquemas muy variables (un reloj tiene atributos diferentes a una pintura). El modelo de documentos de MongoDB maneja `attributes: {}` heterogéneo nativamente sin migraciones de esquema.
+
+**Controles de seguridad aplicados:**
+- Autenticación SCRAM-SHA-256 (enforced por Atlas)
+- Usuario de la app con permisos `readWrite` solo en la DB `vaulted` — sin acceso admin
+- Cifrado a nivel de campo (AES-256-GCM) en `valuation.purchasePrice`, `valuation.currentValue`, `valuation.lastAppraisalDate` — un dump de la DB no expone valores financieros
+- `tenantId` en cada documento — todas las consultas filtran por tenant antes de retornar datos
+- `escapeRegex()` en todos los términos de búsqueda del usuario — previene ReDoS
+- Claves con `$`, `.`, `__proto__`, `constructor`, `prototype` rechazadas en `attributes` — previene inyección NoSQL
+
+---
+
+### PostgreSQL (Neon.tech) — Usuarios, Datos Financieros y Auditoría
+**Proveedor:** Neon.tech (PostgreSQL serverless, free tier)
+**Conexión:** variable de entorno `DATABASE_URL` (TLS, `rejectUnauthorized: true` en producción)
+**ORM:** TypeORM (`TYPEORM_SYNC=false` en producción)
+**Extensión:** `pgvector` (embeddings de IA, 3072 dimensiones)
+
+| Propósito | Tablas |
+|---|---|
+| Cuentas de usuario y credenciales | `users` |
+| Tenants / familias cliente | `tenants` |
+| Pólizas de seguro y coberturas | `insurance_policies`, `insured_items` |
+| Base de conocimiento de IA (embeddings) | `embeddings` (pgvector) |
+| Registro de auditoría inmutable | `audit_logs` |
+
+**Por qué PostgreSQL para estos datos:** Usuarios y pólizas de seguro tienen estructura relacional (usuarios pertenecen a tenants; pólizas cubren ítems específicos). El log de auditoría requiere garantías estrictas de inmutabilidad que las restricciones SQL imponen. `pgvector` habilita búsqueda semántica para funciones de IA sin una base de datos vectorial externa.
+
+**Controles de seguridad aplicados:**
+- `rejectUnauthorized: true` — certificado TLS verificado en cada conexión
+- `TYPEORM_SYNC=false` en producción — TypeORM no puede auto-eliminar ni alterar columnas en prod
+- La tabla `audit_logs` no tiene permisos de `UPDATE` o `DELETE` para el usuario de la app — inmutable por diseño
+- Cifrado AES-256-GCM en campos sensibles de seguros (`policyNumber`, `premiumAmount`, `coverageAmount`, `deductible`, `notes`) y `users.mfa_secret`
+- Los embeddings de `pgvector` contienen solo vectores generados por IA — no se almacena contenido de usuario en texto plano
+- Retención de 2 años en audit logs
+
+---
+
+### Redis (Upstash) — Estado de Sesión y Rate Limiting
+**Proveedor:** Upstash (Redis serverless, free tier)
+**Conexión:** `REDIS_URL` con esquema `rediss://` (TLS enforced)
+
+| Propósito | Patrón de clave |
+|---|---|
+| Sesiones de refresh token JWT (un solo uso) | `session:{userId}:{jti}` |
+| Blacklist de JWT (tokens revocados) | `blacklist:{jti}` |
+| Secretos MFA pendientes (TTL 10 min) | `mfa:pending:{userId}` |
+| Contadores de rate limiting | `throttler:{name}:{tracker}` |
+| Historial de sesión de chat IA | `ai:chat:session:{tenantId}:{userId}:{sessionId}` |
+| Cache de KPIs del dashboard | `dashboard:{tenantId}:{propertyId}` |
+| Cache de estadísticas de wardrobe | `wardrobe:stats:{tenantId}` |
+| Progreso WebSocket del orquestador | `orchestrator:progress:{taskId}` |
+
+**Por qué Redis para estos datos:** Todos los datos aquí son efímeros por diseño — las sesiones expiran, las ventanas de rate limit se resetean, los caches se repopulan. El TTL de Redis es nativo y atómico. Almacenar blacklists de JWT en una base de datos relacional generaría contención en cada request autenticado.
+
+**Controles de seguridad aplicados:**
+- `rediss://` (TLS) — datos cifrados en tránsito hacia Upstash
+- Autenticación por contraseña obligatoria
+- Comandos `FLUSHALL`, `FLUSHDB`, `DEBUG` deshabilitados — previene borrado accidental o malicioso del cache
+- `maxmemory 512mb` con política de evicción — previene DoS por OOM
+- Todas las claves de chat IA con scope `tenantId:userId` — session hijacking cross-tenant bloqueado
+- Sin PII en texto plano en Redis — valores financieros y datos personales permanecen en MongoDB/PostgreSQL
+
+---
+
+### Resumen del Flujo de Datos
+
+```
+App Móvil / Web
+      │
+      ▼
+NestJS API (Docker, puerto 3000)
+      │
+      ├──► MongoDB Atlas ──────── inventario, propiedades, ítems, wardrobe, movimientos
+      │                           (modelo documental, FLE en valuaciones)
+      │
+      ├──► PostgreSQL (Neon) ──── usuarios, tenants, seguros, audit logs, embeddings IA
+      │                           (relacional, auditoría inmutable, pgvector)
+      │
+      ├──► Redis (Upstash TLS) ── sesiones, blacklist, rate limits, cache
+      │                           (efímero, TTL-based, sin PII)
+      │
+      └──► GCP Storage / Docker volume ── archivos multimedia (fotos, PDFs)
+                                          (tokens JWT firmados, rutas con prefijo de tenant)
+```
 
 ---
 
