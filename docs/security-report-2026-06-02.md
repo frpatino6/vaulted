@@ -50,6 +50,127 @@ Over the past 30 days, Vaulted underwent a comprehensive security audit covering
 
 ---
 
+## 2a. Encryption — Technical Detail (for Security Auditors)
+
+### Algorithm & Parameters
+
+| Parameter | Value | Standard |
+|---|---|---|
+| Algorithm | AES-256-GCM | NIST FIPS 197 + SP 800-38D |
+| Key length | 256 bits | |
+| IV length | 96 bits (12 bytes) | GCM recommended |
+| Auth tag length | 128 bits (16 bytes) | GCM maximum |
+| IV generation | `crypto.randomBytes(12)` | CSPRNG — unique per encryption call |
+| Ciphertext format | `{iv_hex}:{authTag_hex}:{ciphertext_hex}` | Stored as UTF-8 string in DB |
+| Runtime library | Node.js built-in `crypto` (OpenSSL) | |
+
+**Why AES-256-GCM:** Provides Authenticated Encryption with Associated Data (AEAD). The 128-bit auth tag detects any ciphertext tampering before decryption. A modified ciphertext fails the auth tag check and throws before returning any data.
+
+---
+
+### Key Derivation Architecture
+
+Two-layer derivation. The base key is derived once at service startup; per-tenant keys are derived per operation.
+
+```
+ENCRYPTION_KEY  (env var — hex string, 256-bit minimum)
+       │
+       ▼
+scryptSync(ENCRYPTION_KEY, ENCRYPTION_SALT, outputLength=32)
+       │
+       ▼
+  Base Key (256 bits)  ← held in memory, never logged
+       │
+       ├──► HKDF-SHA-256(baseKey, salt='', info='vaulted-fle:{tenantId}', 32)
+       │         └──► Tenant-Scoped Key (256 bits) — used for financial & insurance data
+       │
+       └──► Used directly for non-financial fields (MFA secrets)
+```
+
+| Parameter | Value |
+|---|---|
+| Base KDF | `scryptSync` (memory-hard, brute-force resistant) |
+| scrypt N (cost factor) | Node.js default: 16384 |
+| scrypt r (block size) | 8 |
+| scrypt p (parallelization) | 1 |
+| Tenant KDF | `hkdfSync('sha256', baseKey, '', 'vaulted-fle:{tenantId}', 32)` |
+| Info string | `vaulted-fle:{tenantId}` — unique per tenant |
+
+**Key isolation guarantee:** Deriving tenant A's key requires knowing `tenantId_A`. A full MongoDB dump from tenant A cannot be decrypted using tenant B's derived key — they are cryptographically independent outputs of HKDF with different `info` strings.
+
+---
+
+### Encrypted Fields Inventory
+
+#### MongoDB — `items` collection (per-tenant key via HKDF)
+
+| Field path | Type | Plaintext example | Sensitivity |
+|---|---|---|---|
+| `valuation.purchasePrice` | Number → encrypted string | `450000` | Critical — purchase price |
+| `valuation.currentValue` | Number → encrypted string | `520000` | Critical — current market value |
+| `valuation.lastAppraisalDate` | String → encrypted string | `2026-03-15` | High — appraisal date |
+
+All three fields are encrypted before write and decrypted after read in `InventoryService`. A raw MongoDB document looks like:
+```json
+{
+  "valuation": {
+    "purchasePrice": "a3f1c2...:88d4...:ff920a...",
+    "currentValue":  "b7e2a1...:99c3...:aa110b...",
+    "lastAppraisalDate": "c9d3b2...:77e1...:bb220c..."
+  }
+}
+```
+
+#### PostgreSQL — `insurance_policies` table (per-tenant key via HKDF)
+
+| Column | Type | Sensitivity |
+|---|---|---|
+| `provider` | varchar — encrypted | High — insurance company identity |
+| `policyNumber` | varchar — encrypted | High — policy identifier |
+| `totalCoverageAmount` | varchar — encrypted (stored as string) | Critical — total coverage value |
+| `premium` | varchar — encrypted (nullable) | High — premium cost |
+| `notes` | varchar — encrypted (nullable) | Medium — policy notes |
+
+#### PostgreSQL — `insured_items` table (per-tenant key via HKDF)
+
+| Column | Type | Sensitivity |
+|---|---|---|
+| `coveredValue` | varchar — encrypted | Critical — per-item insurance coverage amount |
+
+#### PostgreSQL — `users` table (global base key — NOT tenant-scoped)
+
+| Column | Type | Sensitivity | Why global key |
+|---|---|---|---|
+| `mfaSecret` | varchar — encrypted | Critical — TOTP seed | MFA secrets are user-specific, not tenant-financial data. A user belongs to exactly one tenant. Global key is acceptable here. |
+
+---
+
+### Security Properties
+
+| Property | Implementation | Guarantee |
+|---|---|---|
+| Confidentiality | AES-256-GCM encryption | Ciphertext reveals no information about plaintext |
+| Integrity | 128-bit GCM auth tag | Any modification to ciphertext is detected; decryption throws |
+| IV uniqueness | `crypto.randomBytes(12)` per call | Same value encrypted twice produces different ciphertext (semantic security) |
+| Cross-tenant isolation | HKDF with `tenantId` as info | Tenant A's key cannot decrypt Tenant B's data |
+| DB dump safety | All sensitive fields encrypted before storage | Raw DB export exposes no financial or policy values |
+| Key not in DB | Base key only in env var + memory | Compromise of DB alone is insufficient to decrypt |
+| Brute-force resistance | `scryptSync` base KDF | Memory-hard; GPU/ASIC attack is economically infeasible |
+
+---
+
+### Known Limitations (Auditor Notes)
+
+| Item | Detail | Mitigation / Roadmap |
+|---|---|---|
+| `ENCRYPTION_SALT` default | Falls back to `'vaulted-salt'` if env var not set. The salt is not secret — `ENCRYPTION_KEY` is the actual secret. | Configure `ENCRYPTION_SALT` in `.env.prod` before production. The salt adds domain separation, not entropy. |
+| No key rotation | Changing `ENCRYPTION_KEY` or `ENCRYPTION_SALT` requires re-encrypting all FLE fields via `infra/re-encrypt-salt.js` | Script available and tested. Rotation procedure documented. |
+| Base key in memory | `scryptSync` runs at startup; derived base key lives in `CryptoService` instance memory for the container lifetime | Mitigated by non-root container user, no memory dumps, no debug endpoints in prod |
+| Envelope encryption absent | No per-tenant data key stored encrypted in DB (GCP KMS). Key compromise exposes all tenants' data | Deferred post-MVP. HKDF provides tenant isolation without KMS. Planned: GCP KMS wrap/unwrap of per-tenant data keys. |
+| MFA secret: global key | `users.mfaSecret` uses global base key, not per-tenant HKDF | Acceptable: MFA secrets are user-owned, not tenant-financial. Low risk relative to added complexity. |
+
+---
+
 ## 3. API Security
 
 | Control | Status | Detail |
@@ -346,6 +467,127 @@ En los últimos 30 días, Vaulted fue sometido a una auditoría de seguridad int
 | Script de Migración de Salt | ✅ Disponible | `infra/re-encrypt-salt.js` para re-cifrar todos los campos FLE al rotar el salt |
 
 > **Limitación conocida:** Envelope encryption con claves por tenant en GCP KMS está diferida post-MVP. La derivación HKDF-SHA-256 actual es criptográficamente sólida para esta fase.
+
+---
+
+## 2a. Cifrado — Detalle Técnico (para Auditores de Seguridad)
+
+### Algoritmo y Parámetros
+
+| Parámetro | Valor | Estándar |
+|---|---|---|
+| Algoritmo | AES-256-GCM | NIST FIPS 197 + SP 800-38D |
+| Longitud de clave | 256 bits | |
+| Longitud de IV | 96 bits (12 bytes) | Recomendado por GCM |
+| Longitud de auth tag | 128 bits (16 bytes) | Máximo de GCM |
+| Generación de IV | `crypto.randomBytes(12)` | CSPRNG — único por cada llamada de cifrado |
+| Formato de ciphertext | `{iv_hex}:{authTag_hex}:{ciphertext_hex}` | Almacenado como string UTF-8 en la DB |
+| Librería | Node.js built-in `crypto` (OpenSSL) | |
+
+**Por qué AES-256-GCM:** Provee Cifrado Autenticado con Datos Asociados (AEAD). El auth tag de 128 bits detecta cualquier manipulación del ciphertext antes de desencriptar. Un ciphertext modificado falla el chequeo del auth tag y lanza error antes de retornar datos.
+
+---
+
+### Arquitectura de Derivación de Claves
+
+Derivación en dos capas. La clave base se deriva una vez al iniciar el servicio; las claves por tenant se derivan por operación.
+
+```
+ENCRYPTION_KEY  (variable de entorno — hex string, mínimo 256 bits)
+       │
+       ▼
+scryptSync(ENCRYPTION_KEY, ENCRYPTION_SALT, outputLength=32)
+       │
+       ▼
+  Clave Base (256 bits)  ← en memoria, nunca en logs
+       │
+       ├──► HKDF-SHA-256(claveBase, salt='', info='vaulted-fle:{tenantId}', 32)
+       │         └──► Clave por Tenant (256 bits) — datos financieros y de seguros
+       │
+       └──► Usada directamente para campos no financieros (secretos MFA)
+```
+
+| Parámetro | Valor |
+|---|---|
+| KDF base | `scryptSync` (memory-hard, resistente a fuerza bruta) |
+| scrypt N (factor de costo) | Default Node.js: 16384 |
+| scrypt r (tamaño de bloque) | 8 |
+| scrypt p (paralelización) | 1 |
+| KDF por tenant | `hkdfSync('sha256', claveBase, '', 'vaulted-fle:{tenantId}', 32)` |
+| Info string | `vaulted-fle:{tenantId}` — única por tenant |
+
+**Garantía de aislamiento de claves:** Derivar la clave del tenant A requiere conocer `tenantId_A`. Un dump completo de MongoDB del tenant A no puede ser descifrado con la clave derivada del tenant B — son outputs criptográficamente independientes de HKDF con diferentes strings `info`.
+
+---
+
+### Inventario de Campos Cifrados
+
+#### MongoDB — colección `items` (clave por tenant vía HKDF)
+
+| Ruta del campo | Tipo | Ejemplo en texto claro | Sensibilidad |
+|---|---|---|---|
+| `valuation.purchasePrice` | Número → string cifrado | `450000` | Crítica — precio de compra |
+| `valuation.currentValue` | Número → string cifrado | `520000` | Crítica — valor de mercado actual |
+| `valuation.lastAppraisalDate` | String → string cifrado | `2026-03-15` | Alta — fecha de última tasación |
+
+Los tres campos se cifran antes de escribir y se descifran al leer en `InventoryService`. Un documento MongoDB crudo luce así:
+```json
+{
+  "valuation": {
+    "purchasePrice": "a3f1c2...:88d4...:ff920a...",
+    "currentValue":  "b7e2a1...:99c3...:aa110b...",
+    "lastAppraisalDate": "c9d3b2...:77e1...:bb220c..."
+  }
+}
+```
+
+#### PostgreSQL — tabla `insurance_policies` (clave por tenant vía HKDF)
+
+| Columna | Tipo | Sensibilidad |
+|---|---|---|
+| `provider` | varchar cifrado | Alta — nombre de la aseguradora |
+| `policyNumber` | varchar cifrado | Alta — número de póliza |
+| `totalCoverageAmount` | varchar cifrado (almacenado como string) | Crítica — cobertura total |
+| `premium` | varchar cifrado (nullable) | Alta — monto de la prima |
+| `notes` | varchar cifrado (nullable) | Media — notas de la póliza |
+
+#### PostgreSQL — tabla `insured_items` (clave por tenant vía HKDF)
+
+| Columna | Tipo | Sensibilidad |
+|---|---|---|
+| `coveredValue` | varchar cifrado | Crítica — valor asegurado por ítem |
+
+#### PostgreSQL — tabla `users` (clave base global — NO por tenant)
+
+| Columna | Tipo | Sensibilidad | Por qué clave global |
+|---|---|---|---|
+| `mfaSecret` | varchar cifrado | Crítica — semilla TOTP | Los secretos MFA son propiedad del usuario, no datos financieros del tenant. Un usuario pertenece a exactamente un tenant. La clave global es aceptable aquí. |
+
+---
+
+### Propiedades de Seguridad
+
+| Propiedad | Implementación | Garantía |
+|---|---|---|
+| Confidencialidad | Cifrado AES-256-GCM | El ciphertext no revela información sobre el texto claro |
+| Integridad | Auth tag GCM de 128 bits | Cualquier modificación al ciphertext es detectada; el descifrado lanza error |
+| Unicidad del IV | `crypto.randomBytes(12)` por llamada | El mismo valor cifrado dos veces produce ciphertexts distintos (seguridad semántica) |
+| Aislamiento cross-tenant | HKDF con `tenantId` como info | La clave del tenant A no puede descifrar datos del tenant B |
+| Seguridad ante dump de DB | Todos los campos sensibles cifrados antes de almacenar | Un export crudo de la DB no expone valores financieros ni de pólizas |
+| Clave fuera de la DB | Clave base solo en variable de entorno + memoria | Comprometer la DB sola es insuficiente para descifrar |
+| Resistencia a fuerza bruta | KDF base `scryptSync` (memory-hard) | Ataque con GPU/ASIC es económicamente inviable |
+
+---
+
+### Limitaciones Conocidas (Notas para el Auditor)
+
+| Ítem | Detalle | Mitigación / Roadmap |
+|---|---|---|
+| Default de `ENCRYPTION_SALT` | Usa `'vaulted-salt'` si la variable de entorno no está configurada. El salt no es secreto — `ENCRYPTION_KEY` es el secreto real. | Configurar `ENCRYPTION_SALT` en `.env.prod` antes de producción. El salt aporta separación de dominio, no entropía. |
+| Sin rotación de claves | Cambiar `ENCRYPTION_KEY` o `ENCRYPTION_SALT` requiere re-cifrar todos los campos FLE vía `infra/re-encrypt-salt.js` | Script disponible y probado. Procedimiento de rotación documentado. |
+| Clave base en memoria | `scryptSync` corre al inicio; la clave base vive en memoria de la instancia `CryptoService` durante todo el tiempo de vida del contenedor | Mitigado por: usuario non-root en contenedor, sin memory dumps, sin endpoints de debug en prod |
+| Sin envelope encryption | No hay clave de datos por tenant almacenada cifrada en DB (GCP KMS). El compromiso de la clave expone datos de todos los tenants | Diferido post-MVP. HKDF provee aislamiento de tenant sin KMS. Planificado: GCP KMS wrap/unwrap de claves por tenant. |
+| Secreto MFA: clave global | `users.mfaSecret` usa la clave base global, no HKDF por tenant | Aceptable: los secretos MFA son del usuario, no datos financieros del tenant. Riesgo bajo relativo a la complejidad adicional. |
 
 ---
 
