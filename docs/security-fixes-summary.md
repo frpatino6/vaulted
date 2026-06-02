@@ -294,6 +294,63 @@ Antes de desplegar esta remediacion, produccion debe tener `MEDIA_JWT_SECRET` de
 
 ---
 
+## 13. Hardening operativo DB allowlist (Codex - 2026-06-02)
+
+Punto 1 del plan residual de infraestructura: cerrar acceso de bases de datos administradas al IP estatico de la VM.
+
+### Objetivo
+
+La API sigue corriendo en Docker sobre GCP, pero las bases de datos permanecen en servicios administrados. La postura objetivo es que MongoDB Atlas, PostgreSQL y Redis acepten trafico solo desde la IP publica de la VM de Vaulted cuando el proveedor/plan lo permita.
+
+### Cambios agregados
+
+| Cambio | Archivo | Detalle |
+|---|---|---|
+| Runbook de allowlist de DB | `infra/README.md` | Documenta el target `34.57.81.166/32`, orden seguro por proveedor, verificacion de health y manejo de falla |
+| Script no destructivo de verificacion | `infra/check-db-allowlist.sh` | Detecta la IPv4 publica desde la VM, compara contra `EXPECTED_VM_IP`, muestra hosts DB enmascarados y prueba health en `/api/health` y `/health` |
+
+### Orden operativo recomendado
+
+1. Confirmar/reservar IP estatica GCP para `tennis-backend`.
+2. Ejecutar `./infra/check-db-allowlist.sh` desde la VM.
+3. MongoDB Atlas: remover rangos amplios como `0.0.0.0/0`, agregar `34.57.81.166/32`, verificar health.
+4. PostgreSQL: aplicar `34.57.81.166/32` si el proveedor/plan lo soporta; si no, registrar riesgo residual y priorizar plan/proveedor con restriccion de red.
+5. Redis: mantener `rediss://`; aplicar `34.57.81.166/32` si el proveedor/plan lo soporta; si no, rotar credencial y registrar riesgo residual.
+
+### Riesgo residual
+
+Si Neon/Upstash u otro proveedor actual no permite allowlist estricta en el plan usado, Vaulted no queda en postura 10/10 en red. En ese caso el control minimo aceptable temporal es TLS obligatorio, credenciales fuertes, usuarios con privilegios minimos, rotacion de secreto y monitoreo; el control definitivo es mover ese servicio a un plan/proveedor con allowlist o red privada.
+
+---
+
+## 14. Correccion flujo MFA setup/recovery (Codex - 2026-06-02)
+
+Incidente observado: `/api/auth/mfa/verify` podia devolver `401 Invalid MFA code` aunque el usuario intentara codigos validos de su app autenticadora si el secreto MFA guardado ya no correspondia al autenticador del usuario.
+
+### Cambios aplicados
+
+| Cambio | Archivo | Detalle |
+|---|---|---|
+| Ventana TOTP mas tolerante | `apps/api/src/modules/auth/auth.service.ts` | `speakeasy.totp.verify()` pasa de `window: 1` a `window: 2` para tolerar +/- 60s de drift; auth MFA sigue limitado a 5 intentos/min |
+| Mobile MFA setup visible | `apps/mobile/lib/features/auth/presentation/mfa_screen.dart` | Si login devuelve `mfaSetupRequired=true`, la pantalla llama `/auth/mfa/setup`, muestra QR y clave manual, y luego permite verificar codigo |
+| Estado mobile de setup MFA | `auth_token_store.dart` Â· `auth_notifier.dart` Â· `auth_repository.dart` Â· `auth_remote_data_source.dart` | Se conserva `mfaSetupRequired` tras login y se agrega cliente para `/auth/mfa/setup` |
+| Script de recovery MFA | `infra/reset-user-mfa.sh` | Resetea `mfa_secret=NULL` y `mfa_enabled=false` para un email; siguiente login fuerza enrolamiento nuevo |
+| Mensaje de rotacion corregido | `infra/rotate-prod-auth-secrets.sh` | El script ya no dice que URLs firmadas expiran inmediatamente; conserva compatibilidad via `MEDIA_JWT_PREVIOUS_SECRET` |
+
+### Procedimiento de recuperacion
+
+Desde la VM:
+
+```bash
+cd ~/vaulted/vaulted
+chmod +x infra/reset-user-mfa.sh
+./infra/reset-user-mfa.sh user@example.com
+```
+
+Luego el usuario inicia sesion, escanea el QR nuevo y verifica el codigo. Este flujo evita desactivar MFA globalmente y mantiene MFA obligatorio para roles sensibles.
+
+---
+
 ## 8. Riesgo residual y seguimiento
 
 | # | Área | Riesgo | Prioridad |
@@ -309,6 +366,7 @@ Antes de desplegar esta remediacion, produccion debe tener `MEDIA_JWT_SECRET` de
 | R-9 | Audit log TODOs | Entradas pendientes en `properties.service.ts`, `users.service.ts`, `media.service.ts` | Baja |
 | R-10 | Rotación de cert pinning | Pinning release ya valida certificados CA-válidos; queda pendiente el proceso operativo de rotación de fingerprints antes de renovaciones TLS | Alta (ops) |
 | R-11 | Jailbreak/root attestation | Screenshot/app-switcher y Keychain fueron endurecidos; falta attestation/detección dedicada antes de App Store / Google Play | Media |
+| R-12 | DB network allowlist | MongoDB/PostgreSQL/Redis deben restringirse a `34.57.81.166/32`; si el plan actual no soporta allowlist, queda riesgo operativo hasta migrar o hacer upgrade | Alta (ops) |
 
 ---
 

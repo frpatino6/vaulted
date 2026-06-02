@@ -17,12 +17,15 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     try {
       final result = await ref.read(authRepositoryProvider).login(email, password);
       final mfaRequired = result['mfaRequired'] as bool? ?? false;
+      final mfaSetupRequired = result['mfaSetupRequired'] as bool? ?? false;
 
       if (mfaRequired) {
         AuthTokenStore.instance.setMfaPending(true);
+        AuthTokenStore.instance.setMfaSetupRequired(mfaSetupRequired);
         state = const AsyncData(AuthState.mfaRequired());
       } else {
         AuthTokenStore.instance.setMfaPending(false);
+        AuthTokenStore.instance.setMfaSetupRequired(false);
         final token = result['accessToken'] as String?;
         if (token != null) {
           ref.read(presenceNotifierProvider.notifier).initialize(token);
@@ -39,6 +42,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     try {
       final result = await ref.read(authRepositoryProvider).verifyMfa(code);
       AuthTokenStore.instance.setMfaPending(false);
+      AuthTokenStore.instance.setMfaSetupRequired(false);
       final token = result['accessToken'] as String?;
       if (token != null) {
         ref.read(presenceNotifierProvider.notifier).initialize(token);

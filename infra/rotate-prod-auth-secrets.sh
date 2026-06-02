@@ -64,7 +64,8 @@ echo "Repo: $ROOT_DIR"
 echo "Env : $ENV_FILE"
 echo ""
 echo "This will rotate JWT_SECRET, JWT_REFRESH_SECRET, and MEDIA_JWT_SECRET."
-echo "All users will need to log in again. Existing signed media URLs will expire immediately."
+echo "All users will need to log in again. Existing signed media URLs continue working"
+echo "temporarily because the old media secret is stored as MEDIA_JWT_PREVIOUS_SECRET."
 echo ""
 read -r -p "Continue? Type ROTATE to proceed: " confirm
 if [[ "$confirm" != "ROTATE" ]]; then

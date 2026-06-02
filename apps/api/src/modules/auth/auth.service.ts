@@ -319,7 +319,10 @@ export class AuthService {
       secret: secretToVerify,
       encoding: 'base32',
       token: code,
-      window: 1,
+      // Allow up to +/- 60s clock drift. Auth endpoints are rate-limited to
+      // 5/min, so this improves production reliability without making brute
+      // force practical.
+      window: 2,
     });
 
     if (!isValid) {

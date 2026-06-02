@@ -86,6 +86,84 @@ infra/upload-env.sh         Uploads .env.prod from local machine to VM via gclou
 
 The `.env.prod` file is never committed to git. Create it from `.env.prod.example` and fill in all values.
 
+---
+
+## Database Network Allowlist
+
+Production uses managed cloud databases. Do not move production MongoDB/PostgreSQL/Redis into the API Docker host. For Vaulted, the safer production posture is:
+
+- API in Docker on the GCP VM.
+- MongoDB Atlas, PostgreSQL, and Redis in managed cloud services.
+- Each database accepts traffic only from the Vaulted VM public IP when the provider/plan supports IP restrictions.
+
+### Current production allowlist target
+
+Use the VM public IPv4 only:
+
+```text
+34.57.81.166/32
+```
+
+If the VM IP changes, update every database allowlist before restarting the API. A dynamic VM IP is not acceptable for production because a VM restart can silently break database connectivity or expose the DB allowlist to the wrong machine later.
+
+### Reserve or confirm the static GCP IP
+
+Run from a machine with GCP access:
+
+```bash
+gcloud compute instances describe tennis-backend \
+  --zone us-central1-c \
+  --project tennis-management-fcd54 \
+  --format='get(networkInterfaces[0].accessConfigs[0].natIP)'
+```
+
+The output must be `34.57.81.166`. If the address is ephemeral in GCP, reserve it as a static external IPv4 before closing database allowlists.
+
+### Verify from the VM
+
+Run this from the deployed repo on the production VM:
+
+```bash
+chmod +x infra/check-db-allowlist.sh
+./infra/check-db-allowlist.sh
+```
+
+The script prints the public IPv4 that providers must allow, shows masked DB connection targets, and checks API health on both `/api/health` and `/health`.
+
+### Provider order
+
+Change one provider at a time and verify API health after each change.
+
+1. MongoDB Atlas
+   - Network Access: remove `0.0.0.0/0` or broad ranges.
+   - Add `34.57.81.166/32`.
+   - Keep the application DB user scoped to the `vaulted` database with least privilege.
+   - Run `./infra/check-db-allowlist.sh`.
+
+2. PostgreSQL
+   - If the provider/plan supports IP allowlisting, add `34.57.81.166/32` and remove broad ranges.
+   - Keep TLS required in `DATABASE_URL`.
+   - If strict IP allowlist is not available on the current plan, treat that as a residual risk and prioritize moving PostgreSQL to a plan/provider that supports network restrictions.
+   - Run `./infra/check-db-allowlist.sh`.
+
+3. Redis
+   - Use `rediss://` only.
+   - If the provider/plan supports IP allowlisting, add `34.57.81.166/32` and remove broad ranges.
+   - If strict IP allowlist is not available, rotate the Redis credential and track the missing allowlist as residual risk until the provider/plan is upgraded.
+   - Run `./infra/check-db-allowlist.sh`.
+
+### Failure handling
+
+If the API health check fails after a provider change:
+
+```bash
+docker logs vaulted_api --tail 100
+```
+
+Then restore the last known working allowlist for that provider. Do not change the next provider until the API is healthy again.
+
+---
+
 ### Generating secrets
 
 ```bash
@@ -128,6 +206,30 @@ After 24-48 hours, remove `MEDIA_JWT_PREVIOUS_SECRET` from `.env.prod` and resta
 ./start-prod.sh down
 ./start-prod.sh up -d
 ```
+
+### Reset MFA for one user
+
+Use this only when a user's stored MFA secret no longer matches the authenticator app. The script clears `mfa_secret` and sets `mfa_enabled=false`; the next login must enroll a new authenticator secret.
+
+Run from the deployed repo on the production VM:
+
+```bash
+chmod +x infra/reset-user-mfa.sh
+./infra/reset-user-mfa.sh user@example.com
+```
+
+For non-interactive execution:
+
+```bash
+./infra/reset-user-mfa.sh user@example.com --yes
+```
+
+After reset:
+
+1. User logs in with email/password.
+2. API returns `mfaSetupRequired=true`.
+3. Mobile app calls `/auth/mfa/setup` and shows QR/manual secret.
+4. User scans the new secret and verifies the 6-digit code.
 
 ### Important: special characters in .env.prod
 

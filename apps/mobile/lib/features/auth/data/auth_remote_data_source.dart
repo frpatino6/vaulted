@@ -34,6 +34,14 @@ class AuthRemoteDataSource {
     return (data: _unwrapData(response), setCookies: setCookies);
   }
 
+  /// POST /auth/mfa/setup
+  /// Requires Authorization: Bearer {accessToken from login}.
+  /// Returns { secret, qrCode } for first-time MFA enrollment.
+  Future<Map<String, dynamic>> setupMfa() async {
+    final response = await _dio.post<Map<String, dynamic>>('auth/mfa/setup');
+    return _unwrapData(response);
+  }
+
   /// POST /auth/logout
   /// POST /auth/accept-invite (public)
   Future<({Map<String, dynamic> data, List<String> setCookies})> acceptInvite({
