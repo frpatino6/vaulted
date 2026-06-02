@@ -54,8 +54,14 @@ docker run --rm \
   -e "DATABASE_URL=$DATABASE_URL" \
   postgres:16-alpine \
   psql "$DATABASE_URL" \
-    -v "email=$EMAIL" \
-    -c "UPDATE users SET mfa_secret = NULL, mfa_enabled = false, updated_at = NOW() WHERE lower(email) = lower(:'email') RETURNING id, email, role, mfa_enabled;"
+    -v "email=$EMAIL" <<'SQL'
+UPDATE users
+SET mfa_secret = NULL,
+    mfa_enabled = false,
+    updated_at = NOW()
+WHERE lower(email) = lower(:'email')
+RETURNING id, email, role, mfa_enabled;
+SQL
 
 echo ""
 echo "Done. Ask the user to log in again. The app should show MFA setup QR/secret."
