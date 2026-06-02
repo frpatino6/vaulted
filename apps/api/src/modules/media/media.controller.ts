@@ -65,7 +65,7 @@ export class MediaController {
   }
 
   @Public()
-  @SkipThrottle()
+  @SkipThrottle({ default: true, 'inventory-valuation': true, dashboard: true })
   @Get(':token')
   serveFile(
     @Param('token') token: string,
