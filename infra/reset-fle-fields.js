@@ -12,19 +12,36 @@
  * son irrecuperables. Los registros quedarán con campos vacíos para que
  * el usuario los re-ingrese desde la app.
  *
- * Uso:
- *   cd apps/api
- *   ENCRYPTION_KEY='...' \
- *   ENCRYPTION_SALT='...' \
- *   DATABASE_URL='postgres://...' \
- *   node ../../infra/reset-fle-fields.js
+ * Uso (desde el VM, sin dependencias externas):
+ *   node infra/reset-fle-fields.js .env.prod
  *
- * O cargando el .env.prod:
- *   cd apps/api && node -r dotenv/config ../../infra/reset-fle-fields.js dotenv_config_path=../../.env.prod
+ * El único argumento es la ruta al archivo .env (relativa al directorio actual).
  */
 
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 const { Client } = require('pg');
+
+// ── Carga .env sin dotenv ─────────────────────────────────────────────────────
+
+const envFile = process.argv[2];
+if (envFile) {
+  const lines = fs.readFileSync(path.resolve(envFile), 'utf8').split('\n');
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const eq = trimmed.indexOf('=');
+    if (eq === -1) continue;
+    const key = trimmed.slice(0, eq).trim();
+    let val = trimmed.slice(eq + 1).trim();
+    if ((val.startsWith('"') && val.endsWith('"')) ||
+        (val.startsWith("'") && val.endsWith("'"))) {
+      val = val.slice(1, -1);
+    }
+    if (!(key in process.env)) process.env[key] = val;
+  }
+}
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 12;
