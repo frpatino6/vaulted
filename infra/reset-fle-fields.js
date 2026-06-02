@@ -23,11 +23,10 @@ const fs = require('fs');
 const path = require('path');
 // Resuelve pg desde múltiples ubicaciones posibles (host o contenedor Docker)
 const pgCandidates = [
-  path.join(__dirname, '..', 'apps', 'api', 'node_modules', 'pg'), // host desde raíz del repo
-  path.join(__dirname, 'node_modules', 'pg'),                        // host desde apps/api
-  '/app/node_modules/pg',                                            // dentro del contenedor
-  path.join(process.cwd(), 'node_modules', 'pg'),                    // cwd genérico
-];
+  '/app/node_modules/pg',
+  path.join(process.cwd(), 'node_modules', 'pg'),
+  path.join(process.cwd(), '..', 'apps', 'api', 'node_modules', 'pg'),
+].map(p => path.resolve(p));
 const pgDir = pgCandidates.find(p => { try { return fs.statSync(p).isDirectory(); } catch { return false; } });
 if (!pgDir) {
   console.error('ERROR: módulo pg no encontrado. Rutas probadas:\n' + pgCandidates.join('\n'));
