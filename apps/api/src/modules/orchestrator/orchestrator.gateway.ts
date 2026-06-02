@@ -56,6 +56,17 @@ export class OrchestratorGateway implements OnGatewayConnection, OnGatewayDiscon
       const secret = this.configService.getOrThrow<string>('JWT_SECRET');
       const payload = await this.jwtService.verifyAsync<JwtPayload>(token, { secret });
 
+      if (
+        payload.typ !== 'access' ||
+        !payload.sub ||
+        !payload.tenantId ||
+        !payload.role ||
+        typeof payload.mfaVerified !== 'boolean'
+      ) {
+        client.disconnect(true);
+        return;
+      }
+
       const isBlacklisted = await this.redis.get(`blacklist:${token}`);
       if (isBlacklisted) {
         client.disconnect(true);

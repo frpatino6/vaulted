@@ -255,6 +255,45 @@ Auditoría ejecutada con `/cso --comprehensive` (modo exhaustivo, gate 2/10) sob
 
 ---
 
+## 12. Remediacion revision adicional backend (Codex - 2026-06-02)
+
+Revision adicional enfocada en autenticacion, rate limiting, separacion de tokens, WebSocket y cobertura de auditoria.
+
+### CRITICOS
+
+| Hallazgo | Archivo | Fix aplicado |
+|---|---|---|
+| Bypass de MFA: un atacante con password podia usar token pre-MFA para llamar `/auth/mfa/setup`, obtener un nuevo secreto pendiente y luego completar `/auth/mfa/verify` con ese secreto, reemplazando el MFA real | `apps/api/src/modules/auth/auth.service.ts` · `apps/api/src/modules/auth/auth.controller.ts` | `setupMfa()` ahora carga el usuario, valida `tenantId` y rechaza si `mfaEnabled=true`; `verifyMfa()` verifica usuarios con MFA activo contra el secreto almacenado y elimina cualquier pending secret malicioso sin persistirlo |
+| Bypass de rate limit en login/register: `AppThrottlerGuard` corria antes de `JwtAuthGuard` y confiaba en `sub` decodificado sin firma, permitiendo rotar JWTs falsos para cambiar el bucket | `apps/api/src/common/guards/throttler.guard.ts` | Rutas publicas de auth (`register`, `login`, `accept-invite`, `refresh`) usan siempre IP como tracker; tokens sin verificar ya no controlan el bucket de throttling en auth publica |
+| Confusion de tokens: media tokens y access tokens compartian `JWT_SECRET` y no tenian `typ/aud`; un token de media firmado podia ser aceptado por validadores JWT/WebSocket que solo verificaban firma | `auth.service.ts` · `jwt.strategy.ts` · `jwt-refresh.strategy.ts` · `media.service.ts` · `presence.gateway.ts` · `orchestrator.gateway.ts` | Access tokens ahora incluyen `typ: 'access'`; refresh tokens `typ: 'refresh'`; media tokens `typ: 'media'`; access/refresh strategies y WebSocket gateways validan claims obligatorios; media tokens se firman con `MEDIA_JWT_SECRET` separado y pueden aceptar temporalmente `MEDIA_JWT_PREVIOUS_SECRET` durante rotacion controlada |
+
+### ALTOS
+
+| Hallazgo | Archivo | Fix aplicado |
+|---|---|---|
+| Mutaciones sensibles sin auditoria completa en usuarios, media y movimientos | `users.controller.ts` · `media.controller.ts` · `movements.controller.ts` · `users.module.ts` · `media.module.ts` | Agregados audit logs para create/invite/update/deactivate user, media upload/delete, movement update/add item/remove item/checkin; eliminados `TODO: audit log` obsoletos |
+
+### CONFIGURACION OPERATIVA
+
+| Cambio | Archivo | Detalle |
+|---|---|---|
+| Nuevo secreto obligatorio para media JWT | `.env.example` · `.env.prod.example` · `docker-compose.dev.yml` · `docker-compose.prod.yml` · `start-prod.sh` · `infra/README.md` | Agregado `MEDIA_JWT_SECRET`; `start-prod.sh` falla si falta en `.env.prod`; agregado `MEDIA_JWT_PREVIOUS_SECRET` opcional para compatibilidad temporal con URLs firmadas antiguas; generar con `openssl rand -hex 64` o equivalente criptografico |
+
+### Verificaciones ejecutadas
+
+| Check | Resultado |
+|---|---|
+| `npm run build` en `apps/api` | OK |
+| `npm test -- auth.service.spec.ts media.service.spec.ts users.service.spec.ts --runInBand` | OK, 35 tests |
+| `git diff --check` | OK |
+| `rg "TODO: audit log" apps/api/src` | Sin resultados |
+
+### Nota de despliegue
+
+Antes de desplegar esta remediacion, produccion debe tener `MEDIA_JWT_SECRET` definido. Se recomienda rotar tambien `JWT_SECRET` y `JWT_REFRESH_SECRET` porque los tokens ahora tienen tipos explicitos y los tokens antiguos no deben seguir siendo aceptados. Para evitar imagenes rotas durante la rotacion, el script `infra/rotate-prod-auth-secrets.sh` conserva el valor anterior de `MEDIA_JWT_SECRET` como `MEDIA_JWT_PREVIOUS_SECRET`; removerlo despues de 24-48 horas.
+
+---
+
 ## 8. Riesgo residual y seguimiento
 
 | # | Área | Riesgo | Prioridad |

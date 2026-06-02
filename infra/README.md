@@ -90,7 +90,7 @@ The `.env.prod` file is never committed to git. Create it from `.env.prod.exampl
 
 ```bash
 # JWT secrets
-openssl rand -hex 64   # use for JWT_SECRET and JWT_REFRESH_SECRET
+openssl rand -hex 64   # use for JWT_SECRET, JWT_REFRESH_SECRET, and MEDIA_JWT_SECRET
 
 # Encryption key
 openssl rand -hex 32   # use for ENCRYPTION_KEY
@@ -103,12 +103,31 @@ openssl rand -hex 32   # use for ENCRYPTION_SALT
 |---|---|---|
 | `JWT_SECRET` | `openssl rand -hex 64` | Access token signing |
 | `JWT_REFRESH_SECRET` | `openssl rand -hex 64` | Refresh token signing |
+| `MEDIA_JWT_SECRET` | `openssl rand -hex 64` | Private media token signing |
 | `ENCRYPTION_KEY` | `openssl rand -hex 32` | AES-256 data encryption |
 | `ENCRYPTION_SALT` | `openssl rand -hex 32` | Mandatory KDF salt; rotate only with infra/re-encrypt-salt.js |
 | `MONGODB_URI` | MongoDB Atlas | Copy connection string from Atlas dashboard |
 | `DATABASE_URL` | Neon.tech | Include `?sslmode=require` at the end |
 | `REDIS_URL` | Upstash | Use `rediss://` (TLS) format |
 | `GOOGLE_GENAI_API_KEY` | Google AI Studio | For AI features |
+
+### Rotate auth/media signing secrets on the VM
+
+Run from the deployed repo on the production VM:
+
+```bash
+chmod +x infra/rotate-prod-auth-secrets.sh
+./infra/rotate-prod-auth-secrets.sh
+```
+
+The script backs up `.env.prod`, rotates `JWT_SECRET`, `JWT_REFRESH_SECRET`, and `MEDIA_JWT_SECRET`, stores the old media secret as `MEDIA_JWT_PREVIOUS_SECRET`, rebuilds the API, and restarts the container. All users must log in again after this rotation. Existing signed media URLs continue working during the temporary previous-secret window.
+
+After 24-48 hours, remove `MEDIA_JWT_PREVIOUS_SECRET` from `.env.prod` and restart the API to end the compatibility window:
+
+```bash
+./start-prod.sh down
+./start-prod.sh up -d
+```
 
 ### Important: special characters in .env.prod
 

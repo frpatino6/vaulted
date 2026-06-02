@@ -6,6 +6,7 @@ import { Request } from 'express';
 import { JwtPayload } from './jwt.strategy';
 
 export interface JwtRefreshPayload extends JwtPayload {
+  typ?: 'refresh';
   refreshTokenId: string;
 }
 
@@ -29,6 +30,17 @@ export class JwtRefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh'
   validate(req: Request, payload: JwtRefreshPayload): JwtRefreshPayload {
     if (!req.cookies?.['refresh_token']) {
       throw new UnauthorizedException('Refresh token not found');
+    }
+    if (
+      payload.typ !== 'refresh' ||
+      !payload.refreshTokenId ||
+      !payload.sub ||
+      !payload.tenantId ||
+      !payload.email ||
+      !payload.role ||
+      typeof payload.mfaVerified !== 'boolean'
+    ) {
+      throw new UnauthorizedException('Invalid refresh token claims');
     }
     return payload;
   }

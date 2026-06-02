@@ -17,7 +17,7 @@ while IFS= read -r line || [ -n "$line" ]; do
   export "$key=$value"
 done < .env.prod
 
-required=(JWT_SECRET JWT_REFRESH_SECRET ENCRYPTION_KEY ENCRYPTION_SALT MONGODB_URI DATABASE_URL REDIS_URL)
+required=(JWT_SECRET JWT_REFRESH_SECRET MEDIA_JWT_SECRET ENCRYPTION_KEY ENCRYPTION_SALT MONGODB_URI DATABASE_URL REDIS_URL)
 missing=()
 for var in "${required[@]}"; do
   if [[ -z "${!var:-}" ]]; then

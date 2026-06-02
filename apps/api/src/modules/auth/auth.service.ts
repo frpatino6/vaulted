@@ -258,6 +258,14 @@ export class AuthService {
     tenantId: string,
     email: string,
   ): Promise<{ secret: string; qrCode: string }> {
+    const user = await this.usersService.findById(userId);
+    if (!user || user.tenantId !== tenantId) {
+      throw new UnauthorizedException('User not found');
+    }
+    if (user.mfaEnabled) {
+      throw new ForbiddenException('MFA is already configured');
+    }
+
     const secret = speakeasy.generateSecret({
       name: `Vaulted:${email}`,
       length: 32,
@@ -290,13 +298,18 @@ export class AuthService {
     ipAddress: string,
   ): Promise<{ accessToken: string; refreshToken: string }> {
     const user = await this.usersService.findById(userId);
-    if (!user) throw new UnauthorizedException('User not found');
+    if (!user || user.tenantId !== tenantId) {
+      throw new UnauthorizedException('User not found');
+    }
 
     const pendingSecret = await this.redis.get(`mfa:pending:${userId}`);
+    const storedSecret = await this.usersService.getMfaSecret(user);
 
-    // Pending = first-time setup; otherwise use stored (encrypted) secret
-    const secretToVerify =
-      pendingSecret ?? (await this.usersService.getMfaSecret(user));
+    // Existing MFA must always verify against the stored secret. Pending setup
+    // secrets are only valid for first-time MFA enrollment.
+    const secretToVerify = user.mfaEnabled
+      ? storedSecret
+      : pendingSecret ?? storedSecret;
 
     if (!secretToVerify) {
       throw new ForbiddenException('MFA not configured');
@@ -313,9 +326,11 @@ export class AuthService {
       throw new UnauthorizedException('Invalid MFA code');
     }
 
-    if (pendingSecret) {
+    if (pendingSecret && !user.mfaEnabled) {
       // Persist secret encrypted at rest
       await this.usersService.saveMfaSecret(userId, pendingSecret);
+      await this.redis.del(`mfa:pending:${userId}`);
+    } else if (pendingSecret && user.mfaEnabled) {
       await this.redis.del(`mfa:pending:${userId}`);
     }
 
@@ -340,6 +355,7 @@ export class AuthService {
     const refreshTokenId = uuidv4();
 
     const payload: JwtPayload = {
+      typ: 'access',
       sub: user.id,
       tenantId: user.tenantId,
       email: user.email,
@@ -347,7 +363,11 @@ export class AuthService {
       mfaVerified: options.mfaVerified ?? false,
     };
 
-    const refreshPayload: JwtRefreshPayload = { ...payload, refreshTokenId };
+    const refreshPayload: JwtRefreshPayload = {
+      ...payload,
+      typ: 'refresh',
+      refreshTokenId,
+    };
 
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {

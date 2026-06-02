@@ -2,6 +2,7 @@ import {
   ConflictException,
   UnauthorizedException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
@@ -367,6 +368,14 @@ describe('AuthService', () => {
   });
 
   it('setupMfa() generates secret and stores in Redis with 10min TTL', async () => {
+    usersService.findById.mockResolvedValue({
+      id: 'user-1',
+      tenantId: 'tenant-1',
+      email: 'owner@vaulted.com',
+      role: Role.OWNER,
+      mfaEnabled: false,
+    });
+
     const result = await service.setupMfa(
       'user-1',
       'tenant-1',
@@ -380,6 +389,52 @@ describe('AuthService', () => {
     );
     expect(result.secret).toBeDefined();
     expect(result.qrCode).toBeDefined();
+  });
+
+  it('setupMfa() rejects users that already have MFA configured', async () => {
+    usersService.findById.mockResolvedValue({
+      id: 'user-1',
+      tenantId: 'tenant-1',
+      email: 'owner@vaulted.com',
+      role: Role.OWNER,
+      mfaEnabled: true,
+    });
+
+    await expect(
+      service.setupMfa('user-1', 'tenant-1', 'owner@vaulted.com'),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+
+    expect(redisClient.setex).not.toHaveBeenCalledWith(
+      'mfa:pending:user-1',
+      expect.any(Number),
+      expect.any(String),
+    );
+  });
+
+  it('verifyMfa() ignores pending secrets for users with MFA already enabled', async () => {
+    redisClient.get.mockResolvedValue('PENDINGSECRET');
+    usersService.findById.mockResolvedValue({
+      id: 'user-1',
+      tenantId: 'tenant-1',
+      email: 'owner@vaulted.com',
+      role: Role.OWNER,
+      mfaEnabled: true,
+    });
+    usersService.getMfaSecret.mockResolvedValue('STOREDSECRET');
+
+    const verifySpy = jest
+      .spyOn(speakeasy.totp, 'verify')
+      .mockReturnValue(true);
+
+    await service.verifyMfa('user-1', 'tenant-1', '123456', '127.0.0.1');
+
+    expect(verifySpy).toHaveBeenCalledWith(
+      expect.objectContaining({ secret: 'STOREDSECRET' }),
+    );
+    expect(usersService.saveMfaSecret).not.toHaveBeenCalled();
+    expect(redisClient.del).toHaveBeenCalledWith('mfa:pending:user-1');
+
+    verifySpy.mockRestore();
   });
 
   it('acceptInvite() accepts valid token and returns tokens', async () => {
