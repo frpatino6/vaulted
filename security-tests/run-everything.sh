@@ -107,9 +107,23 @@ if [[ ! -d "$DIR/node_modules" ]]; then
 fi
 
 # ═══════════════════════════════════════════════════════════════
-# RUN SUITE 1 — pentest-full.sh
+# RUN SUITE 1 — idor-rbac-tests.sh  (before pentest-full bruteforce)
 # ═══════════════════════════════════════════════════════════════
-_banner "Suite 1/3 — pentest-full.sh (17 phases)"
+_banner "Suite 1/3 — idor-rbac-tests.sh (IDOR + RBAC)"
+set +e
+IDOR_OUT=$(bash "$DIR/idor-rbac-tests.sh" 2>&1)
+IDOR_EXIT=$?
+set -e
+echo "$IDOR_OUT" | tee -a "$LOG"
+
+P2_PASS=$(parse_counter "$IDOR_OUT" "PASS")
+P2_FAIL=$(parse_counter "$IDOR_OUT" "FAIL")
+
+# ═══════════════════════════════════════════════════════════════
+# RUN SUITE 2 — pentest-full.sh  (last because brute-force phase
+#               triggers auth rate-limiting for subsequent logins)
+# ═══════════════════════════════════════════════════════════════
+_banner "Suite 2/3 — pentest-full.sh (17 phases)"
 set +e
 PENTEST_OUT=$(bash "$DIR/pentest-full.sh" 2>&1)
 PENTEST_EXIT=$?
@@ -120,19 +134,6 @@ P1_PASS=$(parse_counter "$PENTEST_OUT" "PASS")
 P1_FAIL=$(parse_counter "$PENTEST_OUT" "FAIL")
 P1_WARN=$(parse_counter "$PENTEST_OUT" "WARN")
 P1_SKIP=$(parse_counter "$PENTEST_OUT" "SKIP")
-
-# ═══════════════════════════════════════════════════════════════
-# RUN SUITE 2 — idor-rbac-tests.sh
-# ═══════════════════════════════════════════════════════════════
-_banner "Suite 2/3 — idor-rbac-tests.sh (IDOR + RBAC)"
-set +e
-IDOR_OUT=$(bash "$DIR/idor-rbac-tests.sh" 2>&1)
-IDOR_EXIT=$?
-set -e
-echo "$IDOR_OUT" | tee -a "$LOG"
-
-P2_PASS=$(parse_counter "$IDOR_OUT" "PASS")
-P2_FAIL=$(parse_counter "$IDOR_OUT" "FAIL")
 
 # ═══════════════════════════════════════════════════════════════
 # RUN SUITE 3 — websocket-tests.js
