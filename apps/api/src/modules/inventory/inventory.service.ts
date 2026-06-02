@@ -872,21 +872,20 @@ export class InventoryService {
   }
 
   private withSignedUrls(item: Item, userId: string, tenantId: string): Item {
-    const sign = (url: string) =>
-      `${this.appUrl}/api/media/${this.mediaService.generateFileToken(url, tenantId, userId)}`;
+    const sign = (url: string): string | null => {
+      try {
+        return `${this.appUrl}/api/media/${this.mediaService.generateFileToken(url, tenantId, userId)}`;
+      } catch {
+        this.logger.warn(`Could not sign URL for tenant ${tenantId}: ${url}`);
+        return null;
+      }
+    };
+    const rawSectionPhoto = (item as unknown as Record<string, unknown>)['sectionPhoto'] as string | null;
     return {
       ...item,
-      photos: (item.photos ?? []).map(sign),
-      documents: (item.documents ?? []).map(sign),
-      ...((item as unknown as Record<string, unknown>)['sectionPhoto']
-        ? {
-            sectionPhoto: sign(
-              (item as unknown as Record<string, unknown>)[
-                'sectionPhoto'
-              ] as string,
-            ),
-          }
-        : {}),
+      photos: (item.photos ?? []).map(sign).filter((p): p is string => p !== null),
+      documents: (item.documents ?? []).map(sign).filter((d): d is string => d !== null),
+      ...(rawSectionPhoto ? { sectionPhoto: sign(rawSectionPhoto) } : {}),
     };
   }
 

@@ -36,11 +36,16 @@ export class PropertiesService {
   }
 
   private withSignedPhotos(property: Property, tenantId: string, userId: string): Property {
-    const sign = (url: string) =>
-      `${this.appUrl}/api/media/${this.mediaService.generateFileToken(url, tenantId, userId)}`;
+    const sign = (url: string): string | null => {
+      try {
+        return `${this.appUrl}/api/media/${this.mediaService.generateFileToken(url, tenantId, userId)}`;
+      } catch {
+        return null;
+      }
+    };
     return {
       ...property,
-      photos: (property.photos ?? []).map(sign),
+      photos: (property.photos ?? []).map(sign).filter((p): p is string => p !== null),
       floors: (property.floors ?? []).map((floor) => ({
         ...floor,
         rooms: (floor.rooms ?? []).map((room) => ({
