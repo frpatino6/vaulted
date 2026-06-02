@@ -3,6 +3,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MediaController } from './media.controller';
 import { MediaService } from './media.service';
+import { AuditModule } from '../audit/audit.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { MediaService } from './media.service';
         secret: config.getOrThrow<string>('JWT_SECRET'),
       }),
     }),
+    AuditModule,
   ],
   controllers: [MediaController],
   providers: [MediaService],

@@ -64,7 +64,6 @@ export class PropertiesService {
       photos: dto.photos ?? [],
     });
 
-    // TODO: audit log
     return property;
   }
 
@@ -120,14 +119,12 @@ export class PropertiesService {
       throw new NotFoundException('Property not found');
     }
 
-    // TODO: audit log
     return property;
   }
 
   async delete(tenantId: string, propertyId: string): Promise<void> {
     await this.findOwnedPropertyOrThrow(tenantId, propertyId);
     await this.propertyModel.deleteOne({ _id: propertyId, tenantId }).exec();
-    // TODO: audit log
   }
 
   async addFloor(
@@ -157,7 +154,6 @@ export class PropertiesService {
       throw new NotFoundException('Property not found');
     }
 
-    // TODO: audit log
     return property;
   }
 
@@ -247,7 +243,6 @@ export class PropertiesService {
       throw new NotFoundException('Property not found');
     }
 
-    // TODO: audit log
     return updatedProperty;
   }
 

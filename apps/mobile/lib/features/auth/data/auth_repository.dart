@@ -100,6 +100,8 @@ class AuthRepository {
     return result.data;
   }
 
+  Future<Map<String, dynamic>> setupMfa() => _remote.setupMfa();
+
   Future<void> logout() async {
     try {
       await _remote.logout();

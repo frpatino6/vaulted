@@ -81,13 +81,16 @@ class _AcceptInviteScreenState extends ConsumerState<AcceptInviteScreen> {
             password: _passwordController.text,
           );
       final mfaRequired = result['mfaRequired'] as bool? ?? false;
+      final mfaSetupRequired = result['mfaSetupRequired'] as bool? ?? false;
       final accessToken = result['accessToken'] as String?;
 
       if (mfaRequired) {
         AuthTokenStore.instance.setMfaPending(true);
+        AuthTokenStore.instance.setMfaSetupRequired(mfaSetupRequired);
         if (mounted) context.push('/mfa');
       } else {
         AuthTokenStore.instance.setMfaPending(false);
+        AuthTokenStore.instance.setMfaSetupRequired(false);
         if (accessToken != null && accessToken.isNotEmpty) {
           ref.read(presenceNotifierProvider.notifier).initialize(accessToken);
         }

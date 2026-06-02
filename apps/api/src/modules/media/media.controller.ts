@@ -5,12 +5,14 @@ import {
   Param,
   Post,
   Query,
+  Req,
   Res,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
 import { SkipThrottle } from '@nestjs/throttler';
 import type { Response } from 'express';
+import { Request } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { Public } from '../../common/decorators/public.decorator';
@@ -20,6 +22,7 @@ import { Role } from '../../common/enums/role.enum';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { UploadResponseDto } from './dto/upload-response.dto';
 import { MediaService } from './media.service';
+import { AuditService } from '../audit/audit.service';
 import {
   ApiTags,
   ApiOperation,
@@ -31,7 +34,10 @@ import {
 @ApiTags('Media')
 @Controller('media')
 export class MediaController {
-  constructor(private readonly mediaService: MediaService) {}
+  constructor(
+    private readonly mediaService: MediaService,
+    private readonly auditService: AuditService,
+  ) {}
 
   @Roles(Role.OWNER, Role.MANAGER)
   @Post('upload')
@@ -45,11 +51,22 @@ export class MediaController {
       limits: { fileSize: 10 * 1024 * 1024 },
     }),
   )
-  upload(
+  async upload(
     @CurrentUser() user: JwtPayload,
     @UploadedFile() file: Express.Multer.File | undefined,
+    @Req() req: Request,
   ): Promise<UploadResponseDto> {
-    return this.mediaService.upload(user.tenantId, user.sub, file);
+    const result = await this.mediaService.upload(user.tenantId, user.sub, file);
+    await this.auditService.log({
+      tenantId: user.tenantId,
+      userId: user.sub,
+      action: 'media.upload',
+      entityType: 'media',
+      entityId: result.filename,
+      metadata: { mimeType: result.mimeType, size: result.size },
+      ipAddress: req.ip ?? 'unknown',
+    });
+    return result;
   }
 
   @Roles(Role.OWNER, Role.MANAGER)
@@ -57,11 +74,21 @@ export class MediaController {
   @ApiOperation({ summary: 'Delete media file' })
   @ApiBearerAuth()
   @ApiResponse({ status: 200, description: 'File deleted' })
-  delete(
+  async delete(
     @CurrentUser() user: JwtPayload,
     @Query('key') key: string | undefined,
+    @Req() req: Request,
   ): Promise<{ deleted: true }> {
-    return this.mediaService.delete(user.tenantId, key);
+    const result = await this.mediaService.delete(user.tenantId, key);
+    await this.auditService.log({
+      tenantId: user.tenantId,
+      userId: user.sub,
+      action: 'media.delete',
+      entityType: 'media',
+      entityId: key ?? 'unknown',
+      ipAddress: req.ip ?? 'unknown',
+    });
+    return result;
   }
 
   @Public()

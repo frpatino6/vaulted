@@ -7,6 +7,7 @@ import { Redis } from 'ioredis';
 import { Role } from '../../../common/enums/role.enum';
 
 export interface JwtPayload {
+  typ?: 'access' | 'refresh';
   sub: string;       // userId
   tenantId: string;
   email: string;
@@ -29,6 +30,17 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   }
 
   async validate(req: Request & { headers: { authorization?: string } }, payload: JwtPayload): Promise<JwtPayload> {
+    if (
+      payload.typ !== 'access' ||
+      !payload.sub ||
+      !payload.tenantId ||
+      !payload.email ||
+      !payload.role ||
+      typeof payload.mfaVerified !== 'boolean'
+    ) {
+      throw new UnauthorizedException('Invalid token claims');
+    }
+
     const token = req.headers.authorization?.replace('Bearer ', '');
 
     if (token) {

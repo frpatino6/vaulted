@@ -7,12 +7,19 @@ export class AppThrottlerGuard extends ThrottlerGuard {
   protected async getTracker(req: ThrottlerRequest): Promise<string> {
     const request = req as unknown as Request;
 
+    if (this.isPublicAuthRoute(request)) {
+      return this.getIpTracker(request);
+    }
+
     // Decode JWT payload (no signature check — bucketing only) to throttle
     // per user and avoid Cloudflare IP collisions across users.
     const userId = this.extractUserId(request);
     if (userId) return `user:${userId}`;
 
-    // Public routes: fall back to real IP from proxy headers
+    return this.getIpTracker(request);
+  }
+
+  private getIpTracker(request: Request): string {
     const ip =
       (request.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ??
       request.ip ??
@@ -42,6 +49,11 @@ export class AppThrottlerGuard extends ThrottlerGuard {
     }
 
     return null;
+  }
+
+  private isPublicAuthRoute(request: Request): boolean {
+    const path = request.path ?? request.url ?? '';
+    return /^\/api\/auth\/(register|login|accept-invite|refresh)$/.test(path);
   }
 
   private decodeJwtSub(token: string): string | null {

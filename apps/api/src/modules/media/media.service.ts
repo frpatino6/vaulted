@@ -63,6 +63,8 @@ export class MediaService {
   private readonly uploadsRoot: string;
   private readonly appUrl: string;
   private readonly useLocalStorage: boolean;
+  private readonly mediaJwtSecret: string;
+  private readonly mediaJwtPreviousSecret?: string;
 
   constructor(
     private readonly configService: ConfigService,
@@ -73,6 +75,9 @@ export class MediaService {
       this.configService.get<string>('APP_URL') ?? 'http://localhost:3000'
     ).replace(/\/+$/, '');
     this.uploadsRoot = join(process.cwd(), 'uploads');
+    this.mediaJwtSecret = this.configService.getOrThrow<string>('MEDIA_JWT_SECRET');
+    this.mediaJwtPreviousSecret =
+      this.configService.get<string>('MEDIA_JWT_PREVIOUS_SECRET') || undefined;
 
     const keyFilename =
       this.configService.get<string>('GCP_KEY_FILE') ||
@@ -96,21 +101,20 @@ export class MediaService {
     const windowStart = Math.floor(Date.now() / (60 * 60 * 1000)) * 60 * 60;
     const exp = windowStart + 2 * 60 * 60; // valid for up to 2 hours
     return this.jwtService.sign(
-      { fileKey: normalizedKey, tenantId, userId, iat: windowStart, exp },
-      { noTimestamp: true },
+      { typ: 'media', fileKey: normalizedKey, tenantId, userId, iat: windowStart, exp },
+      { noTimestamp: true, secret: this.mediaJwtSecret },
     );
   }
 
   async serveFile(token: string, res: Response): Promise<void> {
-    let payload: { fileKey: string; tenantId: string; userId: string };
-    try {
-      payload = this.jwtService.verify<{
-        fileKey: string;
-        tenantId: string;
-        userId: string;
-      }>(token);
-    } catch {
-      throw new UnauthorizedException('Invalid or expired media token');
+    const payload = this.verifyMediaToken(token);
+    if (
+      payload.typ !== 'media' ||
+      !payload.fileKey ||
+      !payload.tenantId ||
+      !payload.userId
+    ) {
+      throw new UnauthorizedException('Invalid media token claims');
     }
 
     const safeKey = this.assertSafeTenantKey(payload.fileKey, payload.tenantId);
@@ -160,6 +164,36 @@ export class MediaService {
     res.redirect(302, signedUrl);
   }
 
+  private verifyMediaToken(token: string): {
+    typ?: string;
+    fileKey: string;
+    tenantId: string;
+    userId: string;
+  } {
+    try {
+      return this.jwtService.verify<{
+        typ?: string;
+        fileKey: string;
+        tenantId: string;
+        userId: string;
+      }>(token, { secret: this.mediaJwtSecret });
+    } catch (currentError) {
+      if (!this.mediaJwtPreviousSecret) {
+        throw new UnauthorizedException('Invalid or expired media token');
+      }
+      try {
+        return this.jwtService.verify<{
+          typ?: string;
+          fileKey: string;
+          tenantId: string;
+          userId: string;
+        }>(token, { secret: this.mediaJwtPreviousSecret });
+      } catch {
+        throw new UnauthorizedException('Invalid or expired media token');
+      }
+    }
+  }
+
   async upload(
     tenantId: string,
     userId: string,
@@ -200,7 +234,6 @@ export class MediaService {
         },
       });
 
-      // TODO: audit log on upload
       return {
         url: this.buildSignedMediaUrl(filename, tenantId, userId),
         filename,
@@ -256,7 +289,6 @@ export class MediaService {
 
     try {
       await storageFile.delete({ ignoreNotFound: false });
-      // TODO: audit log on delete operations
       return { deleted: true };
     } catch {
       throw new InternalServerErrorException('Failed to delete file');
@@ -402,8 +434,8 @@ export class MediaService {
     const mediaTokenMatch = key.match(/^https?:\/\/[^/]+\/api\/media\/(.+)$/);
     if (mediaTokenMatch?.[1]) {
       const token = mediaTokenMatch[1];
-      const payload = this.jwtService.decode<{ fileKey: string }>(token);
-      if (payload?.fileKey) return payload.fileKey;
+      const payload = this.jwtService.decode<{ typ?: string; fileKey: string }>(token);
+      if (payload?.typ === 'media' && payload.fileKey) return payload.fileKey;
     }
 
     // Relative /uploads/ path stored without http prefix (legacy data)

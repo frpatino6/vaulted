@@ -10,6 +10,7 @@ class AuthTokenStore {
   /// True while the user has logged in but MFA is not yet verified.
   /// Prevents router bypass: token exists but /dashboard is still blocked.
   bool _mfaPending = false;
+  bool _mfaSetupRequired = false;
 
   void setToken(String token) {
     _token = token;
@@ -23,8 +24,15 @@ class AuthTokenStore {
 
   bool get isMfaPending => _mfaPending;
 
+  void setMfaSetupRequired(bool required) {
+    _mfaSetupRequired = required;
+  }
+
+  bool get isMfaSetupRequired => _mfaSetupRequired;
+
   void clear() {
     _token = null;
     _mfaPending = false;
+    _mfaSetupRequired = false;
   }
 }

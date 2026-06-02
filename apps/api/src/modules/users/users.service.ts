@@ -142,7 +142,6 @@ export class UsersService {
       inviteLink,
     });
 
-    // TODO: audit log
     if (!emailed) {
       return {
         invited: true,
@@ -305,7 +304,6 @@ export class UsersService {
 
     const updatedUser = await this.findOwnedUserOrThrow(tenantId, userId);
 
-    // TODO: audit log
     return this.sanitizeUser(updatedUser);
   }
 
@@ -328,7 +326,6 @@ export class UsersService {
       },
     );
 
-    // TODO: audit log
     return { deactivated: true };
   }
 

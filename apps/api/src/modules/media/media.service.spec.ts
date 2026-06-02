@@ -27,6 +27,18 @@ jest.mock('node:stream/promises', () => ({
   pipeline: jest.fn(),
 }));
 
+jest.mock(
+  'sharp',
+  () =>
+    jest.fn(() => ({
+      rotate: jest.fn().mockReturnThis(),
+      resize: jest.fn().mockReturnThis(),
+      jpeg: jest.fn().mockReturnThis(),
+      toBuffer: jest.fn().mockResolvedValue(Buffer.from([0xff, 0xd8, 0xff])),
+    })),
+  { virtual: true },
+);
+
 import {
   ForbiddenException,
   NotFoundException,
@@ -54,7 +66,12 @@ describe('MediaService', () => {
   const configService = {
     get: jest.fn((key: string) => {
       if (key === 'APP_URL') return 'http://localhost:3000/';
+      if (key === 'MEDIA_JWT_PREVIOUS_SECRET') return undefined;
       return undefined;
+    }),
+    getOrThrow: jest.fn((key: string) => {
+      if (key === 'MEDIA_JWT_SECRET') return 'media-secret';
+      throw new Error(`Missing ${key}`);
     }),
   };
 
@@ -90,13 +107,14 @@ describe('MediaService', () => {
     expect(token).toBe('signed-token');
     expect(jwtService.sign).toHaveBeenCalledWith(
       {
+        typ: 'media',
         fileKey: 'tenant-1/file.jpg',
         tenantId: 'tenant-1',
         userId: 'user-9',
         iat: expect.any(Number),
         exp: expect.any(Number),
       },
-      { noTimestamp: true },
+      { noTimestamp: true, secret: 'media-secret' },
     );
   });
 
@@ -117,6 +135,7 @@ describe('MediaService', () => {
 
   it('serveFile() throws ForbiddenException when file key is outside tenant prefix', async () => {
     jwtService.verify.mockReturnValue({
+      typ: 'media',
       fileKey: 'other-tenant/file.jpg',
       tenantId: 'tenant-1',
       userId: 'user-1',
@@ -130,6 +149,7 @@ describe('MediaService', () => {
 
   it('serveFile() rejects path traversal inside the tenant prefix', async () => {
     jwtService.verify.mockReturnValue({
+      typ: 'media',
       fileKey: 'tenant-1/../../.env',
       tenantId: 'tenant-1',
       userId: 'user-1',
@@ -143,6 +163,7 @@ describe('MediaService', () => {
 
   it('serveFile() streams local file when storage bucket is not configured', async () => {
     jwtService.verify.mockReturnValue({
+      typ: 'media',
       fileKey: 'tenant-1/photo.png',
       tenantId: 'tenant-1',
       userId: 'user-1',
@@ -161,6 +182,7 @@ describe('MediaService', () => {
   it('serveFile() throws NotFoundException when local file is missing', async () => {
     mockStat.mockRejectedValueOnce(new Error('ENOENT'));
     jwtService.verify.mockReturnValue({
+      typ: 'media',
       fileKey: 'tenant-1/missing.jpg',
       tenantId: 'tenant-1',
       userId: 'user-1',
@@ -225,5 +247,59 @@ describe('MediaService', () => {
     await expect(
       service.delete('tenant-1', 'other-tenant/file.jpg'),
     ).rejects.toThrow('Invalid file key');
+  });
+
+  it('serveFile() rejects non-media JWT claims', async () => {
+    jwtService.verify.mockReturnValue({
+      typ: 'access',
+      sub: 'user-1',
+      tenantId: 'tenant-1',
+      role: 'owner',
+      mfaVerified: true,
+    });
+    const res = {} as Response;
+
+    await expect(service.serveFile('tok', res)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+  });
+
+  it('serveFile() accepts tokens signed with previous media secret during rotation', async () => {
+    configService.get.mockImplementation((key: string) => {
+      if (key === 'APP_URL') return 'http://localhost:3000/';
+      if (key === 'MEDIA_JWT_PREVIOUS_SECRET') return 'old-media-secret';
+      return undefined;
+    });
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        MediaService,
+        { provide: ConfigService, useValue: configService },
+        { provide: JwtService, useValue: jwtService },
+      ],
+    }).compile();
+    const serviceWithPrevious = module.get<MediaService>(MediaService);
+
+    jwtService.verify
+      .mockImplementationOnce(() => {
+        throw new Error('new secret failed');
+      })
+      .mockReturnValueOnce({
+        typ: 'media',
+        fileKey: 'tenant-1/photo.png',
+        tenantId: 'tenant-1',
+        userId: 'user-1',
+      });
+    const res = {
+      setHeader: jest.fn(),
+    } as unknown as Response;
+
+    await serviceWithPrevious.serveFile('old-token', res);
+
+    expect(jwtService.verify).toHaveBeenNthCalledWith(1, 'old-token', {
+      secret: 'media-secret',
+    });
+    expect(jwtService.verify).toHaveBeenNthCalledWith(2, 'old-token', {
+      secret: 'old-media-secret',
+    });
   });
 });

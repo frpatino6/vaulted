@@ -128,8 +128,19 @@ export class MovementsController {
     @Param('id') id: string,
     @Body() dto: UpdateMovementDto,
     @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
   ) {
-    return this.movementsService.update(id, dto, user.tenantId);
+    const movement = await this.movementsService.update(id, dto, user.tenantId);
+    await this.auditService.log({
+      tenantId: user.tenantId,
+      userId: user.sub,
+      action: 'movement.updated',
+      entityType: 'movement',
+      entityId: id,
+      metadata: { fields: Object.keys(dto) },
+      ipAddress: req.ip ?? 'unknown',
+    });
+    return movement;
   }
 
   @Roles(Role.OWNER, Role.MANAGER)
@@ -141,8 +152,19 @@ export class MovementsController {
     @Param('id') movementId: string,
     @Body() dto: AddMovementItemDto,
     @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
   ) {
-    return this.movementsService.addItem(movementId, dto.itemId, user);
+    const movement = await this.movementsService.addItem(movementId, dto.itemId, user);
+    await this.auditService.log({
+      tenantId: user.tenantId,
+      userId: user.sub,
+      action: 'movement.item_added',
+      entityType: 'movement',
+      entityId: movementId,
+      metadata: { itemId: dto.itemId },
+      ipAddress: req.ip ?? 'unknown',
+    });
+    return movement;
   }
 
   @Roles(Role.OWNER, Role.MANAGER)
@@ -155,8 +177,19 @@ export class MovementsController {
     @Param('id') movementId: string,
     @Param('itemId') itemId: string,
     @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
   ) {
-    return this.movementsService.removeItem(movementId, itemId, user.tenantId);
+    const result = await this.movementsService.removeItem(movementId, itemId, user.tenantId);
+    await this.auditService.log({
+      tenantId: user.tenantId,
+      userId: user.sub,
+      action: 'movement.item_removed',
+      entityType: 'movement',
+      entityId: movementId,
+      metadata: { itemId },
+      ipAddress: req.ip ?? 'unknown',
+    });
+    return result;
   }
 
   @Roles(Role.OWNER, Role.MANAGER)
@@ -187,8 +220,19 @@ export class MovementsController {
     @Param('id') movementId: string,
     @Body() body: { itemId: string },
     @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
   ) {
-    return this.movementsService.checkinItem(movementId, body.itemId, user);
+    const movement = await this.movementsService.checkinItem(movementId, body.itemId, user);
+    await this.auditService.log({
+      tenantId: user.tenantId,
+      userId: user.sub,
+      action: 'movement.item_checked_in',
+      entityType: 'movement',
+      entityId: movementId,
+      metadata: { itemId: body.itemId },
+      ipAddress: req.ip ?? 'unknown',
+    });
+    return movement;
   }
 
   @Roles(Role.OWNER, Role.MANAGER, Role.STAFF)
