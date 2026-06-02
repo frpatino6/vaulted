@@ -48,6 +48,12 @@ if [[ -z "$MFA_SECRET" ]]; then
   _warn "WebSocket tests and some pentest phases will use a pre-MFA token."
 fi
 
+# ── npm install (before auth so token is fresh when tests run) ─
+if [[ ! -d "$DIR/node_modules" ]]; then
+  _banner "Installing Node.js dependencies…"
+  npm --prefix "$DIR" install --silent
+fi
+
 # ── Login + MFA → get FULL_TOKEN for websocket-tests.js ───────
 _banner "Authenticating (needed for websocket-tests.js)…"
 
@@ -98,12 +104,6 @@ if [[ "$MFA_REQ" == "True" || "$MFA_REQ" == "true" ]]; then
   fi
 else
   _ok "Token obtained (no MFA required)"
-fi
-
-# ── npm install ────────────────────────────────────────────────
-if [[ ! -d "$DIR/node_modules" ]]; then
-  _banner "Installing Node.js dependencies…"
-  npm --prefix "$DIR" install --silent
 fi
 
 # ═══════════════════════════════════════════════════════════════
