@@ -286,35 +286,6 @@ All tests pass against production (`https://api-vaulted.casacam.net`).
 
 ---
 
-## Open Items (Pre-Production Checklist)
-
-| Priority | Item | Owner |
-|---|---|---|
-| 🔴 High | Run valuation re-encryption script (`infra/restore-valuations.js`) | DevOps |
-| 🟡 Medium | Jailbreak detection (Flutter) | Mobile team |
-| 🟡 Medium | Screenshot guard (Flutter) | Mobile team |
-| 🟡 Medium | Read audit for financial data (valuations) | Backend team |
-| 🟢 Low | Android / iOS app icons | Mobile team |
-| 🟢 Low | SBOM + Trivy in CI/CD | DevOps |
-| 🔲 Post-MVP | GCP KMS envelope encryption | Architecture |
-| 🔲 Post-MVP | SOC 2 Type II audit | Compliance |
-
----
-
-## Summary by Severity
-
-| Round | Critical | High | Medium | Low | Total |
-|---|---|---|---|---|---|
-| Initial audit (PR #253) | 2 | 1 | 3 | — | 6 |
-| AI modules audit (PR #254) | 1 | 4 | 5 | 1 | 11 |
-| Full modules audit (PR #255) | — | 4 | 2 | — | 6 |
-| Media/auth hardening (PR #256) | — | 3 | 5 | 4 | 12 |
-| CSO comprehensive audit (Jun 1) | 1 | 2 | 3 | — | 6 |
-| **TOTAL FIXED** | **4** | **14** | **18** | **5** | **41** |
-| **REMAINING OPEN** | **0** | **0** | **2** | **3** | **5** |
-
----
-
 ## 11. Database Architecture & Security
 
 Vaulted uses three purpose-specific databases. Each stores a different class of data with distinct security requirements.
@@ -360,14 +331,12 @@ Vaulted uses three purpose-specific databases. Each stores a different class of 
 | AI knowledge base embeddings | `embeddings` (pgvector) |
 | Immutable audit trail | `audit_logs` |
 
-**Why PostgreSQL for this data:** Users and insurance policies have relational structure (users belong to tenants; policies cover specific items). The audit log requires strict immutability guarantees that SQL constraints enforce. `pgvector` enables semantic search for AI features without an external vector database.
-
 **Security controls applied:**
 - `rejectUnauthorized: true` — TLS certificate verified on every connection
 - `TYPEORM_SYNC=false` in production — TypeORM cannot auto-drop or alter columns in prod
 - `audit_logs` table has no `UPDATE` or `DELETE` permissions for the app user — immutable by design
-- AES-256-GCM encryption on sensitive insurance fields (`policyNumber`, `premiumAmount`, `coverageAmount`, `deductible`, `notes`) and `users.mfa_secret`
-- `pgvector` embeddings contain only AI-generated text vectors — no raw user content stored as plaintext in that table
+- AES-256-GCM encryption on sensitive insurance fields and `users.mfa_secret`
+- `pgvector` embeddings contain only AI-generated text vectors — no raw user content in plaintext
 - 2-year retention policy on audit logs
 
 ---
@@ -386,8 +355,6 @@ Vaulted uses three purpose-specific databases. Each stores a different class of 
 | Dashboard KPI cache | `dashboard:{tenantId}:{propertyId}` |
 | Wardrobe stats cache | `wardrobe:stats:{tenantId}` |
 | Orchestrator WebSocket progress | `orchestrator:progress:{taskId}` |
-
-**Why Redis for this data:** All data here is ephemeral by design — sessions expire, rate limit windows reset, caches are re-populated. Redis TTL enforcement is native and atomic. Storing JWT blacklists in a relational DB would create contention on every authenticated request.
 
 **Security controls applied:**
 - `rediss://` (TLS) — data encrypted in transit to Upstash
@@ -419,6 +386,119 @@ NestJS API (Docker, port 3000)
       └──► GCP Storage / Docker volume ── media files (photos, PDFs)
                                           (JWT-signed access tokens, tenant-prefixed paths)
 ```
+
+---
+
+## 12. Third-party Services & Vendor Security
+
+All external services are accessed exclusively via API keys stored in `.env.prod` (never committed to git). No service receives plaintext financial data or PII beyond what is strictly necessary for its function.
+
+| Service | Provider | Purpose | Data Sent | Security Controls |
+|---|---|---|---|---|
+| **Gemini AI** | Google DeepMind | Vision analysis, chat, insurance analysis, maintenance risk, embeddings | Item descriptions, photos (base64), AI prompts | API key in env var; photos not persisted by Google per ToS; insurance policy numbers masked to `****{last 4}` before sending |
+| **Firebase FCM** | Google Firebase | Push notifications (mobile) | Device tokens, notification title/body | Service account credentials in env vars; no financial data in payloads; device tokens stored encrypted-at-rest |
+| **Resend** | Resend Inc. | Transactional email | User email address, notification content | API key in env var; `escapeHtml()` applied to all content before sending; no financial or inventory data in emails |
+| **Cloudflare** | Cloudflare Inc. | DNS, WAF, DDoS protection, TLS proxy | All inbound HTTP/S traffic | Hides VM origin IP; TLS 1.3 at edge; WAF rules active; DDoS mitigation layer; no data stored by Cloudflare beyond access logs |
+| **Upstash** | Upstash Inc. | Managed Redis | Sessions, rate limit counters, cache | TLS (`rediss://`), password auth, no PII in plaintext values |
+| **Neon.tech** | Neon Inc. | Managed PostgreSQL | Users, insurance, audit logs, embeddings | TLS, `rejectUnauthorized: true`, credentials in env vars |
+| **MongoDB Atlas** | MongoDB Inc. | Managed MongoDB | Inventory documents | SCRAM-SHA-256, TLS enforced by Atlas, FLE on financial fields |
+| **GCP** | Google Cloud | VM (Compute Engine) + Cloud Storage | API container, media files | SSH key-based access, non-root container user, service account with minimal IAM permissions |
+| **Sentry** | Functional Software Inc. | Error monitoring (backend + Flutter) | Error stack traces, request context | DSN in env var; no sensitive field values logged; PII scrubbed from error payloads |
+| **Brave Search** | Brave Software Inc. | Web search for AI valuation (Phase 3) | Item name + category for price research | API key in env var; no user PII or tenant IDs sent in search queries |
+| **Firebase Hosting** | Google Firebase | Flutter web app (static hosting) | Static compiled Flutter web files | No sensitive data hosted; runtime config loaded from `firebase-config.js` excluded from git |
+
+**Vendor risk summary:**
+- All credentials stored exclusively in `.env.prod` (not in git, not in Docker images)
+- No third-party service has direct DB access
+- Financial data (valuations, policy amounts) never sent to any external API
+- All services used are SOC 2 Type II certified (Google, Cloudflare, MongoDB, Neon, Upstash)
+
+---
+
+## 13. Network Security & Monitoring
+
+### Network Architecture
+
+```
+Internet
+   │
+   ▼
+Cloudflare (DNS proxy + WAF + DDoS + TLS 1.3)
+   │  ← Origin IP hidden from public
+   ▼
+GCP VM: tennis-backend (us-central1-c)
+   │
+   ├── UFW Firewall: ports 80, 443, one non-standard SSH only
+   ├── Fail2ban: SSH brute-force protection
+   │
+   ▼
+Caddy (reverse proxy + TLS termination + auto-renewal Let's Encrypt)
+   │
+   ▼
+Docker network (internal)
+   ├── vaulted_api:3000  (NestJS)
+   ├── MongoDB Atlas     (cloud, TLS)
+   ├── PostgreSQL Neon   (cloud, TLS)
+   └── Redis Upstash     (cloud, TLS)
+```
+
+### DDoS & WAF Protection (Cloudflare)
+- All traffic passes through Cloudflare — origin VM IP is never exposed publicly
+- Cloudflare WAF filters common web attack patterns (OWASP rulesets)
+- DDoS mitigation is automatic at L3/L4/L7
+- Rate limiting at application layer (NestJS ThrottlerGuard) provides secondary defense
+
+### TLS Configuration
+| Endpoint | TLS Version | Certificate | Notes |
+|---|---|---|---|
+| `api-vaulted.casacam.net` | TLS 1.3 | Let's Encrypt (auto-renewed via Caddy) | Cloudflare proxy layer adds additional TLS |
+| `vaulted-prod-2026.web.app` | TLS 1.3 | Firebase Hosting managed | |
+| MongoDB Atlas | TLS 1.3 | Atlas managed | `MONGODB_URI` includes TLS params |
+| PostgreSQL Neon | TLS 1.3 | Neon managed | `rejectUnauthorized: true` |
+| Redis Upstash | TLS 1.3 | Upstash managed | `rediss://` scheme |
+
+### Monitoring & Alerting
+
+| Tool | Coverage | Status |
+|---|---|---|
+| **Sentry** | Backend NestJS error tracking + Flutter crash reporting | ✅ Configured (`SENTRY_DSN` env var) |
+| **Docker logs** | Container stdout/stderr | ✅ Available via `docker logs vaulted_api` |
+| **GCP VM monitoring** | CPU, memory, disk via GCP Console | ✅ Available |
+| **MongoDB Atlas alerts** | Connection count, slow queries, storage | ✅ Atlas built-in |
+| Real-time intrusion detection (IDS) | Network anomaly detection | ❌ Not configured — roadmap post-MVP |
+| Alerting on 4xx/5xx spikes | Automated alerts on error rate | ❌ Not configured — roadmap |
+| Log aggregation (e.g., Loki/Datadog) | Centralized log search | ❌ Not configured — roadmap |
+
+> **Auditor note:** The absence of a centralized SIEM or IDS is a known gap. For the current MVP phase with no paying clients, Sentry + GCP monitoring + Docker logs provide adequate visibility. A proper alerting pipeline (PagerDuty, Datadog, or GCP Cloud Monitoring) should be implemented before onboarding first paying client.
+
+---
+
+## Open Items (Pre-Production Checklist)
+
+| Priority | Item | Owner |
+|---|---|---|
+| 🔴 High | Run valuation re-encryption script (`infra/restore-valuations.js`) | DevOps |
+| 🟡 Medium | Jailbreak detection (Flutter) | Mobile team |
+| 🟡 Medium | Screenshot guard (Flutter) | Mobile team |
+| 🟡 Medium | Read audit for financial data (valuations) | Backend team |
+| 🟢 Low | Android / iOS app icons | Mobile team |
+| 🟢 Low | SBOM + Trivy in CI/CD | DevOps |
+| 🔲 Post-MVP | GCP KMS envelope encryption | Architecture |
+| 🔲 Post-MVP | SOC 2 Type II audit | Compliance |
+
+---
+
+## Summary by Severity
+
+| Round | Critical | High | Medium | Low | Total |
+|---|---|---|---|---|---|
+| Initial audit (PR #253) | 2 | 1 | 3 | — | 6 |
+| AI modules audit (PR #254) | 1 | 4 | 5 | 1 | 11 |
+| Full modules audit (PR #255) | — | 4 | 2 | — | 6 |
+| Media/auth hardening (PR #256) | — | 3 | 5 | 4 | 12 |
+| CSO comprehensive audit (Jun 1) | 1 | 2 | 3 | — | 6 |
+| **TOTAL FIXED** | **4** | **14** | **18** | **5** | **41** |
+| **REMAINING OPEN** | **0** | **0** | **2** | **3** | **5** |
 
 ---
 ---
@@ -705,21 +785,6 @@ Todas las pruebas pasan contra producción (`https://api-vaulted.casacam.net`).
 
 ---
 
-## Pendientes Antes de Producción
-
-| Prioridad | Ítem | Responsable |
-|---|---|---|
-| 🔴 Alta | Ejecutar script de re-cifrado de valuaciones (`infra/restore-valuations.js`) | DevOps |
-| 🟡 Media | Detección de jailbreak (Flutter) | Mobile |
-| 🟡 Media | Screenshot guard (Flutter) | Mobile |
-| 🟡 Media | Auditoría de lectura de datos financieros | Backend |
-| 🟢 Baja | Íconos de app Android / iOS | Mobile |
-| 🟢 Baja | SBOM + Trivy en CI/CD | DevOps |
-| 🔲 Post-MVP | Envelope encryption con GCP KMS | Arquitectura |
-| 🔲 Post-MVP | Auditoría SOC 2 Type II | Compliance |
-
----
-
 ## 11. Arquitectura de Bases de Datos y Seguridad
 
 Vaulted utiliza tres bases de datos especializadas. Cada una almacena una clase diferente de datos con requisitos de seguridad distintos.
@@ -739,21 +804,19 @@ Vaulted utiliza tres bases de datos especializadas. Cada una almacena una clase 
 | Planes de tareas del orquestador | `orchestrator_tasks` |
 | Miembros del hogar | `household_members` |
 
-**Por qué MongoDB para estos datos:** Los ítems de inventario tienen esquemas muy variables (un reloj tiene atributos diferentes a una pintura). El modelo de documentos de MongoDB maneja `attributes: {}` heterogéneo nativamente sin migraciones de esquema.
-
 **Controles de seguridad aplicados:**
 - Autenticación SCRAM-SHA-256 (enforced por Atlas)
 - Usuario de la app con permisos `readWrite` solo en la DB `vaulted` — sin acceso admin
-- Cifrado a nivel de campo (AES-256-GCM) en `valuation.purchasePrice`, `valuation.currentValue`, `valuation.lastAppraisalDate` — un dump de la DB no expone valores financieros
-- `tenantId` en cada documento — todas las consultas filtran por tenant antes de retornar datos
-- `escapeRegex()` en todos los términos de búsqueda del usuario — previene ReDoS
-- Claves con `$`, `.`, `__proto__`, `constructor`, `prototype` rechazadas en `attributes` — previene inyección NoSQL
+- Cifrado a nivel de campo (AES-256-GCM) en `valuation.purchasePrice`, `valuation.currentValue`, `valuation.lastAppraisalDate`
+- `tenantId` en cada documento — todas las consultas filtran por tenant
+- `escapeRegex()` en todos los términos de búsqueda — previene ReDoS
+- Claves con `$`, `.`, `__proto__`, `constructor`, `prototype` rechazadas — previene inyección NoSQL
 
 ---
 
 ### PostgreSQL (Neon.tech) — Usuarios, Datos Financieros y Auditoría
 **Proveedor:** Neon.tech (PostgreSQL serverless, free tier)
-**Conexión:** variable de entorno `DATABASE_URL` (TLS, `rejectUnauthorized: true` en producción)
+**Conexión:** `DATABASE_URL` (TLS, `rejectUnauthorized: true` en producción)
 **ORM:** TypeORM (`TYPEORM_SYNC=false` en producción)
 **Extensión:** `pgvector` (embeddings de IA, 3072 dimensiones)
 
@@ -765,14 +828,11 @@ Vaulted utiliza tres bases de datos especializadas. Cada una almacena una clase 
 | Base de conocimiento de IA (embeddings) | `embeddings` (pgvector) |
 | Registro de auditoría inmutable | `audit_logs` |
 
-**Por qué PostgreSQL para estos datos:** Usuarios y pólizas de seguro tienen estructura relacional (usuarios pertenecen a tenants; pólizas cubren ítems específicos). El log de auditoría requiere garantías estrictas de inmutabilidad que las restricciones SQL imponen. `pgvector` habilita búsqueda semántica para funciones de IA sin una base de datos vectorial externa.
-
 **Controles de seguridad aplicados:**
 - `rejectUnauthorized: true` — certificado TLS verificado en cada conexión
-- `TYPEORM_SYNC=false` en producción — TypeORM no puede auto-eliminar ni alterar columnas en prod
-- La tabla `audit_logs` no tiene permisos de `UPDATE` o `DELETE` para el usuario de la app — inmutable por diseño
-- Cifrado AES-256-GCM en campos sensibles de seguros (`policyNumber`, `premiumAmount`, `coverageAmount`, `deductible`, `notes`) y `users.mfa_secret`
-- Los embeddings de `pgvector` contienen solo vectores generados por IA — no se almacena contenido de usuario en texto plano
+- `TYPEORM_SYNC=false` en producción — TypeORM no puede eliminar ni alterar columnas en prod
+- Tabla `audit_logs` sin permisos de `UPDATE`/`DELETE` — inmutable por diseño
+- Cifrado AES-256-GCM en campos sensibles de seguros y `users.mfa_secret`
 - Retención de 2 años en audit logs
 
 ---
@@ -792,15 +852,13 @@ Vaulted utiliza tres bases de datos especializadas. Cada una almacena una clase 
 | Cache de estadísticas de wardrobe | `wardrobe:stats:{tenantId}` |
 | Progreso WebSocket del orquestador | `orchestrator:progress:{taskId}` |
 
-**Por qué Redis para estos datos:** Todos los datos aquí son efímeros por diseño — las sesiones expiran, las ventanas de rate limit se resetean, los caches se repopulan. El TTL de Redis es nativo y atómico. Almacenar blacklists de JWT en una base de datos relacional generaría contención en cada request autenticado.
-
 **Controles de seguridad aplicados:**
 - `rediss://` (TLS) — datos cifrados en tránsito hacia Upstash
 - Autenticación por contraseña obligatoria
-- Comandos `FLUSHALL`, `FLUSHDB`, `DEBUG` deshabilitados — previene borrado accidental o malicioso del cache
+- Comandos `FLUSHALL`, `FLUSHDB`, `DEBUG` deshabilitados
 - `maxmemory 512mb` con política de evicción — previene DoS por OOM
-- Todas las claves de chat IA con scope `tenantId:userId` — session hijacking cross-tenant bloqueado
-- Sin PII en texto plano en Redis — valores financieros y datos personales permanecen en MongoDB/PostgreSQL
+- Claves de chat IA con scope `tenantId:userId` — session hijacking cross-tenant bloqueado
+- Sin PII en texto plano en Redis
 
 ---
 
@@ -824,6 +882,105 @@ NestJS API (Docker, puerto 3000)
       └──► GCP Storage / Docker volume ── archivos multimedia (fotos, PDFs)
                                           (tokens JWT firmados, rutas con prefijo de tenant)
 ```
+
+---
+
+## 12. Seguridad de Servicios de Terceros y Proveedores
+
+Todos los servicios externos se acceden exclusivamente mediante API keys almacenadas en `.env.prod` (nunca en git). Ningún servicio recibe datos financieros en texto claro ni PII más allá de lo estrictamente necesario para su función.
+
+| Servicio | Proveedor | Propósito | Datos enviados | Controles de seguridad |
+|---|---|---|---|---|
+| **Gemini AI** | Google DeepMind | Análisis de visión, chat, análisis de seguros, riesgo de mantenimiento, embeddings | Descripciones de ítems, fotos (base64), prompts de IA | API key en env var; fotos no persistidas por Google según ToS; números de póliza enmascarados a `****{últimos 4}` antes de enviar |
+| **Firebase FCM** | Google Firebase | Notificaciones push (móvil) | Device tokens, título/cuerpo de notificación | Credenciales de service account en env vars; sin datos financieros en payloads |
+| **Resend** | Resend Inc. | Email transaccional | Dirección de email del usuario, contenido de notificación | API key en env var; `escapeHtml()` en todo el contenido; sin datos financieros en emails |
+| **Cloudflare** | Cloudflare Inc. | DNS, WAF, protección DDoS, proxy TLS | Todo el tráfico HTTP/S entrante | Oculta IP de origen de la VM; TLS 1.3 en el edge; reglas WAF activas; mitigación DDoS automática |
+| **Upstash** | Upstash Inc. | Redis gestionado | Sesiones, contadores de rate limit, cache | TLS (`rediss://`), autenticación por contraseña, sin PII en valores |
+| **Neon.tech** | Neon Inc. | PostgreSQL gestionado | Usuarios, seguros, audit logs, embeddings | TLS, `rejectUnauthorized: true`, credenciales en env vars |
+| **MongoDB Atlas** | MongoDB Inc. | MongoDB gestionado | Documentos de inventario | SCRAM-SHA-256, TLS enforced por Atlas, FLE en campos financieros |
+| **GCP** | Google Cloud | VM (Compute Engine) + Cloud Storage | Contenedor API, archivos multimedia | Acceso SSH solo por clave, contenedor non-root, service account con IAM mínimo |
+| **Sentry** | Functional Software Inc. | Monitoreo de errores (backend + Flutter) | Stack traces de errores, contexto de requests | DSN en env var; sin valores de campos sensibles en logs; PII removido de payloads de error |
+| **Brave Search** | Brave Software Inc. | Búsqueda web para valuación IA (Fase 3) | Nombre + categoría del ítem para investigación de precios | API key en env var; sin PII ni tenant IDs en consultas |
+| **Firebase Hosting** | Google Firebase | Hosting de app web Flutter (archivos estáticos) | Archivos compilados de Flutter web | Sin datos sensibles en hosting; config de runtime excluida del git |
+
+**Resumen de riesgo de proveedores:**
+- Todas las credenciales almacenadas exclusivamente en `.env.prod` (no en git, no en imágenes Docker)
+- Ningún servicio de terceros tiene acceso directo a las bases de datos
+- Datos financieros (valuaciones, montos de pólizas) nunca enviados a ninguna API externa
+- Todos los servicios utilizados tienen certificación SOC 2 Type II (Google, Cloudflare, MongoDB, Neon, Upstash)
+
+---
+
+## 13. Seguridad de Red y Monitoreo
+
+### Arquitectura de Red
+
+```
+Internet
+   │
+   ▼
+Cloudflare (proxy DNS + WAF + DDoS + TLS 1.3)
+   │  ← IP de origen oculta del público
+   ▼
+GCP VM: tennis-backend (us-central1-c)
+   │
+   ├── UFW Firewall: solo puertos 80, 443, SSH no estándar
+   ├── Fail2ban: protección contra fuerza bruta en SSH
+   │
+   ▼
+Caddy (reverse proxy + terminación TLS + renovación automática Let's Encrypt)
+   │
+   ▼
+Red interna Docker
+   ├── vaulted_api:3000  (NestJS)
+   ├── MongoDB Atlas     (cloud, TLS)
+   ├── PostgreSQL Neon   (cloud, TLS)
+   └── Redis Upstash     (cloud, TLS)
+```
+
+### Protección DDoS y WAF (Cloudflare)
+- Todo el tráfico pasa por Cloudflare — la IP de origen de la VM nunca está expuesta públicamente
+- WAF de Cloudflare filtra patrones de ataques web comunes (rulesets OWASP)
+- Mitigación DDoS automática en capas L3/L4/L7
+- Rate limiting a nivel de aplicación (NestJS ThrottlerGuard) provee defensa secundaria
+
+### Configuración TLS
+| Endpoint | Versión TLS | Certificado | Notas |
+|---|---|---|---|
+| `api-vaulted.casacam.net` | TLS 1.3 | Let's Encrypt (auto-renovado vía Caddy) | Capa proxy Cloudflare añade TLS adicional |
+| `vaulted-prod-2026.web.app` | TLS 1.3 | Firebase Hosting gestionado | |
+| MongoDB Atlas | TLS 1.3 | Gestionado por Atlas | `MONGODB_URI` incluye parámetros TLS |
+| PostgreSQL Neon | TLS 1.3 | Gestionado por Neon | `rejectUnauthorized: true` |
+| Redis Upstash | TLS 1.3 | Gestionado por Upstash | Esquema `rediss://` |
+
+### Monitoreo y Alertas
+
+| Herramienta | Cobertura | Estado |
+|---|---|---|
+| **Sentry** | Seguimiento de errores NestJS + crash reporting Flutter | ✅ Configurado (`SENTRY_DSN` env var) |
+| **Docker logs** | stdout/stderr del contenedor | ✅ Disponible vía `docker logs vaulted_api` |
+| **GCP VM monitoring** | CPU, memoria, disco vía GCP Console | ✅ Disponible |
+| **MongoDB Atlas alerts** | Conteo de conexiones, consultas lentas, almacenamiento | ✅ Built-in de Atlas |
+| Detección de intrusiones en tiempo real (IDS) | Detección de anomalías de red | ❌ No configurado — roadmap post-MVP |
+| Alertas en spikes de 4xx/5xx | Alertas automáticas en tasa de error | ❌ No configurado — roadmap |
+| Agregación de logs (Loki/Datadog) | Búsqueda centralizada de logs | ❌ No configurado — roadmap |
+
+> **Nota para el auditor:** La ausencia de un SIEM o IDS centralizado es una brecha conocida. Para la fase MVP actual sin clientes pagos, Sentry + GCP monitoring + Docker logs proveen visibilidad adecuada. Un pipeline de alertas adecuado (PagerDuty, Datadog o GCP Cloud Monitoring) debe implementarse antes de incorporar el primer cliente pagador.
+
+---
+
+## Pendientes Antes de Producción
+
+| Prioridad | Ítem | Responsable |
+|---|---|---|
+| 🔴 Alta | Ejecutar script de re-cifrado de valuaciones (`infra/restore-valuations.js`) | DevOps |
+| 🟡 Media | Detección de jailbreak (Flutter) | Mobile |
+| 🟡 Media | Screenshot guard (Flutter) | Mobile |
+| 🟡 Media | Auditoría de lectura de datos financieros | Backend |
+| 🟢 Baja | Íconos de app Android / iOS | Mobile |
+| 🟢 Baja | SBOM + Trivy en CI/CD | DevOps |
+| 🔲 Post-MVP | Envelope encryption con GCP KMS | Arquitectura |
+| 🔲 Post-MVP | Auditoría SOC 2 Type II | Compliance |
 
 ---
 
