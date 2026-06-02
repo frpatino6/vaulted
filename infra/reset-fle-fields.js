@@ -21,12 +21,19 @@
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
-const { createRequire } = require('module');
-
-// Resuelve pg desde apps/api/node_modules sin importar desde dónde se corra el script
-const apiDir = path.join(__dirname, '..', 'apps', 'api');
-const requireFromApi = createRequire(path.join(apiDir, 'package.json'));
-const { Client } = requireFromApi('pg');
+// Resuelve pg desde múltiples ubicaciones posibles (host o contenedor Docker)
+const pgCandidates = [
+  path.join(__dirname, '..', 'apps', 'api', 'node_modules', 'pg'), // host desde raíz del repo
+  path.join(__dirname, 'node_modules', 'pg'),                        // host desde apps/api
+  '/app/node_modules/pg',                                            // dentro del contenedor
+  path.join(process.cwd(), 'node_modules', 'pg'),                    // cwd genérico
+];
+const pgDir = pgCandidates.find(p => { try { return fs.statSync(p).isDirectory(); } catch { return false; } });
+if (!pgDir) {
+  console.error('ERROR: módulo pg no encontrado. Rutas probadas:\n' + pgCandidates.join('\n'));
+  process.exit(1);
+}
+const { Client } = require(pgDir);
 
 // ── Carga .env sin dotenv ─────────────────────────────────────────────────────
 
