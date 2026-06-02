@@ -1,0 +1,59 @@
+graph TB
+    classDef user fill:#1a1a2e,color:#e0e0ff,stroke:#4a4a8a,stroke-width:2px
+    classDef cloudflare fill:#f38020,color:#fff,stroke:#c06010,stroke-width:2px
+    classDef infra fill:#1e3a5f,color:#cce4ff,stroke:#2d6a9f,stroke-width:2px
+    classDef api fill:#0d3d2b,color:#a8f0c0,stroke:#1a8a52,stroke-width:2px
+    classDef db fill:#2d1b4e,color:#d4b8ff,stroke:#6a3fbf,stroke-width:2px
+    classDef ext fill:#3d2000,color:#ffd09a,stroke:#a05000,stroke-width:2px
+    classDef security fill:#4a0000,color:#ffaaaa,stroke:#cc2222,stroke-width:2px,stroke-dasharray:5 5
+    classDef media fill:#1a3a1a,color:#aaffaa,stroke:#2a8a2a,stroke-width:2px
+
+    MOB["📱 Mobile App\nFlutter iOS / Android\n── Cert Pinning (SHA-256)\n── flutter_secure_storage\n── Keychain / Keystore"]
+    WEB["🌐 Web App\nFlutter Web\nvaulted-prod-2026.web.app"]
+
+    CF["☁️ CLOUDFLARE\nDNS Proxy · WAF · DDoS L3/L4/L7\nTLS 1.3 · Origin IP hidden\nOWASP ruleset active"]
+
+    subgraph VM["🖥️  GCP VM  ·  us-central1-c  ·  UFW: ports 80, 443, SSH only  ·  Fail2ban"]
+        CADDY["Caddy\nReverse Proxy\nLet's Encrypt auto-TLS\napi-vaulted.casacam.net"]
+        API["⚙️  NestJS API  ·  Docker  ·  non-root user\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🔒 Guards: JWT · MFA · RBAC · Throttler · Guest expiry\n🔒 Input: class-validator · whitelist · forbidNonWhitelisted\n🔒 Helmet: HSTS · X-Frame · X-Content-Type · CSP\n🔒 CORS: strict origin whitelist\n🔒 Rate limits: 600/min default · 20/15min AI · 10/5min dashboard"]
+    end
+
+    subgraph DBLAYER["🗄️  Databases  ·  All cloud-hosted  ·  All TLS 1.3"]
+        MONGO["MongoDB Atlas M0\nSCRAM-SHA-256 auth\nApp: readWrite only\nFLE: AES-256-GCM on valuations\ntenantId on every document"]
+        PG["PostgreSQL  ·  Neon.tech\nTLS rejectUnauthorized=true\nTypeORM SYNC=false in prod\nAES-256-GCM: insurance + MFA\naudit_logs: NO UPDATE/DELETE\npgvector: AI embeddings"]
+        REDIS["Redis  ·  Upstash\nrediss:// TLS\nFLUSHALL/DEBUG disabled\nSessions · Blacklist · Rate limits\nCache · MFA pending\nmaxmemory 512mb"]
+    end
+
+    MEDIA["📁 Media Storage\nDocker volume / GCP Storage\nJWT-signed tokens (2h TTL)\nTenant-prefixed paths\nPath traversal blocked\nNo static file exposure"]
+
+    subgraph EXTSVCS["🔌  External Services  ·  All via API key in .env.prod  ·  No DB access"]
+        GEMINI["Google Gemini 2.5 Flash\nAI Vision · Chat · Insurance · Maintenance\nPolicy numbers masked ****1234\nPrompt injection sanitized"]
+        FCM["Firebase FCM\nPush notifications\nNo financial data in payloads"]
+        RESEND["Resend\nTransactional email\nescapeHtml() on all content"]
+        SENTRY["Sentry\nError monitoring\nBackend + Flutter\nPII scrubbed"]
+    end
+
+    KEYS["🔑  Key Derivation\nENCRYPTION_KEY (env var)\n  └→ scryptSync → Base Key (256-bit)\n       └→ HKDF-SHA-256\n            info: vaulted-fle:{tenantId}\n            └→ Tenant Key (256-bit)\n                 └→ AES-256-GCM\n                      IV: random 96-bit per call\n                      Auth tag: 128-bit (AEAD)"]
+
+    MOB -->|"HTTPS · Cert pinning"| CF
+    WEB -->|"HTTPS"| CF
+    CF -->|"Proxied · Origin IP hidden"| CADDY
+    CADDY -->|"Docker internal"| API
+    API -->|"SCRAM-SHA-256 · TLS · FLE"| MONGO
+    API -->|"TLS · rejectUnauthorized · AES-256"| PG
+    API -->|"rediss:// · password"| REDIS
+    API -->|"JWT token · tenant prefix"| MEDIA
+    API -->|"API key · masked data"| GEMINI
+    API -->|"Service account"| FCM
+    API -->|"API key"| RESEND
+    API -.->|"errors only"| SENTRY
+    KEYS -. "key derivation" .-> API
+
+    class MOB,WEB user
+    class CF cloudflare
+    class CADDY,VM infra
+    class API api
+    class MONGO,PG,REDIS db
+    class MEDIA media
+    class GEMINI,FCM,RESEND,SENTRY ext
+    class KEYS security
