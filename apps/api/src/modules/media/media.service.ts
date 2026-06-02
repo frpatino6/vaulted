@@ -360,6 +360,11 @@ export class MediaService {
       throw new BadRequestException('Invalid file key');
     }
 
+    // Bare filename without any path separator (legacy data stored without tenant prefix)
+    if (!decodedKey.startsWith(`${tenantId}/`) && !decodedKey.includes('/')) {
+      decodedKey = `${tenantId}/${decodedKey}`;
+    }
+
     if (!decodedKey.startsWith(`${tenantId}/`)) {
       throw new ForbiddenException('Invalid file key');
     }
@@ -399,6 +404,12 @@ export class MediaService {
       const token = mediaTokenMatch[1];
       const payload = this.jwtService.decode<{ fileKey: string }>(token);
       if (payload?.fileKey) return payload.fileKey;
+    }
+
+    // Relative /uploads/ path stored without http prefix (legacy data)
+    const relativeUploadsMatch = key.match(/^\/uploads\/(.+)$/);
+    if (relativeUploadsMatch?.[1]) {
+      return relativeUploadsMatch[1];
     }
 
     return key;
