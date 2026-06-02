@@ -221,6 +221,10 @@ Auditoría ejecutada con `/cso --comprehensive` (modo exhaustivo, gate 2/10) sob
 | `GET /properties/:id/sections` validaba solo `tenantId`, no permisos por propiedad, permitiendo a Staff ver secciones de propiedades fuera de su scope | `apps/api/src/modules/properties/properties.controller.ts` · `apps/api/src/modules/properties/properties.service.ts` | `getSections()` recibe `role` y `userId`; consulta propiedades permitidas y devuelve `NotFoundException` si el usuario no tiene acceso |
 | Items podían crearse, moverse o actualizarse con `propertyId`/`roomId`/`sectionId` inexistentes o de otra estructura del tenant, rompiendo aislamiento lógico y habilitando referencias maliciosas | `apps/api/src/modules/inventory/inventory.service.ts` | Nuevo `assertLocationBelongsToTenant()` valida propiedad, cuarto y sección contra el documento `Property` antes de `create()`, `update()` y `move()` |
 | Audit log PostgreSQL dependía de disciplina de aplicación; un usuario DB con SQL directo podía ejecutar `UPDATE`, `DELETE` o `TRUNCATE` sobre `audit_logs` | `infra/postgres-init.sql` · `apps/api/src/migrations/enforce-audit-log-immutability.sql` | Triggers `BEFORE UPDATE/DELETE` bloquean mutaciones y se revocan privilegios `UPDATE`, `DELETE`, `TRUNCATE`; migración standalone para despliegues existentes |
+| Prompt injection indirecta en draft de claims: campos de póliza/incidente se interpolaban como texto libre dentro del prompt Gemini | `apps/api/src/modules/ai/insurance/ai-insurance.service.ts` | El prompt ahora envía `CLAIM_INPUT_JSON`; todos los valores se tratan como datos no confiables, se sanitizan chars de control/HTML y se limita longitud antes de invocar Gemini |
+| `serialNumber` y `locationDetail` de inventario podían quedar legibles en MongoDB y entrar al contexto de IA/embeddings | `apps/api/src/modules/inventory/inventory.service.ts` · `apps/api/src/modules/ai/shared/embedding.service.ts` · `apps/api/src/modules/ai/chat/ai-chat.service.ts` | Nuevas escrituras cifran ambos campos con FLE por tenant; embeddings ya no incluyen esos campos; AI chat no expone `locationDetail` en contexto ni respuestas |
+| Historial de item no aplicaba scope de propiedad, permitiendo a Staff consultar eventos de items fuera de sus propiedades permitidas si conocía el ID | `apps/api/src/modules/inventory/inventory.controller.ts` · `apps/api/src/modules/inventory/inventory.service.ts` | `getHistory()` ahora recibe `role` y `userId`, valida `AccessControlService.getAllowedPropertyIds()` contra `item.propertyId` y retorna `NotFoundException` fuera de scope |
+| Contenedor `api` en VM compartida tenía superficie excesiva ante escape/DoS lateral con otros servicios en la misma red Docker | `docker-compose.prod.yml` | API endurecida con filesystem `read_only`, `tmpfs /tmp`, `cap_drop: ALL`, `no-new-privileges`, `pids_limit` y límites/reservas de CPU/memoria |
 
 ### MEDIOS
 
@@ -230,12 +234,24 @@ Auditoría ejecutada con `/cso --comprehensive` (modo exhaustivo, gate 2/10) sob
 | `ENCRYPTION_SALT` tenía fallback determinístico (`vaulted-salt`), debilitando separación criptográfica entre entornos y tenants si faltaba configuración | `apps/api/src/common/services/crypto.service.ts` · `.env.example` · `.env.prod.example` · `docker-compose.prod.yml` · `start-prod.sh` · `infra/README.md` | `ENCRYPTION_SALT` ahora es obligatorio con `getOrThrow`, mínimo 32 caracteres, se valida antes de deploy y se documenta generación segura |
 | Mobile refresh rotation no persistía el nuevo refresh token en almacenamiento seguro cuando el backend rotaba cookies, provocando sesiones stale y riesgo de comportamiento inconsistente entre web/native | `apps/mobile/lib/core/network/api_client.dart` | `_doRefresh()` parsea `Set-Cookie` en native y guarda el refresh token rotado en `flutter_secure_storage` |
 | Bulk add sections aceptaba arrays sin límite ni DTO explícito, permitiendo payloads grandes y validación incompleta | `apps/api/src/modules/properties/dto/add-sections.dto.ts` · `apps/api/src/modules/properties/properties.controller.ts` | Nuevo `AddSectionsDto` con `@IsArray`, `@ArrayMaxSize(100)`, `@ValidateNested({ each: true })` y `@Type(() => AddSectionDto)` |
+| Transferencia de `.env.prod` a VM dejaba demasiado margen para permisos inseguros del archivo local/remoto | `infra/upload-env.sh` · `start-prod.sh` | Scripts usan `set -euo pipefail`, `umask 077`/`chmod 600`, validación de archivo existente y validación explícita de secretos obligatorios antes de levantar producción |
+| Flutter iOS mantenía secretos accesibles después del primer unlock del dispositivo | `apps/mobile/lib/core/storage/secure_storage.dart` · `apps/mobile/lib/main.dart` | Keychain iOS cambiado a `unlocked_this_device`, reduciendo exposición cuando el dispositivo está bloqueado |
+| App móvil podía mostrar contenido sensible en screenshots/recents del sistema | `apps/mobile/android/app/src/main/kotlin/com/vaulted/vaulted/MainActivity.kt` · `apps/mobile/ios/Runner/SceneDelegate.swift` | Android usa `FLAG_SECURE`; iOS agrega overlay de privacidad al pasar a estado inactivo para ocultar contenido en app switcher |
 
 ### BAJO
 
 | Hallazgo | Archivo | Fix aplicado |
 |---|---|---|
 | Pantalla de login móvil contenía credenciales de prueba hardcodeadas (`owner@test.com` / `Test1234!Secure`) visibles en builds | `apps/mobile/lib/features/auth/presentation/login_screen.dart` | Controladores inicializan vacíos; no quedan credenciales embebidas en UI |
+
+### NOTAS OPERATIVAS
+
+| Área | Estado |
+|---|---|
+| Datos históricos `serialNumber`/`locationDetail` | El fix cifra escrituras nuevas y evita nuevas fugas hacia IA. Registros MongoDB existentes previos al cambio deben migrarse en una ventana controlada con backup, API sin tráfico y verificación por tenant antes de considerarse cifrados en reposo. No se agregó migración automática en esta sesión. |
+| VM compartida con `tennis-backend` | Se redujo superficie del contenedor `api`, pero el aislamiento completo requiere separar reverse proxy/red/VM o mover Vaulted a infraestructura dedicada. |
+| KMS envelope encryption | HKDF + `ENCRYPTION_KEY`/`ENCRYPTION_SALT` obligatorio queda como control MVP; KMS envelope encryption sigue siendo migración post-MVP. |
+| Jailbreak/root attestation | Screenshot/app-switcher y Keychain fueron endurecidos. La detección/attestation de jailbreak/root todavía requiere integración dedicada antes de distribución pública. |
 
 ---
 
@@ -253,7 +269,7 @@ Auditoría ejecutada con `/cso --comprehensive` (modo exhaustivo, gate 2/10) sob
 | R-8 | Prompt injection sandbox completo | Fix actual mitiga inyecciones obvias; evaluación de output por el modelo pendiente para mayor robustez | Baja |
 | R-9 | Audit log TODOs | Entradas pendientes en `properties.service.ts`, `users.service.ts`, `media.service.ts` | Baja |
 | R-10 | Rotación de cert pinning | Pinning release ya valida certificados CA-válidos; queda pendiente el proceso operativo de rotación de fingerprints antes de renovaciones TLS | Alta (ops) |
-| R-11 | Jailbreak detection / screenshot guard | Listados en Security Requirements del CLAUDE.md pero no implementados en Flutter. Necesarios antes de App Store / Google Play | Media |
+| R-11 | Jailbreak/root attestation | Screenshot/app-switcher y Keychain fueron endurecidos; falta attestation/detección dedicada antes de App Store / Google Play | Media |
 
 ---
 
