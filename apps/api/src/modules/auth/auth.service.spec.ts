@@ -189,7 +189,7 @@ describe('AuthService', () => {
     expect(auditService.log).not.toHaveBeenCalled();
   });
 
-  it('login() returns tokens and mfaRequired=false for STAFF role', async () => {
+  it('login() returns tokens and mfaRequired=true for STAFF role', async () => {
     usersService.findByEmail.mockResolvedValue({
       id: 'user-1',
       tenantId: 'tenant-1',
@@ -197,6 +197,7 @@ describe('AuthService', () => {
       passwordHash: 'hashed-password',
       role: Role.STAFF,
       isActive: true,
+      mfaEnabled: false,
     });
     usersService.verifyPassword.mockResolvedValue(true);
 
@@ -217,8 +218,8 @@ describe('AuthService', () => {
     expect(result).toEqual({
       accessToken: 'access-token',
       refreshToken: 'refresh-token',
-      mfaRequired: false,
-      mfaSetupRequired: false,
+      mfaRequired: true,
+      mfaSetupRequired: true,
     });
   });
 
