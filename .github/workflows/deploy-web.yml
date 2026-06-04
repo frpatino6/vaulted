@@ -34,7 +34,7 @@ jobs:
           SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
 
       - name: SCA scan (Socket.dev)
-        uses: socketdev/socket-action@v1
+        uses: SocketDev/action@v1
         with:
           working-directory: apps/mobile
 
