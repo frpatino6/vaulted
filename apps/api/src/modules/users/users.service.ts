@@ -349,7 +349,7 @@ export class UsersService {
       where: { id },
       select: [
         'id', 'tenantId', 'email', 'passwordHash', 'role',
-        'mfaEnabled', 'isActive', 'propertyIds', 'status',
+        'mfaEnabled', 'mfaSecret', 'isActive', 'propertyIds', 'status',
         'expiresAt', 'lastLogin', 'createdAt', 'updatedAt',
       ],
     });
@@ -373,7 +373,12 @@ export class UsersService {
 
   async getMfaSecret(user: User): Promise<string | null> {
     if (!user.mfaSecret) return null;
-    return this.cryptoService.decryptField(user.mfaSecret, user.id);
+    try {
+      return this.cryptoService.decryptField(user.mfaSecret, user.id);
+    } catch {
+      // Legacy fallback: secrets created before user-scoped key migration
+      return this.cryptoService.decrypt(user.mfaSecret);
+    }
   }
 
   async disableMfa(userId: string): Promise<void> {

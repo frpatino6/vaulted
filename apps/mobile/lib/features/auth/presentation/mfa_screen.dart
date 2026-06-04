@@ -21,6 +21,7 @@ class MfaScreen extends ConsumerStatefulWidget {
 
 class _MfaScreenState extends ConsumerState<MfaScreen> {
   final _codeController = TextEditingController();
+  final _passwordController = TextEditingController();
   String? _error;
   String? _setupSecret;
   Uint8List? _setupQrBytes;
@@ -31,22 +32,23 @@ class _MfaScreenState extends ConsumerState<MfaScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      if (AuthTokenStore.instance.isMfaSetupRequired) {
-        _loadMfaSetup();
-      }
-    });
+    // MFA setup requires password confirmation — user triggers via button
   }
 
   @override
   void dispose() {
     _codeController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
   Future<void> _loadMfaSetup() async {
     if (_setupLoadStarted) return;
+    final password = _passwordController.text.trim();
+    if (password.isEmpty) {
+      setState(() => _setupError = 'Enter your current password to start setup');
+      return;
+    }
     setState(() {
       _setupLoadStarted = true;
       _setupLoading = true;
@@ -54,7 +56,7 @@ class _MfaScreenState extends ConsumerState<MfaScreen> {
     });
 
     try {
-      final setup = await ref.read(authRepositoryProvider).setupMfa();
+      final setup = await ref.read(authRepositoryProvider).setupMfa(password: password);
       final qrCode = setup['qrCode'] as String?;
       if (!mounted) return;
       setState(() {
@@ -147,14 +149,52 @@ class _MfaScreenState extends ConsumerState<MfaScreen> {
               ),
               if (setupRequired) ...[
                 const SizedBox(height: AppSpacing.lg),
+                if (_setupSecret == null) ...[
+                  TextFormField(
+                    controller: _passwordController,
+                    decoration: const InputDecoration(
+                      labelText: 'Current password',
+                      hintText: 'Enter your password to continue',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(14)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(14)),
+                        borderSide: BorderSide(color: AppColors.onSurfaceVariant),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(14)),
+                        borderSide: BorderSide(color: AppColors.accent, width: 2),
+                      ),
+                      filled: true,
+                      fillColor: AppColors.surfaceVariant,
+                    ),
+                    obscureText: true,
+                    onChanged: (_) => setState(() {
+                      _setupError = null;
+                      _setupLoadStarted = false;
+                    }),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: _setupLoading ? null : _loadMfaSetup,
+                      child: const Text('Start MFA Setup'),
+                    ),
+                  ),
+                ],
                 _MfaSetupPanel(
                   loading: _setupLoading,
                   error: _setupError,
                   qrBytes: _setupQrBytes,
                   secret: _setupSecret,
                   onRetry: () {
-                    setState(() => _setupLoadStarted = false);
-                    _loadMfaSetup();
+                    setState(() {
+                      _setupLoadStarted = false;
+                      _setupSecret = null;
+                      _setupQrBytes = null;
+                    });
                   },
                 ),
               ],
