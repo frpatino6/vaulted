@@ -278,11 +278,14 @@ Automated penetration test suite available at `security-tests/`:
 
 | Script | Coverage |
 |---|---|
-| `run-all.sh` | JWT alg=none, brute-force throttle, expired tokens, NoSQL/SQL/XSS injection, PHP shell upload, path traversal, CORS, rate limiting, security headers, TLS |
+| `run-everything.sh` | Master orchestrator — runs all three suites in sequence, unified pass/fail report |
+| `pentest-full.sh` | 17 phases: JWT alg=none, brute-force throttle, expired tokens, NoSQL/SQL/XSS injection, PHP shell upload, path traversal, CORS, rate limiting, security headers, TLS |
 | `websocket-tests.js` | No-token, malformed token, alg=none, expired JWT, cross-tenant room isolation |
-| `idor-rbac-tests.sh` | Cross-tenant property/inventory access, fake IDs, privilege escalation |
+| `idor-rbac-tests.sh` | Cross-tenant property/inventory access, fake IDs, privilege escalation, RBAC |
 
 All tests pass against production (`https://api-vaulted.casacam.net`).
+
+Run: `bash security-tests/run-everything.sh`
 
 ---
 
