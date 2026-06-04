@@ -923,6 +923,9 @@ Invalid link: "This invite link is missing a token. Open the link from your emai
 Fields: **Password** (required, min 12 chars, must contain uppercase, lowercase, number, special char), **Confirm password**.
 Button: **"Create account"**.
 API errors: "Too many attempts. Wait a moment and try again." / "Invalid invite link. Request a new invitation."
+
+### Device Security
+Vaulted requires devices to meet security standards. Jailbroken or rooted devices will see a security requirements screen and cannot access the app.
     `.trim(),
   },
 ];

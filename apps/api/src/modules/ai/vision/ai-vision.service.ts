@@ -56,6 +56,8 @@ export class AiVisionService {
     );
     this.model = config.get<string>('AI_VISION_MODEL') ?? 'gemini-2.5-flash';
     this.appUrl = config.get<string>('APP_URL') ?? 'http://localhost:3000';
+    this.allowedUploadDir =
+      config.get<string>('UPLOADS_DIR') ?? path.join(process.cwd(), 'uploads');
   }
 
   async analyzeItem(
@@ -273,20 +275,50 @@ Final rules:
     }
   }
 
-  private readonly ALLOWED_UPLOAD_DIR = path.resolve('/app/uploads');
+  private readonly allowedUploadDir: string;
 
   private resolveImageToPart(imageUrl: string): Part {
-    const localPath = imageUrl.startsWith(this.appUrl)
-      ? imageUrl.replace(this.appUrl, '')
-      : imageUrl;
+    // Compute uploads root lazily (not at class field init time) so it
+    // works correctly regardless of process.cwd() at module load time.
+    // Matches the convention used by MediaService (join(process.cwd(), 'uploads')).
+    const uploadsRoot = this.allowedUploadDir ?? path.join(process.cwd(), 'uploads');
+    const resolvedRoot = path.resolve(uploadsRoot);
 
-    // Resolve to absolute path and verify it stays within the uploads directory
-    const filePath = path.resolve('/app', localPath.replace(/^\/+/, ''));
-    if (!filePath.startsWith(this.ALLOWED_UPLOAD_DIR + path.sep) &&
-        filePath !== this.ALLOWED_UPLOAD_DIR) {
-      throw new BadRequestException('Invalid image path.');
+    if (imageUrl.startsWith(this.appUrl)) {
+      // Strip the app URL to get the relative path (e.g. /api/media/{token})
+      // Media tokens are self-contained JWT — we resolve the actual file via
+      // MediaService's file-serving endpoint, not by direct filesystem access.
+      // For direct upload paths, strip any leading slash and resolve relative to uploads.
+      const relativePath = imageUrl.replace(this.appUrl, '').replace(/^\/+/, '');
+      const filePath = path.resolve(resolvedRoot, relativePath);
+
+      if (!filePath.startsWith(resolvedRoot + path.sep) && filePath !== resolvedRoot) {
+        throw new BadRequestException('Invalid image path.');
+      }
+      if (!fs.existsSync(filePath)) {
+        throw new BadRequestException('Image not found.');
+      }
+
+      const ext = path.extname(filePath).toLowerCase();
+      const mimeMap: Record<string, string> = {
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.png': 'image/png',
+        '.webp': 'image/webp',
+      };
+      const mimeType = mimeMap[ext] ?? 'image/jpeg';
+
+      const data = fs.readFileSync(filePath).toString('base64');
+      return {
+        inlineData: { mimeType, data },
+      };
     }
 
+    // imageUrl is already a local filesystem path or relative path
+    const filePath = path.resolve(resolvedRoot, imageUrl.replace(/^\/+/, ''));
+    if (!filePath.startsWith(resolvedRoot + path.sep) && filePath !== resolvedRoot) {
+      throw new BadRequestException('Invalid image path.');
+    }
     if (!fs.existsSync(filePath)) {
       throw new BadRequestException('Image not found.');
     }

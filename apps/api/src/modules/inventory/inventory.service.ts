@@ -78,7 +78,7 @@ function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-function assertSafeFlexibleObject(
+export function assertSafeFlexibleObject(
   value: unknown,
   path = 'attributes',
   depth = 0,
@@ -104,16 +104,27 @@ function assertSafeFlexibleObject(
     return;
   }
 
-  for (const [key, child] of Object.entries(value)) {
+  // BUG: Object.entries() does NOT enumerate __proto__, constructor, or prototype
+  // because these are properties on the prototype chain, not own properties.
+  // Use getOwnPropertyNames + forEach instead to catch all own string keys.
+  // Combined with a prototype check to catch __proto__ pollution.
+  if (Object.getPrototypeOf(value) !== Object.prototype) {
+    throw new BadRequestException(`${path} has been prototype-polluted via __proto__`);
+  }
+
+  const ownKeys = Object.getOwnPropertyNames(value);
+  for (const key of ownKeys) {
     if (
       key.startsWith('$') ||
       key.includes('.') ||
+      key === '' ||
       key === '__proto__' ||
       key === 'constructor' ||
       key === 'prototype'
     ) {
       throw new BadRequestException(`${path} contains an unsafe key`);
     }
+    const child = (value as Record<string, unknown>)[key];
     assertSafeFlexibleObject(child, `${path}.${key}`, depth + 1);
   }
 }

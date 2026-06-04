@@ -81,6 +81,21 @@ export class NotificationsService {
     }
   }
 
+  /**
+   * Register a device token for push notifications.
+   *
+   * NOTE: The token lookup (line ~89) deliberately queries by token value alone
+   * without a tenantId filter. This is intentional — device tokens are device-bound,
+   * not tenant-bound. When a new user logs in on a device with a previously-registered
+   * token, the update path re-associates it to the new user/tenant. This means:
+   *   - A token can move between tenants (device transfer scenario)
+   *   - The old tenant loses the ability to push to that device
+   *   - This is correct behavior for device lifecycle management
+   *   - Not a cross-tenant data leak since the token value has no intrinsic meaning
+   *
+   * Stale token cleanup in sendPush() (line ~185) also deletes by token alone
+   * without tenantId. This is correct: FCM-invalidated tokens are removed globally.
+   */
   async registerDeviceToken(
     userId: string,
     tenantId: string,
