@@ -48,6 +48,12 @@ if [[ -z "$MFA_SECRET" ]]; then
   _warn "WebSocket tests and some pentest phases will use a pre-MFA token."
 fi
 
+# ── npm install (before auth so token is fresh when tests run) ─
+if [[ ! -d "$DIR/node_modules" ]]; then
+  _banner "Installing Node.js dependencies…"
+  npm --prefix "$DIR" install --silent
+fi
+
 # ── Login + MFA → get FULL_TOKEN for websocket-tests.js ───────
 _banner "Authenticating (needed for websocket-tests.js)…"
 
@@ -100,18 +106,12 @@ else
   _ok "Token obtained (no MFA required)"
 fi
 
-# ── npm install ────────────────────────────────────────────────
-if [[ ! -d "$DIR/node_modules" ]]; then
-  _banner "Installing Node.js dependencies…"
-  npm --prefix "$DIR" install --silent
-fi
-
 # ═══════════════════════════════════════════════════════════════
 # RUN SUITE 1 — idor-rbac-tests.sh  (before pentest-full bruteforce)
 # ═══════════════════════════════════════════════════════════════
 _banner "Suite 1/3 — idor-rbac-tests.sh (IDOR + RBAC)"
 set +e
-IDOR_OUT=$(bash "$DIR/idor-rbac-tests.sh" 2>&1)
+IDOR_OUT=$(OWNER_TOKEN="$FULL_TOKEN" bash "$DIR/idor-rbac-tests.sh" 2>&1)
 IDOR_EXIT=$?
 set -e
 echo "$IDOR_OUT" | tee -a "$LOG"

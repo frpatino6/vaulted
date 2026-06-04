@@ -6,4 +6,4 @@ export enum Role {
   GUEST = 'guest',
 }
 
-export const MFA_REQUIRED_ROLES = [Role.OWNER, Role.MANAGER, Role.AUDITOR];
+export const MFA_REQUIRED_ROLES = [Role.OWNER, Role.MANAGER, Role.STAFF, Role.AUDITOR];

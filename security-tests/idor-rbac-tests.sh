@@ -8,6 +8,7 @@ API="https://api-vaulted.casacam.net/api"
 DIR="$(cd "$(dirname "$0")" && pwd)"
 [[ -f "$DIR/.env" ]] && source "$DIR/.env"
 MFA_SECRET="${MFA_SECRET:-}"
+OWNER_TOKEN="${OWNER_TOKEN:-}"
 PASS=0; FAIL=0
 
 _green() { echo -e "\033[32m✅ PASS | $*\033[0m"; PASS=$((PASS+1)); }
@@ -16,24 +17,27 @@ _red()   { echo -e "\033[31m❌ FAIL | $*\033[0m"; FAIL=$((FAIL+1)); }
 # ── Obtain tokens ────────────────────────────────────────────
 echo "━━━ IDOR & RBAC Security Tests ━━━"
 echo ""
-echo "Step 1: Login as owner..."
-OWNER_LOGIN=$(curl -s -X POST "$API/auth/login" \
-  -H "Content-Type: application/json" \
-  -c /tmp/owner-cookies.txt \
-  -d '{"email":"owner@test.com","password":"Test1234!Secure"}')
-OWNER_TOKEN=$(echo "$OWNER_LOGIN" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['accessToken'])" 2>/dev/null || echo "")
+if [[ -n "$OWNER_TOKEN" ]]; then
+  echo "Step 1: Using pre-authenticated owner token (from run-everything.sh)"
+else
+  echo "Step 1: Login as owner..."
+  OWNER_LOGIN=$(curl -s -X POST "$API/auth/login" \
+    -H "Content-Type: application/json" \
+    -c /tmp/owner-cookies.txt \
+    -d '{"email":"owner@test.com","password":"Test1234!Secure"}')
+  OWNER_TOKEN=$(echo "$OWNER_LOGIN" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['accessToken'])" 2>/dev/null || echo "")
 
-if [[ -z "$OWNER_TOKEN" ]]; then
-  echo "❌ Could not get owner token. Exiting."
-  exit 1
-fi
-echo "  ✓ Owner token obtained"
+  if [[ -z "$OWNER_TOKEN" ]]; then
+    echo "❌ Could not get owner token. Exiting."
+    exit 1
+  fi
+  echo "  ✓ Owner token obtained"
 
-# If MFA is required, complete verification to get mfaVerified=true token
-OWNER_MFA=$(echo "$OWNER_LOGIN" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('data',{}).get('mfaRequired',False))" 2>/dev/null || echo "False")
-if [[ "$OWNER_MFA" == "True" || "$OWNER_MFA" == "true" ]]; then
-  if [[ -n "$MFA_SECRET" ]]; then
-    MFA_CODE=$(python3 -c "
+  # If MFA is required, complete verification to get mfaVerified=true token
+  OWNER_MFA=$(echo "$OWNER_LOGIN" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('data',{}).get('mfaRequired',False))" 2>/dev/null || echo "False")
+  if [[ "$OWNER_MFA" == "True" || "$OWNER_MFA" == "true" ]]; then
+    if [[ -n "$MFA_SECRET" ]]; then
+      MFA_CODE=$(python3 -c "
 import hmac, hashlib, struct, time, base64
 s = '${MFA_SECRET}'.upper().replace(' ',''); key = base64.b32decode(s + '=' * ((8 - len(s) % 8) % 8))
 msg = struct.pack('>Q', int(time.time()) // 30)
@@ -41,25 +45,26 @@ h = hmac.new(key, msg, hashlib.sha1).digest()
 o = h[-1] & 0xf
 print(str((struct.unpack('>I', h[o:o+4])[0] & 0x7fffffff) % 1000000).zfill(6))
 " 2>/dev/null || echo "")
-    MFA_RESP=$(curl -s -X POST "$API/auth/mfa/verify" \
-      -H "Content-Type: application/json" \
-      -H "Authorization: Bearer $OWNER_TOKEN" \
-      -b /tmp/owner-cookies.txt \
-      -c /tmp/owner-cookies.txt \
-      -d "{\"code\":\"$MFA_CODE\"}")
-    VERIFIED_TOKEN=$(echo "$MFA_RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('data',{}).get('accessToken',''))" 2>/dev/null || echo "")
-    if [[ -n "$VERIFIED_TOKEN" ]]; then
-      OWNER_TOKEN="$VERIFIED_TOKEN"
-      echo "  ✓ MFA verified — full access token ready"
+      MFA_RESP=$(curl -s -X POST "$API/auth/mfa/verify" \
+        -H "Content-Type: application/json" \
+        -H "Authorization: Bearer $OWNER_TOKEN" \
+        -b /tmp/owner-cookies.txt \
+        -c /tmp/owner-cookies.txt \
+        -d "{\"code\":\"$MFA_CODE\"}")
+      VERIFIED_TOKEN=$(echo "$MFA_RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('data',{}).get('accessToken',''))" 2>/dev/null || echo "")
+      if [[ -n "$VERIFIED_TOKEN" ]]; then
+        OWNER_TOKEN="$VERIFIED_TOKEN"
+        echo "  ✓ MFA verified — full access token ready"
+      else
+        echo "  ⚠ MFA verify failed — some tests may return 403"
+      fi
     else
-      echo "  ⚠ MFA verify failed — some tests may return 403"
+      echo "  ⚠ MFA required but MFA_SECRET not set. Run with: MFA_SECRET=YOUR_SECRET bash idor-rbac-tests.sh"
+      echo "  ⚠ Tests requiring mfaVerified=true will fail with 403 (expected behavior, not a bug)"
     fi
   else
-    echo "  ⚠ MFA required but MFA_SECRET not set. Run with: MFA_SECRET=YOUR_SECRET bash idor-rbac-tests.sh"
-    echo "  ⚠ Tests requiring mfaVerified=true will fail with 403 (expected behavior, not a bug)"
+    echo "  ✓ Owner token OK (no MFA required)"
   fi
-else
-  echo "  ✓ Owner token OK (no MFA required)"
 fi
 
 # Get a real property ID for this tenant
