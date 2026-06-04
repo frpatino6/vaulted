@@ -4,6 +4,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
+import { JwtModule } from '@nestjs/jwt';
 import { AppThrottlerGuard } from './common/guards/throttler.guard';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { TenantInterceptor } from './common/interceptors/tenant.interceptor';
@@ -132,6 +133,7 @@ import { InsuredItem } from './modules/insurance/entities/insured-item.entity';
     HouseholdMembersModule,
     NotificationsModule,
     OrchestratorModule,
+    JwtModule.register({}),
   ],
   providers: [
     AnomalyGuard,

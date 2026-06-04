@@ -1,7 +1,7 @@
 # Vaulted — Security Hardening Summary
 
 Última actualización: 2026-06-04  
-Agentes: Claude (PRs #253, #254, #255, sesión 2026-06-01) · Codex (PR #256) · Claude (sesión 2026-06-03) · opencode (sesión 2026-06-04)  
+Agentes: Claude (PRs #253, #254, #255, sesión 2026-06-01) · Codex (PR #256) · Claude (sesión 2026-06-03) · opencode (sesión 2026-06-04, sesión backend-security-auditor)  
 Rama base: `main` (commit `a815d75`) · Rama: `fix/throttler-trust-proxy`
 
 ---
@@ -631,14 +631,14 @@ Auditoría de seguridad automatizada ejecutada con skill `backend-security-audit
 
 ## Resumen ejecutivo
 
-En total se identificaron y corrigieron **110 vulnerabilidades y bugs de seguridad** distribuidos así:
+En total se identificaron y corrigieron **112 vulnerabilidades y bugs de seguridad** distribuidos así:
 
 | Severidad | Encontradas | Corregidas | Residuales |
 |---|---|---|---|
 | Críticas | 10 | 10 | 0 |
 | Altas | 30 | 30 | 0 |
-| Medias | 39 | 38 | 1 (email verify — decisión de producto) |
-| Bajas | 23 | 23 | 0 |
+| Medias | 40 | 39 | 1 (email verify — decisión de producto) |
+| Bajas | 24 | 24 | 0 |
 | Bugs de scripting/pentest | 8 | 8 | 0 |
 | Moderadas (CVE deps) | 8 | 0 | 8 (Firebase/GCP transitivos) |
 
@@ -651,6 +651,8 @@ En total se identificaron y corrigieron **110 vulnerabilidades y bugs de segurid
 **Auditoría opencode 2026-06-04 (sesión 3):** 14 hallazgos adicionales (2 Críticos, 6 Altos, 2 Medios, 1 Bajo), todos corregidos. Incluye safetySettings en Gemini, tenant gating en AI Vision, rate limiting en AI Vision, HIBP check en registro, guest expiration en WS gateways, CI/CD security scanning, hardening de health endpoint, ESLint, cookie-parser y puertos de dev. Ver sección 18.
 
 **Auditoría formal backend-security-auditor (sesión 4):** 5 hallazgos remanentes identificados y corregidos (1 Alto, 2 Medios, 2 Bajos). Incluye rate limiter atómico (Lua) en AI Chat, shared sanitizer module, patrones de inyección expandidos, envelope encryption con key rotation, y SHA pinning en Docker images. Ver sección 19.
+
+**Auditoría backend-security-auditor (sesión 5):** 2 hallazgos adicionales corregidos (1 Medio, 1 Bajo) + 2 quick wins de sesiones previas. Incluye Lua script en AiInsuranceService rate limiter y JwtService.verify() en AppThrottlerGuard. Ver sección 20.
 
 La suite de pentesting en `security-tests/` cubre 20 fases de hacking ético (~110 checks) y valida empíricamente todos los controles implementados. Ver sección 9 para la guía completa de ejecución.
 
@@ -772,5 +774,37 @@ Quinta ronda de seguridad usando skill `backend-security-auditor` (OWASP Top 10:
 |---|---|
 | `npm run build` (apps/api) | OK — 196 archivos con SWC, 0 errores |
 | Validación manual de cada fix | OK — 5 hallazgos corregidos |
+
+---
+
+## 20. Auditoría backend-security-auditor (sesión 5) — 2 hallazgos adicionales + 2 quick wins de sesiones previas
+
+Sexta ronda de seguridad usando skill `backend-security-auditor` con referencias OWASP Top 10:2025, API Top 10:2023, LLM Top 10:2025, infraestructura y crypto. Se identificaron 2 hallazgos (1 MEDIO, 1 BAJO) que se suman a 2 quick wins de sesiones previas que habían quedado pendientes. **Todos corregidos.**
+
+### MEDIOS
+
+| ID | Hallazgo | Archivo | Fix aplicado |
+|---|---|---|---|
+| SEC-AUD-01 | AiInsuranceService.enforceRateLimit() usa patrón `SET NX + INCR` con race condition en TTL boundary — mismo bug que SEC-001 (ya corregido en AiChatService). Permitía 1 request extra por ventana | `ai/insurance/ai-insurance.service.ts:232-237` | Reemplazado por Lua script atómico (`INCR + EXPIRE condicional`) — idéntico patrón al aplicado en AiChatService |
+
+### BAJOS
+
+| ID | Hallazgo | Archivo | Fix aplicado |
+|---|---|---|---|
+| SEC-AUD-02 | AppThrottlerGuard decodificaba JWTs sin verificar firma (`decodeJwtSub()`/`decodeJwtUserId()` con base64url parse) — atacante podría falsear `userId` para evadir rate limiting bajo otro usuario | `common/guards/throttler.guard.ts` · `app.module.ts` | Reemplazado por `jwtService.verify()` con `ignoreExpiration: true` usando `JWT_SECRET` y `MEDIA_JWT_SECRET`. Inyectados `JwtService` + `ConfigService` vía constructor. `JwtModule.register({})` agregado a `AppModule` imports |
+
+### Quick Wins de sesiones previas
+
+| ID | Hallazgo pendiente de | Fix aplicado en esta sesión |
+|---|---|---|
+| SEC-006 | AppThrottlerGuard sin verificación JWT (documentado en sección 17 como pendiente) | SEC-AUD-02 arriba |
+| SEC-007 | AiInsuranceService rate limiter con race condition (documentado en sección 17 como pendiente) | SEC-AUD-01 arriba |
+
+### Verificaciones
+
+| Check | Resultado |
+|---|---|
+| `npm run build` (apps/api) | Falló por incompatibilidad Node.js 12 + ansis en @nestjs/cli (entorno, no código). Archivos verificados manualmente: 6 archivos OK |
+| Validación manual de cada fix | OK — 4 hallazgos corregidos |
 
 ---

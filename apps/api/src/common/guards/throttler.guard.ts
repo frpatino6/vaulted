@@ -1,9 +1,20 @@
 import { Injectable, ExecutionContext } from '@nestjs/common';
-import { ThrottlerGuard, ThrottlerRequest } from '@nestjs/throttler';
+import { ConfigService } from '@nestjs/config';
+import { ThrottlerGuard, ThrottlerRequest, ThrottlerModuleOptions, ThrottlerStorageService } from '@nestjs/throttler';
+import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 
 @Injectable()
 export class AppThrottlerGuard extends ThrottlerGuard {
+  constructor(
+    options: ThrottlerModuleOptions,
+    storageService: ThrottlerStorageService,
+    private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
+  ) {
+    super(options, storageService);
+  }
+
   protected async getTracker(req: ThrottlerRequest): Promise<string> {
     const request = req as unknown as Request;
 
@@ -22,19 +33,15 @@ export class AppThrottlerGuard extends ThrottlerGuard {
   }
 
   private extractUserId(request: Request): string | null {
-    // 1. Authorization: Bearer <access-token> — decode without verifying
-    //    since JwtAuthGuard runs after this guard. Verified tokens get
-    //    user-based rate limiting; unverified tokens fall through to IP.
     const authHeader = request.headers['authorization'] as string | undefined;
     if (authHeader?.startsWith('Bearer ')) {
-      const sub = this.decodeJwtSub(authHeader.slice(7));
+      const sub = this.verifyAccessTokenSub(authHeader.slice(7));
       if (sub) return sub;
     }
 
-    // 2. /api/media/:token — same approach for media JWTs
     const mediaMatch = (request.path ?? '').match(/^\/api\/media\/([^/?]+)/);
     if (mediaMatch) {
-      const userId = this.decodeJwtUserId(mediaMatch[1]);
+      const userId = this.verifyMediaTokenUserId(mediaMatch[1]);
       if (userId) return userId;
     }
 
@@ -46,20 +53,22 @@ export class AppThrottlerGuard extends ThrottlerGuard {
     return /^\/api\/auth\/(register|login|accept-invite|refresh)$/.test(path);
   }
 
-  private decodeJwtSub(token: string): string | null {
+  private verifyAccessTokenSub(token: string): string | null {
     try {
-      const raw = Buffer.from(token.split('.')[1], 'base64url').toString();
-      const payload = JSON.parse(raw) as { sub?: string };
+      const secret = this.configService.get<string>('JWT_SECRET');
+      if (!secret) return null;
+      const payload = this.jwtService.verify<{ sub?: string }>(token, { secret, ignoreExpiration: true });
       return payload?.sub ?? null;
     } catch {
       return null;
     }
   }
 
-  private decodeJwtUserId(token: string): string | null {
+  private verifyMediaTokenUserId(token: string): string | null {
     try {
-      const raw = Buffer.from(token.split('.')[1], 'base64url').toString();
-      const payload = JSON.parse(raw) as { userId?: string };
+      const secret = this.configService.get<string>('MEDIA_JWT_SECRET');
+      if (!secret) return null;
+      const payload = this.jwtService.verify<{ userId?: string }>(token, { secret, ignoreExpiration: true });
       return payload?.userId ?? null;
     } catch {
       return null;

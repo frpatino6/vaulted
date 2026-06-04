@@ -229,9 +229,14 @@ Rules:
   // ─── Private helpers ──────────────────────────────────────────────────────────
 
   private async enforceRateLimit(key: string, limit: number): Promise<void> {
-    const set = await this.redis.set(key, '1', 'EX', 60, 'NX');
-    const count = set !== null ? 1 : await this.redis.incr(key);
-    if (count > limit) {
+    const luaScript = `
+      local c = redis.call('INCR', KEYS[1])
+      if c == 1 then redis.call('EXPIRE', KEYS[1], 60) end
+      if c > tonumber(ARGV[1]) then return -1 end
+      return c
+    `;
+    const result = await this.redis.eval(luaScript, 1, key, String(limit));
+    if (result === -1) {
       throw new HttpException('Rate limit exceeded', HttpStatus.TOO_MANY_REQUESTS);
     }
   }
