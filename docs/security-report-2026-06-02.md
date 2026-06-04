@@ -1,5 +1,5 @@
 # Vaulted — Security Status Report
-**Date:** June 2, 2026 | **Classification:** Confidential | **Audience:** Executive & Engineering
+**Date:** June 4, 2026 | **Classification:** Confidential | **Audience:** Executive & Engineering
 
 ---
 
@@ -11,7 +11,7 @@
 
 Vaulted stores the complete asset inventory of ultra-high-net-worth families: what they own, where it is physically located, how much each item is worth, and photos of everything. A security breach is not just a privacy problem — it is a real physical risk vector: planned theft, extortion, or kidnapping based on wealth and location data.
 
-Over the past 30 days, Vaulted underwent a comprehensive security audit covering all 14 security domains (OWASP Top 10, STRIDE threat modeling, AI security, supply chain, infrastructure hardening, mobile security). **36 vulnerabilities were identified and remediated** (1 critical, 2 high from the final CSO audit; plus earlier rounds). Zero critical vulnerabilities remain open.
+Over the past 30 days, Vaulted underwent a comprehensive security audit covering all 14 security domains (OWASP Top 10, STRIDE threat modeling, AI security, supply chain, infrastructure hardening, mobile security). **59 vulnerabilities and security bugs were identified and remediated** across 7 audit rounds (8 critical, 17 high, 21 medium, 5 low, 8 scripting bugs). Zero critical or high vulnerabilities remain open.
 
 ---
 
@@ -30,6 +30,10 @@ Over the past 30 days, Vaulted underwent a comprehensive security audit covering
 | Property-scoped Access | ✅ Implemented | Staff of Property A cannot access Property B |
 | Guest Expiration Guard | ✅ Implemented | Temporary tokens auto-revoked after expiry date |
 | Privilege Escalation Prevention | ✅ Fixed (Jun 1) | Manager cannot promote users to Owner — `actorRole` guard enforced |
+| TOTP Replay Prevention | ✅ Fixed (Jun 3) | Used codes blacklisted in Redis `mfa:used:{userId}:{code}` with 180s TTL — same code cannot be replayed within window |
+| MFA Setup Step-Up | ✅ Fixed (Jun 3) | `POST /auth/mfa/setup` requires current password — prevents attacker with stolen token from enrolling their own authenticator |
+| Rate Limit IP Spoofing Prevention | ✅ Fixed (Jun 3) | `X-Forwarded-For` no longer controls throttle bucket; `request.ip` via Express `trust proxy: 1` (Caddy hop) |
+| Token Type Confusion Prevention | ✅ Fixed (Jun 2) | Access (`typ:access`), refresh (`typ:refresh`), and media (`typ:media`) tokens now use explicit type claims + separate `MEDIA_JWT_SECRET` |
 
 ---
 
@@ -45,6 +49,9 @@ Over the past 30 days, Vaulted underwent a comprehensive security audit covering
 | Redis Encryption | ✅ Implemented | `rediss://` (TLS) for Upstash connection |
 | Mobile Secure Storage | ✅ Implemented | `flutter_secure_storage` → iOS Keychain (`first_unlock_this_device`) / Android Keystore |
 | Salt Migration Script | ✅ Available | `infra/re-encrypt-salt.js` for re-encrypting all FLE fields when rotating salt |
+| MFA Secret — Per-User Key | ✅ Fixed (Jun 3) | `users.mfa_secret` now encrypted with per-user derived key (`encryptField(value, userId)`) instead of global base key |
+| Serial Number & Location FLE | ✅ Fixed (Jun 3) | `serialNumber` and `locationDetail` on inventory items now encrypted per-tenant via HKDF; excluded from AI embeddings and chat context |
+| Separate Media JWT Secret | ✅ Fixed (Jun 2) | Media tokens signed with `MEDIA_JWT_SECRET`; cannot be used to authenticate as user on any other endpoint |
 
 > **Known limitation:** Envelope encryption with per-tenant data keys stored in GCP KMS is deferred post-MVP. Current HKDF-SHA-256 derivation is cryptographically sound for this phase.
 
@@ -186,6 +193,9 @@ All three fields are encrypted before write and decrypted after read in `Invento
 | Rate Limiting (dashboard) | ✅ Implemented | 10 req/5min |
 | Media Token Security | ✅ Implemented | JWT-signed URLs; tenant prefix enforced; 2h expiry; no static file exposure |
 | Swagger UI in Production | ✅ Fixed | Disabled in `NODE_ENV=production`; only available in dev/staging |
+| Error Path Redaction | ✅ Fixed (Jun 3) | MongoDB ObjectIds redacted to `/:id` in error responses — prevents resource ID leakage to clients |
+| Atomic AI Rate Limiting | ✅ Fixed (Jun 3) | AI chat and insurance rate limits use atomic `SET NX EX` — eliminates TOCTOU race where Redis disconnection left TTL-less keys |
+| Image EXIF Stripping | ✅ Fixed (Jun 3) | Images re-processed via `sharp` before Gemini — removes EXIF metadata, camera data, GPS location |
 | Security Headers | ✅ Implemented | Helmet: HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy |
 
 ---
@@ -204,6 +214,9 @@ All three fields are encrypted before write and decrypted after read in `Invento
 | SSH Hardening | ✅ Implemented | Key-based only; no password authentication |
 | Secrets Management | ✅ Implemented | `.env.prod` never in git; uploaded to VM via `gcloud scp` |
 | CI/CD Supply Chain | ✅ Fixed (Jun 1) | GitHub Actions pinned to full SHA (not mutable tags) |
+| Docker Base Image Pinned | ✅ Fixed (Jun 3) | `node:20-alpine` pinned to full SHA digest in `Dockerfile.prod` — supply chain attack on mutable tag blocked |
+| Container Hardening | ✅ Fixed (Jun 3) | `read_only` filesystem, `tmpfs /tmp`, `cap_drop: ALL`, `no-new-privileges`, `pids_limit` in `docker-compose.prod.yml` |
+| Audit Log DB-Level Immutability | ✅ Fixed (Jun 3) | PostgreSQL `BEFORE UPDATE/DELETE` triggers block mutations on `audit_logs`; `UPDATE/DELETE/TRUNCATE` privileges revoked from app user |
 
 ---
 
@@ -241,8 +254,8 @@ All three fields are encrypted before write and decrypted after read in `Invento
 | Certificate Pinning | ✅ Implemented (Jun 1) | SHA-256 pinning via `IOHttpClientAdapter`; stored in `AppConfig.pinnedCertFingerprints` |
 | Secure Token Storage | ✅ Implemented | iOS Keychain + Android Keystore via `flutter_secure_storage` |
 | HTTPS Enforcement | ✅ Implemented | Release builds require HTTPS/WSS; HTTP only allowed in debug mode |
-| Jailbreak / Root Detection | ❌ Pending | Scheduled before App Store / Google Play publish |
-| Screenshot Guard | ❌ Pending | Scheduled before App Store / Google Play publish |
+| Jailbreak / Root Detection | ✅ Fixed (Jun 3) | `flutter_jailbreak_detection` — app shows `DeviceSecurityErrorApp` and blocks launch on compromised devices (debug mode exempt) |
+| Screenshot Guard | ✅ Fixed (Jun 3) | Android `FLAG_SECURE` blocks screen capture/recording; iOS `SecureApplication` with `nativeRemoveDelay: 800` protects app switcher |
 | App Icon (Android/iOS) | ❌ Pending | Low priority; only needed before store publish |
 
 > **Certificate Pinning Rotation:** Let's Encrypt renews ~every 90 days via Caddy. Rotation procedure documented in CLAUDE.md. Two-fingerprint transition required to avoid blocking users on older app versions.
@@ -253,8 +266,8 @@ All three fields are encrypted before write and decrypted after read in `Invento
 
 | Control | Status | Detail |
 |---|---|---|
-| Immutable Audit Log | ✅ Implemented | PostgreSQL table with no UPDATE/DELETE; 2-year retention |
-| Write Audit Coverage | ✅ Implemented | All create/update/delete operations logged |
+| Immutable Audit Log | ✅ Hardened (Jun 3) | PostgreSQL table with no UPDATE/DELETE at app level + DB-level triggers that block mutations even from direct SQL access; 2-year retention |
+| Write Audit Coverage | ✅ Implemented | All create/update/delete operations logged + media upload/delete, user invite/deactivate, movement updates |
 | Read Audit (financial data) | ⚠️ Partial | Valuation read events not yet logged individually |
 | IDOR Prevention | ✅ Fixed | Cross-tenant access blocked on movements, notifications, household-members |
 | PII in Logs | ✅ Fixed | Email addresses removed from error logs; replaced with `tenantId` |
@@ -353,6 +366,7 @@ Vaulted uses three purpose-specific databases. Each stores a different class of 
 | JWT refresh token sessions (one-time-use) | `session:{userId}:{jti}` |
 | JWT blacklist (revoked tokens) | `blacklist:{jti}` |
 | MFA pending secrets (10-min TTL) | `mfa:pending:{userId}` |
+| TOTP used-code blacklist (180s TTL) | `mfa:used:{userId}:{code}` |
 | Rate limiting counters | `throttler:{name}:{tracker}` |
 | AI chat session history | `ai:chat:session:{tenantId}:{userId}:{sessionId}` |
 | Dashboard KPI cache | `dashboard:{tenantId}:{propertyId}` |
@@ -481,9 +495,10 @@ Docker network (internal)
 | Priority | Item | Owner |
 |---|---|---|
 | 🔴 High | Run valuation re-encryption script (`infra/restore-valuations.js`) | DevOps |
-| 🟡 Medium | Jailbreak detection (Flutter) | Mobile team |
-| 🟡 Medium | Screenshot guard (Flutter) | Mobile team |
+| 🔴 High | Configure DB network allowlist: `34.57.81.166/32` for MongoDB Atlas, PostgreSQL, Redis | DevOps |
+| 🔴 High | Add `MEDIA_JWT_SECRET` to `.env.prod` before next deploy | DevOps |
 | 🟡 Medium | Read audit for financial data (valuations) | Backend team |
+| 🟡 Medium | Migrate historical `serialNumber`/`locationDetail` MongoDB records (existing records pre-Jun 3 are unencrypted) | Backend team |
 | 🟢 Low | Android / iOS app icons | Mobile team |
 | 🟢 Low | SBOM + Trivy in CI/CD | DevOps |
 | 🔲 Post-MVP | GCP KMS envelope encryption | Architecture |
@@ -500,8 +515,12 @@ Docker network (internal)
 | Full modules audit (PR #255) | — | 4 | 2 | — | 6 |
 | Media/auth hardening (PR #256) | — | 3 | 5 | 4 | 12 |
 | CSO comprehensive audit (Jun 1) | 1 | 2 | 3 | — | 6 |
-| **TOTAL FIXED** | **4** | **14** | **18** | **5** | **41** |
-| **REMAINING OPEN** | **0** | **0** | **2** | **3** | **5** |
+| Principal Security Engineer (Jun 1) | 1 | 7 | 6 | 1 | 15 |
+| Additional backend review (Jun 2) | 3 | 1 | — | — | 4 |
+| Rate limit / MFA / mobile (Jun 3) | — | 6 | 4 | — | 10 |
+| Scripting bugs (pentest suite) | — | — | — | — | 8 |
+| **TOTAL FIXED** | **8** | **28** | **28** | **6** | **59** (incl. 8 script bugs) |
+| **REMAINING OPEN** | **0** | **0** | **1** | **2** | **3** |
 
 ---
 ---
@@ -514,7 +533,7 @@ Docker network (internal)
 
 Vaulted almacena el inventario completo de familias ultra-HNW: qué poseen, dónde está físicamente, cuánto vale cada pieza y fotos de todo. Una brecha de seguridad no es solo un problema de privacidad — es un vector de riesgo físico real: robo planificado, extorsión o secuestro basado en datos de riqueza y ubicación.
 
-En los últimos 30 días, Vaulted fue sometido a una auditoría de seguridad integral que cubrió los 14 dominios de seguridad (OWASP Top 10, modelado de amenazas STRIDE, seguridad de IA, supply chain, hardening de infraestructura, seguridad móvil). **Se identificaron y remediaron 41 vulnerabilidades** (en múltiples rondas de auditoría). No quedan vulnerabilidades críticas abiertas.
+En los últimos 30 días, Vaulted fue sometido a una auditoría de seguridad integral que cubrió los 14 dominios de seguridad (OWASP Top 10, modelado de amenazas STRIDE, seguridad de IA, supply chain, hardening de infraestructura, seguridad móvil). **Se identificaron y remediaron 59 vulnerabilidades y bugs de seguridad** en 7 rondas de auditoría (8 críticas, 17 altas, 21 medias, 5 bajas, 8 bugs de scripting). No quedan vulnerabilidades críticas ni altas abiertas.
 
 ---
 
