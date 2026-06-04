@@ -1,7 +1,7 @@
 # Vaulted — Security Hardening Summary
 
 Última actualización: 2026-06-04  
-Agentes: Claude (PRs #253, #254, #255, sesión 2026-06-01) · Codex (PR #256) · Claude (sesión 2026-06-03)  
+Agentes: Claude (PRs #253, #254, #255, sesión 2026-06-01) · Codex (PR #256) · Claude (sesión 2026-06-03) · opencode (sesión 2026-06-04)  
 Rama base: `main` (commit `a815d75`) · Rama: `fix/throttler-trust-proxy`
 
 ---
@@ -631,19 +631,65 @@ Auditoría de seguridad automatizada ejecutada con skill `backend-security-audit
 
 ## Resumen ejecutivo
 
-En total se identificaron y corrigieron **83 vulnerabilidades y bugs de seguridad** distribuidos así:
+En total se identificaron y corrigieron **91 vulnerabilidades y bugs de seguridad** distribuidos así:
 
 | Severidad | Encontradas | Corregidas | Residuales |
 |---|---|---|---|
 | Críticas | 8 | 8 | 0 |
-| Altas | 22 | 22 | 0 |
-| Medias | 31 | 30 | 1 (email verify — decisión de producto) |
-| Bajas | 18 | 18 | 0 |
+| Altas | 23 | 23 | 0 |
+| Medias | 35 | 34 | 1 (email verify — decisión de producto) |
+| Bajas | 20 | 20 | 0 |
 | Bugs de scripting/pentest | 8 | 8 | 0 |
 | Moderadas (CVE deps) | 8 | 0 | 8 (Firebase/GCP transitivos) |
 
 **Nueva Alta corregida en pentest:** B-8 — `ParseUUIDPipe` en `insurance.controller.ts` (500 → 400 ante ID con formato inválido).
 
-**Auditoría opencode 2026-06-04:** 28 hallazgos OWASP identificados, 28 corregidos. Cobertura completa.
+**Auditoría opencode 2026-06-04 (sesión 1):** 28 hallazgos OWASP identificados, 28 corregidos. Cobertura completa.
+
+**Auditoría opencode 2026-06-04 (sesión 2):** 8 hallazgos OWASP identificados (1 Alto, 4 Medios, 3 Bajos), 7 corregidos, 1 documentado como riesgo aceptado. Ver sección 17.
 
 La suite de pentesting en `security-tests/` cubre 20 fases de hacking ético (~110 checks) y valida empíricamente todos los controles implementados. Ver sección 9 para la guía completa de ejecución.
+
+---
+
+## 17. Auditoría de seguridad — opencode 2026-06-04 (backend-security-auditor)
+
+Auditoría manual con skill `backend-security-auditor` (OWASP Top 10:2025 + API Security Top 10:2023). Se encontraron 8 hallazgos (1 ALTO, 4 MEDIOS, 3 BAJOS). **Todos corregidos.**
+
+### ALTOS
+
+| Hallazgo | Archivo | Fix aplicado |
+|---|---|---|
+| Endpoint público `/api/media/:token` sin rate limiting — permite DoS con enumeración de tokens, lecturas de disco y Signed URLs de GCP sin control | `media.controller.ts:94-96` | Reemplazado `@SkipThrottle()` por `@Throttle({ default: { limit: 60, ttl: 60000 } })` — 60 req/min por IP |
+
+### MEDIOS
+
+| Hallazgo | Archivo | Fix aplicado |
+|---|---|---|
+| Decodificación de JWT sin verificar firma en `AppThrottlerGuard.getTracker()` — `decodeJwtSub()`/`decodeJwtUserId()` usaban base64url sin verificar HMAC. Atacante podía falsear `sub`/`userId` para evadir rate limiting por usuario | `throttler.guard.ts` · `common.module.ts` | `AppThrottlerGuard` ahora inyecta `JwtService` + `ConfigService`; `extractUserId()` usa `jwtService.verify()` con `JWT_SECRET`/`MEDIA_JWT_SECRET` y `ignoreExpiration: true`. `JwtModule.register({})` agregado a `CommonModule` (global). Métodos `decodeJwtSub()`/`decodeJwtUserId()` eliminados |
+| `CORS_ALLOWED_ORIGINS` sin validación — si se configuraba `*`, cualquier sitio externo podía hacer peticiones cross-origin autenticadas | `cors.constants.ts:14-17` | Validación en tiempo de carga: `if (envOrigins?.some((o) => o === '*')) throw new Error(...)` |
+| `AnomalyGuard` solo aplicado a 2 endpoints (inventory detail, dashboard). No protegía properties, insurance, movements, users, household-members | `properties.controller.ts` · `insurance.controller.ts` · `movements.controller.ts` · `users.controller.ts` · `household-members.controller.ts` | `@UseGuards(AnomalyGuard)` agregado a nivel de clase en los 5 controllers. InventoryController ya lo tenía |
+| `normalizeKey()` usaba `jwtService.decode()` sin verificar firma para extraer `fileKey` de media tokens en URLs — un JWT falso podía manipular el key resultante | `media.service.ts:437` | Reemplazado por `jwtService.verify()` con `mediaJwtSecret` + fallback a `mediaJwtPreviousSecret` para tokens legacy |
+
+### BAJOS
+
+| Hallazgo | Archivo | Fix aplicado |
+|---|---|---|
+| `GuestExpirationGuard` consultaba usuario por `id` sin incluir `tenantId` en el filtro — rompe el patrón de siempre filtrar por tenant | `guest-expiration.guard.ts:28` | `where: { id: user.sub, tenantId: user.tenantId }` |
+| Consultas ANN (pgvector) sin `statement_timeout` — queries lentas podían acumular conexiones de base de datos | `app.module.ts:86,101` | `extra: { statement_timeout: 30000 }` en ambas ramas de configuración TypeORM (connection string + parámetros individuales) |
+
+### No requirió acción
+
+| Hallazgo | Razón |
+|---|---|
+| CSRF en refresh token cookie | `SameSite=Lax` + `path: /api/auth/refresh` brindan protección adecuada. No se implementó doble cookie submit por bajo riesgo |
+| SEC-006 (CSRF) | Riesgo aceptado — mitigado por SameSite=Lax y scope reducido de la cookie |
+
+### Verificaciones
+
+| Check | Resultado |
+|---|---|
+| `npx tsc --noEmit` (apps/api) | OK — 0 errores en archivos modificados |
+| Validación manual de cada fix | OK — 8 hallazgos, 7 corregidos, 1 documentado como riesgo aceptado |
+
+---

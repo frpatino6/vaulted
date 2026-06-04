@@ -11,6 +11,7 @@ import {
   Put,
   Query,
   Req,
+  UseGuards,
 } from '@nestjs/common';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -20,12 +21,14 @@ import { AttachItemDto } from './dto/attach-item.dto';
 import { CreatePolicyDto } from './dto/create-policy.dto';
 import { UpdatePolicyDto } from './dto/update-policy.dto';
 import { InsuranceService } from './insurance.service';
+import { AnomalyGuard } from '../../common/guards/anomaly.guard';
 import { AuditService } from '../audit/audit.service';
 import { PolicyStatus } from './entities/insurance-policy.entity';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import type { Request } from 'express';
 
 /** Mutating routes intentionally exclude {@link Role.AUDITOR} — auditors are read-only (GET). */
+@UseGuards(AnomalyGuard)
 @ApiTags('Insurance')
 @Controller('insurance')
 export class InsuranceController {

@@ -96,6 +96,7 @@ import { InsuredItem } from './modules/insurance/entities/insured-item.entity';
                   ...(postgresCaCert ? { ca: postgresCaCert } : {}),
                 }
               : false,
+            extra: { statement_timeout: 30000 },
           };
         }
         return {
@@ -105,6 +106,7 @@ import { InsuredItem } from './modules/insurance/entities/insured-item.entity';
           database: config.getOrThrow<string>('POSTGRES_DB'),
           username: config.getOrThrow<string>('POSTGRES_USER'),
           password: config.getOrThrow<string>('POSTGRES_PASSWORD'),
+          extra: { statement_timeout: 30000 },
         };
       },
     }),

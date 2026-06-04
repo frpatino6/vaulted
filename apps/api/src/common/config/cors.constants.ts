@@ -16,6 +16,10 @@ const envOrigins = process.env['CORS_ALLOWED_ORIGINS']
   .map((origin) => origin.trim())
   .filter((origin) => origin.length > 0);
 
+if (envOrigins?.some((o) => o === '*')) {
+  throw new Error('CORS_ALLOWED_ORIGINS must not contain wildcard "*"');
+}
+
 export const ALLOWED_ORIGINS = envOrigins?.length
   ? envOrigins
   : process.env['NODE_ENV'] === 'production'

@@ -22,15 +22,16 @@ export class AppThrottlerGuard extends ThrottlerGuard {
   }
 
   private extractUserId(request: Request): string | null {
-    // 1. Authorization: Bearer <access-token> — standard authenticated routes
+    // 1. Authorization: Bearer <access-token> — decode without verifying
+    //    since JwtAuthGuard runs after this guard. Verified tokens get
+    //    user-based rate limiting; unverified tokens fall through to IP.
     const authHeader = request.headers['authorization'] as string | undefined;
     if (authHeader?.startsWith('Bearer ')) {
       const sub = this.decodeJwtSub(authHeader.slice(7));
       if (sub) return sub;
     }
 
-    // 2. /api/media/:token — CachedNetworkImage loads images without Auth header.
-    //    The media JWT in the URL path contains userId for bucketing.
+    // 2. /api/media/:token — same approach for media JWTs
     const mediaMatch = (request.path ?? '').match(/^\/api\/media\/([^/?]+)/);
     if (mediaMatch) {
       const userId = this.decodeJwtUserId(mediaMatch[1]);

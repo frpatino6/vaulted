@@ -434,8 +434,25 @@ export class MediaService {
     const mediaTokenMatch = key.match(/^https?:\/\/[^/]+\/api\/media\/(.+)$/);
     if (mediaTokenMatch?.[1]) {
       const token = mediaTokenMatch[1];
-      const payload = this.jwtService.decode<{ typ?: string; fileKey: string }>(token);
-      if (payload?.typ === 'media' && payload.fileKey) return payload.fileKey;
+      try {
+        const payload = this.jwtService.verify<{ typ?: string; fileKey: string }>(token, {
+          secret: this.mediaJwtSecret,
+          ignoreExpiration: true,
+        });
+        if (payload?.typ === 'media' && payload.fileKey) return payload.fileKey;
+      } catch {
+        if (this.mediaJwtPreviousSecret) {
+          try {
+            const payload = this.jwtService.verify<{ typ?: string; fileKey: string }>(token, {
+              secret: this.mediaJwtPreviousSecret,
+              ignoreExpiration: true,
+            });
+            if (payload?.typ === 'media' && payload.fileKey) return payload.fileKey;
+          } catch {
+            // Token invalid — fall through
+          }
+        }
+      }
     }
 
     // Relative /uploads/ path stored without http prefix (legacy data)

@@ -25,7 +25,7 @@ export class GuestExpirationGuard implements CanActivate {
     if (!user || user.role !== Role.GUEST) return true;
 
     const entity = await this.userRepository.findOne({
-      where: { id: user.sub },
+      where: { id: user.sub, tenantId: user.tenantId },
       select: ['expiresAt', 'isActive'],
     });
 
