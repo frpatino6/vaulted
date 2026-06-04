@@ -35,7 +35,7 @@ dependencies:
   flutter_image_compress: ^2.3.0
   crypto: ^3.0.3
   flutter_jailbreak_detection: ^1.9.0
-  flutter_windowmanager_plus: ^0.3.1
+  flutter_windowmanager_plus: ^1.0.1
   secure_application: ^4.0.0
 
 dev_dependencies:
