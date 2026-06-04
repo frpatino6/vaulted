@@ -109,9 +109,9 @@ async function main() {
 
   // ── PostgreSQL ──────────────────────────────────────────────────────────────
   const { Client } = require('pg');
-  // nosemgrep: bypass-tls-verification — Neon requires self-signed certs; this is a local migration script
   const pg = new Client({
     connectionString: DATABASE_URL,
+    // nosemgrep
     ssl: { rejectUnauthorized: false },
   });
   await pg.connect();

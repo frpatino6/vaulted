@@ -190,6 +190,10 @@ services:
   redis:
     image: redis:7.2-alpine@sha256:dfa18828cbc07b3ae6a95ec7343f6c214fdee2d836197b4be8e9904420762cd8
     container_name: vaulted_redis
+    read_only: true
+    tmpfs:
+      - /tmp:size=100M
+      - /var/tmp:size=100M
     # NO ports: section — cache never exposed to host
     command: >
       redis-server

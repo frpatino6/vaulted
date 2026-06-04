@@ -26,7 +26,8 @@ const pgCandidates = [
   '/app/node_modules/pg',
   path.join(process.cwd(), 'node_modules', 'pg'),
   path.join(process.cwd(), '..', 'apps', 'api', 'node_modules', 'pg'),
-].map(p => path.resolve(p)); // nosemgrep: path-join-resolve-traversal — hardcoded paths, no user input
+// nosemgrep
+].map(p => path.resolve(p));
 const pgDir = pgCandidates.find(p => { try { return fs.statSync(p).isDirectory(); } catch { return false; } });
 if (!pgDir) {
   console.error('ERROR: módulo pg no encontrado. Rutas probadas:\n' + pgCandidates.join('\n'));

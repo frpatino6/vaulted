@@ -38,7 +38,7 @@ async function main() {
     database: process.env.POSTGRES_DB,
     user: process.env.POSTGRES_USER,
     password: process.env.POSTGRES_PASSWORD,
-    // nosemgrep: bypass-tls-verification — Neon requires self-signed certs; seed script runs locally
+    // nosemgrep
     ssl: process.env.POSTGRES_HOST?.includes('neon') ? { rejectUnauthorized: false } : false,
   });
 

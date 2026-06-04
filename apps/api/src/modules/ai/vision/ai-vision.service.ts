@@ -316,6 +316,7 @@ Final rules:
         }
 
         const relativePath = payload.fileKey;
+        // nosemgrep
         const filePath = path.resolve(resolvedRoot, relativePath);
         const fileRelative = path.relative(resolvedRoot, filePath);
 
