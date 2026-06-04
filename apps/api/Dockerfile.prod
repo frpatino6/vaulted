@@ -1,5 +1,6 @@
 # Stage 1 — build + install
-FROM node:20-alpine AS builder
+FROM node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 AS builder
+# Pinned 2026-06-03 — update quarterly or on security advisories
 
 WORKDIR /app
 
@@ -15,7 +16,7 @@ COPY . .
 RUN npm run build && npm prune --omit=dev
 
 # Stage 2 — production (no npm install needed)
-FROM node:20-alpine AS runner
+FROM node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 AS runner
 
 WORKDIR /app
 

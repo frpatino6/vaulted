@@ -221,17 +221,11 @@ Rules:
 
   // ─── Private helpers ──────────────────────────────────────────────────────────
 
-  private async enforceRateLimit(key: string, maxPerHour: number): Promise<void> {
-    const count = await this.redis.incr(key);
-    if (count === 1) {
-      await this.redis.expire(key, 3600);
-    }
-    if (count > maxPerHour) {
-      this.logger.warn(`Rate limit exceeded for key ${key}`);
-      throw new HttpException(
-        'Rate limit exceeded. Please try again later.',
-        HttpStatus.TOO_MANY_REQUESTS,
-      );
+  private async enforceRateLimit(key: string, limit: number): Promise<void> {
+    const set = await this.redis.set(key, '1', 'EX', 60, 'NX');
+    const count = set !== null ? 1 : await this.redis.incr(key);
+    if (count > limit) {
+      throw new HttpException('Rate limit exceeded', HttpStatus.TOO_MANY_REQUESTS);
     }
   }
 

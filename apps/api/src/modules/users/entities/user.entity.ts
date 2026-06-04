@@ -21,7 +21,7 @@ export class User {
   @Index()
   email!: string;
 
-  @Column({ name: 'password_hash' })
+  @Column({ name: 'password_hash', select: false })
   passwordHash!: string;
 
   @Column({ type: 'enum', enum: Role, default: Role.STAFF })
@@ -30,7 +30,7 @@ export class User {
   @Column({ name: 'mfa_enabled', default: false })
   mfaEnabled!: boolean;
 
-  @Column({ name: 'mfa_secret', nullable: true, type: 'varchar' })
+  @Column({ name: 'mfa_secret', nullable: true, type: 'varchar', select: false })
   mfaSecret!: string | null;
 
   @Column({ name: 'is_active', default: true })

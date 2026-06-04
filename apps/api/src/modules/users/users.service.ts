@@ -330,11 +330,21 @@ export class UsersService {
   }
 
   async findByEmail(email: string): Promise<User | null> {
-    return this.userRepository.findOne({ where: { email } });
+    return this.userRepository.findOne({
+      where: { email },
+      select: ['id', 'email', 'passwordHash', 'role', 'mfaEnabled', 'mfaSecret', 'isActive', 'tenantId', 'propertyIds', 'status', 'expiresAt', 'lastLogin'],
+    });
   }
 
   async findById(id: string): Promise<User | null> {
-    return this.userRepository.findOne({ where: { id } });
+    return this.userRepository.findOne({
+      where: { id },
+      select: [
+        'id', 'tenantId', 'email', 'passwordHash', 'role',
+        'mfaEnabled', 'isActive', 'propertyIds', 'status',
+        'expiresAt', 'lastLogin', 'createdAt', 'updatedAt',
+      ],
+    });
   }
 
   async verifyPassword(plain: string, hash: string): Promise<boolean> {
@@ -346,7 +356,7 @@ export class UsersService {
   }
 
   async saveMfaSecret(userId: string, plaintextSecret: string): Promise<void> {
-    const encryptedSecret = this.cryptoService.encrypt(plaintextSecret);
+    const encryptedSecret = this.cryptoService.encryptField(plaintextSecret, userId);
     await this.userRepository.update(userId, {
       mfaSecret: encryptedSecret,
       mfaEnabled: true,
@@ -355,7 +365,7 @@ export class UsersService {
 
   async getMfaSecret(user: User): Promise<string | null> {
     if (!user.mfaSecret) return null;
-    return this.cryptoService.decrypt(user.mfaSecret);
+    return this.cryptoService.decryptField(user.mfaSecret, user.id);
   }
 
   async disableMfa(userId: string): Promise<void> {

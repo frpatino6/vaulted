@@ -46,7 +46,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
             ? (message as Record<string, unknown>)['message'] ?? message
             : message,
         timestamp: new Date().toISOString(),
-        path: request.url,
+        path: request.path.replace(/\/[a-f0-9]{24}/gi, '/:id'),
       },
     });
   }

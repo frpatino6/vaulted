@@ -1,5 +1,6 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import sharp from 'sharp';
 import { GoogleGenerativeAI, Part } from '@google/generative-ai';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -109,9 +110,20 @@ export class AiVisionService {
     if (!dto.imageUrl && !dto.imageData) {
       throw new BadRequestException('imageUrl or imageData is required');
     }
-    const imagePart: Part = dto.imageData
-      ? { inlineData: { mimeType: dto.mimeType ?? 'image/jpeg', data: dto.imageData } }
-      : this.resolveImageToPart(dto.imageUrl!);
+    let imagePart: Part;
+    if (dto.imageData) {
+      const ALLOWED_MIMES = ['image/jpeg', 'image/png', 'image/webp'] as const;
+      type AllowedMime = typeof ALLOWED_MIMES[number];
+      const mimeType: AllowedMime = (ALLOWED_MIMES as readonly string[]).includes(dto.mimeType ?? '')
+        ? (dto.mimeType as AllowedMime)
+        : 'image/jpeg';
+
+      const buffer = Buffer.from(dto.imageData, 'base64');
+      const clean = await sharp(buffer).jpeg({ quality: 85 }).toBuffer();
+      imagePart = { inlineData: { mimeType: 'image/jpeg', data: clean.toString('base64') } };
+    } else {
+      imagePart = this.resolveImageToPart(dto.imageUrl!);
+    }
     const prompt = this.buildSectionsPrompt();
     const parts: Part[] = [imagePart, { text: prompt }];
 

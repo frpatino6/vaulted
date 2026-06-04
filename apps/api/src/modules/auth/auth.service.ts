@@ -257,6 +257,7 @@ export class AuthService {
     userId: string,
     tenantId: string,
     email: string,
+    password: string,
   ): Promise<{ secret: string; qrCode: string }> {
     const user = await this.usersService.findById(userId);
     if (!user || user.tenantId !== tenantId) {
@@ -264,6 +265,14 @@ export class AuthService {
     }
     if (user.mfaEnabled) {
       throw new ForbiddenException('MFA is already configured');
+    }
+
+    const passwordValid = await this.usersService.verifyPassword(
+      password,
+      user.passwordHash,
+    );
+    if (!passwordValid) {
+      throw new UnauthorizedException('Invalid password');
     }
 
     const secret = speakeasy.generateSecret({
