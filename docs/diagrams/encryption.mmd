@@ -6,17 +6,21 @@ graph LR
     classDef algo fill:#1a3a1a,color:#ccffcc,stroke:#2a8a2a,stroke-width:2px
 
     ENV["🔑 ENCRYPTION_KEY\n.env.prod\nnever in git\nnever in DB"]
-    SALT["🧂 ENCRYPTION_SALT\n.env.prod\ndefault: 'vaulted-salt'\n(domain separation only)"]
+    SALT["🧂 ENCRYPTION_SALT\n.env.prod\nmin 32 chars · mandatory\n(domain separation)"]
 
     SCRYPT["scryptSync\nN=16384 · r=8 · p=1\noutput: 32 bytes\nmemory-hard KDF"]
 
     BASEKEY["Base Key\n256 bits\nin memory only\nnever logged"]
 
-    HKDF["HKDF-SHA-256\ninfo: 'vaulted-fle:{tenantId}'\nsalt: empty\noutput: 32 bytes"]
+    HKDF_TENANT["HKDF-SHA-256\ninfo: 'vaulted-fle:{tenantId}'\nsalt: empty\noutput: 32 bytes"]
+
+    HKDF_USER["HKDF-SHA-256\ninfo: 'vaulted-fle:{userId}'\nsalt: empty\noutput: 32 bytes"]
 
     TENANTKEY["Tenant Key A\n256 bits\nderived per-operation\nisolated per tenant"]
 
     TENANTKEY2["Tenant Key B\n256 bits\ncryptographically independent\nfrom Tenant Key A"]
+
+    USERKEY["User Key\n256 bits\nderived per userId\nisolated per user"]
 
     AES["AES-256-GCM\nIV: crypto.randomBytes(12)\nAuth tag: 128-bit\nAEAD — tamper detected"]
 
@@ -24,6 +28,8 @@ graph LR
         MF1["valuation.purchasePrice"]
         MF2["valuation.currentValue"]
         MF3["valuation.lastAppraisalDate"]
+        MF4["serialNumber"]
+        MF5["locationDetail"]
     end
 
     subgraph PG_INSURANCE["PostgreSQL · insurance_policies"]
@@ -38,7 +44,7 @@ graph LR
         PII1["coveredValue"]
     end
 
-    subgraph PG_USERS["PostgreSQL · users\n(global base key — not tenant-scoped)"]
+    subgraph PG_USERS["PostgreSQL · users\n(per-user key — HKDF with userId)"]
         PU1["mfaSecret\n(TOTP seed)"]
     end
 
@@ -47,18 +53,20 @@ graph LR
     ENV --> SCRYPT
     SALT --> SCRYPT
     SCRYPT --> BASEKEY
-    BASEKEY --> HKDF
-    HKDF -->|"tenantId=A"| TENANTKEY
-    HKDF -->|"tenantId=B"| TENANTKEY2
+    BASEKEY --> HKDF_TENANT
+    BASEKEY --> HKDF_USER
+    HKDF_TENANT -->|"tenantId=A"| TENANTKEY
+    HKDF_TENANT -->|"tenantId=B"| TENANTKEY2
+    HKDF_USER -->|"userId=X"| USERKEY
     TENANTKEY --> AES
-    AES --> MF1 & MF2 & MF3
+    AES --> MF1 & MF2 & MF3 & MF4 & MF5
     AES --> PI1 & PI2 & PI3 & PI4 & PI5
     AES --> PII1
-    BASEKEY -->|"direct (no HKDF)"| PU1
-    MF1 & MF2 & MF3 & PI1 & PI2 & PI3 & PI4 & PI5 & PII1 & PU1 --> FORMAT
+    USERKEY --> PU1
+    MF1 & MF2 & MF3 & MF4 & MF5 & PI1 & PI2 & PI3 & PI4 & PI5 & PII1 & PU1 --> FORMAT
 
     class ENV,SALT envvar
-    class SCRYPT,HKDF kdf
-    class BASEKEY,TENANTKEY,TENANTKEY2 key
-    class MF1,MF2,MF3,PI1,PI2,PI3,PI4,PI5,PII1,PU1 encrypted
+    class SCRYPT,HKDF_TENANT,HKDF_USER kdf
+    class BASEKEY,TENANTKEY,TENANTKEY2,USERKEY key
+    class MF1,MF2,MF3,MF4,MF5,PI1,PI2,PI3,PI4,PI5,PII1,PU1 encrypted
     class AES,FORMAT algo
