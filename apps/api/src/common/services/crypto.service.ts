@@ -24,22 +24,23 @@ export class CryptoService {
   // ── Tenant-scoped FLE helpers ─────────────────────────────────────────────
 
   /**
-   * Derives a 256-bit AES key unique to one tenant via HKDF-SHA-256.
-   * Ensures a DB dump from tenant A cannot be decrypted with tenant B's key.
+   * Derives a 256-bit AES key unique to one entity (tenant, user, etc.) via HKDF-SHA-256.
+   * Pass tenantId for tenant-scoped fields (insurance policies, item valuations).
+   * Pass userId for user-scoped fields (MFA secrets).
    */
-  deriveKey(tenantId: string): Buffer {
+  deriveKey(entityId: string): Buffer {
     return Buffer.from(
       crypto.hkdfSync(
         'sha256',
         this.key,
         Buffer.alloc(0),
-        Buffer.from(`vaulted-fle:${tenantId}`, 'utf8'),
+        Buffer.from(`vaulted-fle:${entityId}`, 'utf8'),
         32,
       ),
     );
   }
 
-  /** Encrypts a field value using a per-tenant derived key. Format: iv:authTag:ciphertext */
+  /** Encrypts a field value using a per-entity derived key. Format: iv:authTag:ciphertext */
   encryptField(value: string, tenantId: string): string {
     const key = this.deriveKey(tenantId);
     const iv = crypto.randomBytes(IV_LENGTH);
@@ -49,7 +50,7 @@ export class CryptoService {
     return `${iv.toString('hex')}:${authTag.toString('hex')}:${encrypted.toString('hex')}`;
   }
 
-  /** Decrypts a field value previously encrypted with encryptField. */
+  /** Decrypts a field value previously encrypted with encryptField. entityId must match the value used during encryption. */
   decryptField(ciphertext: string, tenantId: string): string {
     const [ivHex, authTagHex, encryptedHex] = ciphertext.split(':');
     if (!ivHex || !authTagHex || !encryptedHex) {

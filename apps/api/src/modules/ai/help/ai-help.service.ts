@@ -1077,6 +1077,10 @@ const DEFAULT_SUGGESTIONS = [
 
 const UNRESOLVED_MARKER = '[UNRESOLVED:';
 
+function sanitizeAiOutput(text: string): string {
+  return text.replace(/<[^>]*>/g, '').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+}
+
 // ─── Service ───────────────────────────────────────────────────────────────────
 
 @Injectable()
@@ -1134,7 +1138,7 @@ export class AiHelpService implements OnModuleInit {
     });
 
     return {
-      answer: result.text,
+      answer: sanitizeAiOutput(result.text),
       sessionId,
       suggestions: this.getSuggestions(dto.currentScreen),
     };

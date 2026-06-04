@@ -28,6 +28,8 @@ import { AcceptInviteDto } from './dto/accept-invite.dto';
 const ACCESS_TOKEN_TTL_SECONDS = 15 * 60;
 const BCRYPT_ROUNDS = 12;
 const REFRESH_TOKEN_TTL_SECONDS = 7 * 24 * 60 * 60;
+const MAX_LOGIN_ATTEMPTS = 10;
+const LOCKOUT_DURATION_MINUTES = 15;
 
 @Injectable()
 export class AuthService {
@@ -87,18 +89,30 @@ export class AuthService {
   }> {
     const user = await this.usersService.findByEmail(email);
 
-    if (!user || !user.isActive) {
+    if (user) {
+      const lockedUntil = user.lockedUntil ? new Date(user.lockedUntil) : null;
+      if (lockedUntil && lockedUntil > new Date()) {
+        const remaining = Math.ceil((lockedUntil.getTime() - Date.now()) / 1000 / 60);
+        throw new UnauthorizedException(`Account locked. Try again in ${remaining} minutes`);
+      }
+    }
+
+    const dummyHash = '$2b$12$00000000000000000000000000000000000000000000000000';
+    const passwordHash = user?.passwordHash ?? dummyHash;
+    const passwordValid = await this.usersService.verifyPassword(password, passwordHash);
+
+    if (!user || !user.isActive || !passwordValid) {
+      if (user) {
+        await this.usersService.incrementFailedLogins(user.id);
+        const attempts = (user.failedLoginAttempts ?? 0) + 1;
+        if (attempts >= MAX_LOGIN_ATTEMPTS) {
+          await this.usersService.lockAccount(user.id, LOCKOUT_DURATION_MINUTES);
+        }
+      }
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const passwordValid = await this.usersService.verifyPassword(
-      password,
-      user.passwordHash,
-    );
-    if (!passwordValid) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-
+    await this.usersService.resetFailedLogins(user.id);
     await this.usersService.updateLastLogin(user.id);
 
     const roleRequiresMfa = MFA_REQUIRED_ROLES.includes(user.role);
@@ -189,17 +203,17 @@ export class AuthService {
     refreshCookie: string | undefined,
     ipAddress: string,
   ): Promise<void> {
+    const tokenHash = createHash('sha256').update(accessToken).digest('hex');
     const ops: Promise<unknown>[] = [
       this.redis.setex(
-        `blacklist:${accessToken}`,
+        `blacklist:${tokenHash}`,
         ACCESS_TOKEN_TTL_SECONDS,
         '1',
       ),
     ];
 
-    // Decode (not verify) the refresh cookie to extract the jti and blacklist it
     if (refreshCookie) {
-      const refreshPayload = this.decodeRefreshToken(refreshCookie);
+      const refreshPayload = await this.verifyRefreshToken(refreshCookie);
       if (refreshPayload?.refreshTokenId) {
         ops.push(
           this.redis.setex(
@@ -233,11 +247,11 @@ export class AuthService {
     accessToken: string,
     ipAddress: string,
   ): Promise<void> {
+    const tokenHash = createHash('sha256').update(accessToken).digest('hex');
     await Promise.all([
       this.invalidateAllSessions(userId),
-      // Also blacklist the current access token
       this.redis.setex(
-        `blacklist:${accessToken}`,
+        `blacklist:${tokenHash}`,
         ACCESS_TOKEN_TTL_SECONDS,
         '1',
       ),
@@ -289,6 +303,8 @@ export class AuthService {
 
     const qrCode = await QRCode.toDataURL(secret.otpauth_url);
 
+    await this.invalidateAllSessions(userId);
+
     await this.auditService.log({
       tenantId,
       userId,
@@ -328,10 +344,7 @@ export class AuthService {
       secret: secretToVerify,
       encoding: 'base32',
       token: code,
-      // Allow up to +/- 60s clock drift. Auth endpoints are rate-limited to
-      // 5/min, so this improves production reliability without making brute
-      // force practical.
-      window: 2,
+      window: 1,
     });
 
     if (!isValid) {
@@ -380,6 +393,7 @@ export class AuthService {
       email: user.email,
       role: user.role,
       mfaVerified: options.mfaVerified ?? false,
+      propertyIds: user.propertyIds ?? undefined,
     };
 
     const refreshPayload: JwtRefreshPayload = {
@@ -479,9 +493,10 @@ export class AuthService {
     }
   }
 
-  private decodeRefreshToken(token: string): JwtRefreshPayload | null {
+  private async verifyRefreshToken(token: string): Promise<JwtRefreshPayload | null> {
     try {
-      return this.jwtService.decode(token) as JwtRefreshPayload | null;
+      const refreshSecret = this.config.getOrThrow<string>('JWT_REFRESH_SECRET');
+      return await this.jwtService.verifyAsync<JwtRefreshPayload>(token, { secret: refreshSecret });
     } catch {
       return null;
     }

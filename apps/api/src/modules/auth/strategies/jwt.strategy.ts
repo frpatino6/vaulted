@@ -4,6 +4,7 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
 import { InjectRedis } from '../../../common/decorators/inject-redis.decorator';
 import { Redis } from 'ioredis';
+import { createHash } from 'crypto';
 import { Role } from '../../../common/enums/role.enum';
 
 export interface JwtPayload {
@@ -25,6 +26,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       secretOrKey: config.getOrThrow<string>('JWT_SECRET'),
+      algorithms: ['HS256'],
       passReqToCallback: true,
     });
   }
@@ -44,7 +46,8 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     const token = req.headers.authorization?.replace('Bearer ', '');
 
     if (token) {
-      const isBlacklisted = await this.redis.get(`blacklist:${token}`);
+      const tokenHash = createHash('sha256').update(token).digest('hex');
+      const isBlacklisted = await this.redis.get(`blacklist:${tokenHash}`);
       if (isBlacklisted) {
         throw new UnauthorizedException('Token has been revoked');
       }

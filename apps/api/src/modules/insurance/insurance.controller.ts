@@ -10,6 +10,7 @@ import {
   Post,
   Put,
   Query,
+  Req,
 } from '@nestjs/common';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -19,14 +20,19 @@ import { AttachItemDto } from './dto/attach-item.dto';
 import { CreatePolicyDto } from './dto/create-policy.dto';
 import { UpdatePolicyDto } from './dto/update-policy.dto';
 import { InsuranceService } from './insurance.service';
+import { AuditService } from '../audit/audit.service';
 import { PolicyStatus } from './entities/insurance-policy.entity';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import type { Request } from 'express';
 
 /** Mutating routes intentionally exclude {@link Role.AUDITOR} — auditors are read-only (GET). */
 @ApiTags('Insurance')
 @Controller('insurance')
 export class InsuranceController {
-  constructor(private readonly insuranceService: InsuranceService) {}
+  constructor(
+    private readonly insuranceService: InsuranceService,
+    private readonly auditService: AuditService,
+  ) {}
 
   // ─── Policies ────────────────────────────────────────────────────────────────
 
@@ -35,11 +41,21 @@ export class InsuranceController {
   @ApiOperation({ summary: 'Create insurance policy' })
   @ApiBearerAuth()
   @ApiResponse({ status: 201, description: 'Policy created' })
-  createPolicy(
+  async createPolicy(
     @CurrentUser() user: JwtPayload,
     @Body() dto: CreatePolicyDto,
+    @Req() req: Request,
   ) {
-    return this.insuranceService.createPolicy(user.tenantId, user.sub, dto);
+    const result = await this.insuranceService.createPolicy(user.tenantId, user.sub, dto);
+    await this.auditService.log({
+      tenantId: user.tenantId,
+      userId: user.sub,
+      action: 'insurance.policy.create',
+      entityType: 'insurance_policy',
+      entityId: result.id,
+      ipAddress: req.ip ?? 'unknown',
+    });
+    return result;
   }
 
   @Roles(Role.OWNER, Role.MANAGER, Role.AUDITOR)
@@ -71,12 +87,22 @@ export class InsuranceController {
   @ApiOperation({ summary: 'Update policy' })
   @ApiBearerAuth()
   @ApiResponse({ status: 200, description: 'Policy updated' })
-  updatePolicy(
+  async updatePolicy(
     @CurrentUser() user: JwtPayload,
     @Param('id', ParseUUIDPipe) policyId: string,
     @Body() dto: UpdatePolicyDto,
+    @Req() req: Request,
   ) {
-    return this.insuranceService.updatePolicy(user.tenantId, policyId, user.sub, dto);
+    const result = await this.insuranceService.updatePolicy(user.tenantId, policyId, user.sub, dto);
+    await this.auditService.log({
+      tenantId: user.tenantId,
+      userId: user.sub,
+      action: 'insurance.policy.update',
+      entityType: 'insurance_policy',
+      entityId: policyId,
+      ipAddress: req.ip ?? 'unknown',
+    });
+    return result;
   }
 
   @Roles(Role.OWNER)
@@ -85,11 +111,20 @@ export class InsuranceController {
   @ApiOperation({ summary: 'Delete policy' })
   @ApiBearerAuth()
   @ApiResponse({ status: 204, description: 'Policy deleted' })
-  deletePolicy(
+  async deletePolicy(
     @CurrentUser() user: JwtPayload,
     @Param('id', ParseUUIDPipe) policyId: string,
+    @Req() req: Request,
   ) {
-    return this.insuranceService.deletePolicy(user.tenantId, policyId, user.sub);
+    await this.insuranceService.deletePolicy(user.tenantId, policyId, user.sub);
+    await this.auditService.log({
+      tenantId: user.tenantId,
+      userId: user.sub,
+      action: 'insurance.policy.delete',
+      entityType: 'insurance_policy',
+      entityId: policyId,
+      ipAddress: req.ip ?? 'unknown',
+    });
   }
 
   // ─── Item attachment ──────────────────────────────────────────────────────────
@@ -99,12 +134,22 @@ export class InsuranceController {
   @ApiOperation({ summary: 'Attach item to policy' })
   @ApiBearerAuth()
   @ApiResponse({ status: 201, description: 'Item attached' })
-  attachItem(
+  async attachItem(
     @CurrentUser() user: JwtPayload,
     @Param('id', ParseUUIDPipe) policyId: string,
     @Body() dto: AttachItemDto,
+    @Req() req: Request,
   ) {
-    return this.insuranceService.attachItem(user.tenantId, policyId, user.sub, dto);
+    const result = await this.insuranceService.attachItem(user.tenantId, policyId, user.sub, dto);
+    await this.auditService.log({
+      tenantId: user.tenantId,
+      userId: user.sub,
+      action: 'insurance.item.attach',
+      entityType: 'insured_item',
+      entityId: result.id,
+      ipAddress: req.ip ?? 'unknown',
+    });
+    return result;
   }
 
   @Roles(Role.OWNER, Role.MANAGER)
@@ -113,12 +158,21 @@ export class InsuranceController {
   @ApiOperation({ summary: 'Detach item from policy' })
   @ApiBearerAuth()
   @ApiResponse({ status: 204, description: 'Item detached' })
-  detachItem(
+  async detachItem(
     @CurrentUser() user: JwtPayload,
     @Param('id', ParseUUIDPipe) policyId: string,
     @Param('itemId') itemId: string,
+    @Req() req: Request,
   ) {
-    return this.insuranceService.detachItem(user.tenantId, policyId, itemId, user.sub);
+    await this.insuranceService.detachItem(user.tenantId, policyId, itemId, user.sub);
+    await this.auditService.log({
+      tenantId: user.tenantId,
+      userId: user.sub,
+      action: 'insurance.item.detach',
+      entityType: 'insured_item',
+      entityId: policyId,
+      ipAddress: req.ip ?? 'unknown',
+    });
   }
 
   // ─── Coverage analysis ────────────────────────────────────────────────────────

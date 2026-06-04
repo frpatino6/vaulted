@@ -9,6 +9,7 @@ import {
   Post,
   Put,
   Query,
+  Req,
 } from '@nestjs/common';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -17,12 +18,17 @@ import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { CreateMaintenanceDto } from './dto/create-maintenance.dto';
 import { UpdateMaintenanceDto } from './dto/update-maintenance.dto';
 import { MaintenanceService } from './maintenance.service';
+import { AuditService } from '../audit/audit.service';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import type { Request } from 'express';
 
 @ApiTags('Maintenance')
 @Controller()
 export class MaintenanceController {
-  constructor(private readonly maintenanceService: MaintenanceService) {}
+  constructor(
+    private readonly maintenanceService: MaintenanceService,
+    private readonly auditService: AuditService,
+  ) {}
 
   // GET /maintenance — all maintenance records for the tenant (with optional filters)
   @Roles(Role.OWNER, Role.MANAGER, Role.STAFF)
@@ -72,8 +78,18 @@ export class MaintenanceController {
     @CurrentUser() user: JwtPayload,
     @Param('itemId') itemId: string,
     @Body() dto: CreateMaintenanceDto,
+    @Req() req: Request,
   ) {
-    return this.maintenanceService.create(user.tenantId, user.sub, itemId, dto);
+    const result = await this.maintenanceService.create(user.tenantId, user.sub, itemId, dto);
+    await this.auditService.log({
+      tenantId: user.tenantId,
+      userId: user.sub,
+      action: 'maintenance.create',
+      entityType: 'maintenance_record',
+      entityId: String(result._id),
+      ipAddress: req.ip ?? 'unknown',
+    });
+    return result;
   }
 
   // PUT /maintenance/:id — update a maintenance record (mark complete, add cost, etc.)
@@ -86,8 +102,18 @@ export class MaintenanceController {
     @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
     @Body() dto: UpdateMaintenanceDto,
+    @Req() req: Request,
   ) {
-    return this.maintenanceService.update(user.tenantId, user.sub, id, dto);
+    const result = await this.maintenanceService.update(user.tenantId, user.sub, id, dto);
+    await this.auditService.log({
+      tenantId: user.tenantId,
+      userId: user.sub,
+      action: 'maintenance.update',
+      entityType: 'maintenance_record',
+      entityId: id,
+      ipAddress: req.ip ?? 'unknown',
+    });
+    return result;
   }
 
   // DELETE /maintenance/:id — cancel / remove a maintenance record
@@ -100,7 +126,16 @@ export class MaintenanceController {
   async delete(
     @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
+    @Req() req: Request,
   ) {
-    return this.maintenanceService.delete(user.tenantId, user.sub, id);
+    await this.maintenanceService.delete(user.tenantId, user.sub, id);
+    await this.auditService.log({
+      tenantId: user.tenantId,
+      userId: user.sub,
+      action: 'maintenance.delete',
+      entityType: 'maintenance_record',
+      entityId: id,
+      ipAddress: req.ip ?? 'unknown',
+    });
   }
 }

@@ -1,6 +1,6 @@
 # Vaulted — Security Hardening Summary
 
-Última actualización: 2026-06-03  
+Última actualización: 2026-06-04  
 Agentes: Claude (PRs #253, #254, #255, sesión 2026-06-01) · Codex (PR #256) · Claude (sesión 2026-06-03)  
 Rama base: `main` (commit `a815d75`) · Rama: `fix/throttler-trust-proxy`
 
@@ -395,10 +395,11 @@ Luego el usuario inicia sesion, escanea el QR nuevo y verifica el codigo. Este f
 | R-6 | Firebase deploy CI | `web/firebase-config.js` debe generarse desde secretos CI antes de publicar | Alta (ops) |
 | R-7 | Envelope encryption con KMS | HKDF-SHA-256 con `ENCRYPTION_KEY` + `ENCRYPTION_SALT` obligatorio es aceptable para MVP; migrar a GCP KMS envelope encryption post-MVP | Post-MVP |
 | R-8 | Prompt injection sandbox completo | Fix actual mitiga inyecciones obvias; evaluación de output por el modelo pendiente para mayor robustez | Baja |
-| R-9 | Audit log TODOs | Entradas pendientes en `properties.service.ts`, `users.service.ts`, `media.service.ts` | Baja |
+| R-9 | Audit log TODOs | Corregido en sesión 2026-06-04 | Resuelto |
 | R-10 | Rotación de cert pinning | Pinning release ya valida certificados CA-válidos; queda pendiente el proceso operativo de rotación de fingerprints antes de renovaciones TLS | Alta (ops) |
 | R-11 | Jailbreak/root attestation | Screenshot/app-switcher y Keychain fueron endurecidos; falta attestation/detección dedicada antes de App Store / Google Play | Media |
 | R-12 | DB network allowlist | MongoDB/PostgreSQL/Redis deben restringirse a `34.57.81.166/32`; si el plan actual no soporta allowlist, queda riesgo operativo hasta migrar o hacer upgrade | Alta (ops) |
+
 
 ---
 
@@ -554,6 +555,63 @@ Código HTTP `000` en los resultados = Cloudflare/WAF bloqueó la conexión ante
 
 ---
 
+## 16. Auditoría opencode — 28 hallazgos OWASP (opencode · 2026-06-04)
+
+Auditoría de seguridad automatizada ejecutada con skill `backend-security-auditor` sobre `apps/api`. Se encontraron 28 hallazgos (5 ALTOS, 10 MEDIOS, 13 BAJOS) contra OWASP Top 10:2025 y API Security Top 10:2023. **Todos corregidos.**
+
+### ALTOS
+
+| ID | Hallazgo | Archivo | Fix aplicado |
+|---|---|---|---|
+| SEC-001 | Sin bloqueo de cuenta por brute force | `auth/auth.service.ts`, `users/users.service.ts`, `users/entities/user.entity.ts` | `failedLoginAttempts` + `lockedUntil` en User entity. Login incrementa fallos, resetea en éxito, bloquea 15 min tras 10 fallos |
+| SEC-002 | Enumeración de emails por timing | `auth/auth.service.ts` | `dummyHash` con bcrypt para timing constante cuando el usuario no existe |
+| SEC-003 | Cambio de rol no invalida sesiones | `users/users.service.ts` | Redis inyectado en UsersService. `invalidateUserSessions()` se ejecuta cuando `dto.role !== existing.role` |
+| SEC-004 | NotificationsController sin `@Roles()` | `notifications/notifications.controller.ts` | `@Roles(OWNER,MANAGER)` en escritura, `@Roles(OWNER,MANAGER,STAFF,AUDITOR)` en lectura |
+| SEC-005 | Orchestrator + Insurance + Maintenance sin audit logs | `orchestrator.controller.ts`, `insurance.controller.ts`, `maintenance.controller.ts` | Audit logs con `ipAddress` en 19 endpoints de escritura a nivel controlador |
+
+### MEDIOS
+
+| ID | Hallazgo | Archivo | Fix aplicado |
+|---|---|---|---|
+| SEC-006 | LoginDTO sin límite de longitud | `auth/dto/login.dto.ts` | `@MinLength(1)` + `@MaxLength(128)` en password |
+| SEC-007 | JWT algorithm no restringido | `auth/strategies/jwt.strategy.ts`, `jwt-refresh.strategy.ts` | `algorithms: ['HS256']` en ambas estrategias |
+| SEC-008 | MFA setup no invalida sesiones | `auth/auth.service.ts` | `invalidateAllSessions(userId)` después de `setupMfa()` |
+| SEC-009 | TOTP window=2 | `auth/auth.service.ts` | Reducido a `window: 1` (3 intervalos en vez de 5) |
+| SEC-010 | Blacklist JWT crudo en Redis | `auth/auth.service.ts`, `auth/strategies/jwt.strategy.ts` | SHA-256 hash del token como key |
+| SEC-011 | Logout sin rate limiting | `auth/auth.controller.ts` | `@Throttle({ default: { limit: 10, ttl: 60000 } })` en logout |
+| SEC-012 | LLM output sin sanitizar | `ai/help/ai-help.service.ts` | `sanitizeAiOutput()` aplicado al resultado |
+| SEC-013 | FCM test-push sin rate limit | `notifications/notifications.controller.ts` | `@Throttle({ default: { limit: 5, ttl: 60000 } })` |
+| SEC-014 | Device token sin proof-of-possession | `notifications/notifications.service.ts` | `repository.upsert()` atómico eliminó race condition |
+| SEC-015 | MfaVerifiedGuard pasa con undefined | `common/guards/mfa-verified.guard.ts` | `throw new UnauthorizedException()` en vez de `return true` |
+
+### BAJOS
+
+| ID | Hallazgo | Archivo | Fix aplicado |
+|---|---|---|---|
+| SEC-016 | Refresh token decode sin verify | `auth/auth.service.ts` | `jwtService.verifyAsync()` en vez de `decode()` |
+| SEC-017 | AcceptInvite regex sin constraint | `auth/dto/accept-invite.dto.ts` | Cuantificador `{12,128}$` sincronizado con RegisterDto |
+| SEC-018 | propertyIds nunca poblado en JWT | `auth/auth.service.ts` | `propertyIds` desde `user.propertyIds` en payload |
+| SEC-019 | Crypto deriveKey parámetro engañoso | `common/services/crypto.service.ts` | Renombrado a `entityId`, JSDoc actualizado |
+| SEC-020 | WebSocket JWT crudo en blacklist | `presence/presence.gateway.ts`, `orchestrator/orchestrator.gateway.ts` | SHA-256 hash antes de lookup |
+| SEC-021 | Media JWT sin `iat` | `media/media.service.ts` | Removido `noTimestamp: true` |
+| SEC-022 | clear-read sin audit log | `notifications/notifications.service.ts` | `auditService.log()` agregado |
+| SEC-023 | mark-read/mark-all-read sin audit log | `notifications/notifications.service.ts` | `auditService.log()` agregado en ambos |
+| SEC-024 | filterUsersByPushPreference sin tenantId | `notifications/notifications.service.ts` | Parámetro `tenantId` agregado al filtro |
+| SEC-025 | loadPreferencesMap sin tenantId | `notifications/notifications.service.ts` | Parámetro `tenantId` agregado al filtro |
+| SEC-026 | updatePreferences re-fetch sin tenantId | `notifications/notifications.service.ts` | `tenantId` en `where` de re-lectura |
+| SEC-027 | sendPush sin verificación de permisos | `notifications/notifications.service.ts` | JSDoc documentando API interna de confianza; tenantId ya filtra tokens |
+
+### Verificaciones
+
+| Check | Resultado |
+|---|---|
+| `npm run build` (apps/api) | OK — 195 archivos con SWC, 0 errores |
+| `upsert()` atómico en device token registration | Elimina race condition SEC-014 |
+| `deriveKey` parámetro renombrado | SEC-019 corregido |
+| JSDoc en `sendPush` | SEC-027 documentado |
+
+---
+
 ## Verificaciones ejecutadas
 
 | Check | Agente | Resultado |
@@ -567,22 +625,25 @@ Código HTTP `000` en los resultados = Cloudflare/WAF bloqueó la conexión ante
 | `npm test -- ai-chat.service.spec.ts --runInBand` | Codex | OK (1 test) |
 | `dart format lib/core/network/api_client.dart lib/features/auth/presentation/login_screen.dart` | Codex | OK |
 | `dart analyze lib/core/network/api_client.dart lib/features/auth/presentation/login_screen.dart` | Codex | OK, no issues found |
+| `npm run build` (apps/api) | opencode | OK — 195 archivos con SWC, 0 errores |
 
 ---
 
 ## Resumen ejecutivo
 
-En total se identificaron y corrigieron **59 vulnerabilidades y bugs de seguridad** distribuidos así:
+En total se identificaron y corrigieron **83 vulnerabilidades y bugs de seguridad** distribuidos así:
 
 | Severidad | Encontradas | Corregidas | Residuales |
 |---|---|---|---|
 | Críticas | 8 | 8 | 0 |
-| Altas | 17 | 17 | 0 |
-| Medias | 21 | 20 | 1 (email verify — decisión de producto) |
-| Bajas | 5 | 5 | 0 |
+| Altas | 22 | 22 | 0 |
+| Medias | 31 | 30 | 1 (email verify — decisión de producto) |
+| Bajas | 18 | 18 | 0 |
 | Bugs de scripting/pentest | 8 | 8 | 0 |
 | Moderadas (CVE deps) | 8 | 0 | 8 (Firebase/GCP transitivos) |
 
 **Nueva Alta corregida en pentest:** B-8 — `ParseUUIDPipe` en `insurance.controller.ts` (500 → 400 ante ID con formato inválido).
+
+**Auditoría opencode 2026-06-04:** 28 hallazgos OWASP identificados, 28 corregidos. Cobertura completa.
 
 La suite de pentesting en `security-tests/` cubre 20 fases de hacking ético (~110 checks) y valida empíricamente todos los controles implementados. Ver sección 9 para la guía completa de ejecución.

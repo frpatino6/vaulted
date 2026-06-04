@@ -101,26 +101,18 @@ export class NotificationsService {
     tenantId: string,
     dto: RegisterDeviceTokenDto,
   ): Promise<void> {
-    const existing = await this.deviceTokenRepository.findOne({
-      where: { token: dto.token },
-    });
-
-    if (existing) {
-      // Re-associate the token with the current user/tenant in case it changed
-      await this.deviceTokenRepository.update(existing.id, {
-        userId,
-        tenantId,
-        platform: dto.platform,
-      });
-    } else {
-      const entity = this.deviceTokenRepository.create({
+    // Atomic upsert on token unique constraint eliminates race condition
+    // between find-then-update. Token is device-bound, not tenant-bound —
+    // re-association to a new user/tenant is intentional for device transfer.
+    await this.deviceTokenRepository.upsert(
+      {
         userId,
         tenantId,
         token: dto.token,
         platform: dto.platform,
-      });
-      await this.deviceTokenRepository.save(entity);
-    }
+      },
+      ['token'],
+    );
 
     await this.auditService.log({
       tenantId,
@@ -151,6 +143,16 @@ export class NotificationsService {
     });
   }
 
+  /**
+   * Send push notifications to specified users within a tenant.
+   *
+   * NOTE: This is a trusted internal API — no permission check is performed
+   * beyond the tenantId scoping of device tokens. Callers are responsible
+   * for passing the correct tenantId that matches their authorization context.
+   * All current callers (testPush from controller, publishPlan from orchestrator,
+   * notifyTenantRoles from within this service) derive tenantId from JWT or
+   * tenant-scoped data, maintaining correct isolation.
+   */
   async sendPush(
     params: SendPushParams,
   ): Promise<{ successCount: number; failureCount: number }> {
@@ -159,7 +161,7 @@ export class NotificationsService {
     }
 
     // Only send to users who have push enabled
-    const enabledUserIds = await this.filterUsersByPushPreference(params.userIds);
+    const enabledUserIds = await this.filterUsersByPushPreference(params.userIds, params.tenantId);
     if (enabledUserIds.length === 0) {
       return { successCount: 0, failureCount: 0 };
     }
@@ -267,7 +269,7 @@ export class NotificationsService {
     }
 
     const userIds = targetUsers.map((u) => u.id);
-    const prefsMap = await this.loadPreferencesMap(userIds);
+    const prefsMap = await this.loadPreferencesMap(userIds, params.tenantId);
 
     // Filter to users who have this notification type enabled
     const notificationType = params.type ?? 'general';
@@ -403,7 +405,7 @@ export class NotificationsService {
     });
 
     const updated = await this.preferenceRepository.findOne({
-      where: { id: prefs.id },
+      where: { id: prefs.id, tenantId },
     });
 
     if (!updated) {
@@ -443,6 +445,14 @@ export class NotificationsService {
     }
 
     await this.notificationLogRepository.update(log.id, { readAt: new Date() });
+
+    await this.auditService.log({
+      tenantId,
+      userId,
+      action: 'notification.mark_read',
+      entityType: 'notification_log',
+      entityId: log.id,
+    });
   }
 
   async markAllRead(
@@ -458,6 +468,14 @@ export class NotificationsService {
         tenantId,
       })
       .execute();
+
+    await this.auditService.log({
+      tenantId,
+      userId,
+      action: 'notification.mark_all_read',
+      entityType: 'notification_log',
+      metadata: { updated: result.affected ?? 0 },
+    });
 
     return { updated: result.affected ?? 0 };
   }
@@ -500,6 +518,14 @@ export class NotificationsService {
       })
       .execute();
 
+    await this.auditService.log({
+      tenantId,
+      userId,
+      action: 'notification.clear_read',
+      entityType: 'notification_log',
+      metadata: { deleted: result.affected ?? 0 },
+    });
+
     return { deleted: result.affected ?? 0 };
   }
 
@@ -530,9 +556,12 @@ export class NotificationsService {
     }
   }
 
-  private async filterUsersByPushPreference(userIds: string[]): Promise<string[]> {
+  private async filterUsersByPushPreference(userIds: string[], tenantId?: string): Promise<string[]> {
+    const where: { userId: string[]; tenantId?: string } = { userId: In(userIds) };
+    if (tenantId) where.tenantId = tenantId;
+
     const prefs = await this.preferenceRepository.find({
-      where: { userId: In(userIds) },
+      where,
       select: ['userId', 'pushEnabled'],
     });
 
@@ -546,14 +575,16 @@ export class NotificationsService {
 
   private async loadPreferencesMap(
     userIds: string[],
+    tenantId?: string,
   ): Promise<Map<string, NotificationPreference>> {
     if (userIds.length === 0) {
       return new Map();
     }
 
-    const prefs = await this.preferenceRepository.find({
-      where: { userId: In(userIds) },
-    });
+    const where: { userId: string[]; tenantId?: string } = { userId: In(userIds) };
+    if (tenantId) where.tenantId = tenantId;
+
+    const prefs = await this.preferenceRepository.find({ where });
 
     return new Map(prefs.map((p) => [p.userId, p]));
   }

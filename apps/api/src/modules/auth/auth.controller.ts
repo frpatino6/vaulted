@@ -148,6 +148,7 @@ export class AuthController {
   }
 
   @SkipMfa()
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Logout current session' })

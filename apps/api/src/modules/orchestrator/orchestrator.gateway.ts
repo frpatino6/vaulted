@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
@@ -67,7 +68,8 @@ export class OrchestratorGateway implements OnGatewayConnection, OnGatewayDiscon
         return;
       }
 
-      const isBlacklisted = await this.redis.get(`blacklist:${token}`);
+      const tokenHash = createHash('sha256').update(token).digest('hex');
+      const isBlacklisted = await this.redis.get(`blacklist:${tokenHash}`);
       if (isBlacklisted) {
         client.disconnect(true);
         return;
