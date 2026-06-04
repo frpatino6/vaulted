@@ -8,24 +8,13 @@ export class AppThrottlerGuard extends ThrottlerGuard {
     const request = req as unknown as Request;
 
     if (this.isPublicAuthRoute(request)) {
-      return this.getIpTracker(request);
+      return request.ip ?? request.socket.remoteAddress ?? 'unknown';
     }
 
-    // Decode JWT payload (no signature check — bucketing only) to throttle
-    // per user and avoid Cloudflare IP collisions across users.
     const userId = this.extractUserId(request);
     if (userId) return `user:${userId}`;
 
-    return this.getIpTracker(request);
-  }
-
-  private getIpTracker(request: Request): string {
-    const ip =
-      (request.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ??
-      request.ip ??
-      request.socket.remoteAddress ??
-      'unknown';
-    return ip;
+    return request.ip ?? request.socket.remoteAddress ?? 'unknown';
   }
 
   protected async shouldSkip(context: ExecutionContext): Promise<boolean> {

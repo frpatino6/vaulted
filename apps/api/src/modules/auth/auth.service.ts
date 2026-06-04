@@ -329,6 +329,13 @@ export class AuthService {
       throw new UnauthorizedException('Invalid MFA code');
     }
 
+    // Consume the code — prevent replay within the valid window
+    const replayKey = `mfa:used:${userId}:${code}`;
+    const alreadyUsed = await this.redis.set(replayKey, '1', 'EX', 180, 'NX');
+    if (alreadyUsed === null) {
+      throw new UnauthorizedException('Invalid MFA code');
+    }
+
     if (pendingSecret && !user.mfaEnabled) {
       // Persist secret encrypted at rest
       await this.usersService.saveMfaSecret(userId, pendingSecret);

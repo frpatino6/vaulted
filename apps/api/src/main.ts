@@ -14,6 +14,8 @@ async function bootstrap(): Promise<void> {
   const logger = new Logger('Bootstrap');
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
+  app.set('trust proxy', 1);
+
   // Global prefix keeps all API routes under /api.
   app.setGlobalPrefix('api');
 
