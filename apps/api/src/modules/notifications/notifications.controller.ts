@@ -10,8 +10,11 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { Role } from '../../common/enums/role.enum';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { RegisterDeviceTokenDto } from './dto/register-device-token.dto';
 import { UpdateNotificationPreferenceDto } from './dto/update-notification-preference.dto';
@@ -23,6 +26,8 @@ import { NotificationsService } from './notifications.service';
 export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
 
+  @Roles(Role.OWNER, Role.MANAGER)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('test-push')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Send a test push notification to current user' })
@@ -37,6 +42,7 @@ export class NotificationsController {
     });
   }
 
+  @Roles(Role.OWNER, Role.MANAGER, Role.STAFF, Role.AUDITOR)
   @Post('device-token')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Register FCM device token' })
@@ -49,6 +55,7 @@ export class NotificationsController {
     await this.notificationsService.registerDeviceToken(user.sub, user.tenantId, dto);
   }
 
+  @Roles(Role.OWNER, Role.MANAGER, Role.STAFF, Role.AUDITOR)
   @Delete('device-token/:token')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Unregister FCM device token' })
@@ -61,6 +68,7 @@ export class NotificationsController {
     await this.notificationsService.unregisterDeviceToken(user.sub, user.tenantId, token);
   }
 
+  @Roles(Role.OWNER, Role.MANAGER, Role.STAFF, Role.AUDITOR)
   @Get('preferences')
   @ApiOperation({ summary: 'Get notification preferences' })
   @ApiBearerAuth()
@@ -69,6 +77,7 @@ export class NotificationsController {
     return this.notificationsService.getPreferences(user.sub, user.tenantId);
   }
 
+  @Roles(Role.OWNER, Role.MANAGER, Role.STAFF, Role.AUDITOR)
   @Patch('preferences')
   @ApiOperation({ summary: 'Update notification preferences' })
   @ApiBearerAuth()
@@ -80,6 +89,7 @@ export class NotificationsController {
     return this.notificationsService.updatePreferences(user.sub, user.tenantId, dto);
   }
 
+  @Roles(Role.OWNER, Role.MANAGER, Role.STAFF, Role.AUDITOR)
   @Get()
   @ApiOperation({ summary: 'List notifications for current user' })
   @ApiBearerAuth()
@@ -96,6 +106,7 @@ export class NotificationsController {
     );
   }
 
+  @Roles(Role.OWNER, Role.MANAGER, Role.STAFF, Role.AUDITOR)
   @Patch(':id/read')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Mark a notification as read' })
@@ -108,6 +119,7 @@ export class NotificationsController {
     await this.notificationsService.markRead(user.sub, user.tenantId, id);
   }
 
+  @Roles(Role.OWNER, Role.MANAGER, Role.STAFF, Role.AUDITOR)
   @Post('mark-all-read')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Mark all notifications as read' })
@@ -117,6 +129,7 @@ export class NotificationsController {
     return this.notificationsService.markAllRead(user.sub, user.tenantId);
   }
 
+  @Roles(Role.OWNER, Role.MANAGER, Role.STAFF, Role.AUDITOR)
   @Delete('clear-read')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Delete all read notifications for current user' })
@@ -126,6 +139,7 @@ export class NotificationsController {
     return this.notificationsService.clearReadNotifications(user.sub, user.tenantId);
   }
 
+  @Roles(Role.OWNER, Role.MANAGER, Role.STAFF, Role.AUDITOR)
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a single notification' })

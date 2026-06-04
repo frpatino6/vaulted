@@ -14,6 +14,7 @@ import * as speakeasy from 'speakeasy';
 import * as QRCode from 'qrcode';
 import { v4 as uuidv4 } from 'uuid';
 import { createHash } from 'crypto';
+import * as https from 'https';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
 import { TenantsService } from '../tenants/tenants.service';
@@ -28,6 +29,8 @@ import { AcceptInviteDto } from './dto/accept-invite.dto';
 const ACCESS_TOKEN_TTL_SECONDS = 15 * 60;
 const BCRYPT_ROUNDS = 12;
 const REFRESH_TOKEN_TTL_SECONDS = 7 * 24 * 60 * 60;
+const MAX_LOGIN_ATTEMPTS = 10;
+const LOCKOUT_DURATION_MINUTES = 15;
 
 @Injectable()
 export class AuthService {
@@ -47,6 +50,13 @@ export class AuthService {
     password: string,
     ipAddress: string,
   ): Promise<{ accessToken: string; refreshToken: string }> {
+    const isBreached = await this.checkBreachedPassword(password);
+    if (isBreached) {
+      throw new BadRequestException(
+        'This password has appeared in a known data breach. Please choose a different password.',
+      );
+    }
+
     // Atomic transaction: tenant + user created together or not at all
     const { tenant, user } = await this.dataSource.transaction(
       async (manager) => {
@@ -87,18 +97,30 @@ export class AuthService {
   }> {
     const user = await this.usersService.findByEmail(email);
 
-    if (!user || !user.isActive) {
+    if (user) {
+      const lockedUntil = user.lockedUntil ? new Date(user.lockedUntil) : null;
+      if (lockedUntil && lockedUntil > new Date()) {
+        const remaining = Math.ceil((lockedUntil.getTime() - Date.now()) / 1000 / 60);
+        throw new UnauthorizedException(`Account locked. Try again in ${remaining} minutes`);
+      }
+    }
+
+    const dummyHash = '$2b$12$00000000000000000000000000000000000000000000000000';
+    const passwordHash = user?.passwordHash ?? dummyHash;
+    const passwordValid = await this.usersService.verifyPassword(password, passwordHash);
+
+    if (!user || !user.isActive || !passwordValid) {
+      if (user) {
+        await this.usersService.incrementFailedLogins(user.id);
+        const attempts = (user.failedLoginAttempts ?? 0) + 1;
+        if (attempts >= MAX_LOGIN_ATTEMPTS) {
+          await this.usersService.lockAccount(user.id, LOCKOUT_DURATION_MINUTES);
+        }
+      }
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const passwordValid = await this.usersService.verifyPassword(
-      password,
-      user.passwordHash,
-    );
-    if (!passwordValid) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-
+    await this.usersService.resetFailedLogins(user.id);
     await this.usersService.updateLastLogin(user.id);
 
     const roleRequiresMfa = MFA_REQUIRED_ROLES.includes(user.role);
@@ -189,17 +211,17 @@ export class AuthService {
     refreshCookie: string | undefined,
     ipAddress: string,
   ): Promise<void> {
+    const tokenHash = createHash('sha256').update(accessToken).digest('hex');
     const ops: Promise<unknown>[] = [
       this.redis.setex(
-        `blacklist:${accessToken}`,
+        `blacklist:${tokenHash}`,
         ACCESS_TOKEN_TTL_SECONDS,
         '1',
       ),
     ];
 
-    // Decode (not verify) the refresh cookie to extract the jti and blacklist it
     if (refreshCookie) {
-      const refreshPayload = this.decodeRefreshToken(refreshCookie);
+      const refreshPayload = await this.verifyRefreshToken(refreshCookie);
       if (refreshPayload?.refreshTokenId) {
         ops.push(
           this.redis.setex(
@@ -233,11 +255,11 @@ export class AuthService {
     accessToken: string,
     ipAddress: string,
   ): Promise<void> {
+    const tokenHash = createHash('sha256').update(accessToken).digest('hex');
     await Promise.all([
       this.invalidateAllSessions(userId),
-      // Also blacklist the current access token
       this.redis.setex(
-        `blacklist:${accessToken}`,
+        `blacklist:${tokenHash}`,
         ACCESS_TOKEN_TTL_SECONDS,
         '1',
       ),
@@ -257,6 +279,7 @@ export class AuthService {
     userId: string,
     tenantId: string,
     email: string,
+    password: string,
   ): Promise<{ secret: string; qrCode: string }> {
     const user = await this.usersService.findById(userId);
     if (!user || user.tenantId !== tenantId) {
@@ -264,6 +287,14 @@ export class AuthService {
     }
     if (user.mfaEnabled) {
       throw new ForbiddenException('MFA is already configured');
+    }
+
+    const passwordValid = await this.usersService.verifyPassword(
+      password,
+      user.passwordHash,
+    );
+    if (!passwordValid) {
+      throw new UnauthorizedException('Invalid password');
     }
 
     const secret = speakeasy.generateSecret({
@@ -279,6 +310,8 @@ export class AuthService {
     await this.redis.setex(`mfa:pending:${userId}`, 10 * 60, secret.base32);
 
     const qrCode = await QRCode.toDataURL(secret.otpauth_url);
+
+    await this.invalidateAllSessions(userId);
 
     await this.auditService.log({
       tenantId,
@@ -319,13 +352,17 @@ export class AuthService {
       secret: secretToVerify,
       encoding: 'base32',
       token: code,
-      // Allow up to +/- 60s clock drift. Auth endpoints are rate-limited to
-      // 5/min, so this improves production reliability without making brute
-      // force practical.
-      window: 2,
+      window: 1,
     });
 
     if (!isValid) {
+      throw new UnauthorizedException('Invalid MFA code');
+    }
+
+    // Consume the code — prevent replay within the valid window
+    const replayKey = `mfa:used:${userId}:${code}`;
+    const alreadyUsed = await this.redis.set(replayKey, '1', 'EX', 180, 'NX');
+    if (alreadyUsed === null) {
       throw new UnauthorizedException('Invalid MFA code');
     }
 
@@ -364,6 +401,7 @@ export class AuthService {
       email: user.email,
       role: user.role,
       mfaVerified: options.mfaVerified ?? false,
+      propertyIds: user.propertyIds ?? undefined,
     };
 
     const refreshPayload: JwtRefreshPayload = {
@@ -463,9 +501,33 @@ export class AuthService {
     }
   }
 
-  private decodeRefreshToken(token: string): JwtRefreshPayload | null {
+  private async checkBreachedPassword(password: string): Promise<boolean> {
+    const sha1 = createHash('sha1').update(password).digest('hex').toUpperCase();
+    const prefix = sha1.slice(0, 5);
+    const suffix = sha1.slice(5);
+
+    return new Promise((resolve) => {
+      const url = `https://api.pwnedpasswords.com/range/${prefix}`;
+      const req = https.get(url, (res) => {
+        let data = '';
+        res.on('data', (chunk: string) => { data += chunk; });
+        res.on('end', () => {
+          const hashes = data.split('\n').map((line) => line.split(':')[0]);
+          resolve(hashes.includes(suffix));
+        });
+      });
+      req.on('error', (err) => {
+        this.logger.warn('HIBP API call failed', err);
+        resolve(false);
+      });
+      req.end();
+    });
+  }
+
+  private async verifyRefreshToken(token: string): Promise<JwtRefreshPayload | null> {
     try {
-      return this.jwtService.decode(token) as JwtRefreshPayload | null;
+      const refreshSecret = this.config.getOrThrow<string>('JWT_REFRESH_SECRET');
+      return await this.jwtService.verifyAsync<JwtRefreshPayload>(token, { secret: refreshSecret });
     } catch {
       return null;
     }

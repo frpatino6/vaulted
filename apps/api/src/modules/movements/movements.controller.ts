@@ -10,6 +10,7 @@ import {
   Req,
   HttpCode,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { MovementsService } from './movements.service';
@@ -20,10 +21,12 @@ import { QuickTransferDto } from './dto/quick-transfer.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums/role.enum';
+import { AnomalyGuard } from '../../common/guards/anomaly.guard';
 import { AuditService } from '../audit/audit.service';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 
+@UseGuards(AnomalyGuard)
 @ApiTags('Movements')
 @Controller('movements')
 export class MovementsController {

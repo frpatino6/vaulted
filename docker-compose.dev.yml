@@ -47,10 +47,16 @@ services:
     restart: unless-stopped
 
   mongodb:
-    image: mongo:7.0
+    image: mongo:7.0@sha256:4b5bf3c2bb7516164f6dcb44acce4fdcb428abfe5771a1128304a0f34ab9ff7c
     container_name: vaulted_mongodb
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=100M
+      - /var/tmp:size=100M
     ports:
-      - '27017:27017'
+      - '127.0.0.1:27017:27017'
     volumes:
       - mongodb_data:/data/db
     healthcheck:
@@ -63,10 +69,16 @@ services:
     restart: unless-stopped
 
   postgres:
-    image: pgvector/pgvector:pg16
+    image: pgvector/pgvector:pg16@sha256:00ba258a66dac104fd5171074a0084462a64a1369d8513f3d0a634e2f24d15bc
     container_name: vaulted_postgres
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=100M
+      - /var/tmp:size=100M
     ports:
-      - '5432:5432'
+      - '127.0.0.1:5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     environment:
@@ -83,10 +95,16 @@ services:
     restart: unless-stopped
 
   redis:
-    image: redis:7.2-alpine
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=100M
+      - /var/tmp:size=100M
+    image: redis:7.2-alpine@sha256:dfa18828cbc07b3ae6a95ec7343f6c214fdee2d836197b4be8e9904420762cd8
     container_name: vaulted_redis
     ports:
-      - '6379:6379'
+      - '127.0.0.1:6379:6379'
     volumes:
       - redis_data:/data
     command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes

@@ -98,13 +98,17 @@ services:
           memory: 1G
         reservations:
           memory: 256M
+    read_only: true
+    tmpfs:
+      - /tmp:size=100M
+      - /var/tmp:size=100M
     logging: *default-logging
     security_opt:
       - no-new-privileges:true
 
   # ── MONGODB ──────────────────────────────────────────────────────────────────
   mongodb:
-    image: mongo:7.0
+    image: mongo:7.0@sha256:4b5bf3c2bb7516164f6dcb44acce4fdcb428abfe5771a1128304a0f34ab9ff7c
     container_name: vaulted_mongodb
     # NO ports: section — database never exposed to host
     environment:
@@ -137,13 +141,17 @@ services:
           memory: 2G
         reservations:
           memory: 512M
+    read_only: true
+    tmpfs:
+      - /tmp:size=100M
+      - /var/tmp:size=100M
     logging: *default-logging
     security_opt:
       - no-new-privileges:true
 
   # ── POSTGRESQL + pgvector ────────────────────────────────────────────────────
   postgres:
-    image: pgvector/pgvector:pg16
+    image: pgvector/pgvector:pg16@sha256:00ba258a66dac104fd5171074a0084462a64a1369d8513f3d0a634e2f24d15bc
     container_name: vaulted_postgres
     # NO ports: section — database never exposed to host
     environment:
@@ -170,14 +178,22 @@ services:
           memory: 1G
         reservations:
           memory: 256M
+    read_only: true
+    tmpfs:
+      - /tmp:size=100M
+      - /var/tmp:size=100M
     logging: *default-logging
     security_opt:
       - no-new-privileges:true
 
   # ── REDIS ────────────────────────────────────────────────────────────────────
   redis:
-    image: redis:7.2-alpine
+    image: redis:7.2-alpine@sha256:dfa18828cbc07b3ae6a95ec7343f6c214fdee2d836197b4be8e9904420762cd8
     container_name: vaulted_redis
+    read_only: true
+    tmpfs:
+      - /tmp:size=100M
+      - /var/tmp:size=100M
     # NO ports: section — cache never exposed to host
     command: >
       redis-server
@@ -215,7 +231,7 @@ services:
 
   # ── BACKUP ───────────────────────────────────────────────────────────────────
   backup:
-    image: alpine:3.19
+    image: alpine:3.19@sha256:6baf43584bcb78f2e5847d1de515f23499913ac9f12bdf834811a3145eb11ca1
     container_name: vaulted_backup
     entrypoint: /bin/sh
     command: /backup/run-backup.sh
@@ -242,6 +258,12 @@ services:
         limits:
           cpus: '0.25'
           memory: 256M
+    read_only: true
+    tmpfs:
+      - /tmp:size=100M
+      - /var/tmp:size=100M
+    security_opt:
+      - no-new-privileges:true
     logging: *default-logging
 
 volumes:

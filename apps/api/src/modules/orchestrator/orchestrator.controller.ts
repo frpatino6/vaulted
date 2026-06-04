@@ -9,6 +9,7 @@ import {
   Patch,
   Post,
   Query,
+  Req,
 } from '@nestjs/common';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -20,14 +21,17 @@ import { CompleteStepDto } from './dto/complete-step.dto';
 import { CreatePlanDto } from './dto/create-plan.dto';
 import { ParseCommandDto } from './dto/parse-command.dto';
 import { UpdatePlanDto } from './dto/update-plan.dto';
+import { AuditService } from '../audit/audit.service';
 import { OrchestratorAiService } from './orchestrator-ai.service';
 import { OrchestratorService } from './orchestrator.service';
+import type { Request } from 'express';
 
 @Controller('orchestrator')
 export class OrchestratorController {
   constructor(
     private readonly orchestratorService: OrchestratorService,
     private readonly orchestratorAiService: OrchestratorAiService,
+    private readonly auditService: AuditService,
   ) {}
 
   // POST /orchestrator/parse
@@ -47,8 +51,18 @@ export class OrchestratorController {
   async create(
     @CurrentUser() user: JwtPayload,
     @Body() dto: CreatePlanDto,
+    @Req() req: Request,
   ) {
-    return this.orchestratorService.create(user.tenantId, user.sub, dto);
+    const result = await this.orchestratorService.create(user.tenantId, user.sub, dto);
+    await this.auditService.log({
+      tenantId: user.tenantId,
+      userId: user.sub,
+      action: 'orchestrator.plan.create',
+      entityType: 'orchestrator_plan',
+      entityId: String(result._id),
+      ipAddress: req.ip ?? 'unknown',
+    });
+    return result;
   }
 
   // GET /orchestrator/plans/my-tasks — must be declared before :id route
@@ -103,8 +117,18 @@ export class OrchestratorController {
     @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
     @Body() dto: UpdatePlanDto,
+    @Req() req: Request,
   ) {
-    return this.orchestratorService.update(user.tenantId, id, user.sub, dto);
+    const result = await this.orchestratorService.update(user.tenantId, id, user.sub, dto);
+    await this.auditService.log({
+      tenantId: user.tenantId,
+      userId: user.sub,
+      action: 'orchestrator.plan.update',
+      entityType: 'orchestrator_plan',
+      entityId: id,
+      ipAddress: req.ip ?? 'unknown',
+    });
+    return result;
   }
 
   // POST /orchestrator/plans/:id/publish
@@ -114,8 +138,18 @@ export class OrchestratorController {
   async publish(
     @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
+    @Req() req: Request,
   ) {
-    return this.orchestratorService.publishPlan(user.tenantId, id, user.sub);
+    const result = await this.orchestratorService.publishPlan(user.tenantId, id, user.sub);
+    await this.auditService.log({
+      tenantId: user.tenantId,
+      userId: user.sub,
+      action: 'orchestrator.plan.publish',
+      entityType: 'orchestrator_plan',
+      entityId: id,
+      ipAddress: req.ip ?? 'unknown',
+    });
+    return result;
   }
 
   // PATCH /orchestrator/plans/:planId/groups/:groupId/steps/:stepId/complete
@@ -127,8 +161,9 @@ export class OrchestratorController {
     @Param('groupId') groupId: string,
     @Param('stepId') stepId: string,
     @Body() dto: CompleteStepDto,
+    @Req() req: Request,
   ) {
-    return this.orchestratorService.completeStep(
+    const result = await this.orchestratorService.completeStep(
       user.tenantId,
       planId,
       groupId,
@@ -137,6 +172,16 @@ export class OrchestratorController {
       user.role,
       dto,
     );
+    await this.auditService.log({
+      tenantId: user.tenantId,
+      userId: user.sub,
+      action: 'orchestrator.step.complete',
+      entityType: 'orchestrator_plan',
+      entityId: planId,
+      metadata: { groupId, stepId },
+      ipAddress: req.ip ?? 'unknown',
+    });
+    return result;
   }
 
   // GET /orchestrator/plans/:id/progress
@@ -156,8 +201,18 @@ export class OrchestratorController {
     @CurrentUser() user: JwtPayload,
     @Param('planId') planId: string,
     @Body() dto: AddGroupDto,
+    @Req() req: Request,
   ) {
-    return this.orchestratorService.addGroup(user.tenantId, planId, user.sub, dto);
+    const result = await this.orchestratorService.addGroup(user.tenantId, planId, user.sub, dto);
+    await this.auditService.log({
+      tenantId: user.tenantId,
+      userId: user.sub,
+      action: 'orchestrator.plan.add_group',
+      entityType: 'orchestrator_plan',
+      entityId: planId,
+      ipAddress: req.ip ?? 'unknown',
+    });
+    return result;
   }
 
   // POST /orchestrator/plans/:planId/groups/:groupId/steps
@@ -168,14 +223,25 @@ export class OrchestratorController {
     @Param('planId') planId: string,
     @Param('groupId') groupId: string,
     @Body() dto: AddManualStepDto,
+    @Req() req: Request,
   ) {
-    return this.orchestratorService.addManualStep(
+    const result = await this.orchestratorService.addManualStep(
       user.tenantId,
       planId,
       groupId,
       user.sub,
       dto,
     );
+    await this.auditService.log({
+      tenantId: user.tenantId,
+      userId: user.sub,
+      action: 'orchestrator.step.add',
+      entityType: 'orchestrator_plan',
+      entityId: planId,
+      metadata: { groupId },
+      ipAddress: req.ip ?? 'unknown',
+    });
+    return result;
   }
 
   // DELETE /orchestrator/plans/:planId/groups/:groupId
@@ -186,13 +252,24 @@ export class OrchestratorController {
     @CurrentUser() user: JwtPayload,
     @Param('planId') planId: string,
     @Param('groupId') groupId: string,
+    @Req() req: Request,
   ) {
-    return this.orchestratorService.removeGroup(
+    const result = await this.orchestratorService.removeGroup(
       user.tenantId,
       planId,
       groupId,
       user.sub,
     );
+    await this.auditService.log({
+      tenantId: user.tenantId,
+      userId: user.sub,
+      action: 'orchestrator.plan.remove_group',
+      entityType: 'orchestrator_plan',
+      entityId: planId,
+      metadata: { groupId },
+      ipAddress: req.ip ?? 'unknown',
+    });
+    return result;
   }
 
   // DELETE /orchestrator/plans/:planId/groups/:groupId/steps/:stepId
@@ -204,13 +281,24 @@ export class OrchestratorController {
     @Param('planId') planId: string,
     @Param('groupId') groupId: string,
     @Param('stepId') stepId: string,
+    @Req() req: Request,
   ) {
-    return this.orchestratorService.removeStep(
+    const result = await this.orchestratorService.removeStep(
       user.tenantId,
       planId,
       groupId,
       stepId,
       user.sub,
     );
+    await this.auditService.log({
+      tenantId: user.tenantId,
+      userId: user.sub,
+      action: 'orchestrator.step.remove',
+      entityType: 'orchestrator_plan',
+      entityId: planId,
+      metadata: { groupId, stepId },
+      ipAddress: req.ip ?? 'unknown',
+    });
+    return result;
   }
 }

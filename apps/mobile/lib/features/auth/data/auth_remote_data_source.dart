@@ -37,8 +37,11 @@ class AuthRemoteDataSource {
   /// POST /auth/mfa/setup
   /// Requires Authorization: Bearer {accessToken from login}.
   /// Returns { secret, qrCode } for first-time MFA enrollment.
-  Future<Map<String, dynamic>> setupMfa() async {
-    final response = await _dio.post<Map<String, dynamic>>('auth/mfa/setup');
+  Future<Map<String, dynamic>> setupMfa({required String password}) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      'auth/mfa/setup',
+      data: {'password': password},
+    );
     return _unwrapData(response);
   }
 

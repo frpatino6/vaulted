@@ -4,6 +4,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AuditModule } from '../audit/audit.module';
 import { AiSharedModule } from '../ai/shared/ai-shared.module';
+import { UsersModule } from '../users/users.module';
 import { MediaModule } from '../media/media.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { Item, ItemSchema } from '../inventory/schemas/item.schema';
@@ -12,6 +13,7 @@ import {
   OrchestratorPlan,
   OrchestratorPlanSchema,
 } from './schemas/orchestrator-plan.schema';
+import { GuestExpirationGuard } from '../../common/guards/guest-expiration.guard';
 import { OrchestratorController } from './orchestrator.controller';
 import { OrchestratorService } from './orchestrator.service';
 import { OrchestratorAiService } from './orchestrator-ai.service';
@@ -33,13 +35,14 @@ import { OrchestratorGateway } from './orchestrator.gateway';
         signOptions: { expiresIn: '15m' },
       }),
     }),
+    UsersModule,
     AuditModule,
     AiSharedModule,
     MediaModule,
     NotificationsModule,
   ],
   controllers: [OrchestratorController],
-  providers: [OrchestratorService, OrchestratorAiService, OrchestratorGateway],
+  providers: [OrchestratorService, OrchestratorAiService, OrchestratorGateway, GuestExpirationGuard],
   exports: [OrchestratorService],
 })
 export class OrchestratorModule {}

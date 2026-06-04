@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 
 import { UsersModule } from '../users/users.module';
+import { GuestExpirationGuard } from '../../common/guards/guest-expiration.guard';
 import { PresenceController } from './presence.controller';
 import { PresenceGateway } from './presence.gateway';
 import { PresenceService } from './presence.service';
@@ -21,7 +22,7 @@ import { PresenceService } from './presence.service';
     }),
   ],
   controllers: [PresenceController],
-  providers: [PresenceGateway, PresenceService],
+  providers: [PresenceGateway, PresenceService, GuestExpirationGuard],
   exports: [PresenceService],
 })
 export class PresenceModule {}

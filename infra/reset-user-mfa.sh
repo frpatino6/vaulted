@@ -50,7 +50,7 @@ if [[ "$YES" != "--yes" ]]; then
   fi
 fi
 
-docker run --rm \
+docker run -i --rm \
   -e "DATABASE_URL=$DATABASE_URL" \
   postgres:16-alpine \
   psql "$DATABASE_URL" \

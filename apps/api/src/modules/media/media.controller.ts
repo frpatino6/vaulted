@@ -10,7 +10,7 @@ import {
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
-import { SkipThrottle } from '@nestjs/throttler';
+import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { Request } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -92,7 +92,7 @@ export class MediaController {
   }
 
   @Public()
-  @SkipThrottle({ default: true, 'inventory-valuation': true, dashboard: true })
+  @Throttle({ default: { limit: 300, ttl: 60000 } })
   @Get(':token')
   serveFile(
     @Param('token') token: string,

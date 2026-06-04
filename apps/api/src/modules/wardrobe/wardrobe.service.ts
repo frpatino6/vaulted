@@ -120,6 +120,7 @@ export class WardrobeService {
   async getOutfitWithItems(
     tenantId: string,
     outfitId: string,
+    userId: string,
   ): Promise<Record<string, unknown>> {
     const outfit = await this.findOutfitOrThrow(tenantId, outfitId);
     const items = await this.itemModel
@@ -134,7 +135,9 @@ export class WardrobeService {
       items: items.map((item) => ({
         id: String(item._id),
         name: item.name,
-        photo: item.photos[0] ?? null,
+        photo: item.photos[0]
+          ? `${this.appUrl}/api/media/${this.mediaService.generateFileToken(item.photos[0], tenantId, userId)}`
+          : null,
         category: item.category,
         type: (item.attributes?.type as string | undefined) ?? null,
         cleaningStatus:

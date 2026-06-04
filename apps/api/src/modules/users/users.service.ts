@@ -11,6 +11,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, EntityManager, In } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { createHash, randomBytes } from 'crypto';
+import { InjectRedis } from '../../common/decorators/inject-redis.decorator';
+import Redis from 'ioredis';
 import { User } from './entities/user.entity';
 import { Role } from '../../common/enums/role.enum';
 import { CryptoService } from '../../common/services/crypto.service';
@@ -20,6 +22,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { TenantsService } from '../tenants/tenants.service';
 
 const BCRYPT_ROUNDS = 12;
+const REFRESH_TOKEN_TTL_SECONDS = 7 * 24 * 60 * 60;
 
 export interface SanitizedUser {
   id: string;
@@ -46,6 +49,7 @@ export class UsersService {
     private readonly cryptoService: CryptoService,
     private readonly configService: ConfigService,
     private readonly tenantsService: TenantsService,
+    @InjectRedis() private readonly redis: Redis,
   ) {}
 
   async create(
@@ -284,7 +288,7 @@ export class UsersService {
       throw new BadRequestException('You cannot deactivate your own account');
     }
 
-    await this.findOwnedUserOrThrow(tenantId, userId);
+    const existing = await this.findOwnedUserOrThrow(tenantId, userId);
 
     const updatePayload: Partial<User> = {
       ...(dto.role !== undefined ? { role: dto.role } : {}),
@@ -301,6 +305,10 @@ export class UsersService {
     }
 
     await this.userRepository.update({ id: userId, tenantId }, updatePayload);
+
+    if (dto.role !== undefined && dto.role !== existing.role) {
+      await this.invalidateUserSessions(userId);
+    }
 
     const updatedUser = await this.findOwnedUserOrThrow(tenantId, userId);
 
@@ -330,11 +338,21 @@ export class UsersService {
   }
 
   async findByEmail(email: string): Promise<User | null> {
-    return this.userRepository.findOne({ where: { email } });
+    return this.userRepository.findOne({
+      where: { email },
+      select: ['id', 'email', 'passwordHash', 'role', 'mfaEnabled', 'mfaSecret', 'isActive', 'tenantId', 'propertyIds', 'status', 'expiresAt', 'lastLogin', 'failedLoginAttempts', 'lockedUntil'],
+    });
   }
 
   async findById(id: string): Promise<User | null> {
-    return this.userRepository.findOne({ where: { id } });
+    return this.userRepository.findOne({
+      where: { id },
+      select: [
+        'id', 'tenantId', 'email', 'passwordHash', 'role',
+        'mfaEnabled', 'mfaSecret', 'isActive', 'propertyIds', 'status',
+        'expiresAt', 'lastLogin', 'createdAt', 'updatedAt',
+      ],
+    });
   }
 
   async verifyPassword(plain: string, hash: string): Promise<boolean> {
@@ -346,7 +364,7 @@ export class UsersService {
   }
 
   async saveMfaSecret(userId: string, plaintextSecret: string): Promise<void> {
-    const encryptedSecret = this.cryptoService.encrypt(plaintextSecret);
+    const encryptedSecret = this.cryptoService.encryptField(plaintextSecret, userId);
     await this.userRepository.update(userId, {
       mfaSecret: encryptedSecret,
       mfaEnabled: true,
@@ -355,7 +373,12 @@ export class UsersService {
 
   async getMfaSecret(user: User): Promise<string | null> {
     if (!user.mfaSecret) return null;
-    return this.cryptoService.decrypt(user.mfaSecret);
+    try {
+      return this.cryptoService.decryptField(user.mfaSecret, user.id);
+    } catch {
+      // Legacy fallback: secrets created before user-scoped key migration
+      return this.cryptoService.decrypt(user.mfaSecret);
+    }
   }
 
   async disableMfa(userId: string): Promise<void> {
@@ -363,6 +386,19 @@ export class UsersService {
       mfaSecret: null,
       mfaEnabled: false,
     });
+  }
+
+  async incrementFailedLogins(userId: string): Promise<void> {
+    await this.userRepository.increment({ id: userId }, 'failedLoginAttempts', 1);
+  }
+
+  async resetFailedLogins(userId: string): Promise<void> {
+    await this.userRepository.update(userId, { failedLoginAttempts: 0, lockedUntil: null });
+  }
+
+  async lockAccount(userId: string, durationMinutes: number): Promise<void> {
+    const lockedUntil = new Date(Date.now() + durationMinutes * 60 * 1000);
+    await this.userRepository.update(userId, { lockedUntil });
   }
 
   canAccessProperty(user: User, propertyId: string): boolean {
@@ -386,6 +422,26 @@ export class UsersService {
     }
 
     return user;
+  }
+
+  private async invalidateUserSessions(userId: string): Promise<void> {
+    const sessionKey = `sessions:${userId}`;
+    const activeTokenIds = await this.redis.smembers(sessionKey);
+
+    if (activeTokenIds.length > 0) {
+      const pipeline = this.redis.pipeline();
+      for (const jti of activeTokenIds) {
+        pipeline.setex(
+          `blacklist:refresh:${jti}`,
+          REFRESH_TOKEN_TTL_SECONDS,
+          '1',
+        );
+      }
+      pipeline.del(sessionKey);
+      await pipeline.exec();
+    } else {
+      await this.redis.del(sessionKey);
+    }
   }
 
   private sanitizeUser(user: User): SanitizedUser {

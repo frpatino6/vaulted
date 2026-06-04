@@ -80,7 +80,7 @@ export class WardrobeController {
   @ApiBearerAuth()
   @ApiResponse({ status: 200, description: 'Outfit retrieved' })
   getOutfit(@CurrentUser() user: JwtPayload, @Param('id') outfitId: string) {
-    return this.wardrobeService.getOutfitWithItems(user.tenantId, outfitId);
+    return this.wardrobeService.getOutfitWithItems(user.tenantId, outfitId, user.sub);
   }
 
   @Roles(Role.OWNER, Role.MANAGER)

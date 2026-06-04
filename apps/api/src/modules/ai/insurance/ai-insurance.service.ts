@@ -3,6 +3,7 @@ import { InjectRedis } from '../../../common/decorators/inject-redis.decorator';
 import Redis from 'ioredis';
 import { GeminiClient } from '../shared/gemini.client';
 import { AiCostLoggerService } from '../shared/ai-cost-logger.service';
+import { sanitizeInput, logSuspiciousInput } from '../shared/ai-input-sanitizer';
 import { Role } from '../../../common/enums/role.enum';
 import { CoverageGapReport, InsuranceService } from '../../insurance/insurance.service';
 
@@ -157,6 +158,12 @@ Rules:
     await this.enforceRateLimit(`ai:insurance:claim:${tenantId}`, 5);
     await this.enforceRateLimit(`ai:insurance:claim:user:${userId}`, 3);
 
+    const { safe: sanitizedDescription, suspicious } = sanitizeInput(incidentDescription);
+    if (suspicious) {
+      logSuspiciousInput(this.logger, userId, 'claim incident description', sanitizedDescription);
+    }
+    incidentDescription = sanitizedDescription;
+
     const policy = await this.insuranceService.findPolicyById(tenantId, policyId);
 
     const insuredItem = itemId
@@ -221,17 +228,16 @@ Rules:
 
   // ─── Private helpers ──────────────────────────────────────────────────────────
 
-  private async enforceRateLimit(key: string, maxPerHour: number): Promise<void> {
-    const count = await this.redis.incr(key);
-    if (count === 1) {
-      await this.redis.expire(key, 3600);
-    }
-    if (count > maxPerHour) {
-      this.logger.warn(`Rate limit exceeded for key ${key}`);
-      throw new HttpException(
-        'Rate limit exceeded. Please try again later.',
-        HttpStatus.TOO_MANY_REQUESTS,
-      );
+  private async enforceRateLimit(key: string, limit: number): Promise<void> {
+    const luaScript = `
+      local c = redis.call('INCR', KEYS[1])
+      if c == 1 then redis.call('EXPIRE', KEYS[1], 60) end
+      if c > tonumber(ARGV[1]) then return -1 end
+      return c
+    `;
+    const result = await this.redis.eval(luaScript, 1, key, String(limit));
+    if (result === -1) {
+      throw new HttpException('Rate limit exceeded', HttpStatus.TOO_MANY_REQUESTS);
     }
   }
 

@@ -23,6 +23,7 @@ export class JwtRefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh'
         (req: Request) => req.cookies?.['refresh_token'] as string | null ?? null,
       ]),
       secretOrKey: config.getOrThrow<string>('JWT_REFRESH_SECRET'),
+      algorithms: ['HS256'],
       passReqToCallback: true,
     });
   }

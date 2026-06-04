@@ -923,6 +923,9 @@ Invalid link: "This invite link is missing a token. Open the link from your emai
 Fields: **Password** (required, min 12 chars, must contain uppercase, lowercase, number, special char), **Confirm password**.
 Button: **"Create account"**.
 API errors: "Too many attempts. Wait a moment and try again." / "Invalid invite link. Request a new invitation."
+
+### Device Security
+Vaulted requires devices to meet security standards. Jailbroken or rooted devices will see a security requirements screen and cannot access the app.
     `.trim(),
   },
 ];
@@ -1074,6 +1077,10 @@ const DEFAULT_SUGGESTIONS = [
 
 const UNRESOLVED_MARKER = '[UNRESOLVED:';
 
+function sanitizeAiOutput(text: string): string {
+  return text.replace(/<[^>]*>/g, '').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+}
+
 // ─── Service ───────────────────────────────────────────────────────────────────
 
 @Injectable()
@@ -1131,7 +1138,7 @@ export class AiHelpService implements OnModuleInit {
     });
 
     return {
-      answer: result.text,
+      answer: sanitizeAiOutput(result.text),
       sessionId,
       suggestions: this.getSuggestions(dto.currentScreen),
     };

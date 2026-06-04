@@ -8,11 +8,13 @@ import {
   Param,
   Post,
   Put,
+  UseGuards,
 } from '@nestjs/common';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { Role } from '../../common/enums/role.enum';
+import { AnomalyGuard } from '../../common/guards/anomaly.guard';
 import { AuditService } from '../audit/audit.service';
 import { AddFloorDto } from './dto/add-floor.dto';
 import { AddRoomDto } from './dto/add-room.dto';
@@ -26,6 +28,7 @@ import { PropertiesService } from './properties.service';
 import { PropertyDocument } from './schemas/property.schema';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 
+@UseGuards(AnomalyGuard)
 @ApiTags('Properties')
 @Controller('properties')
 export class PropertiesController {

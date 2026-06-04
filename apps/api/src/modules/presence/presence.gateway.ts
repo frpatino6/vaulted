@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
@@ -16,6 +17,7 @@ import { InjectRedis } from '../../common/decorators/inject-redis.decorator';
 import { ALLOWED_ORIGINS } from '../../common/config/cors.constants';
 import { Role } from '../../common/enums/role.enum';
 import { MFA_REQUIRED_ROLES } from '../../common/enums/role.enum';
+import { GuestExpirationGuard } from '../../common/guards/guest-expiration.guard';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { PresenceService } from './presence.service';
 
@@ -34,6 +36,7 @@ export class PresenceGateway implements OnGatewayConnection, OnGatewayDisconnect
     private readonly presenceService: PresenceService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly guestExpirationGuard: GuestExpirationGuard,
   ) {}
 
   async handleConnection(client: Socket): Promise<void> {
@@ -58,7 +61,8 @@ export class PresenceGateway implements OnGatewayConnection, OnGatewayDisconnect
         return;
       }
 
-      const isBlacklisted = await this.redis.get(`blacklist:${token}`);
+      const tokenHash = createHash('sha256').update(token).digest('hex');
+      const isBlacklisted = await this.redis.get(`blacklist:${tokenHash}`);
       if (isBlacklisted) {
         client.disconnect(true);
         return;
@@ -67,6 +71,15 @@ export class PresenceGateway implements OnGatewayConnection, OnGatewayDisconnect
       if (MFA_REQUIRED_ROLES.includes(payload.role) && !payload.mfaVerified) {
         client.disconnect(true);
         return;
+      }
+
+      if (payload.role === Role.GUEST) {
+        const expired = await this.guestExpirationGuard.isGuestExpired(payload.sub, payload.tenantId);
+        if (expired) {
+          this.logger.warn(`Expired guest connection rejected: ${payload.sub}`);
+          client.disconnect(true);
+          return;
+        }
       }
 
       if (payload.role === Role.GUEST || payload.role === Role.AUDITOR) {

@@ -11,7 +11,7 @@ export class AcceptInviteDto {
   @IsString()
   @MinLength(12)
   @MaxLength(128)
-  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&_\-#^])/, {
+  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&_\-#^])[A-Za-z\d@$!%*?&_\-#^]{12,128}$/, {
     message: 'Password must contain uppercase, lowercase, number, and special character',
   })
   password!: string;

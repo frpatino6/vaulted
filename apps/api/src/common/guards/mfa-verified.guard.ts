@@ -3,6 +3,7 @@ import {
   CanActivate,
   ExecutionContext,
   ForbiddenException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Request } from 'express';
@@ -35,7 +36,9 @@ export class MfaVerifiedGuard implements CanActivate {
       .getRequest<Request & { user?: JwtPayload }>();
 
     const user = request.user;
-    if (!user) return true; // JwtAuthGuard handles missing user
+    if (!user) {
+      throw new UnauthorizedException('Authentication required');
+    }
 
     if (MFA_REQUIRED_ROLES.includes(user.role) && !user.mfaVerified) {
       throw new ForbiddenException(

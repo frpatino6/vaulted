@@ -9,6 +9,7 @@ import {
   Post,
   Put,
   Req,
+  UseGuards,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -19,9 +20,11 @@ import { CreateUserDirectDto } from './dto/create-user-direct.dto';
 import { InviteUserDto } from './dto/invite-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UsersService } from './users.service';
+import { AnomalyGuard } from '../../common/guards/anomaly.guard';
 import { AuditService } from '../audit/audit.service';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 
+@UseGuards(AnomalyGuard)
 @ApiTags('Users')
 @Controller('users')
 export class UsersController {

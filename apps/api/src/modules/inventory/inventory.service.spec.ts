@@ -28,6 +28,7 @@ import { Property } from '../properties/schemas/property.schema';
 import { Movement } from '../movements/schemas/movement.schema';
 import { AccessControlService } from '../../common/services/access-control.service';
 import { CryptoService } from '../../common/services/crypto.service';
+import { assertSafeFlexibleObject } from './inventory.service';
 import { AuditService } from '../audit/audit.service';
 import { MediaService } from '../media/media.service';
 import { ConfigService } from '@nestjs/config';
@@ -442,5 +443,166 @@ describe('InventoryService', () => {
 
     expect(result).toHaveLength(2);
     expect(itemHistoryModel.find).toHaveBeenCalled();
+  });
+});
+
+
+describe('assertSafeFlexibleObject (fuzz tests)', () => {
+  // Import the exported utility function through the module
+
+  describe('safe inputs', () => {
+    it('accepts a flat object with primitive values', () => {
+      expect(() =>
+        assertSafeFlexibleObject({ name: 'ring', color: 'gold', quantity: 1 }),
+      ).not.toThrow();
+    });
+
+    it('accepts nested objects up to depth 5', () => {
+      const obj = {
+        a: { b: { c: { d: { e: 'deep' } } } },
+      };
+      expect(() => assertSafeFlexibleObject(obj)).not.toThrow();
+    });
+
+    it('accepts arrays up to 100 elements', () => {
+      const arr = Array.from({ length: 100 }, (_, i) => ({ id: i }));
+      expect(() => assertSafeFlexibleObject(arr)).not.toThrow();
+    });
+
+    it('accepts null and primitive values', () => {
+      expect(() => assertSafeFlexibleObject(null)).not.toThrow();
+      expect(() => assertSafeFlexibleObject(42)).not.toThrow();
+      expect(() => assertSafeFlexibleObject('hello')).not.toThrow();
+      expect(() => assertSafeFlexibleObject(true)).not.toThrow();
+      expect(() => assertSafeFlexibleObject(undefined)).not.toThrow();
+    });
+
+    it('accepts string values up to 2000 characters', () => {
+      const longStr = 'x'.repeat(2000);
+      expect(() => assertSafeFlexibleObject(longStr)).not.toThrow();
+    });
+  });
+
+  describe('rejected: MongoDB operator injection', () => {
+    it('rejects $gt operator key', () => {
+      expect(() => assertSafeFlexibleObject({ $gt: 100 })).toThrow();
+    });
+
+    it('rejects $ne operator key', () => {
+      expect(() => assertSafeFlexibleObject({ $ne: 'admin' })).toThrow();
+    });
+
+    it('rejects $where operator key', () => {
+      expect(() =>
+        assertSafeFlexibleObject({ $where: '1=1' }),
+      ).toThrow();
+    });
+
+    it('rejects $regex operator key', () => {
+      expect(() =>
+        assertSafeFlexibleObject({ $regex: '.*', $options: 'i' }),
+      ).toThrow();
+    });
+
+    it('rejects deeply nested $ operator', () => {
+      expect(() =>
+        assertSafeFlexibleObject({ nested: { $gt: 100 } }),
+      ).toThrow();
+    });
+
+    it('rejects $ operator in array elements', () => {
+      expect(() =>
+        assertSafeFlexibleObject([{ $inc: { balance: -1000 } }]),
+      ).toThrow();
+    });
+  });
+
+  describe('rejected: prototype pollution vectors', () => {
+    it('rejects __proto__ key', () => {
+      expect(() =>
+        assertSafeFlexibleObject({ __proto__: { admin: true } }),
+      ).toThrow();
+    });
+
+    it('rejects constructor key', () => {
+      expect(() =>
+        assertSafeFlexibleObject({ constructor: { prototype: { admin: true } } }),
+      ).toThrow();
+    });
+
+    it('rejects prototype key', () => {
+      expect(() =>
+        assertSafeFlexibleObject({ prototype: { polluted: true } }),
+      ).toThrow();
+    });
+
+    it('rejects nested __proto__', () => {
+      expect(() =>
+        assertSafeFlexibleObject({ foo: { __proto__: { polluted: true } } }),
+      ).toThrow();
+    });
+  });
+
+  describe('rejected: key with dots (path traversal)', () => {
+    it('rejects key containing dot', () => {
+      expect(() =>
+        assertSafeFlexibleObject({ 'foo.bar': 'value' }),
+      ).toThrow();
+    });
+
+    it('rejects nested key containing dot', () => {
+      expect(() =>
+        assertSafeFlexibleObject({ nested: { 'a.b': 'value' } }),
+      ).toThrow();
+    });
+  });
+
+  describe('rejected: depth and size limits', () => {
+    it('rejects objects deeper than 5 levels', () => {
+      const obj = { a: { b: { c: { d: { e: { f: 'too deep' } } } } } };
+      expect(() => assertSafeFlexibleObject(obj)).toThrow();
+    });
+
+    it('rejects arrays larger than 100 elements', () => {
+      const arr = Array.from({ length: 101 }, (_, i) => ({ id: i }));
+      expect(() => assertSafeFlexibleObject(arr)).toThrow();
+    });
+
+    it('rejects strings longer than 2000 characters', () => {
+      const longStr = 'x'.repeat(2001);
+      expect(() => assertSafeFlexibleObject(longStr)).toThrow();
+    });
+  });
+
+  describe('edge cases and mixed payloads', () => {
+    it('rejects mixed safe/unsafe payload', () => {
+      expect(() =>
+        assertSafeFlexibleObject({
+          name: 'ring',
+          category: 'jewelry',
+          $where: '1=1',
+        }),
+      ).toThrow();
+    });
+
+    it('rejects empty string key', () => {
+      expect(() => assertSafeFlexibleObject({ '': 'empty' })).toThrow();
+    });
+
+    it('handles empty object gracefully', () => {
+      expect(() => assertSafeFlexibleObject({})).not.toThrow();
+    });
+
+    it('handles empty array gracefully', () => {
+      expect(() => assertSafeFlexibleObject([])).not.toThrow();
+    });
+
+    it('handles array with mixed primitive values', () => {
+      expect(() => assertSafeFlexibleObject([1, 'two', true, null])).not.toThrow();
+    });
+
+    it('handles symbols as values (not keys)', () => {
+      expect(() => assertSafeFlexibleObject(Symbol('test'))).not.toThrow();
+    });
   });
 });

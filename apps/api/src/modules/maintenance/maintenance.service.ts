@@ -186,32 +186,52 @@ export class MaintenanceService {
     });
   }
 
-  async markOverdueRecords(): Promise<number> {
+  /**
+   * Marks pending records past their scheduled date as overdue.
+   * @param tenantId - If provided, scope to a single tenant. Omit for system-wide cron operation.
+   * @returns count of records updated
+   */
+  async markOverdueRecords(tenantId?: string): Promise<number> {
     const now = new Date();
+    const filter: Record<string, unknown> = {
+      status: 'pending',
+      scheduledDate: { $lt: now },
+    };
+    if (tenantId) {
+      filter.tenantId = tenantId;
+    }
     const result = await this.recordModel
-      .updateMany(
-        { status: 'pending', scheduledDate: { $lt: now } },
-        { $set: { status: 'overdue' } },
-      )
+      .updateMany(filter, { $set: { status: 'overdue' } })
       .exec();
 
     const count = result.modifiedCount;
     if (count > 0) {
-      this.logger.log(`Marked ${count} maintenance records as overdue`);
+      const scope = tenantId ? `tenant ${tenantId}` : 'all tenants';
+      this.logger.log(`Marked ${count} maintenance records as overdue (${scope})`);
     }
     return count;
   }
 
-  async findUpcomingInDays(days: number): Promise<MaintenanceRecord[]> {
+  /**
+   * Finds upcoming maintenance records due within the given number of days.
+   * Used by the nightly cron scheduler to dispatch notifications.
+   * @param days - Number of days to look ahead
+   * @param tenantId - If provided, scope to a single tenant. Omit for system-wide cron operation.
+   */
+  async findUpcomingInDays(days: number, tenantId?: string): Promise<MaintenanceRecord[]> {
     const now = new Date();
     const threshold = new Date();
     threshold.setDate(threshold.getDate() + days);
+    const filter: Record<string, unknown> = {
+      status: 'pending',
+      scheduledDate: { $gte: now, $lte: threshold },
+    };
+    if (tenantId) {
+      filter.tenantId = tenantId;
+    }
 
     return this.recordModel
-      .find({
-        status: 'pending',
-        scheduledDate: { $gte: now, $lte: threshold },
-      })
+      .find(filter)
       .exec();
   }
 

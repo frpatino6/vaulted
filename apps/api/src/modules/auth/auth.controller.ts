@@ -16,6 +16,7 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { VerifyMfaDto } from './dto/verify-mfa.dto';
 import { AcceptInviteDto } from './dto/accept-invite.dto';
+import { SetupMfaDto } from './dto/setup-mfa.dto';
 import { Public } from '../../common/decorators/public.decorator';
 import { SkipMfa } from '../../common/decorators/skip-mfa.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -147,6 +148,7 @@ export class AuthController {
   }
 
   @SkipMfa()
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Logout current session' })
@@ -205,8 +207,11 @@ export class AuthController {
     description: 'MFA setup successful, returns QR code',
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async setupMfa(@CurrentUser() user: JwtPayload) {
-    return this.authService.setupMfa(user.sub, user.tenantId, user.email);
+  async setupMfa(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: SetupMfaDto,
+  ) {
+    return this.authService.setupMfa(user.sub, user.tenantId, user.email, dto.password);
   }
 
   @SkipMfa()

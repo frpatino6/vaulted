@@ -8,18 +8,21 @@ import {
   Post,
   Query,
   Req,
+  UseGuards,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums/role.enum';
+import { AnomalyGuard } from '../../common/guards/anomaly.guard';
 import { AuditService } from '../audit/audit.service';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { CreateHouseholdMemberDto } from './dto/create-household-member.dto';
 import { UpdateHouseholdMemberDto } from './dto/update-household-member.dto';
 import { HouseholdMembersService } from './household-members.service';
 
+@UseGuards(AnomalyGuard)
 @ApiTags('Household Members')
 @Controller('household-members')
 export class HouseholdMembersController {

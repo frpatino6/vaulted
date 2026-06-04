@@ -21,7 +21,7 @@ export class User {
   @Index()
   email!: string;
 
-  @Column({ name: 'password_hash' })
+  @Column({ name: 'password_hash', select: false })
   passwordHash!: string;
 
   @Column({ type: 'enum', enum: Role, default: Role.STAFF })
@@ -30,7 +30,7 @@ export class User {
   @Column({ name: 'mfa_enabled', default: false })
   mfaEnabled!: boolean;
 
-  @Column({ name: 'mfa_secret', nullable: true, type: 'varchar' })
+  @Column({ name: 'mfa_secret', nullable: true, type: 'varchar', select: false })
   mfaSecret!: string | null;
 
   @Column({ name: 'is_active', default: true })
@@ -50,6 +50,12 @@ export class User {
 
   @Column({ name: 'last_login', nullable: true, type: 'timestamptz' })
   lastLogin!: Date | null;
+
+  @Column({ name: 'failed_login_attempts', default: 0 })
+  failedLoginAttempts!: number;
+
+  @Column({ name: 'locked_until', nullable: true, type: 'timestamptz' })
+  lockedUntil!: Date | null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;

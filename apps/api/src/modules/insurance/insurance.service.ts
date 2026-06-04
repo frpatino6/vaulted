@@ -138,7 +138,7 @@ export class InsuranceService {
       order: { createdAt: 'DESC' },
     });
 
-    await this.syncExpiredStatuses(policies);
+    await this.syncExpiredStatuses(policies, tenantId);
 
     return policies.map((p) => this.decryptPolicyFields(p, tenantId));
   }
@@ -150,7 +150,7 @@ export class InsuranceService {
       order: { createdAt: 'DESC' },
     });
 
-    await this.syncExpiredStatuses([policy]);
+    await this.syncExpiredStatuses([policy], tenantId);
 
     const decryptedPolicy = this.decryptPolicyFields(policy, tenantId);
     const decryptedItems = insuredItems.map((i) => this.decryptInsuredItemFields(i, tenantId));
@@ -645,8 +645,10 @@ export class InsuranceService {
   /**
    * Marks policies as expired if their expiresAt date has passed.
    * Updates the DB in background — does not block the response.
+   * @param policies - Already tenant-scoped policies loaded in memory (see callers)
+   * @param tenantId - Tenant ID for defense-in-depth on the async persistence query
    */
-  private syncExpiredStatuses(policies: InsurancePolicy[]): Promise<void> {
+  private syncExpiredStatuses(policies: InsurancePolicy[], tenantId: string): Promise<void> {
     const now = new Date();
     const toExpire = policies.filter(
       (p) => p.status === 'active' && p.expiresAt < now,
@@ -660,11 +662,14 @@ export class InsuranceService {
     }
 
     // Persist asynchronously — fire and forget (non-critical path)
+    // Policies are already tenant-scoped in memory, but we add tenant_id to the
+    // WHERE clause for defense-in-depth against cross-tenant data mutation.
     void this.policyRepo
       .createQueryBuilder()
       .update(InsurancePolicy)
       .set({ status: 'expired' })
       .whereInIds(toExpire.map((p) => p.id))
+      .andWhere('tenant_id = :tenantId', { tenantId })
       .execute()
       .catch(() => {
         // Silently ignore — next read will retry

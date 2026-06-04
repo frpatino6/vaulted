@@ -4,6 +4,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
+import { JwtModule } from '@nestjs/jwt';
 import { AppThrottlerGuard } from './common/guards/throttler.guard';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { TenantInterceptor } from './common/interceptors/tenant.interceptor';
@@ -96,6 +97,7 @@ import { InsuredItem } from './modules/insurance/entities/insured-item.entity';
                   ...(postgresCaCert ? { ca: postgresCaCert } : {}),
                 }
               : false,
+            extra: { statement_timeout: 30000 },
           };
         }
         return {
@@ -105,6 +107,7 @@ import { InsuredItem } from './modules/insurance/entities/insured-item.entity';
           database: config.getOrThrow<string>('POSTGRES_DB'),
           username: config.getOrThrow<string>('POSTGRES_USER'),
           password: config.getOrThrow<string>('POSTGRES_PASSWORD'),
+          extra: { statement_timeout: 30000 },
         };
       },
     }),
@@ -130,6 +133,7 @@ import { InsuredItem } from './modules/insurance/entities/insured-item.entity';
     HouseholdMembersModule,
     NotificationsModule,
     OrchestratorModule,
+    JwtModule.register({}),
   ],
   providers: [
     AnomalyGuard,

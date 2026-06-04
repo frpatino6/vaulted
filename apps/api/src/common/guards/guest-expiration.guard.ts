@@ -24,19 +24,22 @@ export class GuestExpirationGuard implements CanActivate {
 
     if (!user || user.role !== Role.GUEST) return true;
 
+    const expired = await this.isGuestExpired(user.sub, user.tenantId);
+    if (expired) {
+      throw new ForbiddenException('Guest access has expired');
+    }
+    return true;
+  }
+
+  async isGuestExpired(userId: string, tenantId: string): Promise<boolean> {
     const entity = await this.userRepository.findOne({
-      where: { id: user.sub },
+      where: { id: userId, tenantId },
       select: ['expiresAt', 'isActive'],
     });
 
-    if (!entity || !entity.isActive) {
-      throw new ForbiddenException('Account is inactive');
-    }
+    if (!entity || !entity.isActive) return true;
+    if (entity.expiresAt && entity.expiresAt < new Date()) return true;
 
-    if (entity.expiresAt && entity.expiresAt < new Date()) {
-      throw new ForbiddenException('Guest access has expired');
-    }
-
-    return true;
+    return false;
   }
 }
