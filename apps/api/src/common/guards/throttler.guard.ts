@@ -1,4 +1,5 @@
 import { Injectable, ExecutionContext } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { ThrottlerGuard, ThrottlerRequest, ThrottlerModuleOptions, ThrottlerStorageService } from '@nestjs/throttler';
 import { JwtService } from '@nestjs/jwt';
@@ -9,10 +10,11 @@ export class AppThrottlerGuard extends ThrottlerGuard {
   constructor(
     options: ThrottlerModuleOptions,
     storageService: ThrottlerStorageService,
+    reflector: Reflector,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
   ) {
-    super(options, storageService);
+    super(options, storageService, reflector);
   }
 
   protected async getTracker(req: ThrottlerRequest): Promise<string> {
