@@ -14,6 +14,7 @@ import * as speakeasy from 'speakeasy';
 import * as QRCode from 'qrcode';
 import { v4 as uuidv4 } from 'uuid';
 import { createHash } from 'crypto';
+import * as https from 'https';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
 import { TenantsService } from '../tenants/tenants.service';
@@ -49,6 +50,13 @@ export class AuthService {
     password: string,
     ipAddress: string,
   ): Promise<{ accessToken: string; refreshToken: string }> {
+    const isBreached = await this.checkBreachedPassword(password);
+    if (isBreached) {
+      throw new BadRequestException(
+        'This password has appeared in a known data breach. Please choose a different password.',
+      );
+    }
+
     // Atomic transaction: tenant + user created together or not at all
     const { tenant, user } = await this.dataSource.transaction(
       async (manager) => {
@@ -491,6 +499,29 @@ export class AuthService {
     } else {
       await this.redis.del(sessionKey);
     }
+  }
+
+  private async checkBreachedPassword(password: string): Promise<boolean> {
+    const sha1 = createHash('sha1').update(password).digest('hex').toUpperCase();
+    const prefix = sha1.slice(0, 5);
+    const suffix = sha1.slice(5);
+
+    return new Promise((resolve) => {
+      const url = `https://api.pwnedpasswords.com/range/${prefix}`;
+      const req = https.get(url, (res) => {
+        let data = '';
+        res.on('data', (chunk: string) => { data += chunk; });
+        res.on('end', () => {
+          const hashes = data.split('\n').map((line) => line.split(':')[0]);
+          resolve(hashes.includes(suffix));
+        });
+      });
+      req.on('error', (err) => {
+        this.logger.warn('HIBP API call failed', err);
+        resolve(false);
+      });
+      req.end();
+    });
   }
 
   private async verifyRefreshToken(token: string): Promise<JwtRefreshPayload | null> {

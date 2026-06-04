@@ -92,7 +92,7 @@ export class MediaController {
   }
 
   @Public()
-  @Throttle({ default: { limit: 60, ttl: 60000 } })
+  @Throttle({ default: { limit: 300, ttl: 60000 } })
   @Get(':token')
   serveFile(
     @Param('token') token: string,

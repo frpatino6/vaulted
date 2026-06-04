@@ -1,9 +1,12 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, ForbiddenException, HttpException, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
 import sharp from 'sharp';
 import { GoogleGenerativeAI, Part } from '@google/generative-ai';
+import Redis from 'ioredis';
 import * as fs from 'fs';
 import * as path from 'path';
+import { InjectRedis } from '../../../common/decorators/inject-redis.decorator';
 import { AiCostLoggerService } from '../shared/ai-cost-logger.service';
 import { AnalyzeItemDto, PropertyRoomDto } from './dto/analyze-item.dto';
 import {
@@ -50,6 +53,8 @@ export class AiVisionService {
   constructor(
     private readonly config: ConfigService,
     private readonly costLogger: AiCostLoggerService,
+    @InjectRedis() private readonly redis: Redis,
+    private readonly jwtService: JwtService,
   ) {
     this.genAI = new GoogleGenerativeAI(
       config.getOrThrow<string>('GOOGLE_GENAI_API_KEY'),
@@ -65,9 +70,12 @@ export class AiVisionService {
     userId: string,
     dto: AnalyzeItemDto,
   ): Promise<AnalyzeItemResult> {
-    const productPart = this.resolveImageToPart(dto.productImageUrl);
+    await this.enforceRateLimit(`ai:vision:analyze:user:${userId}`, 10);
+    await this.enforceRateLimit(`ai:vision:analyze:tenant:${tenantId}`, 30);
+
+    const productPart = await this.resolveImageToPart(dto.productImageUrl, tenantId);
     const invoicePart = dto.invoiceImageUrl
-      ? this.resolveImageToPart(dto.invoiceImageUrl)
+      ? await this.resolveImageToPart(dto.invoiceImageUrl, tenantId)
       : null;
 
     // Map rooms to simple indices. Sanitize name/type to prevent prompt injection.
@@ -112,6 +120,9 @@ export class AiVisionService {
     if (!dto.imageUrl && !dto.imageData) {
       throw new BadRequestException('imageUrl or imageData is required');
     }
+    await this.enforceRateLimit(`ai:vision:sections:user:${userId}`, 10);
+    await this.enforceRateLimit(`ai:vision:sections:tenant:${tenantId}`, 30);
+
     let imagePart: Part;
     if (dto.imageData) {
       const ALLOWED_MIMES = ['image/jpeg', 'image/png', 'image/webp'] as const;
@@ -124,7 +135,7 @@ export class AiVisionService {
       const clean = await sharp(buffer).jpeg({ quality: 85 }).toBuffer();
       imagePart = { inlineData: { mimeType: 'image/jpeg', data: clean.toString('base64') } };
     } else {
-      imagePart = this.resolveImageToPart(dto.imageUrl!);
+      imagePart = await this.resolveImageToPart(dto.imageUrl!, tenantId);
     }
     const prompt = this.buildSectionsPrompt();
     const parts: Part[] = [imagePart, { text: prompt }];
@@ -277,48 +288,71 @@ Final rules:
 
   private readonly allowedUploadDir: string;
 
-  private resolveImageToPart(imageUrl: string): Part {
-    // Compute uploads root lazily (not at class field init time) so it
-    // works correctly regardless of process.cwd() at module load time.
-    // Matches the convention used by MediaService (join(process.cwd(), 'uploads')).
+  private async resolveImageToPart(imageUrl: string, tenantId: string): Promise<Part> {
     const uploadsRoot = this.allowedUploadDir ?? path.join(process.cwd(), 'uploads');
     const resolvedRoot = path.resolve(uploadsRoot);
 
     if (imageUrl.startsWith(this.appUrl)) {
-      // Strip the app URL to get the relative path (e.g. /api/media/{token})
-      // Media tokens are self-contained JWT — we resolve the actual file via
-      // MediaService's file-serving endpoint, not by direct filesystem access.
-      // For direct upload paths, strip any leading slash and resolve relative to uploads.
-      const relativePath = imageUrl.replace(this.appUrl, '').replace(/^\/+/, '');
-      const filePath = path.resolve(resolvedRoot, relativePath);
+      // Extract media token from URL and validate tenant ownership
+      const mediaMatch = imageUrl.match(/\/api\/media\/(.+)$/);
+      if (!mediaMatch) throw new BadRequestException('Invalid image URL format');
 
-      if (!filePath.startsWith(resolvedRoot + path.sep) && filePath !== resolvedRoot) {
-        throw new BadRequestException('Invalid image path.');
+      const token = mediaMatch[1];
+      const mediaJwtSecret = this.config.get<string>('MEDIA_JWT_SECRET');
+      if (!mediaJwtSecret) throw new BadRequestException('Media JWT secret not configured');
+
+      try {
+        const payload = this.jwtService.verify<{
+          typ?: string;
+          fileKey: string;
+          tenantId: string;
+        }>(token, { secret: mediaJwtSecret });
+
+        if (payload.typ !== 'media') {
+          throw new BadRequestException('Invalid token type');
+        }
+        if (payload.tenantId !== tenantId) {
+          throw new ForbiddenException('Cross-tenant file access denied');
+        }
+
+        const relativePath = payload.fileKey;
+        const filePath = path.resolve(resolvedRoot, relativePath);
+
+        if (!filePath.startsWith(resolvedRoot + path.sep) && filePath !== resolvedRoot) {
+          throw new BadRequestException('Invalid image path.');
+        }
+        if (!fs.existsSync(filePath)) {
+          throw new BadRequestException('Image not found.');
+        }
+
+        const ext = path.extname(filePath).toLowerCase();
+        const mimeMap: Record<string, string> = {
+          '.jpg': 'image/jpeg',
+          '.jpeg': 'image/jpeg',
+          '.png': 'image/png',
+          '.webp': 'image/webp',
+        };
+        const mimeType = mimeMap[ext] ?? 'image/jpeg';
+
+        const data = fs.readFileSync(filePath).toString('base64');
+        return { inlineData: { mimeType, data } };
+      } catch (err) {
+        if (err instanceof BadRequestException || err instanceof ForbiddenException) throw err;
+        throw new BadRequestException('Invalid or expired media token');
       }
-      if (!fs.existsSync(filePath)) {
-        throw new BadRequestException('Image not found.');
-      }
-
-      const ext = path.extname(filePath).toLowerCase();
-      const mimeMap: Record<string, string> = {
-        '.jpg': 'image/jpeg',
-        '.jpeg': 'image/jpeg',
-        '.png': 'image/png',
-        '.webp': 'image/webp',
-      };
-      const mimeType = mimeMap[ext] ?? 'image/jpeg';
-
-      const data = fs.readFileSync(filePath).toString('base64');
-      return {
-        inlineData: { mimeType, data },
-      };
     }
 
-    // imageUrl is already a local filesystem path or relative path
+    // Fallback local path — verify tenant prefix
     const filePath = path.resolve(resolvedRoot, imageUrl.replace(/^\/+/, ''));
     if (!filePath.startsWith(resolvedRoot + path.sep) && filePath !== resolvedRoot) {
       throw new BadRequestException('Invalid image path.');
     }
+
+    const relativePath = path.relative(resolvedRoot, filePath);
+    if (!relativePath.startsWith(`${tenantId}/`)) {
+      throw new ForbiddenException('Cross-tenant file access denied');
+    }
+
     if (!fs.existsSync(filePath)) {
       throw new BadRequestException('Image not found.');
     }
@@ -333,9 +367,24 @@ Final rules:
     const mimeType = mimeMap[ext] ?? 'image/jpeg';
 
     const data = fs.readFileSync(filePath).toString('base64');
-    return {
-      inlineData: { mimeType, data },
-    };
+    return { inlineData: { mimeType, data } };
+  }
+
+  private async enforceRateLimit(key: string, limit: number): Promise<void> {
+    const luaScript = `
+      local current = redis.call('GET', KEYS[1])
+      if not current then
+        redis.call('SET', KEYS[1], 1, 'EX', 60)
+        return 1
+      end
+      local count = redis.call('INCR', KEYS[1])
+      if count > tonumber(ARGV[1]) then return -1 end
+      return count
+    `;
+    const result = await this.redis.eval(luaScript, 1, key, String(limit));
+    if (result === -1) {
+      throw new HttpException('Rate limit exceeded', HttpStatus.TOO_MANY_REQUESTS);
+    }
   }
 
   private buildPrompt(

@@ -15,6 +15,7 @@ import { InjectRedis } from '../../common/decorators/inject-redis.decorator';
 import { ALLOWED_ORIGINS } from '../../common/config/cors.constants';
 import { MFA_REQUIRED_ROLES } from '../../common/enums/role.enum';
 import { Role } from '../../common/enums/role.enum';
+import { GuestExpirationGuard } from '../../common/guards/guest-expiration.guard';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 
 interface StepCompletedPayload {
@@ -44,6 +45,7 @@ export class OrchestratorGateway implements OnGatewayConnection, OnGatewayDiscon
     @InjectRedis() private readonly redis: Redis,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly guestExpirationGuard: GuestExpirationGuard,
   ) {}
 
   async handleConnection(client: Socket): Promise<void> {
@@ -78,6 +80,15 @@ export class OrchestratorGateway implements OnGatewayConnection, OnGatewayDiscon
       if (MFA_REQUIRED_ROLES.includes(payload.role) && !payload.mfaVerified) {
         client.disconnect(true);
         return;
+      }
+
+      if (payload.role === Role.GUEST) {
+        const expired = await this.guestExpirationGuard.isGuestExpired(payload.sub, payload.tenantId);
+        if (expired) {
+          this.logger.warn(`Expired guest orchestrator connection rejected: ${payload.sub}`);
+          client.disconnect(true);
+          return;
+        }
       }
 
       if (payload.role === Role.GUEST || payload.role === Role.AUDITOR) {

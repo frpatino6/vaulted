@@ -47,6 +47,19 @@ export class HealthService {
     };
   }
 
+  async checkMinimal(): Promise<{ status: 'ok' | 'degraded' }> {
+    try {
+      const [mongoReady, postgresOk, redisOk] = await Promise.all([
+        Promise.resolve(this.mongoConnection.readyState === 1),
+        this.dataSource.query('SELECT 1').then(() => true).catch(() => false),
+        this.redis.ping().then(() => true).catch(() => false),
+      ]);
+      return { status: mongoReady && postgresOk && redisOk ? 'ok' : 'degraded' };
+    } catch {
+      return { status: 'degraded' };
+    }
+  }
+
   private async checkMongo(): Promise<ServiceStatus> {
     try {
       if (this.mongoConnection.readyState !== 1) {

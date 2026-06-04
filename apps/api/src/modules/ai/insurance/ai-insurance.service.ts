@@ -3,6 +3,7 @@ import { InjectRedis } from '../../../common/decorators/inject-redis.decorator';
 import Redis from 'ioredis';
 import { GeminiClient } from '../shared/gemini.client';
 import { AiCostLoggerService } from '../shared/ai-cost-logger.service';
+import { sanitizeInput, logSuspiciousInput } from '../shared/ai-input-sanitizer';
 import { Role } from '../../../common/enums/role.enum';
 import { CoverageGapReport, InsuranceService } from '../../insurance/insurance.service';
 
@@ -156,6 +157,12 @@ Rules:
   ): Promise<ClaimDraftResult> {
     await this.enforceRateLimit(`ai:insurance:claim:${tenantId}`, 5);
     await this.enforceRateLimit(`ai:insurance:claim:user:${userId}`, 3);
+
+    const { safe: sanitizedDescription, suspicious } = sanitizeInput(incidentDescription);
+    if (suspicious) {
+      logSuspiciousInput(this.logger, userId, 'claim incident description', sanitizedDescription);
+    }
+    incidentDescription = sanitizedDescription;
 
     const policy = await this.insuranceService.findPolicyById(tenantId, policyId);
 

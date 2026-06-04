@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { GoogleGenerativeAI, Content } from '@google/generative-ai';
+import { GoogleGenerativeAI, Content, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 
 export interface GeminiChatMessage {
   role: 'user' | 'model';
@@ -32,6 +32,12 @@ export class GeminiClient {
     const geminiModel = this.genAI.getGenerativeModel({
       model: this.model,
       systemInstruction: systemPrompt,
+      safetySettings: [
+        { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
+        { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
+        { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
+        { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
+      ],
     });
 
     const contents: Content[] = history.map((m) => ({
