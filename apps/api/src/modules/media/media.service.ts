@@ -434,6 +434,7 @@ export class MediaService {
     const mediaTokenMatch = key.match(/^https?:\/\/[^/]+\/api\/media\/(.+)$/);
     if (mediaTokenMatch?.[1]) {
       const token = mediaTokenMatch[1];
+      // Try current MEDIA_JWT_SECRET
       try {
         const payload = this.jwtService.verify<{ typ?: string; fileKey: string }>(token, {
           secret: this.mediaJwtSecret,
@@ -441,17 +442,28 @@ export class MediaService {
         });
         if (payload?.typ === 'media' && payload.fileKey) return payload.fileKey;
       } catch {
-        if (this.mediaJwtPreviousSecret) {
-          try {
-            const payload = this.jwtService.verify<{ typ?: string; fileKey: string }>(token, {
-              secret: this.mediaJwtPreviousSecret,
-              ignoreExpiration: true,
-            });
-            if (payload?.typ === 'media' && payload.fileKey) return payload.fileKey;
-          } catch {
-            // Token invalid — fall through
-          }
+        // fall through
+      }
+      // Try MEDIA_JWT_PREVIOUS_SECRET (key rotation)
+      if (this.mediaJwtPreviousSecret) {
+        try {
+          const payload = this.jwtService.verify<{ typ?: string; fileKey: string }>(token, {
+            secret: this.mediaJwtPreviousSecret,
+            ignoreExpiration: true,
+          });
+          if (payload?.typ === 'media' && payload.fileKey) return payload.fileKey;
+        } catch {
+          // fall through
         }
+      }
+      // Try default JWT_SECRET (legacy tokens generated before MEDIA_JWT_SECRET was introduced)
+      try {
+        const payload = this.jwtService.verify<{ fileKey?: string }>(token, {
+          ignoreExpiration: true,
+        });
+        if (payload?.fileKey) return payload.fileKey;
+      } catch {
+        // fall through
       }
     }
 
