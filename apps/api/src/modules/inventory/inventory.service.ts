@@ -788,7 +788,8 @@ export class InventoryService {
     }
 
     if (normalizedQuery) {
-      const searchRegex = new RegExp(escapeRegex(normalizedQuery), 'i');
+      const safeQuery = escapeRegex(normalizedQuery).slice(0, 200);
+      const searchRegex = new RegExp(safeQuery, 'i');
       query.$or = [
         { name: searchRegex },
         { category: searchRegex },

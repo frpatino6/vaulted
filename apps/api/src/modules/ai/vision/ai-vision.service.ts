@@ -317,8 +317,9 @@ Final rules:
 
         const relativePath = payload.fileKey;
         const filePath = path.resolve(resolvedRoot, relativePath);
+        const fileRelative = path.relative(resolvedRoot, filePath);
 
-        if (!filePath.startsWith(resolvedRoot + path.sep) && filePath !== resolvedRoot) {
+        if (fileRelative.startsWith('..') || path.isAbsolute(fileRelative)) {
           throw new BadRequestException('Invalid image path.');
         }
         if (!fs.existsSync(filePath)) {

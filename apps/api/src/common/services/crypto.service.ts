@@ -117,7 +117,7 @@ export class CryptoService {
       const iv = Buffer.from(newMatch[2], 'hex');
       const authTag = Buffer.from(newMatch[3], 'hex');
       const encrypted = Buffer.from(newMatch[4], 'hex');
-      const decipher = crypto.createDecipheriv(ALGORITHM, key, iv) as crypto.DecipherGCM;
+      const decipher = crypto.createDecipheriv(ALGORITHM, key, iv, { authTagLength: 16 }) as crypto.DecipherGCM;
       decipher.setAuthTag(authTag);
       return decipher.update(encrypted).toString('utf8') + decipher.final('utf8');
     }
@@ -133,7 +133,7 @@ export class CryptoService {
           const iv = Buffer.from(ivHex, 'hex');
           const authTag = Buffer.from(authTagHex, 'hex');
           const encrypted = Buffer.from(encryptedHex, 'hex');
-          const decipher = crypto.createDecipheriv(ALGORITHM, key, iv) as crypto.DecipherGCM;
+          const decipher = crypto.createDecipheriv(ALGORITHM, key, iv, { authTagLength: 16 }) as crypto.DecipherGCM;
           decipher.setAuthTag(authTag);
           return decipher.update(encrypted).toString('utf8') + decipher.final('utf8');
         } catch {
@@ -174,7 +174,7 @@ export class CryptoService {
       const iv = Buffer.from(newMatch[2], 'hex');
       const authTag = Buffer.from(newMatch[3], 'hex');
       const encrypted = Buffer.from(newMatch[4], 'hex');
-      const decipher = crypto.createDecipheriv(ALGORITHM, key, iv) as crypto.DecipherGCM;
+      const decipher = crypto.createDecipheriv(ALGORITHM, key, iv, { authTagLength: 16 }) as crypto.DecipherGCM;
       decipher.setAuthTag(authTag);
       return decipher.update(encrypted).toString('utf8') + decipher.final('utf8');
     }
@@ -190,7 +190,7 @@ export class CryptoService {
           const iv = Buffer.from(ivHex, 'hex');
           const authTag = Buffer.from(authTagHex, 'hex');
           const encrypted = Buffer.from(encryptedHex, 'hex');
-          const decipher = crypto.createDecipheriv(ALGORITHM, key, iv) as crypto.DecipherGCM;
+          const decipher = crypto.createDecipheriv(ALGORITHM, key, iv, { authTagLength: 16 }) as crypto.DecipherGCM;
           decipher.setAuthTag(authTag);
           return decipher.update(encrypted).toString('utf8') + decipher.final('utf8');
         } catch {
