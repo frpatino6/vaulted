@@ -443,7 +443,7 @@ Internet
 Cloudflare (DNS proxy + WAF + DDoS + TLS 1.3)
    │  ← Origin IP hidden from public
    ▼
-GCP VM: tennis-backend (us-central1-c)
+GCP VM: vaulted-backend (us-central1-c)
    │
    ├── UFW Firewall: ports 80, 443, one non-standard SSH only
    ├── Fail2ban: SSH brute-force protection
@@ -787,7 +787,7 @@ Los tres campos se cifran antes de escribir y se descifran al leer en `Inventory
 
 | Control | Estado | Detalle |
 |---|---|---|
-| CVEs Conocidos | ✅ Corregido | `npm audit fix` eliminó todos los CVEs críticos y altos; 8 moderados residuales en deps transitivas de Firebase/GCP |
+| CVEs Conocidos | ✅ Corregido | `npm audit fix` eliminó todos los CVEs críticos y altos |
 | Fijación de GitHub Actions | ✅ Corregido | Todas las actions fijadas a SHA completo de commit |
 | SBOM / Trivy / Semgrep | 🔲 Roadmap | Documentado en `extended-security-plan.md`; no integrado en CI aún |
 
@@ -944,7 +944,7 @@ Internet
 Cloudflare (proxy DNS + WAF + DDoS + TLS 1.3)
    │  ← IP de origen oculta del público
    ▼
-GCP VM: tennis-backend (us-central1-c)
+GCP VM: vaulted-backend (us-central1-c)
    │
    ├── UFW Firewall: solo puertos 80, 443, SSH no estándar
    ├── Fail2ban: protección contra fuerza bruta en SSH

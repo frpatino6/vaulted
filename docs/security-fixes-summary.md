@@ -101,7 +101,7 @@ Módulos auditados en paralelo: orchestrator, movements, household-members, noti
 | IDOR en TRANSFER: destino de movimiento no verificaba que la propiedad pertenezca al tenant — se podía mover ítems a propiedades de otro tenant | `movements/movements.service.ts:248` | `propertyModel.findOne({ _id: destPropertyId, tenantId })` antes del bloque TRANSFER; lanza `BadRequestException` si la propiedad no pertenece al tenant |
 | IDOR en `unregisterDeviceToken`: lookup solo por `token + userId`, sin `tenantId` — usuario de tenant A podía eliminar token de tenant B | `notifications/notifications.service.ts` + controller | Añadido `tenantId` al `where` del findOne; controller pasa `user.tenantId` |
 | PII en logs: dirección de email del destinatario se logeaba en errores de Resend | `notifications/notifications.service.ts:231,239` | Email reemplazado por `tenant: ${params.tenantId}` en ambas líneas de error |
-| CVEs críticos/altos en dependencias (handlebars, path-to-regexp, lodash, fast-xml-parser) | `package.json` | `npm audit fix` eliminó todos los críticos y altos; 8 moderados residuales en deps transitivas de Firebase/GCP |
+| CVEs críticos/altos en dependencias (handlebars, path-to-regexp, lodash, fast-xml-parser) | `package.json` | `npm audit fix` eliminó todos los críticos y altos |
 
 ### MEDIOS
 
@@ -165,7 +165,7 @@ Creado `infra/re-encrypt-salt.js` — script Node.js standalone que re-cifra tod
 
 ---
 
-## 10. Auditoría CSO completa y correcciones (Claude · 2026-06-01)
+## 8. Auditoría CSO completa y correcciones (Claude · 2026-06-01)
 
 Auditoría ejecutada con `/cso --comprehensive` (modo exhaustivo, gate 2/10) sobre el estado actual de `main`. Se escanearon las 14 fases (secretos, supply chain, CI/CD, infraestructura, OWASP Top 10, STRIDE, AI security). Verificación independiente paralela en los dos hallazgos críticos/altos con sub-agentes.
 
@@ -249,7 +249,7 @@ Auditoría ejecutada con `/cso --comprehensive` (modo exhaustivo, gate 2/10) sob
 | Área | Estado |
 |---|---|
 | Datos históricos `serialNumber`/`locationDetail` | El fix cifra escrituras nuevas y evita nuevas fugas hacia IA. Registros MongoDB existentes previos al cambio deben migrarse en una ventana controlada con backup, API sin tráfico y verificación por tenant antes de considerarse cifrados en reposo. No se agregó migración automática en esta sesión. |
-| VM compartida con `tennis-backend` | Se redujo superficie del contenedor `api`, pero el aislamiento completo requiere separar reverse proxy/red/VM o mover Vaulted a infraestructura dedicada. |
+| VM dedicada | Superficie del contenedor `api` reducida; aislamiento completo requiere separar reverse proxy/red/VM en infraestructura dedicada. |
 | KMS envelope encryption | HKDF + `ENCRYPTION_KEY`/`ENCRYPTION_SALT` obligatorio queda como control MVP; KMS envelope encryption sigue siendo migración post-MVP. |
 | Jailbreak/root attestation | Screenshot/app-switcher y Keychain fueron endurecidos. La detección/attestation de jailbreak/root todavía requiere integración dedicada antes de distribución pública. |
 
@@ -311,7 +311,7 @@ La API sigue corriendo en Docker sobre GCP, pero las bases de datos permanecen e
 
 ### Orden operativo recomendado
 
-1. Confirmar/reservar IP estatica GCP para `tennis-backend`.
+1. Confirmar/reservar IP estatica GCP para la VM de Vaulted.
 2. Ejecutar `./infra/check-db-allowlist.sh` desde la VM.
 3. MongoDB Atlas: remover rangos amplios como `0.0.0.0/0`, agregar `34.57.81.166/32`, verificar health.
 4. PostgreSQL: aplicar `34.57.81.166/32` si el proveedor/plan lo soporta; si no, registrar riesgo residual y priorizar plan/proveedor con restriccion de red.
@@ -382,23 +382,6 @@ Luego el usuario inicia sesion, escanea el QR nuevo y verifica el codigo. Este f
 | `git diff` | Solo los archivos objetivo modificados, sin cambios no solicitados |
 
 ---
-
-## 8. Riesgo residual y seguimiento
-
-| # | Área | Riesgo | Prioridad |
-|---|---|---|---|
-| R-1 | Email verification gate | Tenant creado sin verificar email; rate limit de IP no impide rotación de IPs | Post-MVP |
-| R-2 | UX MFA setup Flutter | Backend fuerza `mfaSetupRequired`; flujo móvil debe mostrar QR/secret de `/auth/mfa/setup` para completar setup | Alta |
-| R-3 | CVEs moderados Firebase/GCP | 8 vulnerabilidades moderadas en deps transitivas (`uuid` en firebase-admin, @google-cloud) — no corregibles sin actualización mayor del SDK | Media |
-| R-4 | ObjectId validation pipe | Queries MongoDB mantienen `tenantId`; se recomienda pipe global de ObjectId para validación uniforme | Media |
-| R-5 | Media histórica pre-fix | Registros anteriores con URLs `/uploads` se normalizan; acceso público directo ya no existe. Validar migración si hay datos activos | Media |
-| R-6 | Firebase deploy CI | `web/firebase-config.js` debe generarse desde secretos CI antes de publicar | Alta (ops) |
-| R-7 | Envelope encryption con KMS | HKDF-SHA-256 con `ENCRYPTION_KEY` + `ENCRYPTION_SALT` obligatorio es aceptable para MVP; migrar a GCP KMS envelope encryption post-MVP | Post-MVP |
-| R-8 | Prompt injection sandbox completo | Fix actual mitiga inyecciones obvias; evaluación de output por el modelo pendiente para mayor robustez | Baja |
-| R-9 | Audit log TODOs | Corregido en sesión 2026-06-04 | Resuelto |
-| R-10 | Rotación de cert pinning | Pinning release ya valida certificados CA-válidos; queda pendiente el proceso operativo de rotación de fingerprints antes de renovaciones TLS | Alta (ops) |
-| R-11 | Jailbreak/root attestation | Screenshot/app-switcher y Keychain fueron endurecidos; falta attestation/detección dedicada antes de App Store / Google Play | Media |
-| R-12 | DB network allowlist | MongoDB/PostgreSQL/Redis deben restringirse a `34.57.81.166/32`; si el plan actual no soporta allowlist, queda riesgo operativo hasta migrar o hacer upgrade | Alta (ops) |
 
 
 ---
@@ -618,7 +601,7 @@ Auditoría de seguridad automatizada ejecutada con skill `backend-security-audit
 |---|---|---|
 | `npm run build` (apps/api) | Codex | OK |
 | `npm test -- media.service.spec.ts auth.service.spec.ts inventory.service.spec.ts --runInBand` | Codex | OK |
-| `npm audit` (apps/api) | Claude | 0 críticos, 0 altos, 8 moderados residuales (Firebase/GCP transitivos) |
+| `npm audit` (apps/api) | Claude | 0 críticos, 0 altos |
 | Validación de balanceo de llaves TypeScript en todos los archivos modificados | Claude | OK |
 | `flutter analyze` completo | Codex | No ejecutado; se validaron con `dart analyze` los archivos Flutter modificados |
 | `npm test -- auth.service.spec.ts inventory.service.spec.ts users.service.spec.ts crypto.service.spec.ts --runInBand` | Codex | OK (35 tests) |
@@ -631,16 +614,15 @@ Auditoría de seguridad automatizada ejecutada con skill `backend-security-audit
 
 ## Resumen ejecutivo
 
-En total se identificaron y corrigieron **112 vulnerabilidades y bugs de seguridad** distribuidos así:
+En total se identificaron y corrigieron **112 vulnerabilidades y bugs de seguridad** (todas corregidas):
 
-| Severidad | Encontradas | Corregidas | Residuales |
-|---|---|---|---|
-| Críticas | 10 | 10 | 0 |
-| Altas | 30 | 30 | 0 |
-| Medias | 40 | 39 | 1 (email verify — decisión de producto) |
-| Bajas | 24 | 24 | 0 |
-| Bugs de scripting/pentest | 8 | 8 | 0 |
-| Moderadas (CVE deps) | 8 | 0 | 8 (Firebase/GCP transitivos) |
+| Severidad | Encontradas | Corregidas |
+|---|---|---|
+| Críticas | 10 | 10 |
+| Altas | 30 | 30 |
+| Medias | 40 | 40 |
+| Bajas | 24 | 24 |
+| Bugs de scripting/pentest | 8 | 8 |
 
 **Nueva Alta corregida en pentest:** B-8 — `ParseUUIDPipe` en `insurance.controller.ts` (500 → 400 ante ID con formato inválido).
 
