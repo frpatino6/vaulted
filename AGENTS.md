@@ -152,6 +152,84 @@ features/feature-name/
 
 ---
 
+## Docker Image Transfer VM → Local
+
+When you need to pull the exact production image (with env vars baked in) to your local Docker:
+
+```bash
+# VM: push to Docker Hub
+docker login -u frpatino6
+docker tag vaulted-api:latest frpatino6/vaulted-api:latest
+docker push frpatino6/vaulted-api:latest
+
+# Local: pull and retag
+docker pull frpatino6/vaulted-api:latest
+docker tag frpatino6/vaulted-api:latest vaulted-api:latest
+
+# Or, if scp works (SSH key configured):
+# VM:  docker save vaulted-api:latest | gzip > vaulted_api.tar.gz
+# Local: scp frpatino6@34.57.81.166:~/vaulted/vaulted/vaulted_api.tar.gz .
+#        docker load < vaulted_api.tar.gz
+```
+
+SSH key is not configured for this VM — only password. Docker push/pull via Docker Hub is the reliable method.
+
+## Get .env.prod from VM
+
+The `.env.prod` file with production credentials is on the VM at `/home/frpatino6/vaulted/vaulted/.env.prod`.
+SSH key is **not** configured — only password. To retrieve it:
+
+```bash
+# SSH into VM and print the file
+ssh frpatino6@34.57.81.166 "cat /home/frpatino6/vaulted/vaulted/.env.prod" > .env.prod
+```
+
+If password auth fails, grab it manually:
+1. SSH into VM: `ssh frpatino6@34.57.81.166`
+2. Copy contents: `cat /home/frpatino6/vaulted/vaulted/.env.prod`
+3. Paste locally into `.env.prod`
+
+**Warning**: `.env.prod` contains real production secrets. Never commit it to git — it's gitignored.
+
+## Local Build & Run
+
+Build and run the API locally (DBs are cloud: MongoDB Atlas, Neon PostgreSQL, Upstash Redis).
+
+### Prerequisites
+- `.env.prod` file with production credentials in project root (copy from VM)
+- MongoDB Atlas IP whitelisted for your local IP
+- Docker installed
+
+### Build image from source
+```bash
+docker build -f apps/api/Dockerfile.prod -t vaulted-api:latest apps/api
+```
+
+### Run (connects to cloud DBs)
+```bash
+docker run --env-file .env.prod -p 3000:3000 vaulted-api:latest
+```
+
+### Or run with docker-compose (API only, no local DBs)
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env.prod up --build -d
+```
+
+### Stop and free port 3000
+```bash
+docker stop vaulted_api    # Detiene el container
+docker rm vaulted_api      # Elimina el container (libera el puerto)
+# O en un solo paso:
+docker rm -f vaulted_api   # Force stop + remove
+```
+
+### Quick rebuild after code changes
+```bash
+docker build -f apps/api/Dockerfile.prod -t vaulted-api:latest apps/api
+docker rm -f vaulted_api
+docker run --env-file .env.prod -p 3000:3000 --name vaulted_api vaulted-api:latest
+```
+
 ## Security Non-Negotiables
 These must never be skipped or simplified:
 
