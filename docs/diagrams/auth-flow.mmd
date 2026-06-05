@@ -1,3 +1,33 @@
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "background": "#000000",
+    "primaryColor": "#0d2a4a",
+    "primaryTextColor": "#ffffff",
+    "primaryBorderColor": "#2e7dd1",
+    "lineColor": "#60b0ff",
+    "secondaryColor": "#0a1e35",
+    "tertiaryColor": "#061525",
+    "noteBkgColor": "#0a1e35",
+    "noteTextColor": "#b8d8ff",
+    "noteBorderColor": "#2e7dd1",
+    "activationBkgColor": "#1a4a8a",
+    "activationBorderColor": "#60b0ff",
+    "sequenceNumberColor": "#ffffff",
+    "actorBkg": "#0d2a4a",
+    "actorBorder": "#2e7dd1",
+    "actorTextColor": "#ffffff",
+    "actorLineColor": "#2e7dd1",
+    "signalColor": "#60b0ff",
+    "signalTextColor": "#ffffff",
+    "labelBoxBkgColor": "#0a1e35",
+    "labelBoxBorderColor": "#2e7dd1",
+    "labelTextColor": "#b8d8ff",
+    "loopTextColor": "#b8d8ff",
+    "altSectionBkgColor": "#060f1a",
+    "altSectionBkgColor2": "#0a1828"
+  }
+}}%%
 sequenceDiagram
     autonumber
     participant APP as 📱 App (Flutter)
@@ -19,7 +49,7 @@ sequenceDiagram
         API-->>APP: 200 { mfaRequired: true, tempToken }
         APP->>API: POST /auth/mfa/verify { code, tempToken }
         API->>PG: GET mfaSecret (AES-256-GCM decrypted)
-        API->>API: speakeasy.totp.verify(code, secret)\nwindow ±1, rate-limit 5/min
+        API->>API: speakeasy.totp.verify(code, secret)<br/>window ±1, rate-limit 5/min
         alt code invalid
             API-->>APP: 401 Invalid MFA code
         end
@@ -27,11 +57,11 @@ sequenceDiagram
     API->>API: sign Access Token (24h, mfaVerified=true)
     API->>API: sign Refresh Token (7d, JTI = uuid)
     API->>REDIS: SET session:{userId}:{jti} TTL 7d
-    API-->>APP: 200 { accessToken }\n+ Set-Cookie: refreshToken (httpOnly, secure)
+    API-->>APP: 200 { accessToken }<br/>+ Set-Cookie: refreshToken (httpOnly, secure)
 
     note over APP,PG: ── REQUEST WITH ACCESS TOKEN ────────────────────────────
 
-    APP->>API: GET /api/inventory\nAuthorization: Bearer {accessToken}
+    APP->>API: GET /api/inventory<br/>Authorization: Bearer {accessToken}
     API->>API: JwtAuthGuard: verify signature + expiry
     API->>API: MfaVerifiedGuard: check mfaVerified claim
     API->>API: RolesGuard: check role ≥ required
@@ -41,21 +71,21 @@ sequenceDiagram
 
     note over APP,PG: ── TOKEN REFRESH ───────────────────────────────────────
 
-    APP->>API: POST /auth/refresh\nCookie: refreshToken
+    APP->>API: POST /auth/refresh<br/>Cookie: refreshToken
     API->>API: Verify refresh token signature
     API->>REDIS: GET session:{userId}:{jti}
     alt session not found (replay attack)
         API->>REDIS: DEL all sessions for userId  ← full invalidation
         API-->>APP: 401 Session invalid
     end
-    API->>REDIS: DEL session:{userId}:{oldJti}\nSET blacklist:{oldJti} TTL 7d
+    API->>REDIS: DEL session:{userId}:{oldJti}<br/>SET blacklist:{oldJti} TTL 7d
     API->>API: Issue new Access + Refresh Token (new JTI)
     API->>REDIS: SET session:{userId}:{newJti} TTL 7d
-    API-->>APP: 200 { accessToken }\n+ Set-Cookie: new refreshToken
+    API-->>APP: 200 { accessToken }<br/>+ Set-Cookie: new refreshToken
 
     note over APP,PG: ── LOGOUT ──────────────────────────────────────────────
 
     APP->>API: POST /auth/logout
     API->>REDIS: DEL session:{userId}:{jti}
     API->>REDIS: SET blacklist:{jti} TTL 7d
-    API-->>APP: 200 OK\n+ Clear-Cookie: refreshToken
+    API-->>APP: 200 OK + Clear-Cookie: refreshToken
