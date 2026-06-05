@@ -2,9 +2,28 @@
 // Generates docs/vaulted-security-posture-2026-06-04.pdf
 // Run: node docs/gen-security-pdf.js
 
-const puppeteer = require('/opt/node22/lib/node_modules/@mermaid-js/mermaid-cli/node_modules/puppeteer');
+const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+
+function resolvePuppeteer() {
+  try { return require('puppeteer'); } catch {}
+  try {
+    const mmdcBin = execFileSync('which', ['mmdc'], { encoding: 'utf8' }).trim();
+    const mmdcReal = execFileSync('readlink', ['-f', mmdcBin], { encoding: 'utf8' }).trim();
+    // mmdcReal = <prefix>/node_modules/@mermaid-js/mermaid-cli/src/cli.js
+    // package root = two levels up from the resolved file (src/cli.js → src → package)
+    const pkgDir = path.dirname(path.dirname(mmdcReal));
+    return require(path.join(pkgDir, 'node_modules', 'puppeteer'));
+  } catch {}
+  throw new Error(
+    'puppeteer not found.\n' +
+    '  Option 1: npm install puppeteer --prefix docs/\n' +
+    '  Option 2: npm install -g @mermaid-js/mermaid-cli'
+  );
+}
+
+const puppeteer = resolvePuppeteer();
 
 const DIAGRAMS_DIR = path.join(__dirname, 'diagrams');
 const OUT = path.join(__dirname, 'vaulted-security-posture-2026-06-05.pdf');
