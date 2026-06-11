@@ -2,6 +2,8 @@
 set -euo pipefail
 umask 077
 
+cd "$(dirname "$0")/.."
+
 if [ ! -f .env.prod ]; then
   echo "Missing .env.prod" >&2
   exit 1
