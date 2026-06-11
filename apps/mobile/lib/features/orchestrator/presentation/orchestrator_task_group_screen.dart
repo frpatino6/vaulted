@@ -277,14 +277,26 @@ class _OrchestratorTaskGroupScreenState
                                   ),
                                 );
                               },
-                              onDismissed: (_) {
-                                ref
-                                    .read(orchestratorDetailNotifierProvider
-                                        .notifier)
-                                    .removeStep(
-                                      groupId: widget.groupId,
-                                      stepId: step.stepId,
-                                    );
+                              onDismissed: (_) async {
+                                try {
+                                  await ref
+                                      .read(orchestratorDetailNotifierProvider
+                                          .notifier)
+                                      .removeStep(
+                                        groupId: widget.groupId,
+                                        stepId: step.stepId,
+                                      );
+                                } catch (e) {
+                                  if (!context.mounted) return;
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        OrchestratorDetailNotifier.errorMessage(e),
+                                      ),
+                                      backgroundColor: AppColors.error,
+                                    ),
+                                  );
+                                }
                               },
                               child: tile,
                             )

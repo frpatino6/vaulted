@@ -412,9 +412,23 @@ class _OrchestratorPlanDetailScreenState
                               ),
                             );
                           },
-                          onDismissed: (_) => ref
-                              .read(orchestratorDetailNotifierProvider.notifier)
-                              .removeGroup(group.groupId),
+                          onDismissed: (_) async {
+                            try {
+                              await ref
+                                  .read(orchestratorDetailNotifierProvider.notifier)
+                                  .removeGroup(group.groupId);
+                            } catch (e) {
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    OrchestratorDetailNotifier.errorMessage(e),
+                                  ),
+                                  backgroundColor: AppColors.error,
+                                ),
+                              );
+                            }
+                          },
                           child: card,
                         )
                       : card,
@@ -484,13 +498,23 @@ class _OrchestratorPlanDetailScreenState
   Future<void> _showAssignSheet(String planId, OrchestratorTaskGroupModel group) async {
     final user = await showOrchestratorAssignSheet(context);
     if (user == null || !mounted) return;
-    await ref.read(orchestratorDetailNotifierProvider.notifier).updateAssignments([
-      {
-        'groupId': group.groupId,
-        'assignedUserId': user.id,
-        'assignedUserName': user.name,
-      }
-    ]);
+    try {
+      await ref.read(orchestratorDetailNotifierProvider.notifier).updateAssignments([
+        {
+          'groupId': group.groupId,
+          'assignedUserId': user.id,
+          'assignedUserName': user.name,
+        }
+      ]);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(OrchestratorDetailNotifier.errorMessage(e)),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
   }
 
   void _showAddItemSheet(String planId, String groupId) {

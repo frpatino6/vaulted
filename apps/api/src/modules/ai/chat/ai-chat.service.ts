@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, Logger, ConflictException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -201,27 +201,99 @@ export class AiChatService {
     return { answer: safeAnswer, items: chatItems, sessionId, sources: chatItems.map((i) => i.name) };
   }
 
-  async reindex(tenantId: string): Promise<{ indexed: number }> {
-    const items = await this.itemModel.find({ tenantId, status: { $ne: 'disposed' } }).lean().exec();
-    let indexed = 0;
-
-    for (let i = 0; i < items.length; i += 10) {
-      const batch = items.slice(i, i + 10);
-      await Promise.allSettled(
-        batch.map(async (item) => {
-          try {
-            const text = this.embeddingService.buildItemText(item);
-            const embedding = await this.embeddingService.generateEmbedding(text);
-            await this.upsertEmbedding(String(item._id), tenantId, embedding);
-            indexed++;
-          } catch (err) {
-            this.logger.error(`Reindex failed for item ${String(item._id)}`, err);
-          }
-        }),
-      );
+  async reindex(tenantId: string): Promise<{ status: 'started' }> {
+    const lockKey = `ai:reindex:lock:${tenantId}`;
+    const statusKey = `ai:reindex:status:${tenantId}`;
+    const ttlSeconds = 15 * 60;
+    const locked = await this.redis.set(lockKey, '1', 'EX', ttlSeconds, 'NX');
+    if (locked !== 'OK') {
+      throw new ConflictException('Reindex already running');
     }
 
-    return { indexed };
+    await this.redis.set(
+      statusKey,
+      JSON.stringify({ status: 'started', processed: 0, total: 0 }),
+      'EX',
+      ttlSeconds,
+    );
+
+    void this.runReindex(tenantId, lockKey, statusKey, ttlSeconds).catch((err) => {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Reindex failed for tenant ${tenantId}: ${message}`);
+    });
+
+    return { status: 'started' };
+  }
+
+  async reindexStatus(
+    tenantId: string,
+  ): Promise<{ status: string; processed: number; total: number }> {
+    const raw = await this.redis.get(`ai:reindex:status:${tenantId}`);
+    if (!raw) return { status: 'idle', processed: 0, total: 0 };
+    try {
+      const parsed = JSON.parse(raw) as { status?: unknown; processed?: unknown; total?: unknown };
+      return {
+        status: typeof parsed.status === 'string' ? parsed.status : 'unknown',
+        processed: typeof parsed.processed === 'number' ? parsed.processed : 0,
+        total: typeof parsed.total === 'number' ? parsed.total : 0,
+      };
+    } catch {
+      return { status: 'unknown', processed: 0, total: 0 };
+    }
+  }
+
+  private async runReindex(
+    tenantId: string,
+    lockKey: string,
+    statusKey: string,
+    ttlSeconds: number,
+  ): Promise<void> {
+    // TODO: migrate to BullMQ queue (see CLAUDE.md AI Architecture)
+    try {
+      const items = await this.itemModel.find({ tenantId, status: { $ne: 'disposed' } }).lean().exec();
+      let processed = 0;
+      const total = items.length;
+
+      for (let i = 0; i < items.length; i += 10) {
+        const batch = items.slice(i, i + 10);
+        await Promise.allSettled(
+          batch.map(async (item) => {
+            try {
+              const text = this.embeddingService.buildItemText(item);
+              const embedding = await this.embeddingService.generateEmbedding(text);
+              await this.upsertEmbedding(String(item._id), tenantId, embedding);
+            } catch (err) {
+              this.logger.error(`Reindex failed for item ${String(item._id)}`, err);
+            } finally {
+              processed += 1;
+            }
+          }),
+        );
+        await this.redis.set(
+          statusKey,
+          JSON.stringify({ status: 'running', processed, total }),
+          'EX',
+          ttlSeconds,
+        );
+      }
+
+      await this.redis.set(
+        statusKey,
+        JSON.stringify({ status: 'completed', processed, total }),
+        'EX',
+        ttlSeconds,
+      );
+    } catch (err) {
+      await this.redis.set(
+        statusKey,
+        JSON.stringify({ status: 'failed', processed: 0, total: 0 }),
+        'EX',
+        ttlSeconds,
+      );
+      throw err;
+    } finally {
+      await this.redis.del(lockKey);
+    }
   }
 
   async upsertEmbedding(itemId: string, tenantId: string, embedding: number[]): Promise<void> {

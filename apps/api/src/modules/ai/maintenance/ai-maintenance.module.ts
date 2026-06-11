@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AiSharedModule } from '../shared/ai-shared.module';
+import { CommonModule } from '../../../common/common.module';
+import { AuditModule } from '../../audit/audit.module';
 import { MaintenanceModule } from '../../maintenance/maintenance.module';
 import { Item, ItemSchema } from '../../inventory/schemas/item.schema';
 import {
@@ -17,6 +19,8 @@ import { AiMaintenanceController } from './ai-maintenance.controller';
       { name: MaintenanceRecord.name, schema: MaintenanceRecordSchema },
     ]),
     AiSharedModule,
+    CommonModule,
+    AuditModule,
     MaintenanceModule,
   ],
   controllers: [AiMaintenanceController],

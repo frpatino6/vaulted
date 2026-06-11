@@ -47,6 +47,13 @@ export class MovementsService {
     dto: CreateMovementDto,
     user: JwtPayload,
   ): Promise<MovementDocument> {
+    if (dto.propertyId) {
+      await this.assertPropertyAccess(dto.propertyId, user);
+    }
+    if (dto.destinationPropertyId) {
+      await this.assertPropertyAccess(dto.destinationPropertyId, user);
+    }
+
     const movement = new this.movementModel({
       tenantId: user.tenantId,
       propertyId: dto.propertyId ?? '',
@@ -117,9 +124,9 @@ export class MovementsService {
   async update(
     id: string,
     dto: UpdateMovementDto,
-    tenantId: string,
+    user: JwtPayload,
   ): Promise<MovementDocument> {
-    const movement = await this.findOne(id, tenantId);
+    const movement = await this.findOne(id, user.tenantId, user);
     if (movement.status !== MovementStatus.DRAFT) {
       throw new BadRequestException('Only draft movements can be edited');
     }
@@ -140,7 +147,7 @@ export class MovementsService {
     itemId: string,
     user: JwtPayload,
   ): Promise<MovementDocument> {
-    const movement = await this.findOne(movementId, user.tenantId);
+    const movement = await this.findOne(movementId, user.tenantId, user);
     if (movement.status !== MovementStatus.DRAFT) {
       throw new BadRequestException(
         'Items can only be added to draft movements',
@@ -159,6 +166,7 @@ export class MovementsService {
       tenantId: user.tenantId,
     });
     if (!item) throw new NotFoundException('Item not found');
+    await this.assertPropertyAccess(item.propertyId, user);
 
     if (item.status === 'disposed') {
       throw new BadRequestException('Disposed items cannot be moved');
@@ -208,9 +216,9 @@ export class MovementsService {
   async removeItem(
     movementId: string,
     itemId: string,
-    tenantId: string,
+    user: JwtPayload,
   ): Promise<MovementDocument> {
-    const movement = await this.findOne(movementId, tenantId);
+    const movement = await this.findOne(movementId, user.tenantId, user);
     if (movement.status !== MovementStatus.DRAFT) {
       throw new BadRequestException(
         'Items can only be removed from draft movements',
@@ -232,7 +240,7 @@ export class MovementsService {
     movementId: string,
     user: JwtPayload,
   ): Promise<MovementDocument> {
-    const movement = await this.findOne(movementId, user.tenantId);
+    const movement = await this.findOne(movementId, user.tenantId, user);
     if (movement.status !== MovementStatus.DRAFT) {
       throw new BadRequestException('Only draft movements can be activated');
     }
@@ -263,6 +271,8 @@ export class MovementsService {
       if (!destProperty) {
         throw new BadRequestException('Destination property not found');
       }
+      await this.assertPropertyAccess(destPropertyId, user);
+      this.assertRoomInProperty(destProperty, destRoomId);
 
       await Promise.all(
         movement.items.map((mi) =>
@@ -436,7 +446,7 @@ export class MovementsService {
     movementId: string,
     user: JwtPayload,
   ): Promise<MovementDocument> {
-    const movement = await this.findOne(movementId, user.tenantId);
+    const movement = await this.findOne(movementId, user.tenantId, user);
     if (
       movement.status === MovementStatus.COMPLETED ||
       movement.status === MovementStatus.CANCELLED
@@ -472,6 +482,7 @@ export class MovementsService {
       tenantId: user.tenantId,
     });
     if (!item) throw new NotFoundException('Item not found');
+    await this.assertPropertyAccess(item.propertyId, user);
     if (item.status === 'disposed') {
       throw new BadRequestException('Disposed items cannot be transferred');
     }
@@ -483,17 +494,13 @@ export class MovementsService {
     if (!destProperty) {
       throw new NotFoundException('Destination property not found');
     }
+    await this.assertPropertyAccess(dto.destinationPropertyId, user);
 
-    const roomExists = (destProperty.floors ?? []).some((floor) =>
-      (floor.rooms ?? []).some(
-        (room) => room.roomId?.toString() === dto.destinationRoomId,
-      ),
+    this.assertRoomInProperty(
+      destProperty,
+      dto.destinationRoomId,
+      'Destination room not found in the specified property',
     );
-    if (!roomExists) {
-      throw new BadRequestException(
-        'Destination room not found in the specified property',
-      );
-    }
 
     const createDto: CreateMovementDto = {
       operationType: MovementType.TRANSFER,
@@ -538,6 +545,34 @@ export class MovementsService {
         return 'repaired';
       default:
         return 'moved';
+    }
+  }
+
+  private assertRoomInProperty(
+    property: Pick<Property, 'floors'>,
+    roomId: string,
+    message = 'Destination room not found in destination property',
+  ): void {
+    const roomExists = (property.floors ?? []).some((floor) =>
+      (floor.rooms ?? []).some(
+        (room) => room.roomId?.toString() === roomId,
+      ),
+    );
+    if (!roomExists) {
+      throw new BadRequestException(message);
+    }
+  }
+
+  private async assertPropertyAccess(
+    propertyId: string,
+    user: JwtPayload,
+  ): Promise<void> {
+    const allowedPropertyIds = await this.accessControlService.getAllowedPropertyIds(
+      user.sub,
+      user.role as Role,
+    );
+    if (allowedPropertyIds !== null && !allowedPropertyIds.includes(propertyId)) {
+      throw new NotFoundException('Property not found');
     }
   }
 }

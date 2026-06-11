@@ -2,20 +2,10 @@
 
 ## What is Vaulted?
 
-Premium home inventory management app for high-net-worth families in the USA.
-Each client (tenant) can have one or multiple properties (mansions) and needs to track
-everything inside: furniture, art, electronics, wardrobe, jewelry, watches, vehicles, wine, etc.
-Each property has floors, rooms, and items assigned to specific locations.
+Premium home inventory SaaS for high-net-worth families in the USA. Clients manage multiple properties with full hierarchy: floors → rooms → items (furniture, art, wardrobe, vehicles, wine, etc.).
 
----
-
-## Product Decisions
-
-- **App name**: Vaulted
 - **Tagline**: "Everything you own. Protected. Organized. Yours."
-- **Target market**: Ultra-high-net-worth families in the USA
-- **Business model**: Premium SaaS subscription (per number of properties or items)
-- **Language**: English (Spanish expansion planned post-MVP)
+- **Model**: Premium SaaS subscription · Target: ultra-high-net-worth USA families · Language: English
 
 ---
 
@@ -41,24 +31,10 @@ Each property has floors, rooms, and items assigned to specific locations.
 
 ## Infrastructure
 
-### GCP VM (production)
-- Type: e2-micro (free tier) — VM name: `tennis-backend`, us-central1-c, IP 34.57.81.166
-- Shared with unrelated `tennis-backend` app; both use the same Caddy container
-
-### Architecture Flow
-```
-Cloudflare/Dynu DNS → Caddy (reverse proxy + SSL)
-    → Docker Compose
-        └── NestJS API (internal port 3000)
-MongoDB Atlas M0 (free) · PostgreSQL Neon.tech (free) · Redis Upstash (free, TLS)
-GCP Cloud Storage / local Docker volume → media files
-```
-
-### VM Security (before production launch)
-- Firewall: ports 80, 443, one non-standard SSH only
-- SSH: key-based, no passwords; Fail2ban + UFW
-- Containers run as non-root; .env never in repo
-- Daily automated GCP snapshots
+- **GCP VM**: e2-micro (free) — `tennis-backend`, us-central1-c, IP 34.57.81.166. Shared with unrelated `tennis-backend` app; same Caddy container.
+- **Flow**: Cloudflare/Dynu DNS → Caddy → Docker Compose → NestJS API (port 3000) · MongoDB Atlas M0 · PostgreSQL Neon.tech · Redis Upstash (TLS)
+- **Security**: ports 80/443/non-standard SSH · key-based SSH, Fail2ban + UFW · non-root containers · daily GCP snapshots
+- **Evolution (post-MVP)**: MongoDB Atlas managed · GCP Memorystore · Cloud SQL · GKE
 
 ---
 
@@ -83,29 +59,18 @@ Guest    → temporary access with expiration date
 - **Rotation**: each refresh generates a new token; blacklist in Redis
 - **MFA**: mandatory for Owner and Manager (TOTP + YubiKey); Passkeys/FIDO2 supported
 - **Data**: AES-256 at rest, TLS 1.3, MongoDB CSFLE for sensitive fields
-- **Mobile**: certificate pinning (Dio) ✅ implementado 2026-06-01, Secure Enclave/Keystore, jailbreak detection ❌ pendiente, screenshot guard ❌ pendiente
+- **Mobile**: certificate pinning (Dio) ✅ 2026-06-01, Secure Enclave/Keystore, jailbreak detection ❌ pendiente, screenshot guard ❌ pendiente
 - **Audit logs**: immutable PostgreSQL table (no UPDATE/DELETE), 2-year retention
 - **Compliance targets**: SOC 2 Type II, CCPA, ISO 27001 (post-launch)
-- **Security audit**: `/cso --comprehensive` ejecutado 2026-06-01 — 6 hallazgos corregidos (1 crítico, 2 altos, 3 medios). Ver `docs/security-fixes-summary.md` sección 10.
-
----
-
-## Item Categories
-
-```
-Furniture · Art & Collectibles · Appliances & Technology
-Wardrobe (Clothing · Footwear · Accessories · Jewelry & Watches)
-Vehicles · Wine & Spirits · Books · Sports Equipment · Musical Instruments
-Household Supplies (linens, tableware, glassware)
-```
+- **Security audit**: `/cso --comprehensive` 2026-06-01 — 6 hallazgos corregidos. Ver `docs/security-fixes-summary.md` §10.
 
 ---
 
 ## Key Features
 
-**MVP (done):** Multi-property management · Property→Floor→Room→Item hierarchy · Photos (up to 10) · Serial number · Valuation · QR code per item · Item status (active/loaned/repair/storage/disposed) · Movement history · Loan tracking · RBAC per property · Push/email notifications · PDF export · Full-text search
+**MVP (done):** Multi-property · Property→Floor→Room→Item · Photos (10) · Serial # · Valuation · QR · Status (active/loaned/repair/storage/disposed) · Movement history · Loans · RBAC · Push/email · PDF export · Full-text search
 
-**Phase 2 (partially done):** Wardrobe module ✅ · Insurance policies ✅ · Maintenance calendar ✅ · Incident reports · AI-powered cataloging ✅ · Dashboard KPIs ✅ · AI Insurance Analysis ✅
+**Phase 2 (partial):** Wardrobe ✅ · Insurance ✅ · Maintenance calendar ✅ · AI cataloging ✅ · Dashboard KPIs ✅ · AI Insurance Analysis ✅ · Incident reports ❌
 
 **Phase 3 (pending):** Bulk import · REST API · Advanced reports · Offline mode
 
@@ -195,36 +160,21 @@ Blacklist:     Redis (immediate revocation)
 
 ## AI Features
 
-### Implemented
 | Feature | Endpoint | Model |
 |---|---|---|
 | Vision / Auto-catalog | `POST /ai/vision/analyze` | Gemini 2.5 Flash |
 | RAG Chat | `POST /ai/chat` | Gemini embeddings + pgvector search |
 | Insurance Analysis | `POST /ai/insurance/analyze` | Gemini 2.5 Flash |
 | Maintenance risk scoring | nightly batch | Gemini |
+| Dynamic Asset Valuation (AI-3) | pending | Claude reasoning + Brave Search |
 
-**Vision notes:**
-- Photos stored on Docker volume (`/app/uploads/`), NOT GCP Storage (not configured in test env)
-- Service reads file → base64 → sends to Gemini (not public URL)
-- Returns: `{ name, category, subcategory, brand, estimatedValue, attributes, confidence, tags[], suggestedRoom, invoiceData }`
-- Tags: 3-5 required, parsed robustly (handles array or comma-string from model)
+**Vision**: photos on Docker volume `/app/uploads/` → base64 → Gemini. Returns `{ name, category, subcategory, brand, estimatedValue, attributes, confidence, tags[], suggestedRoom, invoiceData }`. Tags: 3-5, handles array or comma-string.
 
-### Pending AI phases
-| Phase | Feature |
-|---|---|
-| AI-3 | Dynamic Asset Valuation (web search + Claude reasoning) |
-
-### AI Architecture
-- **Primary LLM**: Gemini 2.5 Flash (`GOOGLE_GENAI_API_KEY`) — vision, chat, insurance, maintenance
-- **Secondary LLM**: Anthropic Claude (`@anthropic-ai/sdk`) — AI-3 valuation reasoning
-- **Embeddings**: Gemini embeddings (`gemini-embedding-001`, 3072 dims, stored in PostgreSQL via pgvector)
-- **Web Search** (AI-3): Brave Search API
-- **Queue**: BullMQ on Redis — `ai-vision` (5 workers) · `ai-valuation` (3) · `ai-maintenance` (3)
-- **Rate limit**: `AI_CHAT_RATE_LIMIT_PER_MINUTE=20` per tenant; token usage logged to AuditService
+**Architecture**: Primary LLM: Gemini 2.5 Flash (`GOOGLE_GENAI_API_KEY`) · Secondary: Anthropic Claude (`@anthropic-ai/sdk`, AI-3 only) · Embeddings: `gemini-embedding-001` (3072 dims, pgvector) · Queue: BullMQ on Redis (`ai-vision` 5w · `ai-valuation` 3w · `ai-maintenance` 3w) · Rate limit: `AI_CHAT_RATE_LIMIT_PER_MINUTE=20` per tenant.
 
 ---
 
-## Deployment (Testing)
+## Deployment
 
 ### Live URLs
 | Endpoint | URL |
@@ -233,27 +183,20 @@ Blacklist:     Redis (immediate revocation)
 | Health | `https://api-vaulted.casacam.net/health` |
 | Web app | `https://vaulted-prod-2026.web.app` |
 
-### Deploy API Updates (SSH into VM)
-```bash
-gcloud compute ssh tennis-backend --zone us-central1-c --project tennis-management-fcd54
-cd ~/vaulted/vaulted
-git pull
-./start-prod.sh down
-docker compose -f docker-compose.prod.yml build --no-cache
-./start-prod.sh up -d
-docker logs vaulted_api --tail 50
-```
+### Deploy
+- **API**: SSH into VM → `git pull && ./start-prod.sh down && docker compose -f docker-compose.prod.yml build --no-cache && ./start-prod.sh up -d`
+- **Web**: `./infra/build-web.sh` (Flutter web + Firebase)
+- **Secrets**: `./infra/upload-env.sh` then restart
 
-### Deploy Web App (run locally)
-```bash
-./infra/build-web.sh   # Flutter web build + Firebase deploy
-```
-
-### Upload secrets to VM (run locally)
-```bash
-./infra/upload-env.sh
-./start-prod.sh down && ./start-prod.sh up -d
-```
+### Key Files
+| File | Purpose |
+|---|---|
+| `docker-compose.prod.yml` | Production compose (joins `frpatino6_default` network) |
+| `docker-compose.dev.yml` | Local dev (API + all DBs) |
+| `start-prod.sh` | Safe docker compose wrapper |
+| `.env.prod.example` | Env var template (real secrets not in git) |
+| `infra/build-web.sh` | Flutter web build + Firebase deploy |
+| `infra/Caddyfile` | Caddy config for both domains |
 
 ### Test Credentials
 | Env | Email | Password |
@@ -261,48 +204,18 @@ docker logs vaulted_api --tail 50
 | Production | `owner@test.com` | `Test1234!Secure` |
 | Local dev | `owner@test.com` | `Test1234!` |
 
-### Key Files
-| File | Purpose |
-|---|---|
-| `docker-compose.prod.yml` | Production compose (API only, joins `frpatino6_default` network) |
-| `docker-compose.dev.yml` | Local dev (API + all databases) |
-| `start-prod.sh` | Safe wrapper: parses `.env.prod`, runs docker compose |
-| `.env.prod` | NOT in git — real secrets |
-| `.env.prod.example` | Template with all required variable names |
-| `apps/api/Dockerfile.prod` | Multi-stage build (builder + runner) |
-| `infra/build-web.sh` | Flutter web build + Firebase deploy |
-| `infra/Caddyfile` | Caddy config for both domains |
-| `infra/upload-env.sh` | Uploads `.env.prod` to VM via gcloud scp |
+> Env vars: see `.env.prod.example`. Note: `FIREBASE_*`, `RESEND_*`, `SENTRY_DSN`, `BRAVE_*` not yet in template — add before production deploy.
 
 ---
 
-## Environment Variables (`.env.prod.example`)
+## Style and Response Rules
 
-```
-NODE_ENV · PORT · APP_URL
-JWT_SECRET · JWT_EXPIRES_IN=24h · JWT_REFRESH_SECRET · JWT_REFRESH_EXPIRES_IN=7d
-MONGODB_URI
-POSTGRES_HOST/PORT/DB/USER/PASSWORD · DATABASE_URL · TYPEORM_SYNC
-REDIS_HOST/PORT/PASSWORD · REDIS_URL (use rediss:// for Upstash TLS)
-GCP_PROJECT_ID · GCP_STORAGE_BUCKET · GCP_KEY_FILE
-FIREBASE_PROJECT_ID · FIREBASE_PRIVATE_KEY · FIREBASE_CLIENT_EMAIL
-RESEND_API_KEY · EMAIL_FROM
-SENTRY_DSN
-GOOGLE_GENAI_API_KEY
-AI_CHAT_MODEL=gemini-2.5-flash · AI_VISION_MODEL=gemini-2.5-flash
-AI_EMBEDDING_MODEL=gemini-embedding-001 · AI_EMBEDDING_DIMS=3072
-AI_CHAT_RATE_LIMIT_PER_MINUTE=20
-BRAVE_SEARCH_API_KEY · VALUATION_SEARCH_ENGINE=brave
-```
-
-> Note: `FIREBASE_*`, `RESEND_*`, `SENTRY_DSN`, `BRAVE_*` are not yet in `.env.prod.example` — add them before production deploy.
-
----
-
-## Style and Token Efficiency
-- **Minimalist edits:** Only modify the exact lines required. Use the shortest possible text replacements via `str_replace_editor`. Never rewrite large code blocks or entire files if it can be avoided.
-- **No explanations:** Do not explain what you changed, why you changed it, or how the code works unless explicitly asked to do so.
-- **Concise responses:** Keep your text replies to the absolute minimum. If a tool call or modification is successful, confirm it in a single line.
+- **Minimalist edits:** Only modify the exact lines required. Never rewrite large code blocks or entire files if it can be avoided.
+- **No explanations:** Do not explain what you changed, why, or how the code works unless explicitly asked.
+- **Concise responses:** Absolute minimum text. If a tool call or modification succeeds, confirm in one line.
+- **No diffs or full code:** Never show visual diff outputs (additions/deletions) or complete existing code. Write only the filename and a short plain-text description, e.g.: "Modificado auth.ts — se agregó validación de expiración al guard de refresh token."
+- **No per-fix summaries:** During multi-fix execution, skip detailed summaries after each fix. One short completion note, then wait for the next instruction.
+- **CodeGraph first:** Use CodeGraph for all code exploration, symbol lookup, callers/callees, and impact analysis before any shell search. Shell commands only for silent verification or file operations CodeGraph cannot perform — never to print search results or code snippets into the conversation.
 
 ---
 
@@ -314,8 +227,8 @@ BRAVE_SEARCH_API_KEY · VALUATION_SEARCH_ENGINE=brave
 - All responses through `ResponseInterceptor`
 - TypeScript strict mode always on — no `any`
 - Test files `.spec.ts` co-located
-- **Swagger/OpenAPI** (`@nestjs/swagger` is installed; UI at `/api-docs`): every new or modified route in `*.controller.ts` and every request DTO must be documented. Apply skill **`nestjs-swagger`** (or match `auth.controller.ts` / `inventory.controller.ts`). Use `PartialType` from `@nestjs/swagger`, not `@nestjs/mapped-types`.
-- **Only add what was explicitly asked. Never add extra decorators, extra validations, extra comments, or extra methods beyond the minimum required to complete the task** — except Swagger decorators, which are mandatory for API surface changes.
+- **Swagger/OpenAPI**: every new or modified route and request DTO must be documented. Use `PartialType` from `@nestjs/swagger`, not `@nestjs/mapped-types`.
+- **Only add what was explicitly asked.** Never add extra decorators, validations, comments, or methods beyond the minimum — except Swagger decorators, which are mandatory.
 
 ### Mobile (Flutter)
 - Feature-first + Riverpod — snake_case files, PascalCase classes
@@ -328,51 +241,20 @@ BRAVE_SEARCH_API_KEY · VALUATION_SEARCH_ENGINE=brave
 - If a screen uses `AsyncNotifier` and runs `load()` in `postFrame`, never show empty/not-found states on initial frame.
 - Show skeleton while first fetch is pending, even if notifier starts as `[]` or `null`.
 - Show `No items` / `No data` / `Not found` only after first load has completed.
-- Implementation pattern for presentation screens:
+- Implementation pattern:
   1. `bool _initialLoadCompleted = false;`
   2. `load(...).whenComplete(() { if (mounted) setState(() => _initialLoadCompleted = true); });`
   3. Compute `showInitialSkeleton` from first-load flag + state.
   4. Route UI through `renderState` (`AsyncLoading` while first load is unresolved).
-- This avoids incorrect transient UI states when cache is empty and API response is still in-flight.
 
 #### Vaulted Guide KB maintenance rule (mandatory)
 Whenever a Flutter screen is **added or modified**, update the corresponding section of `HELP_KNOWLEDGE_BASE` in `apps/api/src/modules/ai/help/ai-help.service.ts`.
 
-The KB is the **only source of truth** Gemini uses to answer how-to questions. If the KB is stale, the AI gives wrong instructions. Always sync:
-- **AppBar title** — use the exact string from `AppBar(title: Text('...'))`, not the route name.
-- **Tab names** — e.g., `Tab(text: 'Active')`, `Tab(text: 'History')`.
-- **Button labels and tooltips** — FABs, action icons, `ElevatedButton` text.
-- **Filter/sort chip labels** — exact strings from chip lists.
-- **Form field hint texts** — from `InputDecoration(hintText: '...')`.
-- **Role restrictions** — update the Navigation Access by Role table if access changes.
-- **Empty state messages** — what users see when a list is empty.
+Always sync: AppBar title · Tab names · Button labels/tooltips · Filter/sort chip labels · Form field hints · Role restrictions · Empty state messages.
 
-If a screen is renamed, also update `SCREEN_CONTEXT` (same file, ~line 400) so contextual help uses the correct title.
+If a screen is renamed, also update `SCREEN_CONTEXT` (~line 400 in same file).
 
 This rule applies to Cursor and Codex tasks too — include a KB update in the PR whenever UI-facing text changes.
-
----
-
-## MVP Cost (testing phase — all free tiers)
-
-| Service | Cost |
-|---|---|
-| GCP e2-micro VM | Free tier |
-| MongoDB Atlas M0 | Free |
-| PostgreSQL Neon.tech | Free |
-| Redis Upstash | Free |
-| Firebase Hosting | Free |
-| Cloudflare / Dynu DNS | Free |
-
-Production target (paid): ~$125-130/month on e2-standard-4.
-**Rule: infrastructure spend must follow revenue, not precede it.**
-
----
-
-## Infrastructure Evolution Policy
-
-- **Now**: Everything in Docker on single GCP VM, free tiers for testing
-- **Post-MVP** (when paying clients exist): MongoDB Atlas managed · GCP Memorystore · Cloud SQL · GKE
 
 ---
 
@@ -386,85 +268,21 @@ Production target (paid): ~$125-130/month on e2-standard-4.
 
 **Never delegate to Cursor/Codex:** auth/security logic, DB schema design, RBAC, cross-module decisions.
 
----
-
-## G Stack Skills (installed at `~/.claude/skills/gstack`)
-
-Skills available via `/skill-name` in Claude Code:
-
-| Skill | Purpose |
-|---|---|
-| `/autoplan` | Auto-generate a plan before coding |
-| `/review` | Full code review of current changes |
-| `/ship` | End-to-end ship workflow (review → merge → deploy) |
-| `/land-and-deploy` | Land PR and trigger deploy |
-| `/qa` | QA pass on current changes |
-| `/qa-only` | QA without code review |
-| `/health` | Project health check |
-| `/cso` | Chief Security Officer security audit |
-| `/design-review` | Design review of UI changes |
-| `/design-consultation` | UI/UX design consultation |
-| `/design-html` | Generate HTML design mockup |
-| `/design-shotgun` | Generate multiple design variants |
-| `/devex-review` | Developer experience review |
-| `/plan-eng-review` | Engineering plan review |
-| `/plan-design-review` | Design plan review |
-| `/plan-devex-review` | DevEx plan review |
-| `/plan-ceo-review` | CEO-level plan review |
-| `/plan-tune` | Tune/refine an existing plan |
-| `/investigate` | Deep investigation of a problem |
-| `/learn` | Learn a topic from the codebase |
-| `/retro` | Run a retrospective |
-| `/pair-agent` | Spawn a pair programming agent |
-| `/canary` | Canary deploy check |
-| `/careful` | Careful/safe mode for risky changes |
-| `/freeze` / `/unfreeze` | Freeze/unfreeze code changes |
-| `/guard` | Guard a file from changes |
-| `/benchmark` | Benchmark current code |
-| `/benchmark-models` | Compare LLM models on a task |
-| `/browse` | Browser automation |
-| `/scrape` | Scrape a URL |
-| `/make-pdf` | Generate a PDF |
-| `/document-generate` | Generate documentation |
-| `/document-release` | Generate release notes |
-| `/context-save` / `/context-restore` | Save/restore conversation context |
-| `/setup-deploy` | Set up deployment pipeline |
-| `/setup-gbrain` / `/sync-gbrain` | Set up/sync GBrain knowledge base |
-| `/setup-browser-cookies` | Configure browser cookies |
-| `/skillify` | Turn a prompt into a reusable skill |
-| `/ios-fix` / `/ios-clean` / `/ios-qa` / `/ios-sync` / `/ios-design-review` | iOS-specific workflows |
-| `/office-hours` | Open office hours Q&A mode |
-| `/landing-report` | Audit a landing page |
-| `/gstack-upgrade` | Upgrade gstack to latest version |
+G Stack skills available via `/skill-name` — see `~/.claude/skills/gstack/` for the full list.
 
 ---
 
 ## Technical Debt
 
-### Envelope Encryption con rotación de claves (post-MVP)
-- **Date**: 2026-04-18
-- **Contexto**: El `CryptoService` actual usa HKDF-SHA-256 para derivar claves únicas por tenant desde una `ENCRYPTION_KEY` maestra. Es criptográficamente sólido para MVP.
-- **Decisión**: No implementar envelope encryption (dataKey por tenant almacenada cifrada en DB) hasta integrar **GCP KMS** post-MVP.
-- **Por qué se difirió**: (1) Todos los datos existentes están cifrados con HKDF — migrarlos requiere script de re-cifrado. (2) `encryptField`/`decryptField` son síncronos; volverlos async rompe todos los callers en `inventory.service.ts`. (3) `Tenant` entity necesita columna `encrypted_data_key` + migración SQL. (4) Sin caché de `dataKey` en memoria → DB round-trip por cada campo cifrado.
-- **Cuando retomar**: Al migrar a GCP KMS (post-MVP con clientes pagos). Usar `@google-cloud/kms` para wrap/unwrap de dataKeys. No implementar KMS casero.
-- **Archivos relevantes**: `apps/api/src/common/services/crypto.service.ts` · `apps/api/src/modules/tenants/entities/tenant.entity.ts`
-- **Priority**: Post-MVP — bloquea hasta tener GCP KMS configurado
+### Envelope Encryption — post-MVP
+- Current `CryptoService` uses HKDF-SHA-256 (solid for MVP). Defer envelope encryption + GCP KMS to post-MVP.
+- Files: `common/services/crypto.service.ts` · `tenants/entities/tenant.entity.ts`
 
-### Certificate Pinning — rotación obligatoria cada ~90 días
-- **Date**: 2026-06-01
-- **Context**: Cert pinning implementado en `apps/mobile/lib/core/network/api_client.dart` con SHA-256 via `package:crypto`. Fingerprint actual almacenado en `AppConfig.pinnedCertFingerprints` (`apps/mobile/lib/core/config/app_config.dart`).
-- **Procedimiento de rotación** (Let's Encrypt renueva automáticamente via Caddy cada ~90 días):
-  1. Obtener el nuevo fingerprint: `echo | openssl s_client -connect api-vaulted.casacam.net:443 2>/dev/null | openssl x509 -noout -fingerprint -sha256 | sed 's/sha256 Fingerprint=//' | tr -d ':' | tr '[:upper:]' '[:lower:]'`
-  2. **Agregar** el nuevo fingerprint al array en `AppConfig.pinnedCertFingerprints` (mantener el viejo también).
-  3. Publicar un release de la app mobile con ambos fingerprints.
-  4. Una vez que la mayoría de usuarios actualizó, **remover** el fingerprint viejo en el siguiente release.
-- **Por qué dos fingerprints en transición**: si se elimina el viejo antes de que todos actualicen, los usuarios con la versión anterior no pueden conectarse.
-- **Archivos relevantes**: `apps/mobile/lib/core/network/api_client.dart` · `apps/mobile/lib/core/config/app_config.dart`
-- **Priority**: Alta (operativa) — incumplir bloquea la app a todos los usuarios mobile
+### Certificate Pinning — rotate every ~90 days
+- Fingerprint in `AppConfig.pinnedCertFingerprints` (`core/config/app_config.dart`). During rotation keep both old + new fingerprints until all users update, then remove old.
+- Rotation command: `echo | openssl s_client -connect api-vaulted.casacam.net:443 2>/dev/null | openssl x509 -noout -fingerprint -sha256 | sed 's/sha256 Fingerprint=//' | tr -d ':' | tr '[:upper:]' '[:lower:]'`
+- Files: `core/network/api_client.dart` · `core/config/app_config.dart` — **Alta prioridad operativa**
 
 ### App Icon — Android & iOS not updated
-- **Date**: 2026-04-10
-- **Context**: New icon (Option 2 — El Escudo shield) applied to web only.
-- **Pending**: Android `mipmap-*/ic_launcher.png` (5 sizes) · iOS `AppIcon.appiconset/` (15 files)
-- **Source SVG**: `apps/mobile/web/icon-option-2.svg` — use `cairosvg` or `flutter_launcher_icons`
-- **Priority**: Low — only needed before App Store / Google Play publish
+- New icon (shield) applied to web only. Pending: `mipmap-*/ic_launcher.png` (5 sizes) + `AppIcon.appiconset/` (15 files).
+- Source: `apps/mobile/web/icon-option-2.svg` — **Low priority** (needed before store publish)

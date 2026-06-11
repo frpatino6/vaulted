@@ -26,18 +26,21 @@ class OrchestratorDetailNotifier
   Future<void> publish() async {
     final planId = _planId;
     if (planId == null) return;
+    final previous = state;
     try {
       final updated =
           await ref.read(orchestratorRepositoryProvider).publishPlan(planId);
       state = AsyncData(updated);
     } catch (e) {
-      state = AsyncError(e, StackTrace.current);
+      state = previous;
+      rethrow;
     }
   }
 
   Future<void> cancel() async {
     final planId = _planId;
     if (planId == null) return;
+    final previous = state;
     try {
       await ref
           .read(orchestratorRepositoryProvider)
@@ -56,20 +59,23 @@ class OrchestratorDetailNotifier
         }
       }
     } catch (e) {
-      state = AsyncError(e, StackTrace.current);
+      state = previous;
+      rethrow;
     }
   }
 
   Future<void> addGroup(String title) async {
     final planId = _planId;
     if (planId == null) return;
+    final previous = state;
     try {
       final updated = await ref
           .read(orchestratorRepositoryProvider)
           .addGroup(planId, title);
       state = AsyncData(updated);
     } catch (e) {
-      state = AsyncError(e, StackTrace.current);
+      state = previous;
+      rethrow;
     }
   }
 
@@ -77,13 +83,15 @@ class OrchestratorDetailNotifier
       String groupId, String itemId, String instruction) async {
     final planId = _planId;
     if (planId == null) return;
+    final previous = state;
     try {
       final updated = await ref
           .read(orchestratorRepositoryProvider)
           .addManualStep(planId, groupId, itemId, instruction);
       state = AsyncData(updated);
     } catch (e) {
-      state = AsyncError(e, StackTrace.current);
+      state = previous;
+      rethrow;
     }
   }
 
@@ -95,6 +103,7 @@ class OrchestratorDetailNotifier
   }) async {
     final planId = _planId;
     if (planId == null) return;
+    final previous = state;
     try {
       final updated =
           await ref.read(orchestratorRepositoryProvider).completeStep(
@@ -106,7 +115,8 @@ class OrchestratorDetailNotifier
               );
       state = AsyncData(updated);
     } catch (e) {
-      state = AsyncError(e, StackTrace.current);
+      state = previous;
+      rethrow;
     }
   }
 
@@ -114,26 +124,30 @@ class OrchestratorDetailNotifier
       List<Map<String, dynamic>> taskGroups) async {
     final planId = _planId;
     if (planId == null) return;
+    final previous = state;
     try {
       final updated = await ref
           .read(orchestratorRepositoryProvider)
           .updatePlan(planId, {'taskGroups': taskGroups});
       state = AsyncData(updated);
     } catch (e) {
-      state = AsyncError(e, StackTrace.current);
+      state = previous;
+      rethrow;
     }
   }
 
   Future<void> removeGroup(String groupId) async {
     final planId = _planId;
     if (planId == null) return;
+    final previous = state;
     try {
       final updated = await ref
           .read(orchestratorRepositoryProvider)
           .removeGroup(planId: planId, groupId: groupId);
       state = AsyncData(updated);
     } catch (e) {
-      state = AsyncError(e, StackTrace.current);
+      state = previous;
+      rethrow;
     }
   }
 
@@ -143,13 +157,15 @@ class OrchestratorDetailNotifier
   }) async {
     final planId = _planId;
     if (planId == null) return;
+    final previous = state;
     try {
       final updated = await ref
           .read(orchestratorRepositoryProvider)
           .removeStep(planId: planId, groupId: groupId, stepId: stepId);
       state = AsyncData(updated);
     } catch (e) {
-      state = AsyncError(e, StackTrace.current);
+      state = previous;
+      rethrow;
     }
   }
 

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -15,8 +16,15 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen>
     with SingleTickerProviderStateMixin {
-  final _emailController = TextEditingController(text: 'owner@test.com');
-  final _passwordController = TextEditingController(text: 'Test1234!Secure');
+  static const _devLoginEmail = String.fromEnvironment('DEV_LOGIN_EMAIL');
+  static const _devLoginPassword = String.fromEnvironment('DEV_LOGIN_PASSWORD');
+
+  final _emailController = TextEditingController(
+    text: kDebugMode && _devLoginEmail.isNotEmpty ? _devLoginEmail : '',
+  );
+  final _passwordController = TextEditingController(
+    text: kDebugMode && _devLoginPassword.isNotEmpty ? _devLoginPassword : '',
+  );
   final _formKey = GlobalKey<FormState>();
   late AnimationController _shimmerController;
   late Animation<double> _shimmerAnimation;
@@ -28,10 +36,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       vsync: this,
       duration: const Duration(milliseconds: 2000),
     )..repeat(reverse: true);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _emailController.text = 'owner@test.com';
-      _passwordController.text = 'Test1234!Secure';
-    });
     _shimmerAnimation = Tween<double>(begin: 0.4, end: 0.9).animate(
       CurvedAnimation(parent: _shimmerController, curve: Curves.easeInOut),
     );

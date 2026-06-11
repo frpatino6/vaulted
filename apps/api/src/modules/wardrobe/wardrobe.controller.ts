@@ -253,10 +253,7 @@ export class WardrobeController {
     @Param('recordId') recordId: string,
     @Req() req: Request,
   ) {
-    const record = await this.wardrobeService.markDryCleaningReturned(
-      user.tenantId,
-      recordId,
-    );
+    const record = await this.wardrobeService.markDryCleaningReturned(user.tenantId, recordId, user.role, user.sub);
 
     await this.auditService.log({
       tenantId: user.tenantId,

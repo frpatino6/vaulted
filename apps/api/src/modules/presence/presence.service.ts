@@ -4,7 +4,7 @@ import { Redis } from 'ioredis';
 import { InjectRedis } from '../../common/decorators/inject-redis.decorator';
 import { Role } from '../../common/enums/role.enum';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
-import { UsersService } from '../users/users.service';
+import { SanitizedUser, UsersService } from '../users/users.service';
 import { PresenceOnlineAuditorDto, PresenceUserDto } from './dto/presence-user.dto';
 
 const PRESENCE_TTL_SEC = 90;
@@ -64,13 +64,6 @@ export class PresenceService {
 
     return {
       isNewSession,
-      broadcastPayload: {
-        userId: entry.userId,
-        email: entry.email,
-        role: entry.role,
-        connectedAt: entry.connectedAt,
-        lastSeen: entry.lastSeen,
-      },
     };
   }
 

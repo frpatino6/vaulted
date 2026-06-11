@@ -11,6 +11,7 @@ import '../../properties/data/models/room_model.dart';
 import '../../wardrobe/data/models/wardrobe_attributes.dart';
 import '../data/models/ai_scan_result_model.dart';
 import '../domain/ai_scan_notifier.dart';
+import 'price_parser.dart';
 
 class AiItemReviewScreen extends ConsumerStatefulWidget {
   const AiItemReviewScreen({
@@ -198,7 +199,9 @@ class _AiItemReviewScreenState extends ConsumerState<AiItemReviewScreen> {
                     child: _textField(
                       _purchasePriceCtrl,
                       hint: '\$0',
-                      keyboardType: TextInputType.number,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                     ),
                   ),
                 ),
@@ -210,7 +213,9 @@ class _AiItemReviewScreenState extends ConsumerState<AiItemReviewScreen> {
                     child: _textField(
                       _currentValueCtrl,
                       hint: '\$0',
-                      keyboardType: TextInputType.number,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                     ),
                   ),
                 ),
@@ -406,14 +411,8 @@ class _AiItemReviewScreenState extends ConsumerState<AiItemReviewScreen> {
         serialNumber: _serialCtrl.text.trim().isEmpty
             ? null
             : _serialCtrl.text.trim(),
-        purchasePrice: int.tryParse(
-              _purchasePriceCtrl.text.replaceAll(RegExp(r'[^\d]'), ''),
-            ) ??
-            0,
-        currentValue: int.tryParse(
-              _currentValueCtrl.text.replaceAll(RegExp(r'[^\d]'), ''),
-            ) ??
-            0,
+        purchasePrice: parsePrice(_purchasePriceCtrl.text).round(),
+        currentValue: parsePrice(_currentValueCtrl.text).round(),
         tags: _tagsCtrl.text
             .split(',')
             .map((t) => t.trim())

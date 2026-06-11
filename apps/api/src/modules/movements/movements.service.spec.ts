@@ -1,8 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getModelToken } from '@nestjs/mongoose';
-import { Repository } from 'typeorm';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { ConflictException, BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException } from '@nestjs/common';
+import { AccessControlService } from '../../common/services/access-control.service';
 import { MovementsService } from './movements.service';
 import { Movement, MovementStatus, MovementItemStatus, MovementType } from './schemas/movement.schema';
 import { Item } from '../inventory/schemas/item.schema';
@@ -50,6 +49,10 @@ describe('MovementsService', () => {
         { provide: getModelToken(Item.name), useValue: itemModel },
         { provide: getModelToken(ItemHistory.name), useValue: itemHistoryModel },
         { provide: getModelToken(Property.name), useValue: propertyModel },
+        {
+          provide: AccessControlService,
+          useValue: { getAllowedPropertyIds: jest.fn() },
+        },
       ],
     }).compile();
 
@@ -150,6 +153,43 @@ describe('MovementsService', () => {
     );
 
     expect(mockMovement.status).toBe(MovementStatus.PARTIAL);
+  });
+
+  it('activate throws BadRequestException when destination room is not in destination property', async () => {
+    const mockMovement = {
+      _id: 'mov-1',
+      tenantId: 'tenant-1',
+      status: MovementStatus.DRAFT,
+      operationType: MovementType.TRANSFER,
+      destinationPropertyId: 'dest-property-1',
+      destinationRoomId: 'missing-room',
+      items: [
+        {
+          itemId: 'item-1',
+          fromPropertyId: 'from-property-1',
+          fromRoomId: 'from-room-1',
+        },
+      ],
+    };
+    movementModel.findOne.mockResolvedValue(mockMovement);
+    propertyModel.findOne.mockReturnValue({
+      exec: jest.fn().mockResolvedValue({
+        floors: [
+          {
+            rooms: [{ roomId: 'existing-room' }],
+          },
+        ],
+      }),
+    });
+
+    await expect(
+      service.activate(
+        'mov-1',
+        { sub: 'user-1', tenantId: 'tenant-1', email: '', role: Role.OWNER, mfaVerified: true, },
+      ),
+    ).rejects.toThrow('Destination room not found in destination property');
+    expect(itemModel.updateOne).not.toHaveBeenCalled();
+    expect(itemHistoryModel.create).not.toHaveBeenCalled();
   });
 
   it('cancelMovement reverts item statuses to active', async () => {

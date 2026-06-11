@@ -8,8 +8,12 @@ String? currentUserRole() {
   if (token == null) return null;
   final parts = token.split('.');
   if (parts.length != 3) return null;
-  final payload = utf8.decode(base64Url.decode(base64Url.normalize(parts[1])));
-  return jsonDecode(payload)['role'] as String?;
+  try {
+    final payload = utf8.decode(base64Url.decode(base64Url.normalize(parts[1])));
+    return jsonDecode(payload)['role'] as String?;
+  } catch (_) {
+    return null;
+  }
 }
 
 /// Extracts the user id (sub) of the current user from the JWT.
@@ -18,7 +22,11 @@ String? currentUserId() {
   if (token == null) return null;
   final parts = token.split('.');
   if (parts.length != 3) return null;
-  final payload = utf8.decode(base64Url.decode(base64Url.normalize(parts[1])));
-  final sub = jsonDecode(payload)['sub'];
-  return sub is String ? sub : sub?.toString();
+  try {
+    final payload = utf8.decode(base64Url.decode(base64Url.normalize(parts[1])));
+    final sub = jsonDecode(payload)['sub'];
+    return sub is String ? sub : sub?.toString();
+  } catch (_) {
+    return null;
+  }
 }
