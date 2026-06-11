@@ -29,7 +29,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     text:
         kDebugMode && _devLoginPassword.isNotEmpty
             ? _devLoginPassword
-            : 'Test1234abcDEF',
+            : 'Test1234!Secure',
   );
   final _formKey = GlobalKey<FormState>();
   late AnimationController _shimmerController;
