@@ -1,12 +1,9 @@
 {
   "mcpServers": {
-    "codegraph": {
+    "hex-graph": {
       "type": "stdio",
-      "command": "codegraph",
-      "args": [
-        "serve",
-        "--mcp"
-      ]
+      "command": "hex-graph-mcp",
+      "args": []
     }
   }
 }
