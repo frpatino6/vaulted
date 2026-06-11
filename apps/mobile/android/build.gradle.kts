@@ -21,22 +21,17 @@ subprojects {
 
 // Fix for old plugins not specifying a namespace, required by AGP 8+.
 subprojects {
-    val fixNamespace: () -> Unit = {
-        val android = extensions.findByType(com.android.build.gradle.BaseExtension::class.java)
-        if (android != null && android.namespace == null) {
-            val manifest = file("src/main/AndroidManifest.xml")
-            if (manifest.exists()) {
-                val pkg = Regex("package=\"([^\"]+)\"").find(manifest.readText())?.groupValues?.get(1)
-                if (pkg != null) {
-                    android.namespace = pkg
+    plugins.withId("com.android.library") {
+        extensions.configure<com.android.build.gradle.LibraryExtension> {
+            if (namespace == null) {
+                val manifest = file("src/main/AndroidManifest.xml")
+                if (manifest.exists()) {
+                    Regex("package=\"([^\"]+)\"").find(manifest.readText())?.groupValues?.get(1)?.let {
+                        namespace = it
+                    }
                 }
             }
         }
-    }
-    if (state.executed) {
-        fixNamespace()
-    } else {
-        afterEvaluate { fixNamespace() }
     }
 }
 

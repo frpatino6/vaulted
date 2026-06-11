@@ -37,6 +37,7 @@ import '../../features/properties/data/models/floor_model.dart';
 import '../../features/inventory/data/models/item_model.dart';
 import '../../features/inventory/presentation/asset_browser_screen.dart';
 import '../../features/inventory/presentation/qr_list_screen.dart';
+import '../../features/insurance/data/models/insurance_policy_model.dart';
 import '../../features/insurance/presentation/insurance_list_screen.dart';
 import '../../features/insurance/presentation/insurance_detail_screen.dart';
 import '../../features/insurance/presentation/insurance_form_screen.dart';
@@ -373,7 +374,7 @@ GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
       GoRoute(
         path: '/insurance/:id/edit',
         pageBuilder: (context, state) {
-          final policy = state.extra;
+          final policy = state.extra as InsurancePolicyModel?;
           return _fadePage(InsuranceFormScreen(policy: policy), state);
         },
       ),
