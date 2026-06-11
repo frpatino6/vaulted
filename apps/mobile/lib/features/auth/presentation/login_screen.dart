@@ -20,10 +20,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   static const _devLoginPassword = String.fromEnvironment('DEV_LOGIN_PASSWORD');
 
   final _emailController = TextEditingController(
-    text: kDebugMode && _devLoginEmail.isNotEmpty ? _devLoginEmail : '',
+    text:
+        kDebugMode && _devLoginEmail.isNotEmpty
+            ? _devLoginEmail
+            : 'owner@test.com',
   );
   final _passwordController = TextEditingController(
-    text: kDebugMode && _devLoginPassword.isNotEmpty ? _devLoginPassword : '',
+    text:
+        kDebugMode && _devLoginPassword.isNotEmpty
+            ? _devLoginPassword
+            : 'Test1234abcDEF',
   );
   final _formKey = GlobalKey<FormState>();
   late AnimationController _shimmerController;
