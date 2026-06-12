@@ -6,35 +6,24 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Role } from '../../common/enums/role.enum';
 import { InjectModel } from '@nestjs/mongoose';
-import { Role } from '../../common/enums/role.enum';
 import { Model, Types } from 'mongoose';
-import { Role } from '../../common/enums/role.enum';
 import Redis from 'ioredis';
-import { Role } from '../../common/enums/role.enum';
 import { InjectRedis } from '../../common/decorators/inject-redis.decorator';
-import { Role } from '../../common/enums/role.enum';
 import { InventoryService } from '../inventory/inventory.service';
-import { Role } from '../../common/enums/role.enum';
 import { Item, ItemDocument } from '../inventory/schemas/item.schema';
-import { Role } from '../../common/enums/role.enum';
 import {
   Property,
   PropertyDocument,
 } from '../properties/schemas/property.schema';
 import { MediaService } from '../media/media.service';
-import { Role } from '../../common/enums/role.enum';
 import { CreateDryCleaningDto } from './dto/create-dry-cleaning.dto';
-import { Role } from '../../common/enums/role.enum';
 import { CreateOutfitDto } from './dto/create-outfit.dto';
-import { Role } from '../../common/enums/role.enum';
 import { UpdateOutfitDto } from './dto/update-outfit.dto';
-import { Role } from '../../common/enums/role.enum';
 import {
   DryCleaningRecord,
   DryCleaningRecordDocument,
 } from './schemas/dry-cleaning-record.schema';
 import { Outfit, OutfitDocument } from './schemas/outfit.schema';
-import { Role } from '../../common/enums/role.enum';
 
 export interface WardrobeStatsResponse {
   totalItems: number;
