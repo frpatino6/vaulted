@@ -1,4 +1,5 @@
 import {
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -95,9 +96,11 @@ export class PropertiesService {
   async update(
     tenantId: string,
     propertyId: string,
+    role: Role,
+    userId: string,
     dto: UpdatePropertyDto,
   ): Promise<Property> {
-    await this.findOwnedPropertyOrThrow(tenantId, propertyId);
+    await this.findAccessiblePropertyOrThrow(tenantId, propertyId, role, userId);
 
     const property = await this.propertyModel
       .findOneAndUpdate(
@@ -122,17 +125,30 @@ export class PropertiesService {
     return property;
   }
 
-  async delete(tenantId: string, propertyId: string): Promise<void> {
-    await this.findOwnedPropertyOrThrow(tenantId, propertyId);
+  async delete(
+    tenantId: string,
+    propertyId: string,
+    role: Role,
+    userId: string,
+  ): Promise<void> {
+    await this.findAccessiblePropertyOrThrow(tenantId, propertyId, role, userId);
+    const itemCount = await this.itemModel.countDocuments({ tenantId, propertyId }).exec();
+    if (itemCount > 0) {
+      throw new ConflictException(
+        'Cannot delete a property that still contains items. Move or dispose them first.',
+      );
+    }
     await this.propertyModel.deleteOne({ _id: propertyId, tenantId }).exec();
   }
 
   async addFloor(
     tenantId: string,
     propertyId: string,
+    role: Role,
+    userId: string,
     dto: AddFloorDto,
   ): Promise<Property> {
-    await this.findOwnedPropertyOrThrow(tenantId, propertyId);
+    await this.findAccessiblePropertyOrThrow(tenantId, propertyId, role, userId);
 
     const property = await this.propertyModel
       .findOneAndUpdate(
@@ -160,10 +176,12 @@ export class PropertiesService {
   async updateFloor(
     tenantId: string,
     propertyId: string,
+    role: Role,
+    userId: string,
     floorId: string,
     name: string,
   ): Promise<Property> {
-    const property = await this.findOwnedPropertyOrThrow(tenantId, propertyId);
+    const property = await this.findAccessiblePropertyOrThrow(tenantId, propertyId, role, userId);
     const floorExists = property.floors.some((f) => f.floorId === floorId);
     if (!floorExists) throw new NotFoundException('Floor not found');
 
@@ -182,9 +200,11 @@ export class PropertiesService {
   async deleteFloor(
     tenantId: string,
     propertyId: string,
+    role: Role,
+    userId: string,
     floorId: string,
   ): Promise<Property> {
-    const property = await this.findOwnedPropertyOrThrow(tenantId, propertyId);
+    const property = await this.findAccessiblePropertyOrThrow(tenantId, propertyId, role, userId);
     const floor = property.floors.find((f) => f.floorId === floorId);
     if (!floor) throw new NotFoundException('Floor not found');
 
@@ -213,10 +233,12 @@ export class PropertiesService {
   async addRoom(
     tenantId: string,
     propertyId: string,
+    role: Role,
+    userId: string,
     floorId: string,
     dto: AddRoomDto,
   ): Promise<Property> {
-    const property = await this.findOwnedPropertyOrThrow(tenantId, propertyId);
+    const property = await this.findAccessiblePropertyOrThrow(tenantId, propertyId, role, userId);
     const floorExists = property.floors.some((floor) => floor.floorId === floorId);
 
     if (!floorExists) {
@@ -249,11 +271,13 @@ export class PropertiesService {
   async updateRoom(
     tenantId: string,
     propertyId: string,
+    role: Role,
+    userId: string,
     floorId: string,
     roomId: string,
     dto: UpdateRoomDto,
   ): Promise<Property> {
-    const property = await this.findOwnedPropertyOrThrow(tenantId, propertyId);
+    const property = await this.findAccessiblePropertyOrThrow(tenantId, propertyId, role, userId);
     const floor = property.floors.find((f) => f.floorId === floorId);
     if (!floor) throw new NotFoundException('Floor not found');
     const roomExists = floor.rooms.some((r) => r.roomId === roomId);
@@ -282,10 +306,12 @@ export class PropertiesService {
   async deleteRoom(
     tenantId: string,
     propertyId: string,
+    role: Role,
+    userId: string,
     floorId: string,
     roomId: string,
   ): Promise<Property> {
-    const property = await this.findOwnedPropertyOrThrow(tenantId, propertyId);
+    const property = await this.findAccessiblePropertyOrThrow(tenantId, propertyId, role, userId);
     const floor = property.floors.find((f) => f.floorId === floorId);
     if (!floor) throw new NotFoundException('Floor not found');
     const roomExists = floor.rooms.some((r) => r.roomId === roomId);
@@ -333,11 +359,13 @@ export class PropertiesService {
   async addSection(
     tenantId: string,
     propertyId: string,
+    role: Role,
+    userId: string,
     floorId: string,
     roomId: string,
     dto: AddSectionDto,
   ): Promise<Property> {
-    const property = await this.findOwnedPropertyOrThrow(tenantId, propertyId);
+    const property = await this.findAccessiblePropertyOrThrow(tenantId, propertyId, role, userId);
     const floor = property.floors.find((f) => f.floorId === floorId);
     if (!floor) throw new NotFoundException('Floor not found');
     const roomExists = floor.rooms.some((r) => r.roomId === roomId);
@@ -373,11 +401,13 @@ export class PropertiesService {
   async addSections(
     tenantId: string,
     propertyId: string,
+    role: Role,
+    userId: string,
     floorId: string,
     roomId: string,
     sections: AddSectionDto[],
   ): Promise<Property> {
-    const property = await this.findOwnedPropertyOrThrow(tenantId, propertyId);
+    const property = await this.findAccessiblePropertyOrThrow(tenantId, propertyId, role, userId);
     const floor = property.floors.find((f) => f.floorId === floorId);
     if (!floor) throw new NotFoundException('Floor not found');
     const roomExists = floor.rooms.some((r) => r.roomId === roomId);
@@ -413,12 +443,14 @@ export class PropertiesService {
   async updateSection(
     tenantId: string,
     propertyId: string,
+    role: Role,
+    userId: string,
     floorId: string,
     roomId: string,
     sectionId: string,
     dto: UpdateSectionDto,
   ): Promise<Property> {
-    const property = await this.findOwnedPropertyOrThrow(tenantId, propertyId);
+    const property = await this.findAccessiblePropertyOrThrow(tenantId, propertyId, role, userId);
     const floor = property.floors.find((f) => f.floorId === floorId);
     if (!floor) throw new NotFoundException('Floor not found');
     const room = floor.rooms.find((r) => r.roomId === roomId);
@@ -461,11 +493,13 @@ export class PropertiesService {
   async deleteSection(
     tenantId: string,
     propertyId: string,
+    role: Role,
+    userId: string,
     floorId: string,
     roomId: string,
     sectionId: string,
   ): Promise<Property> {
-    const property = await this.findOwnedPropertyOrThrow(tenantId, propertyId);
+    const property = await this.findAccessiblePropertyOrThrow(tenantId, propertyId, role, userId);
     const floor = property.floors.find((f) => f.floorId === floorId);
     if (!floor) throw new NotFoundException('Floor not found');
     const room = floor.rooms.find((r) => r.roomId === roomId);
@@ -504,6 +538,20 @@ export class PropertiesService {
       throw new NotFoundException('Property not found');
     }
 
+    return property;
+  }
+
+  private async findAccessiblePropertyOrThrow(
+    tenantId: string,
+    propertyId: string,
+    role: Role,
+    userId: string,
+  ): Promise<PropertyDocument> {
+    const property = await this.findOwnedPropertyOrThrow(tenantId, propertyId);
+    const allowedPropertyIds = await this.accessControl.getAllowedPropertyIds(userId, role);
+    if (allowedPropertyIds !== null && !allowedPropertyIds.includes(propertyId)) {
+      throw new NotFoundException('Property not found');
+    }
     return property;
   }
 }

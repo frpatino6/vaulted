@@ -334,7 +334,7 @@ Filter chips: **All** · **Repair** · **Loan** · **Transfer** · **Disposal**
 1. Point camera at item QR codes.
 2. Instruction: "Point camera at an item QR code".
 3. Counter badge: "{count} item(s) scanned".
-4. Feedback: "{itemName} added" / "Already scanned" (duplicate).
+4. Feedback: "{itemName} added" / "Already scanned" (duplicate) / "Item scanned — refresh to see status".
 5. Bottom panel: shows scanned items. Buttons: **Dispose** / **Transfer** / **Activate** (depending on type).
 6. Tap button to confirm operation.
 7. Activation dialog:
@@ -344,7 +344,7 @@ Filter chips: **All** · **Repair** · **Loan** · **Transfer** · **Disposal**
 
 ### Mark items as returned (check-in)
 1. From Movement Detail → tap **Scan Check-in**.
-2. Scan item QR codes. Feedback: "{itemName} checked in".
+2. Scan item QR codes. Feedback: "{itemName} checked in" / "Item scanned — refresh to see status".
 3. Bottom panel shows progress "{returned}/{total}".
 4. All done: "All items checked in!" / "Operation is complete."
 5. Buttons: **Save & Close**, **Complete**, **Complete ({pending} missing)".

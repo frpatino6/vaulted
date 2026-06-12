@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Role } from '../../common/enums/role.enum';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import Redis from 'ioredis';
@@ -280,10 +281,7 @@ export class WardrobeService {
       .exec();
   }
 
-  async markDryCleaningReturned(
-    tenantId: string,
-    recordId: string,
-  ): Promise<DryCleaningRecord> {
+  async markDryCleaningReturned(tenantId: string, recordId: string, role: Role, userId: string): Promise<DryCleaningRecord> {
     const record = await this.dryCleaningRecordModel
       .findOne({ _id: recordId, tenantId })
       .exec();
@@ -308,7 +306,7 @@ export class WardrobeService {
       throw new NotFoundException('Dry cleaning record not found');
     }
 
-    const item = await this.inventoryService.findById(tenantId, record.itemId);
+    const item = await this.inventoryService.findById(tenantId, record.itemId, role, userId);
     const nextAttributes = {
       ...(item.attributes ?? {}),
       cleaningStatus: 'clean',

@@ -27,6 +27,11 @@ void main() {
       expect(currentUserRole(), isNull);
     });
 
+    test('returns null when token payload is corrupt', () {
+      tokenStore.setToken('header.%%%bad%%%.signature');
+      expect(currentUserRole(), isNull);
+    });
+
     test('returns role from payload', () {
       tokenStore.setToken(_jwt(<String, dynamic>{'role': 'manager', 'sub': 'u1'}));
       expect(currentUserRole(), 'manager');
@@ -47,6 +52,11 @@ void main() {
     test('returns sub as string when sub is numeric', () {
       tokenStore.setToken(_jwt(<String, dynamic>{'sub': 42, 'role': 'staff'}));
       expect(currentUserId(), '42');
+    });
+
+    test('returns null when token payload is corrupt', () {
+      tokenStore.setToken('header.%%%bad%%%.signature');
+      expect(currentUserId(), isNull);
     });
   });
 }

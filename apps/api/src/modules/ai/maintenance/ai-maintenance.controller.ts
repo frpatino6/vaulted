@@ -25,6 +25,6 @@ export class AiMaintenanceController {
     @CurrentUser() user: JwtPayload,
     @Param('itemId') itemId: string,
   ) {
-    return this.aiMaintenanceService.analyzeItem(user.tenantId, user.sub, itemId);
+    return this.aiMaintenanceService.analyzeItem(user, itemId);
   }
 }

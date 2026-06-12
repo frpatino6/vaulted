@@ -29,7 +29,9 @@ const DIAGRAMS_DIR = path.join(__dirname, 'diagrams');
 const OUT = path.join(__dirname, 'vaulted-security-posture-2026-06-05.pdf');
 
 function b64(file) {
-  const buf = fs.readFileSync(path.join(DIAGRAMS_DIR, file));
+  // file is always a hardcoded literal from this script; path.basename strips any traversal segments
+  // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal
+  const buf = fs.readFileSync(path.join(DIAGRAMS_DIR, path.basename(file)));
   return `data:image/png;base64,${buf.toString('base64')}`;
 }
 

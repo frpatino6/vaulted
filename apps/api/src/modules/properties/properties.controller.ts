@@ -86,7 +86,13 @@ export class PropertiesController {
     @Param('id') propertyId: string,
     @Body() dto: UpdatePropertyDto,
   ) {
-    const property = await this.propertiesService.update(user.tenantId, propertyId, dto);
+    const property = await this.propertiesService.update(
+      user.tenantId,
+      propertyId,
+      user.role,
+      user.sub,
+      dto,
+    );
 
     await this.auditService.log({
       tenantId: user.tenantId,
@@ -105,8 +111,9 @@ export class PropertiesController {
   @ApiOperation({ summary: 'Delete property' })
   @ApiBearerAuth()
   @ApiResponse({ status: 204, description: 'Property deleted' })
+  @ApiResponse({ status: 409, description: 'Property still contains items' })
   async delete(@CurrentUser() user: JwtPayload, @Param('id') propertyId: string) {
-    await this.propertiesService.delete(user.tenantId, propertyId);
+    await this.propertiesService.delete(user.tenantId, propertyId, user.role, user.sub);
 
     await this.auditService.log({
       tenantId: user.tenantId,
@@ -129,7 +136,13 @@ export class PropertiesController {
     @Param('id') propertyId: string,
     @Body() dto: AddFloorDto,
   ) {
-    const property = await this.propertiesService.addFloor(user.tenantId, propertyId, dto);
+    const property = await this.propertiesService.addFloor(
+      user.tenantId,
+      propertyId,
+      user.role,
+      user.sub,
+      dto,
+    );
 
     await this.auditService.log({
       tenantId: user.tenantId,
@@ -154,7 +167,14 @@ export class PropertiesController {
     @Param('floorId') floorId: string,
     @Body() dto: AddFloorDto,
   ) {
-    const property = await this.propertiesService.updateFloor(user.tenantId, propertyId, floorId, dto.name);
+    const property = await this.propertiesService.updateFloor(
+      user.tenantId,
+      propertyId,
+      user.role,
+      user.sub,
+      floorId,
+      dto.name,
+    );
 
     await this.auditService.log({
       tenantId: user.tenantId,
@@ -179,7 +199,13 @@ export class PropertiesController {
     @Param('id') propertyId: string,
     @Param('floorId') floorId: string,
   ) {
-    const property = await this.propertiesService.deleteFloor(user.tenantId, propertyId, floorId);
+    const property = await this.propertiesService.deleteFloor(
+      user.tenantId,
+      propertyId,
+      user.role,
+      user.sub,
+      floorId,
+    );
 
     await this.auditService.log({
       tenantId: user.tenantId,
@@ -204,7 +230,14 @@ export class PropertiesController {
     @Param('floorId') floorId: string,
     @Body() dto: AddRoomDto,
   ) {
-    const property = await this.propertiesService.addRoom(user.tenantId, propertyId, floorId, dto);
+    const property = await this.propertiesService.addRoom(
+      user.tenantId,
+      propertyId,
+      user.role,
+      user.sub,
+      floorId,
+      dto,
+    );
 
     await this.auditService.log({
       tenantId: user.tenantId,
@@ -233,6 +266,8 @@ export class PropertiesController {
     const property = await this.propertiesService.updateRoom(
       user.tenantId,
       propertyId,
+      user.role,
+      user.sub,
       floorId,
       roomId,
       dto,
@@ -265,6 +300,8 @@ export class PropertiesController {
     const property = await this.propertiesService.deleteRoom(
       user.tenantId,
       propertyId,
+      user.role,
+      user.sub,
       floorId,
       roomId,
     );
@@ -317,7 +354,7 @@ export class PropertiesController {
     @Body() dto: AddSectionDto,
   ) {
     const property = await this.propertiesService.addSection(
-      user.tenantId, propertyId, floorId, roomId, dto,
+      user.tenantId, propertyId, user.role, user.sub, floorId, roomId, dto,
     );
 
     await this.auditService.log({
@@ -345,7 +382,7 @@ export class PropertiesController {
     @Body() body: AddSectionsDto,
   ) {
     const property = await this.propertiesService.addSections(
-      user.tenantId, propertyId, floorId, roomId, body.sections,
+      user.tenantId, propertyId, user.role, user.sub, floorId, roomId, body.sections,
     );
 
     await this.auditService.log({
@@ -374,7 +411,7 @@ export class PropertiesController {
     @Body() dto: UpdateSectionDto,
   ) {
     const property = await this.propertiesService.updateSection(
-      user.tenantId, propertyId, floorId, roomId, sectionId, dto,
+      user.tenantId, propertyId, user.role, user.sub, floorId, roomId, sectionId, dto,
     );
 
     await this.auditService.log({
@@ -403,7 +440,7 @@ export class PropertiesController {
     @Param('sectionId') sectionId: string,
   ) {
     const property = await this.propertiesService.deleteSection(
-      user.tenantId, propertyId, floorId, roomId, sectionId,
+      user.tenantId, propertyId, user.role, user.sub, floorId, roomId, sectionId,
     );
 
     await this.auditService.log({

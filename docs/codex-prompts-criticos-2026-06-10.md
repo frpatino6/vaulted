@@ -20,7 +20,7 @@ General rules:
 
 ---
 
-## C1 — Logger no declarado en AuthService (crash en error path de HIBP)
+## C1 — Logger no declarado en AuthService (crash en error path de HIBP) [HECHO]
 
 ```
 In apps/api/src/modules/auth/auth.service.ts, the method that calls the HIBP
@@ -35,7 +35,7 @@ Do not change any other behavior. Verify the file compiles with `npx tsc --noEmi
 scoped to the api app.
 ```
 
-## C2 — Borrado de propiedad deja items huérfanos
+## C2 — Borrado de propiedad deja items huérfanos [HECHO]
 
 ```
 In apps/api/src/modules/properties/properties.service.ts, the `delete()` method
@@ -60,7 +60,7 @@ Add/adjust the corresponding .spec.ts test: deleting a property with items → 4
 without items → succeeds.
 ```
 
-## C3 — activate() de movements no valida el room destino
+## C3 — activate() de movements no valida el room destino [HECHO]
 
 ```
 In apps/api/src/modules/movements/movements.service.ts, the `activate()` method
@@ -79,7 +79,7 @@ If the validation logic is duplicated, extract it into a small private helper
 Add a .spec.ts test: activating a movement with a non-existent destRoomId → 400.
 ```
 
-## C4 — Defaults privilegiados en InventoryService.findById ⚠️ revisar con Claude Code
+## C4 — Defaults privilegiados en InventoryService.findById ⚠️ revisar con Claude Code [HECHO]
 
 ```
 In apps/api/src/modules/inventory/inventory.service.ts, `findById` (~line 384)
@@ -103,7 +103,7 @@ Verify with `npx tsc --noEmit`. Do not change the method's logic, only the
 signature and call sites.
 ```
 
-## C5 — presence.service.ts no compila bajo strict TS
+## C5 — presence.service.ts no compila bajo strict TS [HECHO]
 
 ```
 In apps/api/src/modules/presence/presence.service.ts there are two strict-mode
@@ -125,7 +125,7 @@ so the implementation matches the declared type. Do not widen the type.
 Verify the whole api compiles: `npx tsc --noEmit` from apps/api.
 ```
 
-## C6 — Job de dry-cleaning vencido ignora preferencias de notificación
+## C6 — Job de dry-cleaning vencido ignora preferencias de notificación [HECHO]
 
 ```
 In apps/api/src/modules/wardrobe/wardrobe-overdue.job.ts (~lines 80-87), the call
@@ -145,7 +145,7 @@ notifications module).
 Add/adjust a .spec.ts test asserting the job passes the correct type.
 ```
 
-## C7 — Mantenimientos creados por AI saltan el audit trail
+## C7 — Mantenimientos creados por AI saltan el audit trail [HECHO]
 
 ```
 In apps/api/src/modules/ai/maintenance/ai-maintenance.service.ts (~lines 73-87),
@@ -167,7 +167,7 @@ system-actor convention other schedulers in the codebase use (grep for how
 maintenance.scheduler.ts or other jobs log audits). Do not invent a new convention.
 ```
 
-## C8 — Credenciales de producción hardcodeadas en el login ⚠️ revisar con Claude Code
+## C8 — Credenciales de producción hardcodeadas en el login ⚠️ revisar con Claude Code [HECHO]
 
 ```
 In apps/mobile/lib/features/auth/presentation/login_screen.dart, the production
@@ -196,7 +196,7 @@ default state, no HELP_KNOWLEDGE_BASE update is needed (no labels changed), but
 verify no test depends on the prefilled values (grep test/ for Test1234).
 ```
 
-## C9 — Parsing de precio corrompe valuaciones en AI Scan (error 100x)
+## C9 — Parsing de precio corrompe valuaciones en AI Scan (error 100x) [HECHO]
 
 ```
 In apps/mobile/lib/features/ai_scan/presentation/ai_item_review_screen.dart
@@ -226,7 +226,7 @@ Fix:
 Run `flutter analyze` and the feature's existing tests.
 ```
 
-## C10 — Crash en web por cast no-null de state.extra en el router
+## C10 — Crash en web por cast no-null de state.extra en el router [HECHO]
 
 ```
 In apps/mobile/lib/core/router/app_router.dart there are unguarded non-null
@@ -255,7 +255,7 @@ the target screen expects.
 Run `flutter analyze`. Do not restructure any routes.
 ```
 
-## C11 — currentUserRole() puede lanzar dentro del redirect del router ⚠️ revisar con Claude Code
+## C11 — currentUserRole() puede lanzar dentro del redirect del router ⚠️ revisar con Claude Code [HECHO]
 
 ```
 In apps/mobile/lib/features/users/domain/current_user_jwt.dart (~lines 11-12),
@@ -284,7 +284,7 @@ Add a unit test: corrupt token string → returns null, no throw.
 Run `flutter analyze`.
 ```
 
-## C12 — Notifiers que tragan errores → snackbars de éxito en fallo
+## C12 — Notifiers que tragan errores → snackbars de éxito en fallo [HECHO]
 
 ```
 Two Riverpod notifiers catch action errors without rethrowing, so their calling
@@ -320,7 +320,7 @@ feature's existing errorMessage(e) helper).
 Run `flutter analyze` and the tests for both features.
 ```
 
-## C13 — Item equivocado / StateError tras check-in por QR
+## C13 — Item equivocado / StateError tras check-in por QR [HECHO]
 
 ```
 Two scan screens use firstWhere with a wrong-item fallback that can show
@@ -354,7 +354,7 @@ movements section of HELP_KNOWLEDGE_BASE in
 apps/api/src/modules/ai/help/ai-help.service.ts accordingly.
 ```
 
-## C14 — reindex() de embeddings corre inline en el request HTTP ⚠️ preferir Claude Code
+## C14 — reindex() de embeddings corre inline en el request HTTP ⚠️ preferir Claude Code [HECHO]
 
 ```
 CLAUDE.md documents BullMQ queues (ai-vision, ai-valuation, ai-maintenance) but

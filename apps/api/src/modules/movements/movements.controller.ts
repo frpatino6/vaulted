@@ -133,7 +133,7 @@ export class MovementsController {
     @CurrentUser() user: JwtPayload,
     @Req() req: Request,
   ) {
-    const movement = await this.movementsService.update(id, dto, user.tenantId);
+    const movement = await this.movementsService.update(id, dto, user);
     await this.auditService.log({
       tenantId: user.tenantId,
       userId: user.sub,
@@ -182,7 +182,7 @@ export class MovementsController {
     @CurrentUser() user: JwtPayload,
     @Req() req: Request,
   ) {
-    const result = await this.movementsService.removeItem(movementId, itemId, user.tenantId);
+    const result = await this.movementsService.removeItem(movementId, itemId, user);
     await this.auditService.log({
       tenantId: user.tenantId,
       userId: user.sub,

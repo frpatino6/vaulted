@@ -14,7 +14,6 @@ const OVERDUE_THRESHOLD_DAYS = 7;
 interface TenantOverdueSummary {
   tenantId: string;
   overdueCount: number;
-  recordIds: string[];
 }
 
 @Injectable()
@@ -54,21 +53,18 @@ export class WardrobeOverdueJob {
 
     for (const record of overdueRecords) {
       const tenantId = record.tenantId;
-      const recordId = String(record._id);
 
       if (!byTenant.has(tenantId)) {
-        byTenant.set(tenantId, { tenantId, overdueCount: 0, recordIds: [] });
+        byTenant.set(tenantId, { tenantId, overdueCount: 0 });
       }
 
       const summary = byTenant.get(tenantId)!;
       summary.overdueCount += 1;
-      summary.recordIds.push(recordId);
     }
 
     for (const summary of byTenant.values()) {
       this.logger.warn(
-        `[WardrobeOverdueJob] Tenant ${summary.tenantId} has ${summary.overdueCount} overdue dry-cleaning item(s). ` +
-          `Record IDs: ${summary.recordIds.join(', ')}`,
+        `[WardrobeOverdueJob] Tenant overdue dry-cleaning summary: ${summary.overdueCount} item(s).`,
       );
     }
 
@@ -83,7 +79,8 @@ export class WardrobeOverdueJob {
           roles: [Role.OWNER, Role.MANAGER],
           title: 'Dry cleaning overdue',
           body: `${summary.overdueCount} item(s) have been at the cleaner for over ${OVERDUE_THRESHOLD_DAYS} days.`,
-          data: { recordIds: summary.recordIds.join(',') },
+          type: 'dry_cleaning_overdue',
+          data: { overdueCount: String(summary.overdueCount) },
         }),
       ),
     );

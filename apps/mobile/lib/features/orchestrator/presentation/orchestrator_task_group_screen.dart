@@ -37,9 +37,9 @@ class _OrchestratorTaskGroupScreenState
           .read(orchestratorDetailNotifierProvider.notifier)
           .load(widget.planId)
           .whenComplete(() {
-        if (!mounted) return;
-        setState(() => _initialLoadCompleted = true);
-      });
+            if (!mounted) return;
+            setState(() => _initialLoadCompleted = true);
+          });
     });
   }
 
@@ -53,21 +53,25 @@ class _OrchestratorTaskGroupScreenState
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(orchestratorDetailNotifierProvider);
-    final showInitialSkeleton = !_initialLoadCompleted &&
+    final showInitialSkeleton =
+        !_initialLoadCompleted &&
         !state.hasError &&
         (state.isLoading || state.valueOrNull == null);
     final renderState =
-        showInitialSkeleton ? const AsyncLoading<OrchestratorPlanModel?>() : state;
+        showInitialSkeleton
+            ? const AsyncLoading<OrchestratorPlanModel?>()
+            : state;
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: showInitialSkeleton || state.isLoading
-          ? AppBar(
-              backgroundColor: AppColors.background,
-              foregroundColor: AppColors.onBackground,
-              elevation: 0,
-            )
-          : null,
+      appBar:
+          showInitialSkeleton || state.isLoading
+              ? AppBar(
+                backgroundColor: AppColors.background,
+                foregroundColor: AppColors.onBackground,
+                elevation: 0,
+              )
+              : null,
       body: renderState.when(
         loading: () => const AppScreenSkeleton(showHeader: false, cardCount: 5),
         error: (e, _) => _buildErrorBody(e),
@@ -95,8 +99,10 @@ class _OrchestratorTaskGroupScreenState
 
     return RefreshIndicator(
       color: AppColors.accent,
-      onRefresh: () =>
-          ref.read(orchestratorDetailNotifierProvider.notifier).load(widget.planId),
+      onRefresh:
+          () => ref
+              .read(orchestratorDetailNotifierProvider.notifier)
+              .load(widget.planId),
       child: CustomScrollView(
         slivers: [
           SliverAppBar(
@@ -163,11 +169,10 @@ class _OrchestratorTaskGroupScreenState
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(4),
                             child: LinearProgressIndicator(
-                              value: totalCount == 0
-                                  ? 0
-                                  : doneCount / totalCount,
-                              backgroundColor:
-                                  AppColors.onSurfaceVariant.withValues(alpha: 0.15),
+                              value:
+                                  totalCount == 0 ? 0 : doneCount / totalCount,
+                              backgroundColor: AppColors.onSurfaceVariant
+                                  .withValues(alpha: 0.15),
                               color: AppColors.accent,
                               minHeight: 6,
                             ),
@@ -223,76 +228,106 @@ class _OrchestratorTaskGroupScreenState
                 120,
               ),
               sliver: SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, i) {
-                    final step = group.steps[i];
-                    final role = currentUserRole();
-                    final canRemove = !plan.isCompleted && !plan.isCancelled &&
-                        (role == 'owner' || role == 'manager');
-                    final tile = _StepTile(
-                      step: step,
-                      index: i + 1,
-                      onTap: () => context.push(
-                        '/orchestrator/plans/${widget.planId}/groups/${widget.groupId}/steps/${step.stepId}',
-                      ),
-                    );
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                      child: canRemove
-                          ? Dismissible(
+                delegate: SliverChildBuilderDelegate((context, i) {
+                  final step = group.steps[i];
+                  final role = currentUserRole();
+                  final canRemove =
+                      !plan.isCompleted &&
+                      !plan.isCancelled &&
+                      (role == 'owner' || role == 'manager');
+                  final tile = _StepTile(
+                    step: step,
+                    index: i + 1,
+                    onTap:
+                        () => context.push(
+                          '/orchestrator/plans/${widget.planId}/groups/${widget.groupId}/steps/${step.stepId}',
+                        ),
+                  );
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                    child:
+                        canRemove
+                            ? Dismissible(
                               key: ValueKey(step.stepId),
                               direction: DismissDirection.endToStart,
                               background: Container(
                                 alignment: Alignment.centerRight,
-                                padding: const EdgeInsets.only(right: AppSpacing.lg),
+                                padding: const EdgeInsets.only(
+                                  right: AppSpacing.lg,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: AppColors.error.withValues(alpha: 0.15),
+                                  color: AppColors.error.withValues(
+                                    alpha: 0.15,
+                                  ),
                                   borderRadius: BorderRadius.circular(14),
                                 ),
-                                child: const Icon(Icons.delete_outline,
-                                    color: AppColors.error),
+                                child: const Icon(
+                                  Icons.delete_outline,
+                                  color: AppColors.error,
+                                ),
                               ),
                               confirmDismiss: (_) async {
-                                return await showDialog<bool>(
+                                final shouldRemove = await showDialog<bool>(
                                   context: context,
-                                  builder: (ctx) => AlertDialog(
-                                    backgroundColor: AppColors.surfaceVariant,
-                                    title: const Text('Remove step'),
-                                    content: Text(
-                                        'Remove "${step.itemName}" from this group?'),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () =>
-                                            Navigator.pop(ctx, false),
-                                        child: const Text('Cancel'),
+                                  builder:
+                                      (ctx) => AlertDialog(
+                                        backgroundColor:
+                                            AppColors.surfaceVariant,
+                                        title: const Text('Remove step'),
+                                        content: Text(
+                                          'Remove "${step.itemName}" from this group?',
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed:
+                                                () => Navigator.pop(ctx, false),
+                                            child: const Text('Cancel'),
+                                          ),
+                                          TextButton(
+                                            onPressed:
+                                                () => Navigator.pop(ctx, true),
+                                            style: TextButton.styleFrom(
+                                              foregroundColor: AppColors.error,
+                                            ),
+                                            child: const Text('Remove'),
+                                          ),
+                                        ],
                                       ),
-                                      TextButton(
-                                        onPressed: () =>
-                                            Navigator.pop(ctx, true),
-                                        style: TextButton.styleFrom(
-                                            foregroundColor: AppColors.error),
-                                        child: const Text('Remove'),
-                                      ),
-                                    ],
-                                  ),
                                 );
-                              },
-                              onDismissed: (_) {
-                                ref
-                                    .read(orchestratorDetailNotifierProvider
-                                        .notifier)
-                                    .removeStep(
-                                      groupId: widget.groupId,
-                                      stepId: step.stepId,
-                                    );
+
+                                if (shouldRemove != true) return false;
+
+                                try {
+                                  await ref
+                                      .read(
+                                        orchestratorDetailNotifierProvider
+                                            .notifier,
+                                      )
+                                      .removeStep(
+                                        groupId: widget.groupId,
+                                        stepId: step.stepId,
+                                      );
+                                  return true;
+                                } catch (e) {
+                                  if (!context.mounted) return false;
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        OrchestratorDetailNotifier.errorMessage(
+                                          e,
+                                        ),
+                                      ),
+                                      backgroundColor: AppColors.error,
+                                    ),
+                                  );
+                                  return false;
+                                }
                               },
                               child: tile,
                             )
-                          : tile,
-                    );
-                  },
-                  childCount: group.steps.length,
-                ),
+                            : tile,
+                  );
+                }, childCount: group.steps.length),
               ),
             ),
         ],
@@ -314,9 +349,10 @@ class _OrchestratorTaskGroupScreenState
           ),
           const SizedBox(height: AppSpacing.md),
           TextButton(
-            onPressed: () => ref
-                .read(orchestratorDetailNotifierProvider.notifier)
-                .load(widget.planId),
+            onPressed:
+                () => ref
+                    .read(orchestratorDetailNotifierProvider.notifier)
+                    .load(widget.planId),
             child: const Text('Retry'),
           ),
         ],
@@ -365,9 +401,7 @@ class _StepTile extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.surfaceVariant,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: statusInfo.color.withValues(alpha: 0.2),
-            ),
+            border: Border.all(color: statusInfo.color.withValues(alpha: 0.2)),
           ),
           child: Row(
             children: [
@@ -425,4 +459,3 @@ class _StepTile extends StatelessWidget {
     );
   }
 }
-

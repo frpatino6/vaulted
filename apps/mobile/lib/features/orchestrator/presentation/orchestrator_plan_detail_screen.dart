@@ -41,9 +41,9 @@ class _OrchestratorPlanDetailScreenState
           .read(orchestratorDetailNotifierProvider.notifier)
           .load(widget.planId)
           .whenComplete(() {
-        if (!mounted) return;
-        setState(() => _initialLoadCompleted = true);
-      });
+            if (!mounted) return;
+            setState(() => _initialLoadCompleted = true);
+          });
     });
   }
 
@@ -51,9 +51,7 @@ class _OrchestratorPlanDetailScreenState
     if (_publishing) return;
     setState(() => _publishing = true);
     try {
-      await ref
-          .read(orchestratorDetailNotifierProvider.notifier)
-          .publish();
+      await ref.read(orchestratorDetailNotifierProvider.notifier).publish();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Plan published — staff notified!')),
@@ -72,50 +70,51 @@ class _OrchestratorPlanDetailScreenState
   }
 
   Future<void> _cancel() async {
-    final currentPlan = ref.read(orchestratorDetailNotifierProvider).valueOrNull;
+    final currentPlan =
+        ref.read(orchestratorDetailNotifierProvider).valueOrNull;
     final isDraft = currentPlan?.status == 'draft';
 
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surfaceVariant,
-        title: Text(isDraft ? 'Delete Draft' : 'Cancel Plan'),
-        content: Text(
-          isDraft
-              ? 'This draft plan will be permanently deleted.'
-              : 'This plan will be marked cancelled and cannot be reactivated.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Keep'),
+      builder:
+          (ctx) => AlertDialog(
+            backgroundColor: AppColors.surfaceVariant,
+            title: Text(isDraft ? 'Delete Draft' : 'Cancel Plan'),
+            content: Text(
+              isDraft
+                  ? 'This draft plan will be permanently deleted.'
+                  : 'This plan will be marked cancelled and cannot be reactivated.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Keep'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                style: TextButton.styleFrom(foregroundColor: AppColors.error),
+                child: Text(isDraft ? 'Delete' : 'Cancel Plan'),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: TextButton.styleFrom(foregroundColor: AppColors.error),
-            child: Text(isDraft ? 'Delete' : 'Cancel Plan'),
-          ),
-        ],
-      ),
     );
     if (confirm != true || !mounted) return;
     setState(() => _cancelling = true);
     try {
-      await ref
-          .read(orchestratorDetailNotifierProvider.notifier)
-          .cancel();
+      await ref.read(orchestratorDetailNotifierProvider.notifier).cancel();
       if (!mounted) return;
-      final planAfter = ref.read(orchestratorDetailNotifierProvider).valueOrNull;
+      final planAfter =
+          ref.read(orchestratorDetailNotifierProvider).valueOrNull;
       if (planAfter == null) {
         // Draft was deleted — plan no longer exists
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Draft deleted')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Draft deleted')));
         context.pop();
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Plan cancelled')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Plan cancelled')));
       }
     } catch (e) {
       if (!mounted) return;
@@ -133,37 +132,46 @@ class _OrchestratorPlanDetailScreenState
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(orchestratorDetailNotifierProvider);
-    final showInitialSkeleton = !_initialLoadCompleted &&
+    final showInitialSkeleton =
+        !_initialLoadCompleted &&
         !state.hasError &&
         (state.isLoading || state.valueOrNull == null);
     final renderState =
-        showInitialSkeleton ? const AsyncLoading<OrchestratorPlanModel?>() : state;
+        showInitialSkeleton
+            ? const AsyncLoading<OrchestratorPlanModel?>()
+            : state;
 
     return Scaffold(
       backgroundColor: AppColors.background,
       body: renderState.when(
         loading: () => const AppScreenSkeleton(showHeader: true, cardCount: 4),
-        error: (e, _) => Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.error_outline, color: AppColors.error, size: 40),
-              const SizedBox(height: AppSpacing.sm),
-              Text(
-                OrchestratorDetailNotifier.errorMessage(e),
-                style: const TextStyle(color: AppColors.onSurfaceVariant),
-                textAlign: TextAlign.center,
+        error:
+            (e, _) => Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.error_outline,
+                    color: AppColors.error,
+                    size: 40,
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    OrchestratorDetailNotifier.errorMessage(e),
+                    style: const TextStyle(color: AppColors.onSurfaceVariant),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  TextButton(
+                    onPressed:
+                        () => ref
+                            .read(orchestratorDetailNotifierProvider.notifier)
+                            .load(widget.planId),
+                    child: const Text('Retry'),
+                  ),
+                ],
               ),
-              const SizedBox(height: AppSpacing.md),
-              TextButton(
-                onPressed: () => ref
-                    .read(orchestratorDetailNotifierProvider.notifier)
-                    .load(widget.planId),
-                child: const Text('Retry'),
-              ),
-            ],
-          ),
-        ),
+            ),
         data: (plan) {
           if (plan == null) {
             return const Center(
@@ -205,7 +213,10 @@ class _OrchestratorPlanDetailScreenState
             const HelpScreenButton(screenKey: 'orchestrator'),
             if (_isOwnerOrManager && !plan.isCancelled)
               PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert, color: AppColors.onBackground),
+                icon: const Icon(
+                  Icons.more_vert,
+                  color: AppColors.onBackground,
+                ),
                 color: AppColors.surfaceVariant,
                 onSelected: (v) {
                   if (v == 'cancel') _cancel();
@@ -213,31 +224,36 @@ class _OrchestratorPlanDetailScreenState
                     context.push('/orchestrator/plans/${plan.id}/progress');
                   }
                 },
-                itemBuilder: (_) => [
-                  const PopupMenuItem(
-                    value: 'progress',
-                    child: Row(
-                      children: [
-                        Icon(Icons.bar_chart_rounded, size: 18),
-                        SizedBox(width: 8),
-                        Text('Live Progress'),
-                      ],
-                    ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'cancel',
-                    child: Row(
-                      children: [
-                        Icon(Icons.cancel_outlined, size: 18, color: AppColors.error),
-                        SizedBox(width: 8),
-                        Text(
-                          'Cancel Plan',
-                          style: TextStyle(color: AppColors.error),
+                itemBuilder:
+                    (_) => [
+                      const PopupMenuItem(
+                        value: 'progress',
+                        child: Row(
+                          children: [
+                            Icon(Icons.bar_chart_rounded, size: 18),
+                            SizedBox(width: 8),
+                            Text('Live Progress'),
+                          ],
                         ),
-                      ],
-                    ),
-                  ),
-                ],
+                      ),
+                      const PopupMenuItem(
+                        value: 'cancel',
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.cancel_outlined,
+                              size: 18,
+                              color: AppColors.error,
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              'Cancel Plan',
+                              style: TextStyle(color: AppColors.error),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
               ),
           ],
         ),
@@ -278,10 +294,7 @@ class _OrchestratorPlanDetailScreenState
                       color: AppColors.surfaceVariant,
                       borderRadius: BorderRadius.circular(14),
                       border: Border(
-                        left: BorderSide(
-                          color: AppColors.accent,
-                          width: 3,
-                        ),
+                        left: BorderSide(color: AppColors.accent, width: 3),
                       ),
                     ),
                     child: Text(
@@ -324,8 +337,9 @@ class _OrchestratorPlanDetailScreenState
                   borderRadius: BorderRadius.circular(6),
                   child: LinearProgressIndicator(
                     value: progress,
-                    backgroundColor:
-                        AppColors.onSurfaceVariant.withValues(alpha: 0.15),
+                    backgroundColor: AppColors.onSurfaceVariant.withValues(
+                      alpha: 0.15,
+                    ),
                     color: statusInfo.color,
                     minHeight: 8,
                   ),
@@ -363,65 +377,97 @@ class _OrchestratorPlanDetailScreenState
             AppSpacing.sm,
           ),
           sliver: SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, i) {
-                final group = plan.taskGroups[i];
-                final canModify = _isOwnerOrManager && !plan.isCompleted && !plan.isCancelled;
-                final card = _TaskGroupCard(
-                  group: group,
-                  showAddItem: plan.isDraft && _isOwnerOrManager,
-                  onTap: () => context.push(
-                    '/orchestrator/plans/${plan.id}/groups/${group.groupId}',
-                  ),
-                  onAddItem: () => _showAddItemSheet(plan.id, group.groupId),
-                  onAssign: canModify ? () => _showAssignSheet(plan.id, group) : null,
-                );
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                  child: canModify
-                      ? Dismissible(
+            delegate: SliverChildBuilderDelegate((context, i) {
+              final group = plan.taskGroups[i];
+              final canModify =
+                  _isOwnerOrManager && !plan.isCompleted && !plan.isCancelled;
+              final card = _TaskGroupCard(
+                group: group,
+                showAddItem: plan.isDraft && _isOwnerOrManager,
+                onTap:
+                    () => context.push(
+                      '/orchestrator/plans/${plan.id}/groups/${group.groupId}',
+                    ),
+                onAddItem: () => _showAddItemSheet(plan.id, group.groupId),
+                onAssign:
+                    canModify ? () => _showAssignSheet(plan.id, group) : null,
+              );
+              return Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                child:
+                    canModify
+                        ? Dismissible(
                           key: ValueKey(group.groupId),
                           direction: DismissDirection.endToStart,
                           background: Container(
                             alignment: Alignment.centerRight,
-                            padding: const EdgeInsets.only(right: AppSpacing.lg),
+                            padding: const EdgeInsets.only(
+                              right: AppSpacing.lg,
+                            ),
                             decoration: BoxDecoration(
                               color: AppColors.error.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(14),
                             ),
-                            child: const Icon(Icons.delete_outline, color: AppColors.error),
+                            child: const Icon(
+                              Icons.delete_outline,
+                              color: AppColors.error,
+                            ),
                           ),
                           confirmDismiss: (_) async {
-                            return await showDialog<bool>(
+                            final shouldRemove = await showDialog<bool>(
                               context: context,
-                              builder: (ctx) => AlertDialog(
-                                backgroundColor: AppColors.surfaceVariant,
-                                title: const Text('Remove group'),
-                                content: Text('Remove "${group.title}" and all its steps?'),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(ctx, false),
-                                    child: const Text('Cancel'),
+                              builder:
+                                  (ctx) => AlertDialog(
+                                    backgroundColor: AppColors.surfaceVariant,
+                                    title: const Text('Remove group'),
+                                    content: Text(
+                                      'Remove "${group.title}" and all its steps?',
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed:
+                                            () => Navigator.pop(ctx, false),
+                                        child: const Text('Cancel'),
+                                      ),
+                                      TextButton(
+                                        onPressed:
+                                            () => Navigator.pop(ctx, true),
+                                        style: TextButton.styleFrom(
+                                          foregroundColor: AppColors.error,
+                                        ),
+                                        child: const Text('Remove'),
+                                      ),
+                                    ],
                                   ),
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(ctx, true),
-                                    style: TextButton.styleFrom(foregroundColor: AppColors.error),
-                                    child: const Text('Remove'),
-                                  ),
-                                ],
-                              ),
                             );
+
+                            if (shouldRemove != true) return false;
+
+                            try {
+                              await ref
+                                  .read(
+                                    orchestratorDetailNotifierProvider.notifier,
+                                  )
+                                  .removeGroup(group.groupId);
+                              return true;
+                            } catch (e) {
+                              if (!context.mounted) return false;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    OrchestratorDetailNotifier.errorMessage(e),
+                                  ),
+                                  backgroundColor: AppColors.error,
+                                ),
+                              );
+                              return false;
+                            }
                           },
-                          onDismissed: (_) => ref
-                              .read(orchestratorDetailNotifierProvider.notifier)
-                              .removeGroup(group.groupId),
                           child: card,
                         )
-                      : card,
-                );
-              },
-              childCount: plan.taskGroups.length,
-            ),
+                        : card,
+              );
+            }, childCount: plan.taskGroups.length),
           ),
         ),
         // Add Group button — only in draft
@@ -434,9 +480,7 @@ class _OrchestratorPlanDetailScreenState
                 AppSpacing.md,
                 AppSpacing.sm,
               ),
-              child: _AddGroupButton(
-                onTap: () => _showAddGroupDialog(plan.id),
-              ),
+              child: _AddGroupButton(onTap: () => _showAddGroupDialog(plan.id)),
             ),
           ),
         // Publish button if draft
@@ -453,16 +497,17 @@ class _OrchestratorPlanDetailScreenState
                 height: 52,
                 child: FilledButton.icon(
                   onPressed: _publishing ? null : _publish,
-                  icon: _publishing
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: AppColors.background,
-                          ),
-                        )
-                      : const Icon(Icons.publish_rounded),
+                  icon:
+                      _publishing
+                          ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.background,
+                            ),
+                          )
+                          : const Icon(Icons.publish_rounded),
                   label: const Text('Publish Plan'),
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.accent,
@@ -481,16 +526,31 @@ class _OrchestratorPlanDetailScreenState
     );
   }
 
-  Future<void> _showAssignSheet(String planId, OrchestratorTaskGroupModel group) async {
+  Future<void> _showAssignSheet(
+    String planId,
+    OrchestratorTaskGroupModel group,
+  ) async {
     final user = await showOrchestratorAssignSheet(context);
     if (user == null || !mounted) return;
-    await ref.read(orchestratorDetailNotifierProvider.notifier).updateAssignments([
-      {
-        'groupId': group.groupId,
-        'assignedUserId': user.id,
-        'assignedUserName': user.name,
-      }
-    ]);
+    try {
+      await ref
+          .read(orchestratorDetailNotifierProvider.notifier)
+          .updateAssignments([
+            {
+              'groupId': group.groupId,
+              'assignedUserId': user.id,
+              'assignedUserName': user.name,
+            },
+          ]);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(OrchestratorDetailNotifier.errorMessage(e)),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
   }
 
   void _showAddItemSheet(String planId, String groupId) {
@@ -498,11 +558,12 @@ class _OrchestratorPlanDetailScreenState
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _AddItemSheet(
-        planId: planId,
-        groupId: groupId,
-        notifier: ref.read(orchestratorDetailNotifierProvider.notifier),
-      ),
+      builder:
+          (_) => _AddItemSheet(
+            planId: planId,
+            groupId: groupId,
+            notifier: ref.read(orchestratorDetailNotifierProvider.notifier),
+          ),
     );
   }
 
@@ -510,37 +571,38 @@ class _OrchestratorPlanDetailScreenState
     final controller = TextEditingController();
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surfaceVariant,
-        title: const Text('Add Group'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          style: const TextStyle(color: AppColors.onBackground),
-          decoration: InputDecoration(
-            hintText: 'Group title',
-            hintStyle: TextStyle(
-              color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
+      builder:
+          (ctx) => AlertDialog(
+            backgroundColor: AppColors.surfaceVariant,
+            title: const Text('Add Group'),
+            content: TextField(
+              controller: controller,
+              autofocus: true,
+              style: const TextStyle(color: AppColors.onBackground),
+              decoration: InputDecoration(
+                hintText: 'Group title',
+                hintStyle: TextStyle(
+                  color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
+                ),
+                filled: true,
+                fillColor: AppColors.background,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide.none,
+                ),
+              ),
             ),
-            filled: true,
-            fillColor: AppColors.background,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide.none,
-            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Add'),
+              ),
+            ],
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Add'),
-          ),
-        ],
-      ),
     );
     final title = controller.text.trim();
     controller.dispose();
@@ -593,7 +655,9 @@ class _TaskGroupCard extends StatelessWidget {
     if (name.isEmpty) return '?';
     final parts = name.trim().split(' ');
     if (parts.length == 1) {
-      return parts.first.substring(0, parts.first.length.clamp(1, 2)).toUpperCase();
+      return parts.first
+          .substring(0, parts.first.length.clamp(1, 2))
+          .toUpperCase();
     }
     return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
   }
@@ -623,15 +687,17 @@ class _TaskGroupCard extends StatelessWidget {
               // Avatar
               CircleAvatar(
                 radius: 20,
-                backgroundColor: group.assignedUserName != null
-                    ? AppColors.accent.withValues(alpha: 0.15)
-                    : AppColors.onSurfaceVariant.withValues(alpha: 0.1),
+                backgroundColor:
+                    group.assignedUserName != null
+                        ? AppColors.accent.withValues(alpha: 0.15)
+                        : AppColors.onSurfaceVariant.withValues(alpha: 0.1),
                 child: Text(
                   _initials,
                   style: TextStyle(
-                    color: group.assignedUserName != null
-                        ? AppColors.accent
-                        : AppColors.onSurfaceVariant,
+                    color:
+                        group.assignedUserName != null
+                            ? AppColors.accent
+                            : AppColors.onSurfaceVariant,
                     fontWeight: FontWeight.w700,
                     fontSize: 13,
                   ),
@@ -670,17 +736,23 @@ class _TaskGroupCard extends StatelessWidget {
                           Text(
                             group.assignedUserName ?? 'Unassigned',
                             style: AppTypography.bodySmall.copyWith(
-                              color: onAssign != null
-                                  ? AppColors.accent
-                                  : AppColors.onSurfaceVariant,
-                              decoration: onAssign != null
-                                  ? TextDecoration.underline
-                                  : null,
+                              color:
+                                  onAssign != null
+                                      ? AppColors.accent
+                                      : AppColors.onSurfaceVariant,
+                              decoration:
+                                  onAssign != null
+                                      ? TextDecoration.underline
+                                      : null,
                             ),
                           ),
                           if (onAssign != null) ...[
                             const SizedBox(width: 4),
-                            const Icon(Icons.edit, size: 11, color: AppColors.accent),
+                            const Icon(
+                              Icons.edit,
+                              size: 11,
+                              color: AppColors.accent,
+                            ),
                           ],
                         ],
                       ),
@@ -716,8 +788,11 @@ class _TaskGroupCard extends StatelessWidget {
               const SizedBox(width: AppSpacing.sm),
               if (showAddItem)
                 IconButton(
-                  icon: const Icon(Icons.add_circle_outline,
-                      color: AppColors.accent, size: 20),
+                  icon: const Icon(
+                    Icons.add_circle_outline,
+                    color: AppColors.accent,
+                    size: 20,
+                  ),
                   tooltip: 'Add item to group',
                   onPressed: onAddItem,
                   visualDensity: VisualDensity.compact,
@@ -845,8 +920,7 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
     final roomPart = item.roomName != null ? ' from ${item.roomName}' : '';
     setState(() {
       _selected = item;
-      _instructionController.text =
-          'Retrieve the ${item.name}$roomPart';
+      _instructionController.text = 'Retrieve the ${item.name}$roomPart';
     });
   }
 
@@ -857,11 +931,7 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
     if (instruction.isEmpty) return;
     setState(() => _adding = true);
     try {
-      await widget.notifier.addManualStep(
-        widget.groupId,
-        item.id,
-        instruction,
-      );
+      await widget.notifier.addManualStep(widget.groupId, item.id, instruction);
       if (!mounted) return;
       Navigator.of(context).pop();
     } catch (e) {
@@ -921,7 +991,10 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
             TextField(
               controller: _searchController,
               autofocus: true,
-              style: const TextStyle(color: AppColors.onBackground, fontSize: 14),
+              style: const TextStyle(
+                color: AppColors.onBackground,
+                fontSize: 14,
+              ),
               decoration: InputDecoration(
                 hintText: 'Search items…',
                 hintStyle: TextStyle(
@@ -939,16 +1012,17 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
                   color: AppColors.onSurfaceVariant,
                   size: 20,
                 ),
-                suffixIcon: _searching
-                    ? const Padding(
-                        padding: EdgeInsets.all(12),
-                        child: SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                      )
-                    : null,
+                suffixIcon:
+                    _searching
+                        ? const Padding(
+                          padding: EdgeInsets.all(12),
+                          child: SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        )
+                        : null,
               ),
               onChanged: (v) {
                 if (v.trim().length >= 2) _search(v.trim());
@@ -969,10 +1043,13 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
                 child: ListView.separated(
                   shrinkWrap: true,
                   itemCount: _results.length,
-                  separatorBuilder: (_, __) => Divider(
-                    color: AppColors.onSurfaceVariant.withValues(alpha: 0.1),
-                    height: 1,
-                  ),
+                  separatorBuilder:
+                      (_, __) => Divider(
+                        color: AppColors.onSurfaceVariant.withValues(
+                          alpha: 0.1,
+                        ),
+                        height: 1,
+                      ),
                   itemBuilder: (_, i) {
                     final item = _results[i];
                     return ListTile(
@@ -1022,8 +1099,11 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.check_circle_outline,
-                      color: AppColors.accent, size: 18),
+                  const Icon(
+                    Icons.check_circle_outline,
+                    color: AppColors.accent,
+                    size: 18,
+                  ),
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: Column(
@@ -1052,10 +1132,11 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
                     ),
                   ),
                   TextButton(
-                    onPressed: () => setState(() {
-                      _selected = null;
-                      _instructionController.clear();
-                    }),
+                    onPressed:
+                        () => setState(() {
+                          _selected = null;
+                          _instructionController.clear();
+                        }),
                     child: const Text('Change'),
                   ),
                 ],
@@ -1074,7 +1155,10 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
             const SizedBox(height: AppSpacing.xs),
             TextField(
               controller: _instructionController,
-              style: const TextStyle(color: AppColors.onBackground, fontSize: 14),
+              style: const TextStyle(
+                color: AppColors.onBackground,
+                fontSize: 14,
+              ),
               maxLines: 2,
               decoration: InputDecoration(
                 filled: true,
@@ -1101,16 +1185,17 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: _adding
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: AppColors.background,
-                        ),
-                      )
-                    : const Text('Add to Plan'),
+                child:
+                    _adding
+                        ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.background,
+                          ),
+                        )
+                        : const Text('Add to Plan'),
               ),
             ),
           ],
@@ -1119,4 +1204,3 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
     );
   }
 }
-

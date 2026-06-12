@@ -260,20 +260,21 @@ class _MovementScanScreenState extends ConsumerState<MovementScanScreen> {
       final movement = await ref
           .read(activeMovementNotifierProvider.notifier)
           .addItem(movementId, itemId);
+      if (!mounted) return;
 
-      final addedItem = movement.items.lastWhere(
-        (i) => i.itemId == itemId,
-        orElse: () => movement.items.last,
-      );
+      final addedItem =
+          movement.items.where((i) => i.itemId == itemId).firstOrNull;
 
       setState(() {
-        _lastScannedName = addedItem.itemName;
+        _lastScannedName =
+            addedItem?.itemName ?? 'Item scanned — refresh to see status';
         _showFeedback = true;
         _feedbackError = null;
       });
 
       HapticFeedback.mediumImpact();
     } catch (e) {
+      if (!mounted) return;
       final message = ActiveMovementNotifier.message(e);
       final normalized = message.toLowerCase();
       final isDuplicate =
@@ -285,6 +286,7 @@ class _MovementScanScreenState extends ConsumerState<MovementScanScreen> {
       });
       HapticFeedback.heavyImpact();
     } finally {
+      if (!mounted) return;
       setState(() => _processingQr = false);
 
       // Auto-hide feedback after 2s

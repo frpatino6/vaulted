@@ -303,22 +303,23 @@ class _MovementCheckinScreenState extends ConsumerState<MovementCheckinScreen> {
 
     try {
       await ref.read(movementDetailNotifierProvider.notifier).checkin(itemId);
+      if (!mounted) return;
 
       // Find the item name from updated state
       final updated = ref.read(movementDetailNotifierProvider).value;
-      final checkedItem = updated?.items.firstWhere(
-        (i) => i.itemId == itemId,
-        orElse: () => updated.items.first,
-      );
+      final checkedItem =
+          updated?.items.where((i) => i.itemId == itemId).firstOrNull;
 
       setState(() {
         _lastScannedName = checkedItem?.itemName;
         _showFeedback = true;
-        _feedbackError = null;
+        _feedbackError =
+            checkedItem == null ? 'Item scanned — refresh to see status' : null;
       });
 
       HapticFeedback.mediumImpact();
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _feedbackError = MovementDetailNotifier.message(e);
         _showFeedback = true;
@@ -326,6 +327,7 @@ class _MovementCheckinScreenState extends ConsumerState<MovementCheckinScreen> {
       });
       HapticFeedback.heavyImpact();
     } finally {
+      if (!mounted) return;
       setState(() => _processingQr = false);
       await Future.delayed(const Duration(seconds: 2));
       if (mounted) setState(() => _showFeedback = false);

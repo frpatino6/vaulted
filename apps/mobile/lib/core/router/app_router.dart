@@ -37,6 +37,7 @@ import '../../features/properties/data/models/floor_model.dart';
 import '../../features/inventory/data/models/item_model.dart';
 import '../../features/inventory/presentation/asset_browser_screen.dart';
 import '../../features/inventory/presentation/qr_list_screen.dart';
+import '../../features/insurance/data/models/insurance_policy_model.dart';
 import '../../features/insurance/presentation/insurance_list_screen.dart';
 import '../../features/insurance/presentation/insurance_detail_screen.dart';
 import '../../features/insurance/presentation/insurance_form_screen.dart';
@@ -334,11 +335,19 @@ GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
       ),
       GoRoute(
         path: '/properties/:propertyId/ai-scan/review',
+        redirect: (context, state) {
+          final propertyId = state.pathParameters['propertyId'] ?? '';
+          final extra = state.extra;
+          if (extra is! Map<String, dynamic> || extra['result'] is! AiScanResult) {
+            return '/properties/$propertyId/ai-scan';
+          }
+          return null;
+        },
         pageBuilder: (context, state) {
           final propertyId = state.pathParameters['propertyId'] ?? '';
-          final extra = state.extra as Map<String, dynamic>?;
-          final result = extra?['result'] as AiScanResult;
-          final floors = (extra?['floors'] as List<FloorModel>?) ?? [];
+          final extra = state.extra as Map<String, dynamic>;
+          final result = extra['result'] as AiScanResult;
+          final floors = (extra['floors'] as List<FloorModel>?) ?? [];
           return _fadePage(AiItemReviewScreen(
             propertyId: propertyId,
             result: result,
@@ -365,7 +374,7 @@ GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
       GoRoute(
         path: '/insurance/:id/edit',
         pageBuilder: (context, state) {
-          final policy = state.extra as dynamic;
+          final policy = state.extra as InsurancePolicyModel?;
           return _fadePage(InsuranceFormScreen(policy: policy), state);
         },
       ),
@@ -394,6 +403,9 @@ GoRouter createAppRouter(AuthRedirectNotifier authRedirectNotifier) {
       ),
       GoRoute(
         path: '/orchestrator/review',
+        redirect: (context, state) {
+          return state.extra is ParsedPlanModel ? null : '/orchestrator';
+        },
         pageBuilder: (context, state) {
           final parsed = state.extra as ParsedPlanModel;
           return _fadePage(OrchestratorPlanReviewScreen(parsed: parsed), state);

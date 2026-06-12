@@ -43,8 +43,9 @@ _ok "curl, python3, node, npm — all present"
 # ── Load .env ─────────────────────────────────────────────────
 [[ -f "$DIR/.env" ]] && source "$DIR/.env"
 MFA_SECRET="${MFA_SECRET:-}"
-if [[ -z "$MFA_SECRET" ]]; then
-  _warn "MFA_SECRET not set. Run get-mfa-secret.sh first for full coverage."
+MFA_LIVE_CODE="${MFA_LIVE_CODE:-}"
+if [[ -z "$MFA_SECRET" && -z "$MFA_LIVE_CODE" ]]; then
+  _warn "MFA_SECRET/MFA_LIVE_CODE not set. Run get-mfa-secret.sh first for full coverage."
   _warn "WebSocket tests and some pentest phases will use a pre-MFA token."
 fi
 
@@ -72,11 +73,28 @@ print(str((struct.unpack('>I', h[o:o+4])[0] & 0x7fffffff) % 1000000).zfill(6))
 PYEOF
 }
 
-LOGIN_RESP=$(curl -s -X POST "$API/auth/login" \
-  -H "Content-Type: application/json" \
-  -c /tmp/vaulted-master-cookies.txt \
-  -d '{"email":"owner@test.com","password":"Test1234!Secure"}')
+login_attempt() {
+  curl -s -X POST "$API/auth/login" \
+    -H "Content-Type: application/json" \
+    -c /tmp/vaulted-master-cookies.txt \
+    -d '{"email":"owner@test.com","password":"Test1234!Secure"}'
+}
+
+LOGIN_RESP=$(login_attempt)
 TOKEN=$(json_val "$LOGIN_RESP" "['data']['accessToken']")
+ERR_CODE=$(json_val "$LOGIN_RESP" ".get('error',{}).get('statusCode',0)")
+
+RETRIES=0
+while [[ -z "$TOKEN" && "$ERR_CODE" == "429" && $RETRIES -lt 2 ]]; do
+  _warn "Login rate-limited (429). Waiting 65s for throttle window to clear…"
+  for i in $(seq 65 -5 0); do printf "\r   %ds remaining…" "$i"; sleep 5; done
+  echo ""
+  LOGIN_RESP=$(login_attempt)
+  TOKEN=$(json_val "$LOGIN_RESP" "['data']['accessToken']")
+  ERR_CODE=$(json_val "$LOGIN_RESP" ".get('error',{}).get('statusCode',0)")
+  RETRIES=$((RETRIES+1))
+done
+
 MFA_REQ=$(json_val "$LOGIN_RESP" ".get('data',{}).get('mfaRequired',False)")
 
 if [[ -z "$TOKEN" ]]; then
@@ -89,18 +107,29 @@ FULL_TOKEN="$TOKEN"
 if [[ "$MFA_REQ" == "True" || "$MFA_REQ" == "true" ]]; then
   if [[ -n "$MFA_SECRET" ]]; then
     MFA_CODE=$(totp_code 2>/dev/null || echo "")
-    if [[ -n "$MFA_CODE" ]]; then
-      MFA_RESP=$(curl -s -X POST "$API/auth/mfa/verify" \
-        -H "Authorization: Bearer $TOKEN" \
-        -H "Content-Type: application/json" \
-        -b /tmp/vaulted-master-cookies.txt \
-        -c /tmp/vaulted-master-cookies.txt \
-        -d "{\"code\":\"$MFA_CODE\"}")
-      VERIFIED=$(json_val "$MFA_RESP" ".get('data',{}).get('accessToken','')")
-      [[ -n "$VERIFIED" ]] && FULL_TOKEN="$VERIFIED" && _ok "MFA verified — full-access token ready"
+  elif [[ -n "$MFA_LIVE_CODE" ]]; then
+    MFA_CODE="$MFA_LIVE_CODE"
+  elif [[ -t 0 ]]; then
+    read -rp "MFA required. Enter current 6-digit code from your authenticator app: " MFA_CODE
+  else
+    MFA_CODE=""
+  fi
+  if [[ -n "$MFA_CODE" ]]; then
+    MFA_RESP=$(curl -s -X POST "$API/auth/mfa/verify" \
+      -H "Authorization: Bearer $TOKEN" \
+      -H "Content-Type: application/json" \
+      -b /tmp/vaulted-master-cookies.txt \
+      -c /tmp/vaulted-master-cookies.txt \
+      -d "{\"code\":\"$MFA_CODE\"}")
+    VERIFIED=$(json_val "$MFA_RESP" ".get('data',{}).get('accessToken','')")
+    if [[ -n "$VERIFIED" ]]; then
+      FULL_TOKEN="$VERIFIED"
+      _ok "MFA verified — full-access token ready"
+    else
+      _warn "MFA verification failed (response: $MFA_RESP) — using pre-MFA token"
     fi
   else
-    _warn "MFA required but MFA_SECRET missing — using pre-MFA token for websocket tests"
+    _warn "MFA required but MFA_SECRET/MFA_LIVE_CODE missing — using pre-MFA token for websocket tests"
   fi
 else
   _ok "Token obtained (no MFA required)"
@@ -111,10 +140,11 @@ fi
 # ═══════════════════════════════════════════════════════════════
 _banner "Suite 1/3 — idor-rbac-tests.sh (IDOR + RBAC)"
 set +e
-IDOR_OUT=$(OWNER_TOKEN="$FULL_TOKEN" bash "$DIR/idor-rbac-tests.sh" 2>&1)
-IDOR_EXIT=$?
+OWNER_TOKEN="$FULL_TOKEN" bash "$DIR/idor-rbac-tests.sh" 2>&1 | tee /tmp/vaulted-suite1.out
+IDOR_EXIT=${PIPESTATUS[0]}
 set -e
-echo "$IDOR_OUT" | tee -a "$LOG"
+IDOR_OUT=$(cat /tmp/vaulted-suite1.out)
+cat /tmp/vaulted-suite1.out >> "$LOG"
 
 P2_PASS=$(parse_counter "$IDOR_OUT" "PASS")
 P2_FAIL=$(parse_counter "$IDOR_OUT" "FAIL")
@@ -125,10 +155,11 @@ P2_FAIL=$(parse_counter "$IDOR_OUT" "FAIL")
 # ═══════════════════════════════════════════════════════════════
 _banner "Suite 2/3 — pentest-full.sh (17 phases)"
 set +e
-PENTEST_OUT=$(bash "$DIR/pentest-full.sh" 2>&1)
-PENTEST_EXIT=$?
+FULL_TOKEN="$FULL_TOKEN" bash "$DIR/scripts/pentest-full.sh" 2>&1 | tee /tmp/vaulted-suite2.out
+PENTEST_EXIT=${PIPESTATUS[0]}
 set -e
-echo "$PENTEST_OUT" | tee -a "$LOG"
+PENTEST_OUT=$(cat /tmp/vaulted-suite2.out)
+cat /tmp/vaulted-suite2.out >> "$LOG"
 
 P1_PASS=$(parse_counter "$PENTEST_OUT" "PASS")
 P1_FAIL=$(parse_counter "$PENTEST_OUT" "FAIL")
@@ -140,10 +171,11 @@ P1_SKIP=$(parse_counter "$PENTEST_OUT" "SKIP")
 # ═══════════════════════════════════════════════════════════════
 _banner "Suite 3/3 — websocket-tests.js (WebSocket security)"
 set +e
-WS_OUT=$(VAULTED_TOKEN="$FULL_TOKEN" node "$DIR/websocket-tests.js" 2>&1)
-WS_EXIT=$?
+VAULTED_TOKEN="$FULL_TOKEN" node "$DIR/websocket-tests.js" 2>&1 | tee /tmp/vaulted-suite3.out
+WS_EXIT=${PIPESTATUS[0]}
 set -e
-echo "$WS_OUT" | tee -a "$LOG"
+WS_OUT=$(cat /tmp/vaulted-suite3.out)
+cat /tmp/vaulted-suite3.out >> "$LOG"
 
 P3_PASS=$(parse_counter "$WS_OUT" "pass")
 P3_FAIL=$(parse_counter "$WS_OUT" "fail")

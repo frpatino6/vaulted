@@ -33,33 +33,39 @@ class MaintenanceListNotifier extends AsyncNotifier<List<MaintenanceModel>> {
   }
 
   Future<void> complete(String id) async {
+    final previous = state;
     try {
       final updated = await ref.read(maintenanceRepositoryProvider).complete(id);
       state = state.whenData(
         (list) => list.map((r) => r.id == id ? updated : r).toList(),
       );
     } catch (e) {
-      state = AsyncError(e, StackTrace.current);
+      state = previous;
+      rethrow;
     }
   }
 
   Future<void> cancel(String id) async {
+    final previous = state;
     try {
       final updated = await ref.read(maintenanceRepositoryProvider).cancel(id);
       state = state.whenData(
         (list) => list.map((r) => r.id == id ? updated : r).toList(),
       );
     } catch (e) {
-      state = AsyncError(e, StackTrace.current);
+      state = previous;
+      rethrow;
     }
   }
 
   Future<void> delete(String id) async {
+    final previous = state;
     try {
       await ref.read(maintenanceRepositoryProvider).delete(id);
       state = state.whenData((list) => list.where((r) => r.id != id).toList());
     } catch (e) {
-      state = AsyncError(e, StackTrace.current);
+      state = previous;
+      rethrow;
     }
   }
 
@@ -137,22 +143,26 @@ class ItemMaintenanceNotifier
   }
 
   Future<void> complete(String id) async {
+    final previous = state;
     try {
       final updated = await ref.read(maintenanceRepositoryProvider).complete(id);
       state = state.whenData(
         (list) => list.map((r) => r.id == id ? updated : r).toList(),
       );
     } catch (e) {
-      state = AsyncError(e, StackTrace.current);
+      state = previous;
+      rethrow;
     }
   }
 
   Future<void> delete(String id) async {
+    final previous = state;
     try {
       await ref.read(maintenanceRepositoryProvider).delete(id);
       state = state.whenData((list) => list.where((r) => r.id != id).toList());
     } catch (e) {
-      state = AsyncError(e, StackTrace.current);
+      state = previous;
+      rethrow;
     }
   }
 

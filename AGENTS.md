@@ -1,5 +1,13 @@
 # Vaulted — Agent Context (Codex / GitHub Copilot / AI Agents)
 
+## Codex Response Preference
+- During multi-fix prompt execution, do not provide detailed summaries after each fix. When a fix is complete, respond only with a short completion note and wait for the next instruction.
+- Do not show diffs, patch hunks, added/removed lines, full existing code, command output, or verbose verification output to the user unless explicitly requested.
+- For changed files, mention only the filename and a short plain-text instruction such as "Modificado auth.ts." Avoid explaining the diff.
+- Use CodeGraph first and primarily for code exploration, symbol lookup, callers/callees, and impact analysis. Do not replace CodeGraph exploration with shell search unless CodeGraph cannot answer the need.
+- Shell commands are allowed only for silent verification or file operations that CodeGraph cannot perform. Avoid commands that print search results or code snippets to the conversation.
+- Bajo ninguna circunstancia incluyas salidas visuales de diffs (adiciones/eliminaciones) ni me muestres el código completo si ya existe. Limítate a escribir el nombre del archivo modificado y la instrucción precisa, por ejemplo: Modificado auth.ts. Para mostrar cambios, usa únicamente la representación en texto plano de un párrafo.
+
 ## Project Summary
 Vaulted is a premium home inventory management SaaS for high-net-worth families in the USA.
 Clients can own one or multiple properties. Each property has floors, rooms, and items.

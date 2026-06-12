@@ -3,6 +3,10 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { GeminiClient } from '../shared/gemini.client';
 import { AiCostLoggerService } from '../shared/ai-cost-logger.service';
+import { AccessControlService } from '../../../common/services/access-control.service';
+import { Role } from '../../../common/enums/role.enum';
+import { AuditService } from '../../audit/audit.service';
+import { JwtPayload } from '../../auth/strategies/jwt.strategy';
 import { MaintenanceService } from '../../maintenance/maintenance.service';
 import { Item, ItemDocument } from '../../inventory/schemas/item.schema';
 import {
@@ -32,16 +36,20 @@ export class AiMaintenanceService {
     private readonly recordModel: Model<MaintenanceRecordDocument>,
     private readonly geminiClient: GeminiClient,
     private readonly costLogger: AiCostLoggerService,
+    private readonly accessControlService: AccessControlService,
     private readonly maintenanceService: MaintenanceService,
+    private readonly auditService: AuditService,
   ) {}
 
   async analyzeItem(
-    tenantId: string,
-    userId: string,
+    user: JwtPayload,
     itemId: string,
   ): Promise<{ suggestion: AiMaintenanceSuggestion | null; recordCreated: boolean }> {
+    const tenantId = user.tenantId;
+    const userId = user.sub;
     const item = await this.itemModel.findOne({ _id: itemId, tenantId }).exec();
     if (!item) throw new NotFoundException('Item not found');
+    await this.assertPropertyAccess(item.propertyId, user);
 
     // Cooldown: skip if analyzed within the last ANALYSIS_COOLDOWN_DAYS
     const recentAiRecord = await this.recordModel
@@ -70,7 +78,7 @@ export class AiMaintenanceService {
       const scheduledDate = new Date();
       scheduledDate.setDate(scheduledDate.getDate() + 14); // suggest 2 weeks out by default
 
-      await this.recordModel.create({
+      const record = await this.recordModel.create({
         itemId,
         tenantId,
         title: suggestion.title,
@@ -84,6 +92,15 @@ export class AiMaintenanceService {
         currency: 'USD',
         documents: [],
         createdBy: userId,
+      });
+
+      await this.auditService.log({
+        tenantId,
+        userId,
+        action: 'maintenance_scheduled',
+        entityType: 'maintenance_record',
+        entityId: String(record._id),
+        metadata: { isAiSuggested: true, riskScore: suggestion.riskScore },
       });
 
       await this.maintenanceService.syncItemMaintenanceSummary(tenantId, itemId);
@@ -110,13 +127,6 @@ export class AiMaintenanceService {
       `Category: ${item.category}`,
       item.subcategory ? `Subcategory: ${item.subcategory}` : null,
       ageYears !== null ? `Age: ${ageYears} year(s)` : null,
-      item.valuation?.currentValue
-        ? `Current value: $${item.valuation.currentValue.toLocaleString()}`
-        : null,
-      item.serialNumber ? `Serial number: ${item.serialNumber}` : null,
-      item.attributes && Object.keys(item.attributes).length > 0
-        ? `Additional attributes: ${JSON.stringify(item.attributes)}`
-        : null,
     ]
       .filter(Boolean)
       .join('\n');
@@ -183,6 +193,19 @@ Respond ONLY with valid JSON (no markdown, no explanation):
         recommendedAction: 'Please inspect the item manually.',
         suggestedIntervalDays: null,
       };
+    }
+  }
+
+  private async assertPropertyAccess(
+    propertyId: string,
+    user: JwtPayload,
+  ): Promise<void> {
+    const allowedPropertyIds = await this.accessControlService.getAllowedPropertyIds(
+      user.sub,
+      user.role as Role,
+    );
+    if (allowedPropertyIds !== null && !allowedPropertyIds.includes(propertyId)) {
+      throw new NotFoundException('Item not found');
     }
   }
 }

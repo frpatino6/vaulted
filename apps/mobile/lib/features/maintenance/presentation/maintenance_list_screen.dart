@@ -417,14 +417,25 @@ class MaintenanceCard extends ConsumerWidget {
                     onPressed: record.isCompleted || !canComplete
                         ? null
                         : () async {
-                            await ref
-                                .read(maintenanceListNotifierProvider.notifier)
-                                .complete(record.id);
-                            if (context.mounted) {
+                            try {
+                              await ref
+                                  .read(maintenanceListNotifierProvider.notifier)
+                                  .complete(record.id);
+                              if (!context.mounted) return;
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                   content: Text('Marked as completed'),
                                   duration: Duration(seconds: 2),
+                                ),
+                              );
+                            } catch (e) {
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    MaintenanceListNotifier.errorMessage(e),
+                                  ),
+                                  backgroundColor: AppColors.error,
                                 ),
                               );
                             }

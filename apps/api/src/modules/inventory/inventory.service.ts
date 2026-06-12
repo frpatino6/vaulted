@@ -381,12 +381,7 @@ export class InventoryService {
     );
   }
 
-  async findById(
-    tenantId: string,
-    itemId: string,
-    role: Role = Role.OWNER,
-    userId = '',
-  ): Promise<Item> {
+  async findById(tenantId: string, itemId: string, role: Role, userId: string): Promise<Item> {
     const item = await this.findOwnedItemOrThrow(tenantId, itemId);
     if (userId) {
       const allowedPropertyIds = await this.accessControl.getAllowedPropertyIds(
