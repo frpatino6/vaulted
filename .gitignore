@@ -49,3 +49,6 @@ logs/
 !.claude/settings.json
 !.mcp.json
 .gstack/
+
+# CodeGraph generated index (regenerated locally, not source)
+.hex-skills/
