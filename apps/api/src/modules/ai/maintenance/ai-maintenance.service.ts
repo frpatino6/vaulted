@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { GeminiClient } from '../shared/gemini.client';
 import { AiCostLoggerService } from '../shared/ai-cost-logger.service';
+import { sanitizeInput, logSuspiciousInput } from '../shared/ai-input-sanitizer';
 import { AccessControlService } from '../../../common/services/access-control.service';
 import { Role } from '../../../common/enums/role.enum';
 import { AuditService } from '../../audit/audit.service';
@@ -122,10 +123,20 @@ export class AiMaintenanceService {
         )
       : null;
 
+    // Item fields are untrusted (user-controlled) — neutralize prompt injection
+    // before interpolating them into the Gemini prompt.
+    const promptSafe = (value: unknown, max: number): string => {
+      const { safe, suspicious } = sanitizeInput(String(value ?? ''));
+      if (suspicious) {
+        logSuspiciousInput(this.logger, String(item.tenantId), 'maintenance item field', safe);
+      }
+      return safe.replace(/[\r\n]+/g, ' ').slice(0, max);
+    };
+
     const itemContext = [
-      `Name: ${item.name}`,
-      `Category: ${item.category}`,
-      item.subcategory ? `Subcategory: ${item.subcategory}` : null,
+      `Name: ${promptSafe(item.name, 200)}`,
+      `Category: ${promptSafe(item.category, 100)}`,
+      item.subcategory ? `Subcategory: ${promptSafe(item.subcategory, 100)}` : null,
       ageYears !== null ? `Age: ${ageYears} year(s)` : null,
     ]
       .filter(Boolean)

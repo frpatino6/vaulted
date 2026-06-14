@@ -935,21 +935,28 @@ export class InventoryService {
   }
 
   private withSignedUrls(item: Item, userId: string, tenantId: string): Item {
-    const sign = (url: string) =>
-      `${this.appUrl}/api/media/${this.mediaService.generateFileToken(url, tenantId, userId)}`;
+    const sign = (url: string): string | null => {
+      try {
+        return `${this.appUrl}/api/media/${this.mediaService.generateFileToken(url, tenantId, userId)}`;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        this.logger.warn(
+          `Skipping malformed media key for tenant ${tenantId}: ${message}`,
+        );
+        return null;
+      }
+    };
+    const signMany = (urls: string[]): string[] =>
+      urls.map(sign).filter((u): u is string => u !== null);
+    const sectionPhoto = (item as unknown as Record<string, unknown>)[
+      'sectionPhoto'
+    ] as string | undefined;
+    const signedSectionPhoto = sectionPhoto ? sign(sectionPhoto) : null;
     return {
       ...item,
-      photos: (item.photos ?? []).map(sign),
-      documents: (item.documents ?? []).map(sign),
-      ...((item as unknown as Record<string, unknown>)['sectionPhoto']
-        ? {
-            sectionPhoto: sign(
-              (item as unknown as Record<string, unknown>)[
-                'sectionPhoto'
-              ] as string,
-            ),
-          }
-        : {}),
+      photos: signMany(item.photos ?? []),
+      documents: signMany(item.documents ?? []),
+      ...(signedSectionPhoto ? { sectionPhoto: signedSectionPhoto } : {}),
     };
   }
 

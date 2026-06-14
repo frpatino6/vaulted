@@ -51,7 +51,7 @@ import { InsuredItem } from './modules/insurance/entities/insured-item.entity';
 
     ThrottlerModule.forRoot([
       { name: 'default', ttl: 60_000, limit: 600 },
-      { name: 'inventory-valuation', ttl: 900_000, limit: 20 },
+      { name: 'inventory-valuation', ttl: 900_000, limit: 120 },
       { name: 'dashboard', ttl: 300_000, limit: 10 },
     ]),
 

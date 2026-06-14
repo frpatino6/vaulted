@@ -790,3 +790,50 @@ Sexta ronda de seguridad usando skill `backend-security-auditor` con referencias
 | Validación manual de cada fix | OK — 4 hallazgos corregidos |
 
 ---
+
+## 21. Auditoría CodeGraph — nuevos hallazgos (Claude · 2026-06-12)
+
+Auditoría dirigida usando el grafo de conocimiento de código (`ln-021-codegraph`, índice
+`apps/api`: 247 archivos, 2531 símbolos, 9086 edges) más lectura focalizada. Objetivo:
+buscar vulnerabilidades **no cubiertas** por las 20 secciones previas. Se encontraron 5
+hallazgos (1 ALTO, 4 MEDIOS). **Todos CORREGIDOS** en esta sesión (sesión de fix posterior
+a la de documentación).
+
+> Cobertura de tests: los nuevos casos de la Fase 21 de `security-tests/scripts/pentest-full.sh`
+> (21D.1, 21E.3, 21F.1/21F.3) ya ejercitan V-1, V-3 y V-5. V-2 requiere un id **no-hex**
+> (el `FAKE_ID=000…099` del suite es un ObjectId válido de 24 hex, por eso nunca se detectó).
+
+### ALTOS
+
+| ID | Hallazgo | Archivo | Fix aplicado |
+|---|---|---|---|
+| V-3 | **Prompt injection (persistente/segundo orden) en AI Maintenance.** `analyzeItem()` interpolaba `item.name`/`category`/`subcategory` directamente en el prompt Gemini (`Name: ${item.name}` …) **sin** `sanitizeInput()` ni escape de saltos/comillas. Un Owner/Manager (o el auto-catálogo de AI Vision) podía guardar un ítem cuyo nombre contuviera instrucciones que se ejecutan al correr `/ai/maintenance/analyze/:itemId`. Misma clase que H-1 (vision) y la inyección RAG de inventario (§15) — corregidas para chat/vision pero no para maintenance | `ai/maintenance/ai-maintenance.service.ts:125-138` | CORREGIDO — se importó `sanitizeInput`/`logSuspiciousInput` del sanitizador compartido; helper local `promptSafe()` aplica `sanitizeInput()`, colapsa saltos de línea y trunca cada campo de ítem antes de construir `itemContext`; entradas sospechosas se loguean |
+
+### MEDIOS
+
+| ID | Hallazgo | Archivo | Fix aplicado |
+|---|---|---|---|
+| V-1 | **AI Insurance `analyzeCoverage` sin validación de UUID → Postgres 500.** `POST /ai/insurance/policies/:policyId/analyze` tomaba `@Param('policyId')` sin `ParseUUIDPipe`; fluye a `findOwnedPolicyOrThrow()` → `policyRepo.findOne({ where: { id: policyId } })` sobre `insurance_policies.id` que es `@PrimaryGeneratedColumn('uuid')`. Un `policyId` no-UUID (p.ej. un ObjectId hex) provocaba `QueryFailedError: invalid input syntax for type uuid`, que no es `HttpException` → el filtro global `@Catch()` respondía 500 y logueaba stack trace. Regresión del fix B-8 (§10), que sí blindó `insurance.controller.ts` pero omitió el controlador de IA | `ai/insurance/ai-insurance.controller.ts:1,28` · `insurance/insurance.service.ts:146` | CORREGIDO — `@Param('policyId', ParseUUIDPipe)` (consistente con `insurance.controller.ts`); devuelve 400 ante formato inválido. Defensa en profundidad adicional en V-2 (filtro global). El body de `claim-draft` ya estaba protegido vía `@IsUUID()` en `DraftClaimDto` |
+| V-2 | **MongoDB `CastError` → 500 en `:id` malformados (app-wide).** Los lookups Mongo (`findOne({ _id: id, tenantId })`) recibían el param crudo; un id que no sea ObjectId válido (no-hex / longitud incorrecta) lanza `CastError: Cast to ObjectId failed` → no es `HttpException` → 500 + stack trace en logs en lugar de 4xx. Solo un punto del código validaba ObjectId (`wardrobe.service.ts:544`); inventory, wardrobe, orchestrator, household-members, movements, maintenance, properties no lo hacían. Análogo Mongo de B-8 (que solo cubrió el caso UUID/Postgres) | `common/filters/http-exception.filter.ts` | CORREGIDO — fix central en el filtro global de excepciones: detecta `exception.name === 'CastError'` (Mongo) y el código `22P02` (`invalid_text_representation` de Postgres, cubre también la ruta UUID) y mapea ambos a **400 `Invalid identifier format`** en vez de 500. Una sola edición protege todos los endpoints (Mongo y Postgres), sin afectar requests válidos |
+| V-4 | **AI Help: query de usuario sin `sanitizeInput()`.** `chat()` pasaba `dto.query` directo a `buildSystemPrompt()` y `geminiClient.chat(systemPrompt, history, dto.query)` sin sanitizar la entrada; solo la salida pasaba por `sanitizeAiOutput()`. Chat (§19 SEC-002) e Insurance sí aplican `sanitizeInput()` a la entrada — Help era el único endpoint de IA con entrada sin sanitizar. Concuerda con el FAIL en vivo `5.HELP` de `pentest-all-20260611-200846.log` (el payload llegó al modelo; este declinó con `[UNRESOLVED:]`, así que la defensa por system-prompt sostuvo, pero faltaba el control en capa de entrada) | `ai/help/ai-help.service.ts:1115-1144` | CORREGIDO — se importó `sanitizeInput`/`logSuspiciousInput`; `chat()` deriva `safeQuery` con `sanitizeInput(dto.query)`, loguea entradas sospechosas y usa `safeQuery` en `buildSystemPrompt`, `geminiClient.chat`, historial de sesión y detección de unresolved |
+| V-5 | **AI Insurance claim-draft: salida sin `sanitizeAiOutput()`.** `parseClaimDraft()` devolvía `subject`/`body`/`keyPoints` como `String(parsed.x)` crudo (igual `parseCoverageAnalysis`), sin remover HTML ni chars de control. Chat (`:174`) y Help (`:1141`) sí sanean su salida. El borrador se renderiza en la app Flutter y suele copiarse a emails/PDF; un `incidentDescription` inyectado o un modelo que devuelva markup podía arrastrar HTML/control chars (XSS almacenado/reflejado en clientes que rendericen HTML) | `ai/insurance/ai-insurance.service.ts` | CORREGIDO — nuevo helper `sanitizeAiOutput()` (strip HTML + control chars, sin truncar el cuerpo); aplicado a `subject`/`body`/`keyPoints`/`nextSteps` en `parseClaimDraft()` y a `summary`/`recommendations`/`priorityItems` en `parseCoverageAnalysis()` |
+
+### Hallazgos verificados como seguros (sin acción)
+
+| Área | Veredicto |
+|---|---|
+| AI Help vector search (`retrieveRelevantChunks`) | SQL parametrizado (`$1::vector`, `$1`); el vector se construye de embeddings numéricos del modelo y se pasa como parámetro, no por interpolación. Sin SQLi |
+| Inventory full-text search regex | `escapeRegex()` + `.slice(0,200)` antes de `new RegExp()` — ya documentado seguro (§5) |
+| Controladores sin `@Roles` | Ninguno: todos los controladores/rutas tienen `@Roles` a nivel clase o método. `RolesGuard` permite acceso solo cuando no hay `@Roles`, pero no se encontró ninguna ruta sensible sin decorador |
+
+### Verificaciones
+
+| Check | Resultado |
+|---|---|
+| Indexado CodeGraph `apps/api` | OK — 247 archivos, 2531 símbolos, 9086 edges |
+| `bash -n security-tests/scripts/pentest-full.sh` (Fase 21 nueva) | OK — sintaxis válida |
+| Confirmación manual de cada hallazgo (lectura de código + traza de flujo) | OK — 5 confirmados |
+| `npx tsc --noEmit` sobre los 5 archivos editados | OK — 0 errores en archivos modificados (el resto de errores del proyecto son pre-existentes en specs/health/notifications, sin relación) |
+| Remediación | OK — 5 hallazgos corregidos (1 ALTO, 4 MEDIOS) |
+
+---

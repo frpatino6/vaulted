@@ -23,6 +23,13 @@ function toJsonForPrompt(value: unknown): string {
   return JSON.stringify(value, null, 2);
 }
 
+/** Strip HTML tags and control chars from model-generated output before returning. */
+function sanitizeAiOutput(value: unknown): string {
+  return String(value ?? '')
+    .replace(/<[^>]*>/g, '')
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+}
+
 export interface CoverageAnalysisResult {
   overallRisk: 'low' | 'medium' | 'high' | 'critical';
   summary: string;
@@ -252,15 +259,15 @@ Rules:
         overallRisk: (['low', 'medium', 'high', 'critical'].includes(String(parsed.overallRisk))
           ? parsed.overallRisk
           : 'medium') as CoverageAnalysisResult['overallRisk'],
-        summary: String(parsed.summary ?? 'Coverage analysis could not be completed.'),
+        summary: sanitizeAiOutput(parsed.summary ?? 'Coverage analysis could not be completed.'),
         recommendations: Array.isArray(parsed.recommendations)
-          ? (parsed.recommendations as unknown[]).map(String).slice(0, 5)
+          ? (parsed.recommendations as unknown[]).map(sanitizeAiOutput).slice(0, 5)
           : [],
         priorityItems: Array.isArray(parsed.priorityItems)
           ? (parsed.priorityItems as Record<string, unknown>[]).slice(0, 5).map((item) => ({
-              itemId: String(item.itemId ?? ''),
-              itemName: String(item.itemName ?? ''),
-              issue: String(item.issue ?? ''),
+              itemId: sanitizeAiOutput(item.itemId ?? ''),
+              itemName: sanitizeAiOutput(item.itemName ?? ''),
+              issue: sanitizeAiOutput(item.issue ?? ''),
             }))
           : [],
         renewalUrgency: (['none', 'soon', 'urgent'].includes(String(parsed.renewalUrgency))
@@ -287,13 +294,13 @@ Rules:
         .trim();
       const parsed = JSON.parse(cleaned) as Record<string, unknown>;
       return {
-        subject: String(parsed.subject ?? 'Insurance Claim Notification'),
-        body: String(parsed.body ?? 'Claim draft could not be generated. Please contact your insurance provider directly.'),
+        subject: sanitizeAiOutput(parsed.subject ?? 'Insurance Claim Notification'),
+        body: sanitizeAiOutput(parsed.body ?? 'Claim draft could not be generated. Please contact your insurance provider directly.'),
         keyPoints: Array.isArray(parsed.keyPoints)
-          ? (parsed.keyPoints as unknown[]).map(String).slice(0, 4)
+          ? (parsed.keyPoints as unknown[]).map(sanitizeAiOutput).slice(0, 4)
           : [],
         nextSteps: Array.isArray(parsed.nextSteps)
-          ? (parsed.nextSteps as unknown[]).map(String).slice(0, 3)
+          ? (parsed.nextSteps as unknown[]).map(sanitizeAiOutput).slice(0, 3)
           : [],
       };
     } catch {

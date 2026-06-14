@@ -7,6 +7,7 @@ import { InjectRedis } from '../../../common/decorators/inject-redis.decorator';
 import { AiCostLoggerService } from '../shared/ai-cost-logger.service';
 import { EmbeddingService } from '../shared/embedding.service';
 import { GeminiChatMessage, GeminiClient } from '../shared/gemini.client';
+import { sanitizeInput, logSuspiciousInput } from '../shared/ai-input-sanitizer';
 import { HelpFeedbackDto } from './dto/help-feedback.dto';
 import { HelpRequestDto, HelpScreen } from './dto/help-request.dto';
 
@@ -1116,17 +1117,21 @@ export class AiHelpService implements OnModuleInit {
     await this.enforceRateLimit(tenantId, userId);
 
     const sessionId = dto.sessionId ?? uuidv4();
+    const { safe: safeQuery, suspicious } = sanitizeInput(dto.query);
+    if (suspicious) {
+      logSuspiciousInput(this.logger, userId, 'help query', safeQuery);
+    }
     const history = await this.getSessionHistory(tenantId, userId, sessionId);
-    const systemPrompt = await this.buildSystemPrompt(dto.query, dto.currentScreen);
+    const systemPrompt = await this.buildSystemPrompt(safeQuery, dto.currentScreen);
     const geminiHistory: GeminiChatMessage[] = history.map((turn) => ({
       role: turn.role,
       content: turn.content,
     }));
 
-    const result = await this.geminiClient.chat(systemPrompt, geminiHistory, dto.query);
+    const result = await this.geminiClient.chat(systemPrompt, geminiHistory, safeQuery);
 
-    await this.updateSessionHistory(tenantId, userId, sessionId, dto.query, result.text);
-    await this.detectAndLogUnresolved(tenantId, dto.query, result.text);
+    await this.updateSessionHistory(tenantId, userId, sessionId, safeQuery, result.text);
+    await this.detectAndLogUnresolved(tenantId, safeQuery, result.text);
 
     void this.costLogger.log({
       tenantId,
