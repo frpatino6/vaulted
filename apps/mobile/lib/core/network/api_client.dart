@@ -125,6 +125,15 @@ class _AuthInterceptor extends Interceptor {
     final status = err.response?.statusCode;
     final body = err.response?.data;
 
+    if (status == 429) {
+      _replaceErrorMessage(
+        body,
+        'You have made too many requests in a short time. '
+        'Please wait a minute and try again.',
+      );
+      return handler.next(err);
+    }
+
     if ((status == 403 || status == 401) && _isMfaRequiredMessage(body)) {
       _tokenStore.setMfaPending(true);
       _onMfaRequired?.call();
@@ -270,6 +279,20 @@ class _AuthInterceptor extends Interceptor {
     _tokenStore.clear();
     _secureStorage.deleteRefreshToken();
     _onAuthFailure?.call();
+  }
+
+  /// Rewrites the API error message in-place so every screen's existing
+  /// `message()` extractor surfaces a user-friendly text instead of the raw
+  /// backend exception (e.g. "ThrottlerException: Too Many Requests").
+  static void _replaceErrorMessage(dynamic body, String friendly) {
+    if (body is Map) {
+      final error = body['error'];
+      if (error is Map) {
+        error['message'] = friendly;
+      } else {
+        body['message'] = friendly;
+      }
+    }
   }
 
   static bool _isMfaRequiredMessage(dynamic body) {
