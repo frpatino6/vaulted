@@ -1,4 +1,4 @@
-import { Body, Controller, Param, Post } from '@nestjs/common';
+import { Body, Controller, Param, ParseUUIDPipe, Post } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
@@ -25,7 +25,7 @@ export class AiInsuranceController {
   @ApiResponse({ status: 200, description: 'Coverage analysis generated' })
   async analyzeCoverage(
     @CurrentUser() user: JwtPayload,
-    @Param('policyId') policyId: string,
+    @Param('policyId', ParseUUIDPipe) policyId: string,
   ) {
     return this.aiInsuranceService.analyzeCoverage(user.tenantId, user.sub, policyId);
   }

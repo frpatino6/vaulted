@@ -17,15 +17,25 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
 
-    const status =
+    let status =
       exception instanceof HttpException
         ? exception.getStatus()
         : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    const message =
+    let message =
       exception instanceof HttpException
         ? exception.getResponse()
         : 'Internal server error';
+
+    // Malformed resource identifiers (Mongo ObjectId cast failure or Postgres
+    // invalid_text_representation for uuid columns) must not surface as 500.
+    if (!(exception instanceof HttpException) && exception instanceof Error) {
+      const code = (exception as { code?: string }).code;
+      if (exception.name === 'CastError' || code === '22P02') {
+        status = HttpStatus.BAD_REQUEST;
+        message = 'Invalid identifier format';
+      }
+    }
 
     // Stream already started — can't send JSON, headers are already sent
     if (response.headersSent) return;
