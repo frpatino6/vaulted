@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -300,14 +301,41 @@ class _PrivacyToggleButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isPrivate = ref.watch(privacyModeProvider).valueOrNull ?? false;
-    return IconButton(
-      iconSize: 20,
-      icon: Icon(
-        isPrivate ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-        color: AppColors.onSurfaceVariant,
-      ),
-      tooltip: isPrivate ? 'Show values' : 'Hide values',
-      onPressed: () => ref.read(privacyModeProvider.notifier).toggle(),
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        IconButton(
+          iconSize: 20,
+          icon: Icon(
+            isPrivate
+                ? Icons.visibility_off_outlined
+                : Icons.visibility_outlined,
+            color: isPrivate ? AppColors.accent : AppColors.onSurfaceVariant,
+          ),
+          tooltip: isPrivate ? 'Values hidden — tap to show' : 'Hide values',
+          onPressed: () {
+            HapticFeedback.selectionClick();
+            ref.read(privacyModeProvider.notifier).toggle();
+          },
+        ),
+        if (isPrivate)
+          Positioned(
+            right: 6,
+            top: 6,
+            child: Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: AppColors.accent,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: AppColors.backgroundElevated,
+                  width: 1.5,
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

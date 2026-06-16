@@ -68,11 +68,13 @@ Guest    → temporary access with expiration date
 
 ## Key Features
 
-**MVP (done):** Multi-property · Property→Floor→Room→Item · Photos (10) · Serial # · Valuation · QR · Status (active/loaned/repair/storage/disposed) · Movement history · Loans · RBAC · Push/email · PDF export · Full-text search
+> **Status: ~90% complete — production-grade SaaS.** Core platform and Phase 2 are shipped and live; only a few advanced/Phase 3 capabilities remain.
 
-**Phase 2 (partial):** Wardrobe ✅ · Insurance ✅ · Maintenance calendar ✅ · AI cataloging ✅ · Dashboard KPIs ✅ · AI Insurance Analysis ✅ · Incident reports ❌
+**Core platform (done):** Multi-property · Property→Floor→Room→Item · Photos (10) · Serial # · Valuation · QR · Status (active/loaned/repair/storage/disposed) · Movement history · Loans · RBAC · Push/email · PDF export · Full-text search
 
-**Phase 3 (pending):** Bulk import · REST API · Advanced reports · Offline mode
+**Phase 2 (done):** Wardrobe ✅ · Insurance ✅ · Maintenance calendar ✅ · AI cataloging ✅ · Dashboard KPIs ✅ · AI Insurance Analysis ✅ · Incident reports ❌
+
+**Phase 3 (remaining):** Bulk import · REST API · Advanced reports · Offline mode
 
 ---
 
@@ -274,8 +276,8 @@ G Stack skills available via `/skill-name` — see `~/.claude/skills/gstack/` fo
 
 ## Technical Debt
 
-### Envelope Encryption — post-MVP
-- Current `CryptoService` uses HKDF-SHA-256 (solid for MVP). Defer envelope encryption + GCP KMS to post-MVP.
+### Envelope Encryption — post-launch hardening
+- Current `CryptoService` uses HKDF-SHA-256 (solid for current scale). Envelope encryption + GCP KMS planned as a post-launch hardening step.
 - Files: `common/services/crypto.service.ts` · `tenants/entities/tenant.entity.ts`
 
 ### Certificate Pinning — rotate every ~90 days
