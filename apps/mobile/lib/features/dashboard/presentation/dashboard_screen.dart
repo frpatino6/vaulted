@@ -217,14 +217,17 @@ class DashboardScreen extends ConsumerWidget {
                           ],
                         ),
                         const SizedBox(height: AppSpacing.sm),
-                        ...list.map(
-                          (p) => Padding(
+                        ...list.indexed.map(
+                          (entry) => Padding(
                             padding: const EdgeInsets.only(
                               bottom: AppSpacing.md,
                             ),
-                            child: DashboardPropertyCard(
-                              property: p,
-                              itemCount: null,
+                            child: _FadeSlideIn(
+                              delay: Duration(milliseconds: 60 * entry.$1),
+                              child: DashboardPropertyCard(
+                                property: entry.$2,
+                                itemCount: null,
+                              ),
                             ),
                           ),
                         ),
@@ -454,7 +457,10 @@ class _QuickActionTile extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: onTap,
+        onTap: () {
+          HapticFeedback.selectionClick();
+          onTap();
+        },
         splashColor: AppColors.onSurfaceVariant.withValues(alpha: 0.12),
         highlightColor: AppColors.onSurfaceVariant.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(20.0),
@@ -528,6 +534,57 @@ class _QuickActionTile extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Staggered fade + slide-up entry for list items. Premium first-paint polish.
+class _FadeSlideIn extends StatefulWidget {
+  const _FadeSlideIn({required this.child, this.delay = Duration.zero});
+
+  final Widget child;
+  final Duration delay;
+
+  @override
+  State<_FadeSlideIn> createState() => _FadeSlideInState();
+}
+
+class _FadeSlideInState extends State<_FadeSlideIn>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 420),
+  );
+  late final Animation<double> _curve = CurvedAnimation(
+    parent: _controller,
+    curve: Curves.easeOutCubic,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    Future<void>.delayed(widget.delay, () {
+      if (mounted) _controller.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _curve,
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0, 0.06),
+          end: Offset.zero,
+        ).animate(_curve),
+        child: widget.child,
       ),
     );
   }
