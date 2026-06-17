@@ -30,6 +30,9 @@ import 'package:vaulted/shared/widgets/help_screen_button.dart';
 // Speed dial state
 enum _SpeedDialState { closed, open }
 
+/// Standard width for bottom-sheet drag handles.
+const double _dragHandleWidth = 40;
+
 class PropertyDetailScreen extends ConsumerStatefulWidget {
   const PropertyDetailScreen({super.key, required this.propertyId});
 
@@ -133,8 +136,7 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
                         _showAssignLocation(context, itemId, property.floors),
               );
             },
-            loading:
-                () => const AppScreenSkeleton(showHeader: false, cardCount: 5),
+            loading: () => const _PropertyDetailSkeleton(),
             error:
                 (err, _) => _ErrorView(
                   message: PropertyDetailNotifier.message(err),
@@ -149,7 +151,9 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
             Positioned.fill(
               child: GestureDetector(
                 onTap: _closeDial,
-                child: Container(color: Colors.black54),
+                child: Container(
+                  color: AppColors.background.withValues(alpha: 0.54),
+                ),
               ),
             ),
         ],
@@ -188,7 +192,9 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
               if (context.mounted) {
                 ScaffoldMessenger.of(
                   context,
-                ).showSnackBar(const SnackBar(content: Text('Item saved')));
+                ).showSnackBar(
+                  const SnackBar(content: Text('Item added to inventory')),
+                );
               }
             },
           ),
@@ -277,6 +283,41 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
   }
 }
 
+/// Skeleton that mirrors the property detail layout: hero, metadata, floors.
+class _PropertyDetailSkeleton extends StatelessWidget {
+  const _PropertyDetailSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      physics: const NeverScrollableScrollPhysics(),
+      padding: EdgeInsets.zero,
+      children: [
+        const AppSkeletonBox(height: 280, radius: 0),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: AppSpacing.md),
+              const AppSkeletonBox(width: 80, height: 12, radius: 6),
+              const SizedBox(height: AppSpacing.sm),
+              const AppSkeletonBox(width: 220, height: 14, radius: 6),
+              const SizedBox(height: AppSpacing.lg),
+              const AppSkeletonBox(width: 140, height: 12, radius: 6),
+              const SizedBox(height: AppSpacing.md),
+              for (int i = 0; i < 4; i++) ...[
+                const AppSkeletonBox(height: 64, radius: 16),
+                if (i != 3) const SizedBox(height: AppSpacing.sm),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _PropertyDetailBody extends ConsumerWidget {
   const _PropertyDetailBody({
     required this.property,
@@ -302,7 +343,7 @@ class _PropertyDetailBody extends ConsumerWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final surfaceOverlay =
         isDark
-            ? Colors.white.withValues(alpha: 0.10)
+            ? AppColors.onBackground.withValues(alpha: 0.06)
             : Colors.black.withValues(alpha: 0.04);
 
     return CustomScrollView(
@@ -316,9 +357,7 @@ class _PropertyDetailBody extends ConsumerWidget {
             titlePadding: const EdgeInsets.only(left: 24.0, bottom: 16),
             title: Text(
               property.name,
-              style: AppTypography.displaySerif.copyWith(
-                fontSize: 24,
-                fontWeight: FontWeight.w500,
+              style: AppTypography.heroTitle.copyWith(
                 color: AppColors.onBackground,
                 shadows: [
                   Shadow(
@@ -388,11 +427,20 @@ class _PropertyDetailBody extends ConsumerWidget {
                         decoration: BoxDecoration(
                           color: Colors.black54,
                           shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white30),
+                          border: Border.all(
+                            color: AppColors.onBackground.withValues(alpha: 0.3),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
                         child: const Icon(
                           Icons.camera_alt_outlined,
-                          color: Colors.white,
+                          color: AppColors.onBackground,
                           size: 20,
                         ),
                       ),
@@ -424,14 +472,14 @@ class _PropertyDetailBody extends ConsumerWidget {
                     Icon(
                       Icons.location_on_outlined,
                       size: 18,
-                      color: Colors.white.withValues(alpha: 0.7),
+                      color: AppColors.onSurfaceVariant,
                     ),
                     const SizedBox(width: AppSpacing.xs),
                     Expanded(
                       child: Text(
                         _formatAddress(property.address),
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.white.withValues(alpha: 0.7),
+                          color: AppColors.onSurfaceVariant,
                         ),
                       ),
                     ),
@@ -449,10 +497,8 @@ class _PropertyDetailBody extends ConsumerWidget {
                   children: [
                     Text(
                       'FLOORS & ROOMS',
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      style: AppTypography.sectionLabel.copyWith(
                         color: AppColors.accent,
-                        letterSpacing: 2.0,
-                        fontSize: 10,
                       ),
                     ),
                     if (onAddFloor != null)
@@ -608,7 +654,7 @@ class _UnlocatedItemsBanner extends ConsumerWidget {
           children: [
             Center(
               child: Container(
-                width: 40, height: 4,
+                width: _dragHandleWidth, height: 4,
                 decoration: BoxDecoration(
                   color: AppColors.onSurfaceVariant.withValues(alpha: 0.4),
                   borderRadius: BorderRadius.circular(2),
@@ -686,8 +732,15 @@ class _UnlocatedItemsBanner extends ConsumerWidget {
         return Container(
           decoration: BoxDecoration(
             color: AppColors.warning.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(color: AppColors.warning.withValues(alpha: 0.35)),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.warning.withValues(alpha: 0.1),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -697,7 +750,7 @@ class _UnlocatedItemsBanner extends ConsumerWidget {
                 padding: const EdgeInsets.fromLTRB(
                   AppSpacing.md,
                   AppSpacing.md,
-                  AppSpacing.xs,
+                  AppSpacing.sm,
                   AppSpacing.sm,
                 ),
                 child: Row(
@@ -717,7 +770,7 @@ class _UnlocatedItemsBanner extends ConsumerWidget {
                         ),
                       ),
                     ),
-                    TextButton(
+                    TextButton.icon(
                       onPressed: () => _openSheet(context, ref, items),
                       style: TextButton.styleFrom(
                         foregroundColor: AppColors.warning,
@@ -727,8 +780,10 @@ class _UnlocatedItemsBanner extends ConsumerWidget {
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
-                      child: const Text(
-                        'Manage \u2192',
+                      iconAlignment: IconAlignment.end,
+                      icon: const Icon(Icons.arrow_forward, size: 16),
+                      label: const Text(
+                        'Manage',
                         style: TextStyle(fontSize: 13),
                       ),
                     ),
@@ -784,7 +839,7 @@ class _UnlocatedItemsBanner extends ConsumerWidget {
                         icon: const Icon(
                           Icons.delete_outline,
                           size: 18,
-                          color: Colors.red,
+                          color: AppColors.error,
                         ),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
@@ -890,7 +945,7 @@ class _UnlocatedItemsSheetState extends ConsumerState<_UnlocatedItemsSheet> {
               ),
               TextButton(
                 onPressed: () => Navigator.pop(dialogCtx, true),
-                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                style: TextButton.styleFrom(foregroundColor: AppColors.error),
                 child: const Text('Delete'),
               ),
             ],
@@ -1002,7 +1057,7 @@ class _UnlocatedItemsSheetState extends ConsumerState<_UnlocatedItemsSheet> {
                     padding: const EdgeInsets.only(top: AppSpacing.sm),
                     child: Center(
                       child: Container(
-                        width: 40,
+                        width: _dragHandleWidth,
                         height: 4,
                         decoration: BoxDecoration(
                           color: AppColors.onSurfaceVariant.withValues(
@@ -1183,7 +1238,7 @@ class _UnlocatedItemsSheetState extends ConsumerState<_UnlocatedItemsSheet> {
                                         icon: const Icon(
                                           Icons.delete_outline,
                                           size: 20,
-                                          color: Colors.red,
+                                          color: AppColors.error,
                                         ),
                                         visualDensity: VisualDensity.compact,
                                       ),
@@ -1298,12 +1353,22 @@ class _CategoryChip extends StatelessWidget {
 class _LuxuryGradientBackground extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF1A1A24), Color(0xFF0E0E14)],
+          colors:
+              isDark
+                  ? const [
+                    AppColors.heroGradientStart,
+                    AppColors.heroGradientEnd,
+                  ]
+                  : const [
+                    AppColors.lightHeroGradientStart,
+                    AppColors.lightHeroGradientEnd,
+                  ],
         ),
       ),
     );
@@ -1522,6 +1587,13 @@ class _FloorTile extends ConsumerWidget {
       decoration: BoxDecoration(
         color: surfaceOverlay,
         borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: ExpansionTile(
         leading: const Icon(
@@ -1720,18 +1792,41 @@ class _NotFoundView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.search_off, size: 48, color: AppColors.onSurfaceVariant),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            'Property not found',
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(color: AppColors.onBackground),
-          ),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 88,
+              height: 88,
+              decoration: BoxDecoration(
+                color: AppColors.surfaceVariant,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.search_off,
+                size: 40,
+                color: AppColors.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Text(
+              'Property not found',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(color: AppColors.onBackground),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              'It may have been removed or you no longer have access.',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: AppColors.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1790,7 +1885,10 @@ class _SpeedDial extends StatelessWidget {
         FloatingActionButton(
           onPressed: onToggle,
           backgroundColor: isOpen ? AppColors.surface : AppColors.accent,
-          foregroundColor: isOpen ? AppColors.accent : Colors.black,
+          foregroundColor:
+              isOpen
+                  ? AppColors.accent
+                  : Theme.of(context).colorScheme.onPrimary,
           shape: const CircleBorder(),
           child: AnimatedRotation(
             turns: isOpen ? 0.125 : 0,
@@ -1839,7 +1937,7 @@ class _DialItem extends StatelessWidget {
                 color:
                     isAi
                         ? AppColors.accent.withValues(alpha: 0.4)
-                        : Colors.white12,
+                        : AppColors.onSurfaceVariant.withValues(alpha: 0.2),
               ),
             ),
             child: Text(
@@ -1859,11 +1957,21 @@ class _DialItem extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: isAi ? AppColors.accent : AppColors.surfaceVariant,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.2),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: Icon(
               icon,
               size: 18,
-              color: isAi ? Colors.black : AppColors.onBackground,
+              color:
+                  isAi
+                      ? Theme.of(context).colorScheme.onPrimary
+                      : AppColors.onBackground,
             ),
           ),
         ],
@@ -1888,18 +1996,33 @@ class _ErrorView extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.error_outline,
-              size: 48,
-              color: AppColors.onSurfaceVariant,
+            Container(
+              width: 88,
+              height: 88,
+              decoration: BoxDecoration(
+                color: AppColors.error.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.error_outline,
+                size: 40,
+                color: AppColors.error,
+              ),
             ),
-            const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: AppSpacing.lg),
+            Text(
+              "Something went wrong",
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(color: AppColors.onBackground),
+            ),
+            const SizedBox(height: AppSpacing.sm),
             Text(
               message,
               textAlign: TextAlign.center,
               style: Theme.of(
                 context,
-              ).textTheme.bodyLarge?.copyWith(color: AppColors.onBackground),
+              ).textTheme.bodySmall?.copyWith(color: AppColors.onSurfaceVariant),
             ),
             const SizedBox(height: AppSpacing.lg),
             FilledButton.tonal(onPressed: onRetry, child: const Text('Retry')),

@@ -41,6 +41,9 @@ class AppColors {
   static const Color statusDisposed = Color(0xFF9E9E9E);
   /// Warning / attention — amber orange for unlocated items, alerts.
   static const Color warning = Color(0xFFFF9800);
+  /// Hero placeholder gradient (dark theme) — luxury charcoal.
+  static const Color heroGradientStart = Color(0xFF1A1A24);
+  static const Color heroGradientEnd = Color(0xFF0E0E14);
 
   // Light palette — "Luxury Light" (ivory, pearl, deep gold)
   /// Warm ivory pearl — never pure white; evokes Cartier packaging.
@@ -65,6 +68,9 @@ class AppColors {
   static const Color lightAccent = Color(0xFFB8961E);
   /// Gold at 15 % opacity — chip selected fill, nav indicator tint.
   static const Color lightAccentSubtle = Color(0x26B8961E);
+  /// Hero placeholder gradient (light theme) — warm pearl.
+  static const Color lightHeroGradientStart = Color(0xFFF0EDE6);
+  static const Color lightHeroGradientEnd = Color(0xFFFAF9F6);
 }
 
 /// Typography using clean, minimal fonts.
@@ -137,6 +143,19 @@ class AppTypography {
         fontSize: 18,
         fontWeight: FontWeight.w500,
         letterSpacing: -0.2,
+      );
+
+  /// Serif hero title over imagery (e.g. property detail header).
+  static TextStyle get heroTitle => GoogleFonts.playfairDisplay(
+        fontSize: 24,
+        fontWeight: FontWeight.w500,
+      );
+
+  /// Uppercase section label (e.g. "FLOORS & ROOMS").
+  static TextStyle get sectionLabel => GoogleFonts.dmSans(
+        fontSize: 10,
+        fontWeight: FontWeight.w600,
+        letterSpacing: 2.0,
       );
 }
 
