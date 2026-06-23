@@ -66,7 +66,7 @@ jobs:
         working-directory: apps/mobile
         run: |
           flutter build web \
-            --dart-define=API_BASE_URL=https://vaulted.casacam.net/api/ \
+            --dart-define=API_BASE_URL=https://api-vaulted.casacam.net/api/ \
             --release
 
       - name: Deploy to Firebase Hosting
